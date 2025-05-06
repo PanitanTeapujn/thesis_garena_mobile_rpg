@@ -19,6 +19,11 @@ public class BloodKinght : Hero
         moveInputX = Input.GetAxisRaw("Horizontal");
         moveInputZ = Input.GetAxisRaw("Vertical");
         moveDirection = new Vector3(moveInputX, 0, moveInputZ).normalized;
+        float rotationInput = 0f;
+        if (Input.GetKey(KeyCode.Q)) rotationInput = -1f;
+        if (Input.GetKey(KeyCode.E)) rotationInput = 1f;
+
+        RotateCamera(rotationInput);
         Move(moveDirection);
 
     }
