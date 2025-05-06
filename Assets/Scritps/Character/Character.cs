@@ -26,21 +26,32 @@ public class Character : MonoBehaviour
 {
 
     [Header("Base Stats")]
+  public  CharacterStats characterStats;
+    [SerializeField]
+    private string characterName;
+    public string CharacterName { get { return characterName; } }
+    [SerializeField]
     private int currentHp; 
     public int CurrentHp { get { return currentHp; } set { currentHp = value; } }
+    [SerializeField]
     private int maxHp;
     public int MaxHp { get { return maxHp; } set { currentHp = value; } }
+    [SerializeField]
 
     private int attackDamage;
     public int AttackDamage { get { return attackDamage; } set { attackDamage = value; } }
+    [SerializeField]
 
     private int armor;
     public int Armor { get { return armor; } set { armor = value; } }
+    [SerializeField]
 
-    private int moveSpeed;
-    public int MoveSpeed { get { return moveSpeed; } set { moveSpeed = value; } }
+    private float moveSpeed;
+    public float MoveSpeed { get { return moveSpeed; } set { moveSpeed = value; } }
+    [SerializeField]
     private float attackRange;
     public float AttackRange { get { return attackRange; } set { attackRange = value; } }
+    [SerializeField]
 
     private float attackCooldown;
     public float AttackCooldown { get { return attackCooldown; } set { attackCooldown = value; } }
@@ -62,12 +73,31 @@ public class Character : MonoBehaviour
         }
 
     }
-    void Start()
+   protected virtual void Start()
     {
-       
+        characterName = characterStats.characterName;
+        maxHp = characterStats.maxHp;
+        currentHp = maxHp;
+        attackDamage = characterStats.attackDamage;
+        armor = characterStats.arrmor;
+        moveSpeed = characterStats.moveSpeed;
+        attackRange = characterStats.attackRange;
+        attackCooldown = characterStats.attackCoolDown;
+
+        if (rb != null)
+        {
+            rb.freezeRotation = true;
+            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ| RigidbodyConstraints.FreezeRotationY;
+            rb.useGravity = true;
+            rb.drag = 1.0f;
+            rb.mass = 10f;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        }
+
     }
 
-    void Update()
+  protected  virtual void Update()
     {
         
     }

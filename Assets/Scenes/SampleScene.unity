@@ -591,21 +591,25 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!4 &2112109704
-Transform:
+--- !u!224 &2112109704
+RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2112109702}
-  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.7, y: 2.6, z: -6.74}
+  m_LocalPosition: {x: 0, y: 0, z: -6.74}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: -0.7, y: 2.6}
+  m_SizeDelta: {x: 3.4, y: 3.4}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!54 &2112109705
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -645,9 +649,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8129cb5650e2bd468947868efef1769, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  characterStats: {fileID: 11400000, guid: 71494caa12fd8a14c9fd2fb8f922c03d, type: 2}
+  characterName: 
+  currentHp: 0
+  maxHp: 0
+  attackDamage: 0
+  armor: 0
+  moveSpeed: 0
+  attackRange: 0
+  attackCooldown: 0
   rb: {fileID: 2112109705}
   characterRenderer: {fileID: 2112109703}
   originalColor: {r: 0, g: 0, b: 0, a: 0}
+  moveDirection: {x: 0, y: 0, z: 0}
+  cameraTransform: {fileID: 330585546}
+  cameraRotationSpeed: 50
+  cameraOffset: {x: 0, y: 10, z: -10}
+  moveInputX: 0
+  moveInputZ: 0
 --- !u!65 &2112109707
 BoxCollider:
   m_ObjectHideFlags: 0
