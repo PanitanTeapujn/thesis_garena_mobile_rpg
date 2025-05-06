@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class BloodKinght : Hero
 {
+   public Joystick joystick;
+    public Joystick joystickCamera;
     // Start is called before the first frame update
    protected override void Start()
     {
@@ -16,12 +18,15 @@ public class BloodKinght : Hero
     protected override  void Update()
     {
         base.Update();
-        moveInputX = Input.GetAxisRaw("Horizontal");
-        moveInputZ = Input.GetAxisRaw("Vertical");
+        moveInputX = joystick.Horizontal;
+        moveInputZ = joystick.Vertical;
         moveDirection = new Vector3(moveInputX, 0, moveInputZ).normalized;
         float rotationInput = 0f;
-        if (Input.GetKey(KeyCode.Q)) rotationInput = -1f;
-        if (Input.GetKey(KeyCode.E)) rotationInput = 1f;
+        moveCameraLeft = joystickCamera.Horizontal-1;
+        moveCameraRight = joystickCamera.Horizontal;
+        rotationInput = moveCameraLeft;
+        rotationInput = moveCameraRight;
+       
 
         RotateCamera(rotationInput);
         Move(moveDirection);
