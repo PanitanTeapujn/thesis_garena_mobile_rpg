@@ -13,8 +13,7 @@ public class Hero : Character
     [Header("Move")]
     public float moveInputX;
     public float moveInputZ;
-    public float moveCameraRight;
-    public float moveCameraLeft;
+    
   protected override  void Start()
     {
         base.Start();

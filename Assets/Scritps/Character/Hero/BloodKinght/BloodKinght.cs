@@ -6,6 +6,7 @@ public class BloodKinght : Hero
 {
    public Joystick joystick;
     public Joystick joystickCamera;
+
     // Start is called before the first frame update
    protected override void Start()
     {
@@ -22,10 +23,7 @@ public class BloodKinght : Hero
         moveInputZ = joystick.Vertical;
         moveDirection = new Vector3(moveInputX, 0, moveInputZ).normalized;
         float rotationInput = 0f;
-        moveCameraLeft = joystickCamera.Horizontal-1;
-        moveCameraRight = joystickCamera.Horizontal;
-        rotationInput = moveCameraLeft;
-        rotationInput = moveCameraRight;
+        rotationInput = joystickCamera.Horizontal;
        
 
         RotateCamera(rotationInput);

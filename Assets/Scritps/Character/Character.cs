@@ -35,7 +35,7 @@ public class Character : MonoBehaviour
     public int CurrentHp { get { return currentHp; } set { currentHp = value; } }
     [SerializeField]
     private int maxHp;
-    public int MaxHp { get { return maxHp; } set { currentHp = value; } }
+    public int MaxHp { get { return maxHp; } set { maxHp = value; } }
     [SerializeField]
 
     private int attackDamage;
