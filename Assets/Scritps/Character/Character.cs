@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Fusion;
+
 enum StatusEffectType
 {
     None,
@@ -22,7 +24,7 @@ enum DamageType
     Stun,
     Bleed
 }
-public class Character : MonoBehaviour
+public class Character : NetworkBehaviour
 {
 
     [Header("Base Stats")]

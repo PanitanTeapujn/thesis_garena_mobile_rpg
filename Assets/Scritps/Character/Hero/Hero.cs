@@ -69,19 +69,25 @@ public class Hero : Character
     #region Camera
     public void FollowCamera()
     {
+        if (cameraTransform == null)
+            return;
         cameraTransform.position = transform.position + cameraOffset;
         cameraTransform.LookAt(transform.position);
     }
 
     protected void RotateCharacterToCamera()
     {
+        if (cameraTransform == null)
+            return;
         Vector3 cameraForward = cameraTransform.forward;
         cameraForward.y = 0;
         transform.forward = cameraForward;
     }
     protected void RotateCamera(float input)
     {
-        if (input != 0)
+        if (cameraTransform == null)
+            return;
+            if (input != 0)
         {
             Quaternion rotation = Quaternion.AngleAxis(input * cameraRotationSpeed * Time.deltaTime, Vector3.up);
             cameraOffset = rotation * cameraOffset;
