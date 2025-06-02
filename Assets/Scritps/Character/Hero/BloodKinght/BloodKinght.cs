@@ -165,12 +165,12 @@ public class BloodKnight : Hero
         // Flip ตัวละครตามทิศทางการเคลื่อนที่แนวนอน
         if (horizontalInput > 0.1f)
         {
-            transform.localScale = new Vector3(1f, 1f, 1f);
+            transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
             NetworkedFlipX = false;
         }
         else if (horizontalInput < -0.1f)
         {
-            transform.localScale = new Vector3(-1f, 1f, 1f);
+            transform.localScale = new Vector3(-0.5f, 0.5f, 0.5f);
             NetworkedFlipX = true;
         }
     }

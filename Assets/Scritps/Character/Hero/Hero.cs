@@ -8,7 +8,7 @@ public class Hero : Character
     public Vector3 moveDirection;
     public Transform cameraTransform;
     public float cameraRotationSpeed = 50f;
-    public Vector3 cameraOffset = new Vector3(0, 10, -10);
+    public Vector3 cameraOffset = new Vector3(0, 12, -13);
 
     [Header("Move")]
     public float moveInputX;
