@@ -6,19 +6,33 @@ using UnityEngine;
 
 public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
-    public GameObject playerPrefab;
+    [Header("Character Prefabs")]
+    public GameObject bloodKnightPrefab;
+    public GameObject archerPrefab;
+    public GameObject assassinPrefab;
+    public GameObject ironJuggernautPrefab;
+
+    [Header("Network Manager Prefab")]
+    public GameObject networkPlayerManagerPrefab; // ต้องสร้าง prefab นี้
+
     private NetworkRunner _runner;
 
-    // เพิ่มเมธอดนี้เพื่อเชื่อมต่อกับ NetworkRunner
+    // Dictionary เพื่อเก็บข้อมูลตัวละครของแต่ละ player
+    private Dictionary<PlayerRef, PlayerSelectionData.CharacterType> playerCharacters = new Dictionary<PlayerRef, PlayerSelectionData.CharacterType>();
+
+    // Dictionary เพื่อเก็บ NetworkPlayerManager ของแต่ละ player
+    private Dictionary<PlayerRef, NetworkPlayerManager> playerManagers = new Dictionary<PlayerRef, NetworkPlayerManager>();
+
+    // Dictionary เพื่อเก็บ spawned characters ของแต่ละ player
+    private Dictionary<PlayerRef, NetworkObject> spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
+
     private void OnEnable()
     {
-        // หา NetworkRunner ในฉาก
         _runner = FindObjectOfType<NetworkRunner>();
         if (_runner != null)
         {
-            // ลงทะเบียน callback
             _runner.AddCallbacks(this);
-            Debug.Log("PlayerSpawner registered with NetworkRunner");
+            Debug.Log($"PlayerSpawner registered with NetworkRunner. IsServer: {_runner.IsServer}");
         }
         else
         {
@@ -26,7 +40,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    // เพิ่มเมธอดนี้เพื่อตรวจสอบสถานะ NetworkRunner
     private void Update()
     {
         if (_runner == null)
@@ -44,70 +57,147 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
         Debug.Log($"OnPlayerJoined called for player {player}. IsServer: {runner.IsServer}");
 
-        // *** สำคัญมาก: เฉพาะ Host/Server เท่านั้นที่สามารถ spawn ได้ ***
+        // อัพเดท _runner reference
+        _runner = runner;
+
+        // เฉพาะ Host/Server เท่านั้นที่สามารถ spawn ได้
         if (!runner.IsServer)
         {
             Debug.Log("Not server, skipping spawn");
             return;
         }
 
-        if (playerPrefab == null)
+        // Spawn NetworkPlayerManager สำหรับ player นี้ก่อน
+        if (networkPlayerManagerPrefab != null)
         {
-            Debug.LogError("playerPrefab is not assigned!");
+            NetworkObject managerObject = runner.Spawn(
+                networkPlayerManagerPrefab,
+                Vector3.zero,
+                Quaternion.identity,
+                player
+            );
+
+            if (managerObject != null)
+            {
+                NetworkPlayerManager manager = managerObject.GetComponent<NetworkPlayerManager>();
+                if (manager != null)
+                {
+                    playerManagers[player] = manager;
+                    Debug.Log($"NetworkPlayerManager spawned for player {player}");
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError("NetworkPlayerManager prefab is not assigned!");
+        }
+
+        // ถ้าเป็น Host (local player) spawn ตัวละครทันที
+        if (player == runner.LocalPlayer)
+        {
+            PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
+            SpawnCharacterForPlayer(player, selectedCharacter);
+        }
+        // ถ้าเป็น Client จะรอให้เขาส่งข้อมูลมาผ่าน RPC
+    }
+
+    // เมธอดใหม่สำหรับ spawn ตัวละคร
+    public void SpawnCharacterForPlayer(PlayerRef player, PlayerSelectionData.CharacterType characterType)
+    {
+        // ใช้ runner ที่หาได้ล่าสุด
+        NetworkRunner currentRunner = _runner;
+        if (currentRunner == null)
+        {
+            currentRunner = FindObjectOfType<NetworkRunner>();
+            if (currentRunner == null)
+            {
+                Debug.LogError("NetworkRunner not found!");
+                return;
+            }
+        }
+
+        if (!currentRunner.IsServer)
+        {
+            Debug.LogError($"Only server can spawn characters! IsServer: {currentRunner.IsServer}");
+            return;
+        }
+
+        // ตรวจสอบว่า player นี้ spawn ตัวละครไปแล้วหรือยัง
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            Debug.LogWarning($"Player {player} already has a character spawned!");
+            return;
+        }
+
+        // บันทึกตัวละครที่ player เลือก
+        playerCharacters[player] = characterType;
+
+        // เลือก prefab ตามตัวละครที่เลือก
+        GameObject prefabToSpawn = GetPrefabForCharacter(characterType);
+
+        if (prefabToSpawn == null)
+        {
+            Debug.LogError($"No prefab found for character: {characterType}");
             return;
         }
 
         // สร้างตำแหน่งสุ่มสำหรับ spawn
         Vector3 spawnPosition = new Vector3(UnityEngine.Random.Range(-5f, 5f), 0, UnityEngine.Random.Range(-5f, 5f));
 
-        // Spawn ผู้เล่น (ทำได้เฉพาะ Host/Server)
-        NetworkObject playerObject = runner.Spawn(playerPrefab, spawnPosition, Quaternion.identity, player, (runner, obj) =>
+        // Spawn ตัวละคร
+        NetworkObject playerObject = currentRunner.Spawn(prefabToSpawn, spawnPosition, Quaternion.identity, player, (runner, obj) =>
         {
-            var bloodKnight = obj.GetComponent<BloodKnight>();
-
-            if (bloodKnight == null)
-            {
-                Debug.LogError("BloodKnight component not found on spawned player!");
-                return;
-            }
-
             // ตั้งค่าเฉพาะสำหรับ Local Player
             if (player == runner.LocalPlayer)
             {
-                // Camera จะถูกจัดการใน BloodKnight.Start() แล้ว
-                Debug.Log("Local player spawned");
-
-                // Tag player as local (optional)
+                Debug.Log($"Local player spawned as {characterType}");
                 obj.gameObject.tag = "LocalPlayer";
             }
             else
             {
-                Debug.Log("Remote player spawned");
-                // Tag as remote player (optional)
+                Debug.Log($"Remote player spawned as {characterType}");
                 obj.gameObject.tag = "RemotePlayer";
             }
-
-            // ไม่ต้องกำหนด Joystick แล้ว เพราะ InputController จะจัดการให้
-            // Joystick จะถูกอ่านโดย InputController และส่งผ่าน Network Input System
         });
 
         if (playerObject != null)
         {
-            Debug.Log($"Player spawned successfully at {spawnPosition}");
+            // บันทึกว่า spawn แล้ว
+            spawnedCharacters[player] = playerObject;
 
-            // Optional: เพิ่มการแสดงชื่อผู้เล่น
-            if (player == runner.LocalPlayer)
+            Debug.Log($"Player {player} spawned successfully as {characterType} at {spawnPosition}");
+
+            // ตั้งชื่อ GameObject ตามตัวละคร
+            if (player == currentRunner.LocalPlayer)
             {
-                playerObject.gameObject.name = "LocalPlayer";
+                playerObject.gameObject.name = $"LocalPlayer_{characterType}";
             }
             else
             {
-                playerObject.gameObject.name = $"RemotePlayer_{player}";
+                playerObject.gameObject.name = $"RemotePlayer_{player}_{characterType}";
             }
         }
         else
         {
-            Debug.LogError("Failed to spawn player!");
+            Debug.LogError($"Failed to spawn player as {characterType}!");
+        }
+    }
+
+    private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)
+    {
+        switch (character)
+        {
+            case PlayerSelectionData.CharacterType.BloodKnight:
+                return bloodKnightPrefab;
+            case PlayerSelectionData.CharacterType.Archer:
+                return archerPrefab;
+            case PlayerSelectionData.CharacterType.Assassin:
+                return assassinPrefab;
+            case PlayerSelectionData.CharacterType.IronJuggernaut:
+                return ironJuggernautPrefab;
+            default:
+                Debug.LogWarning($"Unknown character type: {character}, using default");
+                return bloodKnightPrefab;
         }
     }
 
@@ -115,34 +205,93 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
         Debug.Log($"Player {player} left the game");
-        // Fusion จะจัดการ despawn ให้อัตโนมัติ
+
+        // ลบข้อมูลตัวละครของ player ที่ออกไป
+        if (playerCharacters.ContainsKey(player))
+        {
+            playerCharacters.Remove(player);
+        }
+
+        // ลบ spawned character reference
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            spawnedCharacters.Remove(player);
+        }
+
+        // ลบ NetworkPlayerManager reference
+        if (playerManagers.ContainsKey(player))
+        {
+            playerManagers.Remove(player);
+        }
     }
 
-    // ตรวจสอบว่า prefab มี NetworkObject หรือไม่
+    // ตรวจสอบว่า prefabs มี NetworkObject หรือไม่
     private void Start()
     {
-        if (playerPrefab != null)
+        // ตรวจสอบ Blood Knight
+        if (bloodKnightPrefab != null)
         {
-            NetworkObject networkObject = playerPrefab.GetComponent<NetworkObject>();
-            if (networkObject == null)
-            {
-                Debug.LogError("playerPrefab does not have NetworkObject component!");
-            }
-            else
-            {
-                Debug.Log("playerPrefab has NetworkObject component");
-            }
-
-            // ตรวจสอบ BloodKnight component
-            BloodKnight bloodKnight = playerPrefab.GetComponent<BloodKnight>();
-            if (bloodKnight == null)
-            {
-                Debug.LogError("playerPrefab does not have BloodKnight component!");
-            }
+            CheckPrefabComponents(bloodKnightPrefab, "Blood Knight");
         }
         else
         {
-            Debug.LogError("playerPrefab is not assigned!");
+            Debug.LogError("Blood Knight prefab is not assigned!");
+        }
+
+        // ตรวจสอบ Archer
+        if (archerPrefab != null)
+        {
+            CheckPrefabComponents(archerPrefab, "Archer");
+        }
+        else
+        {
+            Debug.LogError("Archer prefab is not assigned!");
+        }
+
+        // ตรวจสอบ Assassin
+        if (assassinPrefab != null)
+        {
+            CheckPrefabComponents(assassinPrefab, "Assassin");
+        }
+        else
+        {
+            Debug.LogError("Assassin prefab is not assigned!");
+        }
+
+        // ตรวจสอบ Iron Juggernaut
+        if (ironJuggernautPrefab != null)
+        {
+            CheckPrefabComponents(ironJuggernautPrefab, "Iron Juggernaut");
+        }
+        else
+        {
+            Debug.LogError("Iron Juggernaut prefab is not assigned!");
+        }
+
+        // ตรวจสอบ NetworkPlayerManager prefab
+        if (networkPlayerManagerPrefab == null)
+        {
+            Debug.LogError("NetworkPlayerManager prefab is not assigned!");
+        }
+    }
+
+    private void CheckPrefabComponents(GameObject prefab, string characterName)
+    {
+        NetworkObject networkObject = prefab.GetComponent<NetworkObject>();
+        if (networkObject == null)
+        {
+            Debug.LogError($"{characterName} prefab does not have NetworkObject component!");
+        }
+        else
+        {
+            Debug.Log($"{characterName} prefab has NetworkObject component");
+        }
+
+        // ตรวจสอบ Character component (Hero หรือ sub-class)
+        Character character = prefab.GetComponent<Character>();
+        if (character == null)
+        {
+            Debug.LogError($"{characterName} prefab does not have Character component!");
         }
     }
 

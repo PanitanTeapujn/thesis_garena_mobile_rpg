@@ -24,7 +24,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Sceneliew/CoopRoom.unity
     guid: 6597d93f6795a4e4aa8e577517b0928c
   - enabled: 1
-    path: Assets/Scenes/Sceneliew/PlayRoom 1.unity
+    path: Assets/Scenes/Sceneliew/PlayRoom1.unity
     guid: 03674728668858f42ad1b6ed1d782739
   - enabled: 1
     path: Assets/Scenes/Sceneliew/PlayRoom 2.unity
