@@ -5,14 +5,11 @@ using Fusion;
 
 public class BloodKnight : Hero
 {
-    // ไม่ต้องใช้ Joystick โดยตรงแล้ว
-    // public Joystick joystick;
-    // public Joystick joystickCamera;
-
     // Network Properties สำหรับซิงค์
     [Networked] public Vector3 NetworkedPosition { get; set; }
-    [Networked] public bool NetworkedFlipX { get; set; } // ซิงค์การ flip แทน rotation
-    [Networked] public float NetworkedYRotation { get; set; } // ซิงค์การหันตามกล้อง
+    [Networked] public Vector3 NetworkedVelocity { get; set; } // เพิ่มการซิงค์ velocity
+    [Networked] public bool NetworkedFlipX { get; set; }
+    [Networked] public float NetworkedYRotation { get; set; }
 
     // เก็บ input ที่ได้รับจาก network
     private NetworkInputData networkInputData;
@@ -38,25 +35,40 @@ public class BloodKnight : Hero
     // *** สำคัญมาก: FixedUpdateNetwork ทำงานกับ Fusion's tick rate ***
     public override void FixedUpdateNetwork()
     {
-        // รับ input จาก network
-        if (GetInput(out networkInputData))
+        if (HasInputAuthority)
         {
-            // Process movement
-            ProcessMovement();
+            // Local player - process input and update network properties
+            if (GetInput(out networkInputData))
+            {
+                ProcessMovement();
+                ProcessCameraRotation();
+                ProcessCharacterFacing();
+            }
 
-            // Process camera rotation
-            ProcessCameraRotation();
-
-            // Process character facing direction (หันตามกล้อง)
-            ProcessCharacterFacing();
+            // อัพเดท network properties ทุก tick
+            NetworkedPosition = transform.position;
+            if (rb != null)
+            {
+                NetworkedVelocity = rb.velocity;
+            }
         }
-
-        // Sync position, flip & rotation สำหรับ non-local players
-        if (!HasInputAuthority)
+        else
         {
-            transform.position = Vector3.Lerp(transform.position, NetworkedPosition, Time.deltaTime * 10f);
+            // Remote player - apply network properties
+            // ใช้ velocity สำหรับการเคลื่อนที่ที่ smooth
+            if (rb != null)
+            {
+                rb.velocity = NetworkedVelocity;
+            }
 
-            // Sync flip
+            // Interpolate position for extra smoothness
+            transform.position = Vector3.Lerp(
+                transform.position,
+                NetworkedPosition,
+                Runner.DeltaTime * 15f
+            );
+
+            // Apply flip
             if (NetworkedFlipX)
             {
                 transform.localScale = new Vector3(-1f, 1f, 1f);
@@ -66,7 +78,7 @@ public class BloodKnight : Hero
                 transform.localScale = new Vector3(1f, 1f, 1f);
             }
 
-            // Sync Y rotation (การหันตามกล้อง)
+            // Apply rotation
             transform.rotation = Quaternion.Euler(0, NetworkedYRotation, 0);
         }
     }
@@ -92,25 +104,24 @@ public class BloodKnight : Hero
         }
 
         // เคลื่อนที่ด้วย Rigidbody
-        if (rb != null && moveDirection.magnitude > 0.1f)
+        if (rb != null)
         {
-            rb.velocity = new Vector3(
-                moveDirection.x * MoveSpeed,
-                rb.velocity.y,
-                moveDirection.z * MoveSpeed
-            );
+            if (moveDirection.magnitude > 0.1f)
+            {
+                rb.velocity = new Vector3(
+                    moveDirection.x * MoveSpeed,
+                    rb.velocity.y,
+                    moveDirection.z * MoveSpeed
+                );
 
-            // อัพเดท network position
-            NetworkedPosition = transform.position;
-
-            // Flip ตัวละครตามทิศทางที่เดิน (แบบ 2D)
-            FlipCharacter(networkInputData.movementInput.x);
-        }
-        else if (rb != null)
-        {
-            // หยุดเคลื่อนที่
-            rb.velocity = new Vector3(0, rb.velocity.y, 0);
-            NetworkedPosition = transform.position;
+                // Flip ตัวละครตามทิศทางที่เดิน
+                FlipCharacter(networkInputData.movementInput.x);
+            }
+            else
+            {
+                // หยุดเคลื่อนที่
+                rb.velocity = new Vector3(0, rb.velocity.y, 0);
+            }
         }
     }
 
@@ -125,7 +136,7 @@ public class BloodKnight : Hero
 
             // คำนวณตำแหน่งกล้องใหม่
             Quaternion rotation = Quaternion.AngleAxis(currentCameraAngle, Vector3.up);
-            Vector3 rotatedOffset = rotation * new Vector3(0, 10, -10); // ใช้ offset เดิม
+            Vector3 rotatedOffset = rotation * new Vector3(0, 10, -10);
 
             cameraTransform.position = transform.position + rotatedOffset;
             cameraTransform.LookAt(transform.position);
@@ -162,15 +173,11 @@ public class BloodKnight : Hero
             transform.localScale = new Vector3(-1f, 1f, 1f);
             NetworkedFlipX = true;
         }
-        // ถ้าไม่มีการเคลื่อนที่ จะคงทิศทางเดิมไว้
     }
 
     // Update ใช้สำหรับ visual effects และ camera follow เท่านั้น
     protected override void Update()
     {
-        // อย่าเรียก base.Update() ที่มีการควบคุมแบบเก่า
-        // base.Update();
-
         // Camera follow สำหรับ local player
         if (HasInputAuthority && cameraTransform != null)
         {
@@ -178,6 +185,17 @@ public class BloodKnight : Hero
             Vector3 desiredPosition = transform.position + Quaternion.AngleAxis(currentCameraAngle, Vector3.up) * cameraOffset;
             cameraTransform.position = Vector3.Lerp(cameraTransform.position, desiredPosition, Time.deltaTime * 5f);
             cameraTransform.LookAt(transform.position);
+        }
+    }
+
+    // Debug display
+    void OnGUI()
+    {
+        if (HasInputAuthority)
+        {
+            GUI.Label(new Rect(10, 130, 300, 20), $"[LOCAL] Pos: {transform.position:F2}");
+            GUI.Label(new Rect(10, 150, 300, 20), $"[LOCAL] Vel: {rb?.velocity:F2}");
+            GUI.Label(new Rect(10, 170, 300, 20), $"[LOCAL] NetPos: {NetworkedPosition:F2}");
         }
     }
 }

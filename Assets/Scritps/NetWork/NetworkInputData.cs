@@ -16,4 +16,5 @@ public struct NetworkInputData : INetworkInput
 
     // ข้อมูลเพิ่มเติม
     public Vector3 lookDirection;  // ทิศทางที่ตัวละครหัน
+
 }

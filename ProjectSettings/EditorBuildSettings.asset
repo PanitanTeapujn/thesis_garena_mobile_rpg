@@ -6,24 +6,27 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/StartGame.unity
+    path: Assets/Scenes/Sceneliew/Test.unity
+    guid: b1b749d88f1e0074d9ca1165b4aae675
+  - enabled: 1
+    path: Assets/Scenes/Sceneliew/StartGame.unity
     guid: 102a1b4ad2c2454499474b50b03959b1
   - enabled: 1
-    path: Assets/Scenes/SelectCharacter.unity
+    path: Assets/Scenes/Sceneliew/SelectCharacter.unity
     guid: 80d30abbe6400514ea1e58b25c771ac3
   - enabled: 1
-    path: Assets/Scenes/Lobby.unity
+    path: Assets/Scenes/Sceneliew/Lobby.unity
     guid: f95a2745d0e93f64cbc64e65ce1cdcd3
   - enabled: 1
-    path: Assets/Scenes/WaitRoom.unity
+    path: Assets/Scenes/Sceneliew/WaitRoom.unity
     guid: 56815f68c60ba354daaed7cc55226ac7
   - enabled: 1
-    path: Assets/Scenes/CoopRoom.unity
+    path: Assets/Scenes/Sceneliew/CoopRoom.unity
     guid: 6597d93f6795a4e4aa8e577517b0928c
   - enabled: 1
-    path: Assets/Scenes/PlayRoom 1.unity
+    path: Assets/Scenes/Sceneliew/PlayRoom 1.unity
     guid: 03674728668858f42ad1b6ed1d782739
   - enabled: 1
-    path: Assets/Scenes/PlayRoom 2.unity
+    path: Assets/Scenes/Sceneliew/PlayRoom 2.unity
     guid: 04d896fce8747bf40aa4616a946223bc
   m_configObjects: {}

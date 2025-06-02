@@ -123,9 +123,10 @@ MonoBehaviour:
   cameraOffset: {x: 0, y: 10, z: -10}
   moveInputX: 0
   moveInputZ: 0
-  joystick: {fileID: 0}
-  joystickCamera: {fileID: 0}
   _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedFlipX: 0
+  _NetworkedYRotation: 0
 --- !u!54 &3679239757140484306
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -135,7 +136,7 @@ Rigidbody:
   m_GameObject: {fileID: 9004255372814543956}
   serializedVersion: 4
   m_Mass: 1
-  m_Drag: 0
+  m_Drag: 1
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
@@ -150,9 +151,9 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!65 &8616611362426657684
 BoxCollider:
   m_ObjectHideFlags: 0

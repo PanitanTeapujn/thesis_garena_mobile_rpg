@@ -3,7 +3,11 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags: []
+  tags:
+  - JoystickCharacter
+  - CameraJoystick
+  - LocalPlayer
+  - RemotePlayer
   layers:
   - Default
   - TransparentFX
