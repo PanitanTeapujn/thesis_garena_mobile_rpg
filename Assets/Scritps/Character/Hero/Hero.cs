@@ -13,19 +13,26 @@ public class Hero : Character
     [Header("Move")]
     public float moveInputX;
     public float moveInputZ;
-    
-  protected override  void Start()
+
+    protected override void Start()
     {
         base.Start();
     }
 
     // Update is called once per frame
-   protected override void Update()
+    protected override void Update()
     {
         base.Update();
+
         FlipCharacter();
         FollowCamera();
         RotateCharacterToCamera();
+        if (cameraTransform != null)
+        {
+            Vector3 lookDir = cameraTransform.forward;
+            lookDir.y = 0;
+            transform.rotation = Quaternion.LookRotation(lookDir);
+        }
     }
 
     #region CharacterMove
@@ -33,9 +40,9 @@ public class Hero : Character
     public void Move(Vector3 moveDirection)
     {
         // ถ้าถูกสตั้น ไม่สามารถเคลื่อนที่ได้
-      /*  if (isStunned)
-            return;
-*/
+        /*  if (isStunned)
+              return;
+  */
         // โค้ดการเคลื่อนที่เดิม
         Vector3 camForward = cameraTransform.forward;
         Vector3 camRight = cameraTransform.right;
@@ -50,7 +57,7 @@ public class Hero : Character
 
         rb.velocity = new Vector3(adjustedMoveDirection.x * MoveSpeed, rb.velocity.y, adjustedMoveDirection.z * MoveSpeed);
 
-        
+
     }
     protected virtual void FlipCharacter()
     {
@@ -87,7 +94,7 @@ public class Hero : Character
     {
         if (cameraTransform == null)
             return;
-            if (input != 0)
+        if (input != 0)
         {
             Quaternion rotation = Quaternion.AngleAxis(input * cameraRotationSpeed * Time.deltaTime, Vector3.up);
             cameraOffset = rotation * cameraOffset;

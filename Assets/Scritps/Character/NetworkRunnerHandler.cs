@@ -8,9 +8,11 @@ public class NetworkRunnerHandler : MonoBehaviour
 {
     public NetworkRunner runnerPrefab;
     private PlayerSpawner _spawner;
+    private SingleInputController _inputController;
 
     private async void Start()
     {
+        // หา PlayerSpawner
         _spawner = FindObjectOfType<PlayerSpawner>();
         if (_spawner == null)
         {
@@ -18,17 +20,31 @@ public class NetworkRunnerHandler : MonoBehaviour
             return;
         }
 
+        // สร้าง NetworkRunner
         var runner = Instantiate(runnerPrefab);
-        runner.name = "NetworkRunner_Main"; // ตั้งชื่อเพื่อให้ง่ายต่อการตรวจสอบ
+        runner.name = "NetworkRunner_Main";
 
-        // ลงทะเบียน PlayerSpawner กับ NetworkRunner
+        // หาหรือสร้าง SingleInputController
+        _inputController = FindObjectOfType<SingleInputController>();
+        if (_inputController == null)
+        {
+            GameObject inputControllerGO = new GameObject("SingleInputController");
+            _inputController = inputControllerGO.AddComponent<SingleInputController>();
+            Debug.Log("Created SingleInputController");
+        }
+
+        // ลงทะเบียน callbacks
         runner.AddCallbacks(_spawner);
-        Debug.Log($"Added {_spawner.name} as callback to {runner.name}");
+        runner.AddCallbacks(_inputController);
 
+        Debug.Log($"Added {_spawner.name} and SingleInputController as callbacks to {runner.name}");
+
+        // ต้องเปิด ProvideInput เพื่อให้ส่ง input ได้
         runner.ProvideInput = true;
+
         var startGameArgs = new StartGameArgs()
         {
-            GameMode = GameMode.Host,
+            GameMode = GameMode.AutoHostOrClient,
             SessionName = "MyRoom",
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         };
@@ -38,7 +54,7 @@ public class NetworkRunnerHandler : MonoBehaviour
         try
         {
             await runner.StartGame(startGameArgs);
-            Debug.Log("Game started successfully");
+            Debug.Log($"Game started successfully - IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
         }
         catch (System.Exception e)
         {

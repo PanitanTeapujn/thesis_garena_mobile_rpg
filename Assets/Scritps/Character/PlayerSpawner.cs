@@ -42,7 +42,14 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        Debug.Log($"OnPlayerJoined called for player {player}");
+        Debug.Log($"OnPlayerJoined called for player {player}. IsServer: {runner.IsServer}");
+
+        // *** สำคัญมาก: เฉพาะ Host/Server เท่านั้นที่สามารถ spawn ได้ ***
+        if (!runner.IsServer)
+        {
+            Debug.Log("Not server, skipping spawn");
+            return;
+        }
 
         if (playerPrefab == null)
         {
@@ -53,47 +60,62 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         // สร้างตำแหน่งสุ่มสำหรับ spawn
         Vector3 spawnPosition = new Vector3(UnityEngine.Random.Range(-5f, 5f), 0, UnityEngine.Random.Range(-5f, 5f));
 
-        // Spawn ผู้เล่น
+        // Spawn ผู้เล่น (ทำได้เฉพาะ Host/Server)
         NetworkObject playerObject = runner.Spawn(playerPrefab, spawnPosition, Quaternion.identity, player, (runner, obj) =>
         {
             var bloodKnight = obj.GetComponent<BloodKnight>();
-            BloodKnight knight = obj.GetComponent<BloodKnight>();
 
+            if (bloodKnight == null)
+            {
+                Debug.LogError("BloodKnight component not found on spawned player!");
+                return;
+            }
+
+            // ตั้งค่าเฉพาะสำหรับ Local Player
             if (player == runner.LocalPlayer)
             {
-                knight.cameraTransform = Camera.main.transform;
-                Debug.Log("Camera assigned to BloodKnight from PlayerSpawner");
-            }
-            // ค้นหา Joystick ทั้งหมดใน scene
-            FixedJoystick[] joysticks = GameObject.FindObjectsOfType<FixedJoystick>();
+                // Camera จะถูกจัดการใน BloodKnight.Start() แล้ว
+                Debug.Log("Local player spawned");
 
-            foreach (var js in joysticks)
+                // Tag player as local (optional)
+                obj.gameObject.tag = "LocalPlayer";
+            }
+            else
             {
-                if (js.gameObject.name == "JoystickCharacter") // หรือชื่อที่ใช้สำหรับการเดิน
-                {
-                    bloodKnight.joystick = js;
-                }
-                else if (js.gameObject.name == "CameraJoystick") // หรือชื่อที่ใช้สำหรับหมุนกล้อง
-                {
-                    bloodKnight.joystickCamera = js;
-                }
+                Debug.Log("Remote player spawned");
+                // Tag as remote player (optional)
+                obj.gameObject.tag = "RemotePlayer";
             }
 
-            if (bloodKnight.joystick == null || bloodKnight.joystickCamera == null)
-            {
-                Debug.LogWarning("Joystick or CameraJoystick not assigned correctly!");
-            }
+            // ไม่ต้องกำหนด Joystick แล้ว เพราะ InputController จะจัดการให้
+            // Joystick จะถูกอ่านโดย InputController และส่งผ่าน Network Input System
         });
-
 
         if (playerObject != null)
         {
             Debug.Log($"Player spawned successfully at {spawnPosition}");
+
+            // Optional: เพิ่มการแสดงชื่อผู้เล่น
+            if (player == runner.LocalPlayer)
+            {
+                playerObject.gameObject.name = "LocalPlayer";
+            }
+            else
+            {
+                playerObject.gameObject.name = $"RemotePlayer_{player}";
+            }
         }
         else
         {
             Debug.LogError("Failed to spawn player!");
         }
+    }
+
+    // เพิ่ม callback สำหรับเมื่อผู้เล่นออกจากเกม
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        Debug.Log($"Player {player} left the game");
+        // Fusion จะจัดการ despawn ให้อัตโนมัติ
     }
 
     // ตรวจสอบว่า prefab มี NetworkObject หรือไม่
@@ -110,6 +132,13 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             {
                 Debug.Log("playerPrefab has NetworkObject component");
             }
+
+            // ตรวจสอบ BloodKnight component
+            BloodKnight bloodKnight = playerPrefab.GetComponent<BloodKnight>();
+            if (bloodKnight == null)
+            {
+                Debug.LogError("playerPrefab does not have BloodKnight component!");
+            }
         }
         else
         {
@@ -124,7 +153,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken token) { }

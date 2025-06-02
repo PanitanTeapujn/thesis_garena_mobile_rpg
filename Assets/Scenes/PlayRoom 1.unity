@@ -1517,7 +1517,7 @@ Transform:
   m_GameObject: {fileID: 885075388}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 485.1527, y: 434.56747, z: 591.8033}
+  m_LocalPosition: {x: 11.16, y: 0, z: 23.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2333,7 +2333,7 @@ Transform:
   m_GameObject: {fileID: 2018162573}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -135, y: 0, z: -17}
+  m_LocalPosition: {x: -85.6, y: -2.7, z: -18.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2616,7 +2616,7 @@ PrefabInstance:
     - target: {fileID: 1503664531369277865, guid: 335f407c871b7554d8b86ad718fe0a6c,
         type: 3}
       propertyPath: m_Name
-      value: 'JoystickCamera '
+      value: CameraJoystick
       objectReference: {fileID: 0}
     - target: {fileID: 2585101546804995192, guid: 335f407c871b7554d8b86ad718fe0a6c,
         type: 3}
