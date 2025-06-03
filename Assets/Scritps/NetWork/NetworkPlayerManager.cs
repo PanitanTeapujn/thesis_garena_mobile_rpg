@@ -9,6 +9,7 @@ public class NetworkPlayerManager : NetworkBehaviour
 
     private static NetworkPlayerManager localInstance;
     private bool hasRequestedSpawn = false;
+    private int rpcCount = 0;
 
     public override void Spawned()
     {
@@ -29,8 +30,14 @@ public class NetworkPlayerManager : NetworkBehaviour
     {
         // รอ 1 frame เพื่อให้ NetworkObject setup เสร็จ
         yield return null;
-
+        if (hasRequestedSpawn)
+        {
+            Debug.LogWarning("Already requested spawn!");
+            yield break; // ใช้ yield break แทน return
+        }
         // ส่งข้อมูลตัวละครที่เลือกไปให้ Host
+        hasRequestedSpawn = true; // ตั้ง flag ก่อนส่ง
+
         PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
         Debug.Log($"Client sending character selection to server: {selectedCharacter}");
         RPC_RequestCharacterSpawn((int)selectedCharacter);
@@ -39,8 +46,10 @@ public class NetworkPlayerManager : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     public void RPC_RequestCharacterSpawn(int characterType)
     {
+        rpcCount++;
+        Debug.Log($"[RPC] Request #{rpcCount} from {Object.InputAuthority}");
         // RPC นี้จะรันบน Server/Host เท่านั้น
-        Debug.Log($"[SERVER] Received character spawn request from player {Object.InputAuthority}: {(PlayerSelectionData.CharacterType)characterType}");
+        //  Debug.Log($"[SERVER] Received character spawn request from player {Object.InputAuthority}: {(PlayerSelectionData.CharacterType)characterType}");
 
         // ตรวจสอบว่า spawn แล้วหรือยัง
         if (HasSpawnedCharacter)

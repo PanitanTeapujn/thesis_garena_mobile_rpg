@@ -106,6 +106,8 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
         // ส่ง input data ที่เก็บไว้ไปให้ Fusion
+        Debug.Log($"[INPUT] Player: {runner.LocalPlayer}, Movement: {localInput.movementInput}");
+
         input.Set(localInput);
     }
 

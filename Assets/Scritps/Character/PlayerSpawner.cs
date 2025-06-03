@@ -3,7 +3,7 @@ using Fusion.Sockets;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
+using System.Collections;
 public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
     [Header("Character Prefabs")]
@@ -16,6 +16,9 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public GameObject networkPlayerManagerPrefab; // ต้องสร้าง prefab นี้
 
     private NetworkRunner _runner;
+
+    private HashSet<string> spawnRequests = new HashSet<string>();
+
 
     // Dictionary เพื่อเก็บข้อมูลตัวละครของแต่ละ player
     private Dictionary<PlayerRef, PlayerSelectionData.CharacterType> playerCharacters = new Dictionary<PlayerRef, PlayerSelectionData.CharacterType>();
@@ -55,9 +58,8 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        Debug.Log($"OnPlayerJoined called for player {player}. IsServer: {runner.IsServer}");
+        Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
 
-        // อัพเดท _runner reference
         _runner = runner;
 
         // เฉพาะ Host/Server เท่านั้นที่สามารถ spawn ได้
@@ -87,25 +89,65 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
                 }
             }
         }
+
+        // *** แทนที่ code เดิม ด้วย code นี้ ***
+        if (player != runner.LocalPlayer)
+        {
+            // Spawn player ที่ join ใหม่
+            StartCoroutine(DelayedSpawn(player));
+
+            // และ re-spawn local player ถ้ายังไม่มีใน spawnedCharacters
+            if (!spawnedCharacters.ContainsKey(runner.LocalPlayer))
+            {
+                Debug.Log($"[SPAWNER] Also spawning host player");
+                StartCoroutine(DelayedSpawn(runner.LocalPlayer));
+            }
+        }
         else
         {
-            Debug.LogError("NetworkPlayerManager prefab is not assigned!");
+            // ถ้าเป็น Host spawn ตัวเอง
+            StartCoroutine(DelayedSpawn(player));
         }
-
-        // ถ้าเป็น Host (local player) spawn ตัวละครทันที
-        if (player == runner.LocalPlayer)
-        {
-            PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
-            SpawnCharacterForPlayer(player, selectedCharacter);
-        }
-        // ถ้าเป็น Client จะรอให้เขาส่งข้อมูลมาผ่าน RPC
     }
+    IEnumerator DelayedSpawn(PlayerRef player)
+    {
+        string spawnKey = $"{player}_{Time.time}";
 
+        Debug.Log($"[DELAYED SPAWN] Starting for {player}, Key: {spawnKey}");
+
+        // ตรวจสอบว่ามี request ซ้ำหรือไม่
+        if (spawnRequests.Contains(player.ToString()))
+        {
+            Debug.LogWarning($"[DUPLICATE REQUEST] Already spawning {player}");
+            yield break;
+        }
+
+        spawnRequests.Add(player.ToString());
+
+        yield return new WaitForSeconds(0.5f);
+
+        Debug.Log($"[DELAYED SPAWN] Now spawning {player}");
+        PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
+        SpawnCharacterForPlayer(player, selectedCharacter);
+
+        // ลบออกหลัง spawn เสร็จ
+        spawnRequests.Remove(player.ToString());
+    }
     // เมธอดใหม่สำหรับ spawn ตัวละคร
     public void SpawnCharacterForPlayer(PlayerRef player, PlayerSelectionData.CharacterType characterType)
     {
         // ใช้ runner ที่หาได้ล่าสุด
         NetworkRunner currentRunner = _runner;
+        Debug.Log($"[SPAWN] Attempting to spawn for {player}, Already spawned: {spawnedCharacters.ContainsKey(player)}");
+        Debug.Log($"[SPAWN] Called for {player}, Stack: {System.Environment.StackTrace}");
+
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            Debug.LogWarning($"Player {player} already has a character spawned!");
+            return;
+        }
+      //  Debug.Log($"[SPAWNER] Spawning for {player}, Runner.LocalPlayer: {_runner.LocalPlayer}, IsServer: {_runner.IsServer}");
+
         if (currentRunner == null)
         {
             currentRunner = FindObjectOfType<NetworkRunner>();
@@ -118,14 +160,14 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
         if (!currentRunner.IsServer)
         {
-            Debug.LogError($"Only server can spawn characters! IsServer: {currentRunner.IsServer}");
+           // Debug.LogError($"Only server can spawn characters! IsServer: {currentRunner.IsServer}");
             return;
         }
 
         // ตรวจสอบว่า player นี้ spawn ตัวละครไปแล้วหรือยัง
         if (spawnedCharacters.ContainsKey(player))
         {
-            Debug.LogWarning($"Player {player} already has a character spawned!");
+           // Debug.LogWarning($"Player {player} already has a character spawned!");
             return;
         }
 
@@ -181,6 +223,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogError($"Failed to spawn player as {characterType}!");
         }
+
     }
 
     private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)

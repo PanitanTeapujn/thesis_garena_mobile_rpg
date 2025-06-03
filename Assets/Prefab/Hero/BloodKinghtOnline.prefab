@@ -20,7 +20,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 2147483647
   m_IsActive: 1
 --- !u!224 &4666444454410863303
 RectTransform:
@@ -128,6 +128,7 @@ MonoBehaviour:
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
   _NetworkedYRotation: 0
+  _NetworkedScale: {x: 0, y: 0, z: 0}
 --- !u!54 &3679239757140484306
 Rigidbody:
   m_ObjectHideFlags: 0

@@ -14,6 +14,7 @@ public class NetworkRunnerHandler : MonoBehaviour
     {
         // หา PlayerSpawner
         _spawner = FindObjectOfType<PlayerSpawner>();
+
         if (_spawner == null)
         {
             Debug.LogError("PlayerSpawner not found! Please add PlayerSpawner to scene.");
@@ -23,6 +24,7 @@ public class NetworkRunnerHandler : MonoBehaviour
         // สร้าง NetworkRunner
         var runner = Instantiate(runnerPrefab);
         runner.name = "NetworkRunner_Main";
+        runner.ProvideInput = true;
 
         // หาหรือสร้าง SingleInputController
         _inputController = FindObjectOfType<SingleInputController>();
