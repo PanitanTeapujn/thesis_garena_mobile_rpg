@@ -20,7 +20,10 @@ public class CharacterSelectionManager : MonoBehaviour
     public Button archerButton;
     public Button assassinButton;
     public Button ironJuggernautButton;
-    public Button startGameButton;
+    public Button confirmButton;
+    [Header("Player Name Input")]
+    public TMP_InputField playerNameInput;
+    public TextMeshProUGUI errorMessageText;
 
     [Header("Character Info")]
    
@@ -38,12 +41,53 @@ public class CharacterSelectionManager : MonoBehaviour
         assassinButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Assassin));
         ironJuggernautButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.IronJuggernaut));
 
-        startGameButton.onClick.AddListener(StartGame);
+        confirmButton.onClick.AddListener(ConfirmSelection);
 
         // แสดงตัวละครเริ่มต้น
         SelectCharacter(PlayerSelectionData.GetSelectedCharacter());
     }
+    private void ConfirmSelection()
+    {
+        // ตรวจสอบชื่อ
+        string playerName = playerNameInput.text.Trim();
 
+        if (string.IsNullOrEmpty(playerName))
+        {
+            ShowError("Please enter your name!");
+            return;
+        }
+
+        if (playerName.Length < 3 || playerName.Length > 16)
+        {
+            ShowError("Name must be 3-16 characters!");
+            return;
+        }
+
+        // บันทึกข้อมูล
+        PlayerPrefs.SetString("PlayerName", playerName);
+        PlayerSelectionData.SaveCharacterSelection(selectedCharacter);
+
+        // ไปหน้า Lobby
+        SceneManager.LoadScene("Lobby");
+    }
+
+    private void ShowError(string message)
+    {
+        if (errorMessageText != null)
+        {
+            errorMessageText.text = message;
+            errorMessageText.gameObject.SetActive(true);
+            Invoke("HideError", 3f);
+        }
+    }
+
+    private void HideError()
+    {
+        if (errorMessageText != null)
+        {
+            errorMessageText.gameObject.SetActive(false);
+        }
+    }
     public void SelectCharacter(PlayerSelectionData.CharacterType character)
     {
         // บันทึกตัวละครที่เลือก
