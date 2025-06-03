@@ -824,8 +824,10 @@ MonoBehaviour:
     type: 3}
   archerPrefab: {fileID: 810284434246612501, guid: b0af993b61faff74880f346a5ac63bf1,
     type: 3}
-  assassinPrefab: {fileID: 0}
-  ironJuggernautPrefab: {fileID: 0}
+  assassinPrefab: {fileID: 810284434246612501, guid: 60a212a188dbb4a49849c7559a3ee194,
+    type: 3}
+  ironJuggernautPrefab: {fileID: 810284434246612501, guid: b0b8821ea56e32143b37273da731696b,
+    type: 3}
   characterPreviewParent: {fileID: 1996808043}
   previewPosition: {x: 0, y: 0, z: 0}
   previewRotation: {x: 0, y: 0, z: 0}
