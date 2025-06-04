@@ -1013,8 +1013,8 @@ MonoBehaviour:
   confirmButton: {fileID: 255934148}
   playerNameInput: {fileID: 315835177}
   errorMessageText: {fileID: 1923892158}
-  characterDescriptionText: {fileID: 0}
-  characterNameText: {fileID: 0}
+  characterDescriptionText: {fileID: 1713934888}
+  characterNameText: {fileID: 943639270}
 --- !u!1 &787476942
 GameObject:
   m_ObjectHideFlags: 0
@@ -2344,8 +2344,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 652, y: 0}
-  m_SizeDelta: {x: 200, y: 50}
+  m_AnchoredPosition: {x: 651, y: -168}
+  m_SizeDelta: {x: 202.01, y: 605.4}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1713934888
 MonoBehaviour:
@@ -2396,8 +2396,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 28
+  m_fontSizeBase: 28
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2432,7 +2432,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: -126.683174, y: 0, z: -114.14696, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0

@@ -164,19 +164,19 @@ public class CharacterSelectionManager : MonoBehaviour
         {
             case PlayerSelectionData.CharacterType.BloodKnight:
                 characterNameText.text = "Blood Knight";
-                characterDescriptionText.text = "Blood Siphon เติบโตในตระกูลชนชั้นสูงของเผ่าแมลง แต่ปฏิเสธชีวิตหรูหราเพื่อเข้าร่วมกองทัพ ด้วยความสามารถที่โดดเด่นในการดูดซับเลือดและพลังชีวิตของศัตรู เขาได้รับการแต่งตั้งให้เป็นหนึ่งในยแมลงทหารชั้นยอด ";
+                characterDescriptionText.text = "Blood Siphon grew up in an aristocratic family of the insect tribe, but rejected the luxurious life to join the army.With his remarkable ability to absorb the blood and life force of his enemies, he was appointed as one of the insect's elite soldiers. ";
                 break;
             case PlayerSelectionData.CharacterType.Archer:
                 characterNameText.text = "Archer";
-                characterDescriptionText.text = "Talon เกิดในอาณาจักร Aviana ดินแดนสูงเหนือเมฆที่เผ่านกครอบครองมานานนับพันปี ตั้งแต่เด็ก เขาแสดงพรสวรรค์อันโดดเด่นในการใช้ธนู สามารถยิงธนูเข้าเป้าได้ทุกครั้งแม้ในอายุเพียง 1 ขวบ";
+                characterDescriptionText.text = "Talon was born in the kingdom of Aviana, a land high above the clouds that the Bird Clan had ruled for thousands of years. From a young age, he displayed remarkable talent for archery, able to hit the target with his arrows every time, even at the age of 1.";
                 break;
             case PlayerSelectionData.CharacterType.Assassin:
                 characterNameText.text = "Assassin";
-                characterDescriptionText.text = "Shadow Prowler สูญเสียครอบครัวในวัยเด็กเธอถูกรับเลี้ยงโดยสมาคมนักฆ่า Shadow Claw และฝึกฝนจนกลายเป็นนักฆ่าที่ชำนาญที่สุดของเผ่าแมว เธอเชี่ยวชาญการใช้พิษและการเคลื่อนไหวเงียบกริบ โดยได้รับฉายาว่า เงาที่มองไม่เห็น";
+                characterDescriptionText.text = "Shadow Prowler lost her family at a young age. She was adopted by the Shadow Claw Assassins Association and trained to become the Cat Clan's most skilled assassin. She specializes in poison and silent movement, earning the nickname Invisible Shadow.";
                 break;
             case PlayerSelectionData.CharacterType.IronJuggernaut:
                 characterNameText.text = "Iron Juggernaut";
-                characterDescriptionText.text = "ตำนานเล่าว่า เผ่าแรดเหล็กเกิดจากการที่นักรบโบราณได้สูดดมไอจากการหลอมโลหะวิเศษเป็นเวลานาน จนร่างกายพัฒนาคุณสมบัติคล้ายเหล็กกล้า Iron Rhino ได้รับการฝึกฝนตั้งแต่เด็กให้เรียนรู้การใช้น้ำหนักตัวและพละกำลังให้เกิดประโยชน์สูงสุดอาวุธหลักคือดาบและโล่ที่ตีขึ้นจากเหล็กพิเศษจากภูเขาไฟ ทำให้แข็งแกร่งเป็นพิเศษ นอแรดบนศีรษะสามารถใช้เป็นอาวุธได้เช่นกันในยามคับขัน";
+                characterDescriptionText.text = "Legend has it that the Iron Rhino tribe was born from ancient warriors who inhaled fumes from forging mystical metal over many years, causing their bodies to develop steel-like properties. From a young age, Iron Rhinos are trained to master the use of their body weight and raw strength to their fullest advantage. Their primary weapons are a sword and shield forged from special volcanic steel, making them exceptionally durable. The rhino horn on their heads can also be used as a weapon in times of dire need.";
                 break;
         }
     }

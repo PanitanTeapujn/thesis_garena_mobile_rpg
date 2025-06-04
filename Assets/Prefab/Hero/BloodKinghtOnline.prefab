@@ -20,7 +20,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!224 &4666444454410863303
 RectTransform:
@@ -117,6 +117,11 @@ MonoBehaviour:
   rb: {fileID: 3679239757140484306}
   characterRenderer: {fileID: 3868879171586899509}
   originalColor: {r: 0, g: 0, b: 0, a: 0}
+  _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedFlipX: 0
+  _NetworkedYRotation: 0
+  _NetworkedScale: {x: 0, y: 0, z: 0}
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 4094491500809194850, guid: 3cf8d464fcb65dd40b40433fd106348b,
     type: 3}
@@ -124,11 +129,10 @@ MonoBehaviour:
   cameraOffset: {x: 0, y: 10, z: -10}
   moveInputX: 0
   moveInputZ: 0
-  _NetworkedPosition: {x: 0, y: 0, z: 0}
-  _NetworkedVelocity: {x: 0, y: 0, z: 0}
-  _NetworkedFlipX: 0
-  _NetworkedYRotation: 0
-  _NetworkedScale: {x: 0, y: 0, z: 0}
+  rageMultiplier: 1.5
+  rageDuration: 5
+  _IsRageActive: 0
+  _RageTimeRemaining: 0
 --- !u!54 &3679239757140484306
 Rigidbody:
   m_ObjectHideFlags: 0
