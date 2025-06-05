@@ -1,7 +1,12 @@
-﻿using UnityEngine;
+﻿/*using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
+using Firebase.Auth;
+using Firebase.Database;
+using System.Collections;
+using System.Collections.Generic;
+
 public class CharacterSelectionManager : MonoBehaviour
 {
     [Header("Character Prefabs")]
@@ -26,12 +31,18 @@ public class CharacterSelectionManager : MonoBehaviour
     public TextMeshProUGUI errorMessageText;
 
     [Header("Character Info")]
-   
     public TextMeshProUGUI characterDescriptionText;
-
     public TextMeshProUGUI characterNameText;
+    
+    // เพิ่ม Loading Panel
+    [Header("Loading")]
+    public GameObject loadingPanel;
+
     private GameObject currentPreview;
     private PlayerSelectionData.CharacterType selectedCharacter;
+
+    private FirebaseAuth auth;
+    private DatabaseReference databaseReference;
 
     private void Start()
     {
@@ -41,12 +52,28 @@ public class CharacterSelectionManager : MonoBehaviour
         assassinButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Assassin));
         ironJuggernautButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.IronJuggernaut));
 
-        confirmButton.onClick.AddListener(ConfirmSelection);
+        confirmButton.onClick.AddListener(() => StartCoroutine(ConfirmSelectionCoroutine()));
 
         // แสดงตัวละครเริ่มต้น
         SelectCharacter(PlayerSelectionData.GetSelectedCharacter());
+
+        auth = FirebaseAuth.DefaultInstance;
+        databaseReference = FirebaseDatabase.DefaultInstance.RootReference;
+
+        // โหลดชื่อผู้เล่นจาก PlayerPrefs (ถ้ามี)
+        string savedPlayerName = PlayerPrefs.GetString("PlayerName", "");
+        if (!string.IsNullOrEmpty(savedPlayerName))
+        {
+            playerNameInput.text = savedPlayerName;
+        }
+
+        // ซ่อน loading panel
+        if (loadingPanel != null)
+            loadingPanel.SetActive(false);
     }
-    private void ConfirmSelection()
+
+    // เปลี่ยนเป็น Coroutine เพื่อรอการบันทึกข้อมูล
+    private IEnumerator ConfirmSelectionCoroutine()
     {
         // ตรวจสอบชื่อ
         string playerName = playerNameInput.text.Trim();
@@ -54,18 +81,27 @@ public class CharacterSelectionManager : MonoBehaviour
         if (string.IsNullOrEmpty(playerName))
         {
             ShowError("Please enter your name!");
-            return;
+            yield break;
         }
 
         if (playerName.Length < 3 || playerName.Length > 16)
         {
             ShowError("Name must be 3-16 characters!");
-            return;
+            yield break;
         }
 
-        // บันทึกข้อมูล
+        // แสดง loading
+        ShowLoading(true);
+
+        // บันทึกข้อมูลใน PlayerPrefs
         PlayerPrefs.SetString("PlayerName", playerName);
         PlayerSelectionData.SaveCharacterSelection(selectedCharacter);
+
+        // บันทึกข้อมูลใน Firebase และรอให้เสร็จ
+        yield return StartCoroutine(SaveCharacterAndPlayerDataToFirebase(playerName));
+
+        // ซ่อน loading
+        ShowLoading(false);
 
         // ไปหน้า Lobby
         SceneManager.LoadScene("Lobby");
@@ -88,6 +124,21 @@ public class CharacterSelectionManager : MonoBehaviour
             errorMessageText.gameObject.SetActive(false);
         }
     }
+
+    private void ShowLoading(bool show)
+    {
+        if (loadingPanel != null)
+            loadingPanel.SetActive(show);
+
+        // ปิด/เปิด UI elements
+        confirmButton.interactable = !show;
+        playerNameInput.interactable = !show;
+        bloodKnightButton.interactable = !show;
+        archerButton.interactable = !show;
+        assassinButton.interactable = !show;
+        ironJuggernautButton.interactable = !show;
+    }
+
     public void SelectCharacter(PlayerSelectionData.CharacterType character)
     {
         // บันทึกตัวละครที่เลือก
@@ -112,6 +163,9 @@ public class CharacterSelectionManager : MonoBehaviour
 
         // อัพเดทข้อมูลตัวละคร
         UpdateCharacterInfo(character);
+
+        // เอาการบันทึก Firebase ออกจากตรงนี้ เพราะจะทำตอน Confirm แทน
+        // SaveCharacterToFirebase(character);
     }
 
     private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)
@@ -181,9 +235,70 @@ public class CharacterSelectionManager : MonoBehaviour
         }
     }
 
+    // ฟังก์ชันใหม่ที่บันทึกทั้งชื่อและตัวละครพร้อมกัน
+    private IEnumerator SaveCharacterAndPlayerDataToFirebase(string playerName)
+    {
+        if (auth.CurrentUser != null)
+        {
+            string userId = auth.CurrentUser.UserId;
+
+            var updates = new Dictionary<string, object>
+            {
+                { "playerName", playerName },
+                { "lastCharacterSelected", selectedCharacter.ToString() },
+                { "lastLoginDate", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") }
+            };
+
+            var task = databaseReference.Child("players").Child(userId).UpdateChildrenAsync(updates);
+            yield return new WaitUntil(() => task.IsCompleted);
+
+            if (task.Exception != null)
+            {
+                Debug.LogError($"Failed to save character and player data: {task.Exception}");
+                ShowError("Failed to save data. Please try again.");
+            }
+            else
+            {
+                Debug.Log($"Character and player data saved successfully: {playerName}, {selectedCharacter}");
+            }
+        }
+        else
+        {
+            Debug.LogError("User not authenticated");
+            ShowError("User not authenticated. Please login again.");
+        }
+    }
+
     private void StartGame()
     {
         // โหลดฉากเล่นเกม
         SceneManager.LoadScene("PlayRoom1");
     }
-}
+
+    // เก็บฟังก์ชันเก่าไว้ในกรณีที่ต้องการใช้
+    void SaveCharacterToFirebase(PlayerSelectionData.CharacterType character)
+    {
+        if (auth.CurrentUser != null)
+        {
+            string userId = auth.CurrentUser.UserId;
+
+            var updates = new Dictionary<string, object>
+            {
+                { "lastCharacterSelected", character.ToString() }
+            };
+
+            databaseReference.Child("players").Child(userId).UpdateChildrenAsync(updates)
+                .ContinueWith(task =>
+                {
+                    if (task.Exception != null)
+                    {
+                        Debug.LogError($"Failed to save character selection: {task.Exception}");
+                    }
+                    else
+                    {
+                        Debug.Log($"Character selection saved: {character}");
+                    }
+                });
+        }
+    }
+}*/
