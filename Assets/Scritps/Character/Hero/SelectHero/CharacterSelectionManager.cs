@@ -1,4 +1,4 @@
-﻿/*using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
@@ -33,7 +33,7 @@ public class CharacterSelectionManager : MonoBehaviour
     [Header("Character Info")]
     public TextMeshProUGUI characterDescriptionText;
     public TextMeshProUGUI characterNameText;
-    
+
     // เพิ่ม Loading Panel
     [Header("Loading")]
     public GameObject loadingPanel;
@@ -62,10 +62,7 @@ public class CharacterSelectionManager : MonoBehaviour
 
         // โหลดชื่อผู้เล่นจาก PlayerPrefs (ถ้ามี)
         string savedPlayerName = PlayerPrefs.GetString("PlayerName", "");
-        if (!string.IsNullOrEmpty(savedPlayerName))
-        {
-            playerNameInput.text = savedPlayerName;
-        }
+       
 
         // ซ่อน loading panel
         if (loadingPanel != null)
@@ -301,4 +298,4 @@ public class CharacterSelectionManager : MonoBehaviour
                 });
         }
     }
-}*/
+}

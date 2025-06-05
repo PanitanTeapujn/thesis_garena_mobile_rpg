@@ -12,7 +12,7 @@ EditorBuildSettings:
     path: Assets/Scenes/Sceneliew/LoginAndRegister.unity
     guid: 102a1b4ad2c2454499474b50b03959b1
   - enabled: 1
-    path: Assets/Scenes/Sceneliew/SelectCharacter.unity
+    path: Assets/Scenes/Sceneliew/CharacterSelection.unity
     guid: 80d30abbe6400514ea1e58b25c771ac3
   - enabled: 1
     path: Assets/Scenes/Sceneliew/Lobby.unity

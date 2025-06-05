@@ -1,4 +1,4 @@
-﻿/*using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
@@ -7,6 +7,7 @@ using Firebase.Auth;
 using Firebase.Database;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 
 public class FirebaseLoginManager : MonoBehaviour
 {
@@ -28,6 +29,7 @@ public class FirebaseLoginManager : MonoBehaviour
     public class SimplePlayerData
     {
         public string playerName;
+        public string password;
         public string lastCharacterSelected;
         public string registrationDate;
         public string lastLoginDate;
@@ -98,25 +100,25 @@ public class FirebaseLoginManager : MonoBehaviour
 
         if (string.IsNullOrEmpty(username))
         {
-            ShowError("กรุณาใส่ชื่อผู้ใช้");
+            ShowError("Please enter username.");
             return false;
         }
 
         if (username.Length < 3 || username.Length > 16)
         {
-            ShowError("ชื่อผู้ใช้ต้องมี 3-16 ตัวอักษร");
+            ShowError("Username must contain 3-16 characters.");
             return false;
         }
 
         if (string.IsNullOrEmpty(password))
         {
-            ShowError("กรุณาใส่รหัสผ่าน");
+            ShowError("Please enter your password.");
             return false;
         }
 
         if (password.Length < 6)
         {
-            ShowError("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร");
+            ShowError("Password must contain at least 6 characters.");
             return false;
         }
 
@@ -138,14 +140,14 @@ public class FirebaseLoginManager : MonoBehaviour
             FirebaseException firebaseEx = loginTask.Exception.GetBaseException() as FirebaseException;
             AuthError errorCode = (AuthError)firebaseEx.ErrorCode;
 
-            string message = "เข้าสู่ระบบล้มเหลว";
+            string message = "Login failed";
             switch (errorCode)
             {
                 case AuthError.UserNotFound:
-                    message = "ไม่พบผู้ใช้นี้";
+                    message = "This user was not found.";
                     break;
                 case AuthError.WrongPassword:
-                    message = "รหัสผ่านไม่ถูกต้อง";
+                    message = "The password is incorrect.";
                     break;
             }
             ShowError(message);
@@ -162,7 +164,7 @@ public class FirebaseLoginManager : MonoBehaviour
             yield return StartCoroutine(LoadPlayerData());
 
             // ไปหน้าเลือกตัวละคร
-            SceneManager.LoadScene("CharacterSelection");
+            SceneManager.LoadScene("Lobby");
         }
     }
 
@@ -181,14 +183,14 @@ public class FirebaseLoginManager : MonoBehaviour
             FirebaseException firebaseEx = registerTask.Exception.GetBaseException() as FirebaseException;
             AuthError errorCode = (AuthError)firebaseEx.ErrorCode;
 
-            string message = "ลงทะเบียนล้มเหลว";
+            string message = "Registration failed";
             switch (errorCode)
             {
                 case AuthError.EmailAlreadyInUse:
-                    message = "ชื่อผู้ใช้นี้มีคนใช้แล้ว";
+                    message = "This username is already taken.";
                     break;
                 case AuthError.WeakPassword:
-                    message = "รหัสผ่านไม่ปลอดภัย";
+                    message = "Password is not safe.";
                     break;
             }
             ShowError(message);
@@ -303,4 +305,4 @@ public class FirebaseLoginManager : MonoBehaviour
         nameInput.interactable = !show;
         passwordInput.interactable = !show;
     }
-}*/
+}

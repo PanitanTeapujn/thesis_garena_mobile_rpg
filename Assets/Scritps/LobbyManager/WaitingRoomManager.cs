@@ -71,7 +71,7 @@ public class WaitingRoomManager : MonoBehaviour
 
     string GenerateRoomCode()
     {
-        return Random.Range(100000, 999999).ToString();
+        return Random.Range(0, 99).ToString();
     }
 
     void OnReadyToggleChanged(bool isReady)
