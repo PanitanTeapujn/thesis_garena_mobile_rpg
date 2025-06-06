@@ -19,7 +19,8 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     private HashSet<string> spawnRequests = new HashSet<string>();
 
-
+    [Header("Combat UI")]
+    public CombatUIManager combatUIManagerPrefab;
     // Dictionary เพื่อเก็บข้อมูลตัวละครของแต่ละ player
     private Dictionary<PlayerRef, PlayerSelectionData.CharacterType> playerCharacters = new Dictionary<PlayerRef, PlayerSelectionData.CharacterType>();
 
@@ -42,7 +43,37 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             Debug.LogError("NetworkRunner not found in the scene!");
         }
     }
+    private void SetupCombatUI(NetworkObject playerObject)
+    {
+        if (playerObject == null) return;
 
+        Hero hero = playerObject.GetComponent<Hero>();
+        if (hero == null) return;
+
+        // Only create UI for local player
+        if (hero.HasInputAuthority)
+        {
+            // Find or create CombatUIManager
+            CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
+
+            if (combatUI == null && combatUIManagerPrefab != null)
+            {
+                // Create from prefab
+                combatUI = Instantiate(combatUIManagerPrefab);
+            }
+            else if (combatUI == null)
+            {
+                // Create new GameObject
+                GameObject uiManagerObj = new GameObject("CombatUIManager");
+                combatUI = uiManagerObj.AddComponent<CombatUIManager>();
+            }
+
+            // Set the local hero reference
+            combatUI.SetLocalHero(hero);
+
+            Debug.Log("Combat UI setup completed for local player");
+        }
+    }
     private void Update()
     {
         if (_runner == null)
@@ -223,6 +254,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogError($"Failed to spawn player as {characterType}!");
         }
+        SetupCombatUI(playerObject);
 
     }
 

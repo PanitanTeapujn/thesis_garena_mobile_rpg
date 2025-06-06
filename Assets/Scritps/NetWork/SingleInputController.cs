@@ -18,6 +18,9 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
 
     // เก็บ reference ของ NetworkRunner
     private NetworkRunner runner;
+    private bool attackPressed = false;
+    private float attackPressedTime = 0f;
+    private const float attackPressDuration = 0.1f; // Hold attack for 0.1 seconds
 
     void Awake()
     {
@@ -100,8 +103,28 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
             Vector3 moveDir = new Vector3(localInput.movementInput.x, 0, localInput.movementInput.y);
             localInput.lookDirection = moveDir.normalized;
         }
-    }
+        if (attackPressed && Time.time - attackPressedTime > attackPressDuration)
+        {
+            attackPressed = false;
+        }
 
+        // อ่านค่า input จาก Joystick
+        localInput.movementInput = new Vector2(
+            movementJoystick.Horizontal,
+            movementJoystick.Vertical
+        );
+
+        localInput.cameraRotationInput = cameraJoystick.Horizontal;
+
+        // Set attack input
+        localInput.attack = attackPressed;
+    }
+    
+    public void SetAttackPressed()
+    {
+        attackPressed = true;
+        attackPressedTime = Time.time;
+    }
     // *** สำคัญมาก: OnInput จะถูกเรียกโดย Fusion เพื่อส่ง input ***
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {

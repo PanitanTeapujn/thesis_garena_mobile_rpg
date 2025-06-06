@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
+using UnityEngine.SceneManagement;
 
 public class Hero : Character
 {
@@ -12,6 +13,12 @@ public class Hero : Character
     [Networked] public float NetworkedYRotation { get; set; }
     [Networked] public Vector3 NetworkedScale { get; set; }
 
+    [Networked] public int NetworkedCurrentHp { get; set; }
+    [Networked] public int NetworkedMaxHp { get; set; }
+    [Networked] public TickTimer AttackCooldownTimer { get; set; }
+
+    private float AttackRange = 2f; // Override from Character
+    private LayerMask enemyLayer;
     // Network input data
     protected NetworkInputData networkInputData;
     protected float currentCameraAngle = 0f;
@@ -30,7 +37,7 @@ public class Hero : Character
     protected override void Start()
     {
         base.Start();
-
+        InitializeCombat();
         Debug.Log($"[SPAWNED] {gameObject.name} - Input: {HasInputAuthority}, State: {HasStateAuthority}");
 
         // กำหนดค่าเริ่มต้นของ scale
@@ -42,7 +49,16 @@ public class Hero : Character
             cameraTransform = Camera.main?.transform;
         }
     }
+    private void InitializeCombat()
+    {
+        enemyLayer = LayerMask.GetMask("Enemy");
 
+        if (HasStateAuthority)
+        {
+            NetworkedMaxHp = MaxHp;
+            NetworkedCurrentHp = CurrentHp;
+        }
+    }
     // ========== Network Update ==========
     public override void FixedUpdateNetwork()
     {
@@ -95,10 +111,7 @@ public class Hero : Character
     }
 
     // ========== Virtual Methods for Inheritance ==========
-    protected virtual void ProcessClassSpecificAbilities()
-    {
-        // Override ใน class ลูกสำหรับ abilities เฉพาะ
-    }
+   
 
     // ========== RPC Methods ==========
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -349,4 +362,138 @@ public class Hero : Character
             }
         }
     }
+
+    #region Combat
+    protected virtual void ProcessClassSpecificAbilities()
+    {
+        if (HasInputAuthority)
+        {
+            if (GetInput(out networkInputData))
+            {
+                if (networkInputData.attack)
+                {
+                    TryAttack();
+                }
+            }
+        }
+
+        // Sync health
+        if (HasStateAuthority)
+        {
+            NetworkedCurrentHp = CurrentHp;
+        }
+        // Override ใน class ลูกสำหรับ abilities เฉพาะ
+    }
+    public bool IsSpawned => Object != null && Object.IsValid;
+
+    public void TryAttack()
+    {
+        float nextAttackTime=0f;
+
+        if (!HasInputAuthority || !IsSpawned) return;
+
+        if (Time.time < nextAttackTime) return;
+
+        Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, enemyLayer);
+
+        if (enemies.Length > 0)
+        {
+            NetworkEnemy nearestEnemy = null;
+            float nearestDistance = float.MaxValue;
+
+            foreach (Collider col in enemies)
+            {
+                NetworkEnemy enemy = col.GetComponent<NetworkEnemy>();
+                // เพิ่มการเช็ค IsSpawned และ HasStateAuthority
+                if (enemy != null && enemy.IsSpawned && enemy.HasStateAuthority && !enemy.IsDead)
+                {
+                    float distance = Vector3.Distance(transform.position, enemy.transform.position);
+                    if (distance < nearestDistance)
+                    {
+                        nearestDistance = distance;
+                        nearestEnemy = enemy;
+                    }
+                }
+            }
+
+            if (nearestEnemy != null)
+            {
+                RPC_PerformAttack(nearestEnemy.Object);
+                nextAttackTime = Time.time + AttackCooldown;
+                Debug.Log($"Hero attacking enemy at distance: {Vector3.Distance(transform.position, nearestEnemy.transform.position)}");
+            }
+        }
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_PerformAttack(NetworkObject enemyObject)
+    {
+        if (enemyObject != null)
+        {
+            NetworkEnemy enemy = enemyObject.GetComponent<NetworkEnemy>();
+            if (enemy != null && !enemy.IsDead)
+            {
+                // Server validates and applies damage
+                enemy.TakeDamage(AttackDamage, Object.InputAuthority);
+
+                // Broadcast attack effect
+                RPC_OnAttackHit(enemyObject);
+            }
+        }
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_OnAttackHit(NetworkObject enemyObject)
+    {
+        // Visual feedback on all clients
+        Debug.Log($"{CharacterName} hit enemy!");
+
+        // Play attack animation/effects here
+    }
+    public void TakeDamage(int damage)
+    {
+        if (!HasInputAuthority) return;
+
+        CurrentHp -= damage;
+        CurrentHp = Mathf.Clamp(CurrentHp, 0, MaxHp);
+
+        // Send damage info to server
+        RPC_UpdateHealth(CurrentHp);
+
+        // Visual feedback
+        StartCoroutine(DamageFlash());
+
+        Debug.Log($"{CharacterName} takes {damage} damage. HP: {CurrentHp}/{MaxHp}");
+
+        if (CurrentHp <= 0)
+        {
+            // Handle death
+            RPC_OnDeath();
+        }
+    }
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_UpdateHealth(int newHp)
+    {
+        CurrentHp = newHp;
+        NetworkedCurrentHp = newHp;
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    private void RPC_OnDeath()
+    {
+        Debug.Log($"{CharacterName} died!");
+        // Handle death logic
+        SceneManager.LoadScene("Lobby");
+
+    }
+
+    private IEnumerator DamageFlash()
+    {
+        if (characterRenderer != null)
+        {
+            characterRenderer.material.color = Color.red;
+            yield return new WaitForSeconds(0.2f);
+            characterRenderer.material.color = originalColor;
+        }
+    }
+    #endregion
 }
