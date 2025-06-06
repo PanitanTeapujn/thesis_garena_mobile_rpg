@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
@@ -10,6 +10,12 @@ public class NetworkEnemy : Character
     [Networked] public int NetworkedMaxHp { get; set; }
     [Networked] public NetworkBool IsDead { get; set; }
     [Networked] public PlayerRef CurrentTarget { get; set; }
+
+    // เพิ่ม Network Position Properties เหมือน Hero
+    [Networked] public Vector3 NetworkedPosition { get; set; }
+    [Networked] public Vector3 NetworkedVelocity { get; set; }
+    [Networked] public Vector3 NetworkedScale { get; set; }
+    [Networked] public float NetworkedYRotation { get; set; }
 
     // ========== Enemy Properties ==========
     [Header("Enemy Settings")]
@@ -41,6 +47,10 @@ public class NetworkEnemy : Character
             NetworkedMaxHp = MaxHp;
             NetworkedCurrentHp = CurrentHp;
             IsDead = false;
+            // กำหนดค่าเริ่มต้นของ position และ scale
+            NetworkedPosition = transform.position;
+            NetworkedScale = transform.localScale;
+            NetworkedYRotation = transform.eulerAngles.y;
         }
     }
 
@@ -50,24 +60,122 @@ public class NetworkEnemy : Character
         // Safety check
         if (!IsSpawned) return;
 
-        // Only Host/Server controls enemies
-        if (!HasStateAuthority) return;
-
-        if (IsDead) return;
-
-        // Find and attack nearest player
-        FindNearestPlayer();
-        MoveTowardsTarget();
-        TryAttackTarget();
-
-        // Sync health
-        NetworkedCurrentHp = CurrentHp;
-
-        // Check death
-        if (CurrentHp <= 0 && !IsDead)
+        // Server/Host controls enemies
+        if (HasStateAuthority)
         {
-            IsDead = true;
-            RPC_OnDeath();
+            if (!IsDead)
+            {
+                // Enemy AI logic
+                FindNearestPlayer();
+                MoveTowardsTarget();
+                TryAttackTarget();
+
+                // Sync health
+                NetworkedCurrentHp = CurrentHp;
+
+                // Check death
+                if (CurrentHp <= 0 && !IsDead)
+                {
+                    IsDead = true;
+                    RPC_OnDeath();
+                }
+            }
+
+            // อัพเดท Network Properties เหมือน Hero
+            NetworkedPosition = transform.position;
+            NetworkedScale = transform.localScale;
+            NetworkedYRotation = transform.eulerAngles.y;
+            if (rb != null)
+            {
+                NetworkedVelocity = rb.velocity;
+            }
+        }
+        // Remote clients - apply network state
+        else
+        {
+            ApplyNetworkState();
+        }
+    }
+
+    // ========== Network State Application (เหมือน Hero) ==========
+    protected virtual void ApplyNetworkState()
+    {
+        float positionDistance = Vector3.Distance(transform.position, NetworkedPosition);
+
+        if (positionDistance > 0.1f)
+        {
+            if (rb != null)
+            {
+                rb.velocity = NetworkedVelocity;
+            }
+
+            float lerpRate = positionDistance > 2f ? 50f : 20f;
+            transform.position = Vector3.Lerp(
+                transform.position,
+                NetworkedPosition,
+                Runner.DeltaTime * lerpRate
+            );
+        }
+
+        // Scale synchronization
+        float scaleDistance = Vector3.Distance(transform.localScale, NetworkedScale);
+        if (scaleDistance > 0.01f)
+        {
+            transform.localScale = Vector3.Lerp(
+                transform.localScale,
+                NetworkedScale,
+                Runner.DeltaTime * 15f
+            );
+        }
+
+        // Rotation synchronization
+        float targetYRotation = NetworkedYRotation;
+        float currentYRotation = transform.eulerAngles.y;
+        float rotationDifference = Mathf.DeltaAngle(currentYRotation, targetYRotation);
+
+        if (Mathf.Abs(rotationDifference) > 1f)
+        {
+            Quaternion targetRotation = Quaternion.Euler(0, targetYRotation, 0);
+            transform.rotation = Quaternion.Lerp(
+                transform.rotation,
+                targetRotation,
+                Runner.DeltaTime * 10f
+            );
+        }
+    }
+
+    // ========== Render Method for Visual Interpolation (เหมือน Hero) ==========
+    public override void Render()
+    {
+        // Visual interpolation สำหรับ remote clients
+        if (!HasStateAuthority)
+        {
+            float alpha = Runner.DeltaTime * 20f;
+
+            if (Vector3.Distance(transform.position, NetworkedPosition) > 0.01f)
+            {
+                transform.position = Vector3.Lerp(transform.position, NetworkedPosition, alpha);
+            }
+
+            if (Vector3.Distance(transform.localScale, NetworkedScale) > 0.001f)
+            {
+                transform.localScale = Vector3.Lerp(transform.localScale, NetworkedScale, alpha);
+            }
+
+            // Rotation interpolation
+            float targetYRotation = NetworkedYRotation;
+            float currentYRotation = transform.eulerAngles.y;
+            float rotationDifference = Mathf.DeltaAngle(currentYRotation, targetYRotation);
+
+            if (Mathf.Abs(rotationDifference) > 1f)
+            {
+                Quaternion targetRotation = Quaternion.Euler(0, targetYRotation, 0);
+                transform.rotation = Quaternion.Lerp(
+                    transform.rotation,
+                    targetRotation,
+                    alpha
+                );
+            }
         }
     }
 

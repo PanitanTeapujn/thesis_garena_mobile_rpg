@@ -89,6 +89,7 @@ public class LobbyManager : MonoBehaviour
     void StartSoloGame()
     {
         PlayerPrefs.SetString("GameMode", "Solo");
+        PlayerPrefs.SetString("IsHost", "true");
         SceneManager.LoadScene("PlayRoom1");
     }
 

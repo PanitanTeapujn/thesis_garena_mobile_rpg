@@ -16,6 +16,7 @@ public class Hero : Character
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }
     [Networked] public TickTimer AttackCooldownTimer { get; set; }
+    float nextAttackTime = 0f;
 
     private float AttackRange = 2f; // Override from Character
     private LayerMask enemyLayer;
@@ -388,8 +389,6 @@ public class Hero : Character
 
     public void TryAttack()
     {
-        float nextAttackTime=0f;
-
         if (!HasInputAuthority || !IsSpawned) return;
 
         if (Time.time < nextAttackTime) return;
@@ -404,8 +403,7 @@ public class Hero : Character
             foreach (Collider col in enemies)
             {
                 NetworkEnemy enemy = col.GetComponent<NetworkEnemy>();
-                // เพิ่มการเช็ค IsSpawned และ HasStateAuthority
-                if (enemy != null && enemy.IsSpawned && enemy.HasStateAuthority && !enemy.IsDead)
+                if (enemy != null && enemy.IsSpawned && !enemy.IsDead)
                 {
                     float distance = Vector3.Distance(transform.position, enemy.transform.position);
                     if (distance < nearestDistance)
@@ -433,21 +431,17 @@ public class Hero : Character
             NetworkEnemy enemy = enemyObject.GetComponent<NetworkEnemy>();
             if (enemy != null && !enemy.IsDead)
             {
-                // Server validates and applies damage
                 enemy.TakeDamage(AttackDamage, Object.InputAuthority);
-
-                // Broadcast attack effect
                 RPC_OnAttackHit(enemyObject);
             }
         }
     }
+
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_OnAttackHit(NetworkObject enemyObject)
     {
-        // Visual feedback on all clients
         Debug.Log($"{CharacterName} hit enemy!");
-
-        // Play attack animation/effects here
+        // TODO: Add animation / VFX here
     }
     public void TakeDamage(int damage)
     {
