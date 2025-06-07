@@ -8,6 +8,7 @@ public class CharacterStats : ScriptableObject
     public string characterName;
     public float moveSpeed;
     public int maxHp;
+    public int maxMana;
     public int attackDamage;
     public int arrmor;
     public int attackCoolDown;

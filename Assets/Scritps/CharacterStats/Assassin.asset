@@ -15,6 +15,7 @@ MonoBehaviour:
   characterName: Assassin
   moveSpeed: 5
   maxHp: 350
+  maxMana: 100
   attackDamage: 20
   arrmor: 2
   attackCoolDown: 1

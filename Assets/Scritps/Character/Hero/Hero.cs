@@ -15,6 +15,9 @@ public class Hero : Character
 
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }
+    [Networked] public int NetworkedCurrentMana { get; set; }
+    [Networked] public int NetworkedMaxMana { get; set; }
+
     [Networked] public TickTimer AttackCooldownTimer { get; set; }
     float nextAttackTime = 0f;
 
@@ -58,6 +61,8 @@ public class Hero : Character
         {
             NetworkedMaxHp = MaxHp;
             NetworkedCurrentHp = CurrentHp;
+            NetworkedMaxMana = MaxMana;
+            NetworkedCurrentMana = CurrentMana;
         }
     }
     // ========== Network Update ==========
@@ -375,6 +380,14 @@ public class Hero : Character
                 {
                     TryAttack();
                 }
+                if (networkInputData.skill1)
+                {
+                    TryUseSkill1();
+                }
+                if (networkInputData.skill2)
+                {
+                    TryUseSkill2();
+                }
             }
         }
 
@@ -382,8 +395,38 @@ public class Hero : Character
         if (HasStateAuthority)
         {
             NetworkedCurrentHp = CurrentHp;
+            NetworkedCurrentMana = CurrentMana;
+
         }
         // Override ใน class ลูกสำหรับ abilities เฉพาะ
+    }
+    protected virtual void TryUseSkill1()
+    {
+        // Override ใน subclass
+        Debug.Log("Skill 1 used");
+    }
+
+    protected virtual void TryUseSkill2()
+    {
+        // Override ใน subclass  
+        Debug.Log("Skill 2 used");
+    }
+    public void UseMana(int amount)
+    {
+        if (!HasInputAuthority) return;
+
+        CurrentMana -= amount;
+        CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+        // Send mana info to server
+        RPC_UpdateMana(CurrentMana);
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_UpdateMana(int newMana)
+    {
+        CurrentMana = newMana;
+        NetworkedCurrentMana = newMana;
     }
     public bool IsSpawned => Object != null && Object.IsValid;
 

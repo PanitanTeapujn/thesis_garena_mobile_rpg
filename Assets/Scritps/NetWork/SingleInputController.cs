@@ -6,25 +6,26 @@ using System.Collections.Generic;
 
 public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
 {
-    // Singleton pattern
     private static SingleInputController instance;
 
-    // Reference ไปยัง Joysticks
     private FixedJoystick movementJoystick;
     private FixedJoystick cameraJoystick;
 
-    // เก็บ input data ไว้ส่ง
     private NetworkInputData localInput;
-
-    // เก็บ reference ของ NetworkRunner
     private NetworkRunner runner;
+
     private bool attackPressed = false;
+    private bool skill1Pressed = false;
+    private bool skill2Pressed = false;
+
     private float attackPressedTime = 0f;
-    private const float attackPressDuration = 0.1f; // Hold attack for 0.1 seconds
+    private float skill1PressedTime = 0f;
+    private float skill2PressedTime = 0f;
+
+    private const float buttonPressDuration = 0.1f;
 
     void Awake()
     {
-        // ตรวจสอบว่ามี instance อื่นอยู่แล้วหรือไม่
         if (instance != null && instance != this)
         {
             Debug.Log("SingleInputController already exists, destroying duplicate");
@@ -38,41 +39,53 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
 
     private void Start()
     {
-        // หา NetworkRunner
         runner = FindObjectOfType<NetworkRunner>();
-
-        // หา Joysticks ใน scene
         FindJoysticks();
     }
 
     private void FindJoysticks()
     {
-        // ค้นหา Joystick ทั้งหมดใน scene
+        // หา Joystick จาก scene เก่า (fallback)
         FixedJoystick[] joysticks = GameObject.FindObjectsOfType<FixedJoystick>();
 
         foreach (var js in joysticks)
         {
-            if (js.gameObject.name == "JoystickCharacter")
+            if (js.gameObject.name == "JoystickCharacter" && movementJoystick == null)
             {
                 movementJoystick = js;
-                Debug.Log("Found Movement Joystick");
+                Debug.Log("Found Movement Joystick in scene");
             }
-            else if (js.gameObject.name == "CameraJoystick")
+            else if (js.gameObject.name == "CameraJoystick" && cameraJoystick == null)
             {
                 cameraJoystick = js;
-                Debug.Log("Found Camera Joystick");
+                Debug.Log("Found Camera Joystick in scene");
             }
         }
 
         if (movementJoystick == null || cameraJoystick == null)
         {
-            Debug.LogError("Joysticks not found! Make sure they exist in the scene.");
+            Debug.LogWarning("Some joysticks not found! Waiting for CombatUIManager to provide references.");
+        }
+    }
+
+    // เพิ่ม method สำหรับ CombatUIManager อัพเดท joystick references
+    public void UpdateJoystickReferences(FixedJoystick moveJoystick, FixedJoystick camJoystick)
+    {
+        if (moveJoystick != null)
+        {
+            movementJoystick = moveJoystick;
+            Debug.Log("Movement joystick reference updated");
+        }
+
+        if (camJoystick != null)
+        {
+            cameraJoystick = camJoystick;
+            Debug.Log("Camera joystick reference updated");
         }
     }
 
     private void Update()
     {
-        // ตรวจสอบว่า runner พร้อมและเป็น local player
         if (runner == null)
         {
             runner = FindObjectOfType<NetworkRunner>();
@@ -82,7 +95,7 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         if (!runner.IsRunning)
             return;
 
-        // ถ้า Joystick หาย (เช่นเปลี่ยน scene) ให้หาใหม่
+        // ถ้ายังไม่มี Joystick ให้หาใหม่
         if (movementJoystick == null || cameraJoystick == null)
         {
             FindJoysticks();
@@ -103,34 +116,50 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
             Vector3 moveDir = new Vector3(localInput.movementInput.x, 0, localInput.movementInput.y);
             localInput.lookDirection = moveDir.normalized;
         }
-        if (attackPressed && Time.time - attackPressedTime > attackPressDuration)
+
+        // Reset button states after duration
+        if (attackPressed && Time.time - attackPressedTime > buttonPressDuration)
         {
             attackPressed = false;
         }
+        if (skill1Pressed && Time.time - skill1PressedTime > buttonPressDuration)
+        {
+            skill1Pressed = false;
+        }
+        if (skill2Pressed && Time.time - skill2PressedTime > buttonPressDuration)
+        {
+            skill2Pressed = false;
+        }
 
-        // อ่านค่า input จาก Joystick
-        localInput.movementInput = new Vector2(
-            movementJoystick.Horizontal,
-            movementJoystick.Vertical
-        );
-
-        localInput.cameraRotationInput = cameraJoystick.Horizontal;
-
-        // Set attack input
+        // Set input
         localInput.attack = attackPressed;
+        localInput.skill1 = skill1Pressed;
+        localInput.skill2 = skill2Pressed;
     }
-    
+
     public void SetAttackPressed()
     {
         attackPressed = true;
         attackPressedTime = Time.time;
+        Debug.Log("Attack input set");
     }
-    // *** สำคัญมาก: OnInput จะถูกเรียกโดย Fusion เพื่อส่ง input ***
+
+    public void SetSkill1Pressed()
+    {
+        skill1Pressed = true;
+        skill1PressedTime = Time.time;
+        Debug.Log("Skill1 input set");
+    }
+
+    public void SetSkill2Pressed()
+    {
+        skill2Pressed = true;
+        skill2PressedTime = Time.time;
+        Debug.Log("Skill2 input set");
+    }
+
     public void OnInput(NetworkRunner runner, NetworkInput input)
     {
-        // ส่ง input data ที่เก็บไว้ไปให้ Fusion
-        //Debug.Log($"[INPUT] Player: {runner.LocalPlayer}, Movement: {localInput.movementInput}");
-
         input.Set(localInput);
     }
 
@@ -142,35 +171,100 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
             GUI.Label(new Rect(10, 70, 300, 20), $"Input System Active - Runner: {runner.name}");
             GUI.Label(new Rect(10, 90, 300, 20), $"Movement: {localInput.movementInput}");
             GUI.Label(new Rect(10, 110, 300, 20), $"Camera: {localInput.cameraRotationInput}");
+            GUI.Label(new Rect(10, 130, 300, 20), $"Attack: {localInput.attack}");
+            GUI.Label(new Rect(10, 150, 300, 20), $"Joysticks: Move={movementJoystick != null}, Cam={cameraJoystick != null}");
         }
     }
 
-    // Callbacks อื่นๆ ที่จำเป็น
-    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player) { }
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        throw new NotImplementedException();
+    }
+
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
-        // ลบ singleton เมื่อ shutdown
-        if (instance == this)
-        {
-            instance = null;
-        }
+        throw new NotImplementedException();
     }
-    public void OnDisconnectedFromServer(NetworkRunner runner) { }
-    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
-    public void OnConnectedToServer(NetworkRunner runner) { }
-    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
-    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
-    public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
-    public void OnHostMigration(NetworkRunner runner, HostMigrationToken token) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ArraySegment<byte> data) { }
-    public void OnSceneLoadDone(NetworkRunner runner) { }
-    public void OnSceneLoadStart(NetworkRunner runner) { }
-    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
-    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
-    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
-    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
-    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnConnectedToServer(NetworkRunner runner)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnSceneLoadDone(NetworkRunner runner)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void OnSceneLoadStart(NetworkRunner runner)
+    {
+        throw new NotImplementedException();
+    }
+
+    // ... rest of callback methods ...
 }

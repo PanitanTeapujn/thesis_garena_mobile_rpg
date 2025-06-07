@@ -39,6 +39,12 @@ public class Character : NetworkBehaviour
     private int maxHp;
     public int MaxHp { get { return maxHp; } set { maxHp = value; } }
     [SerializeField]
+    private int currentMana;
+    public int CurrentMana { get { return currentMana; } set { currentMana = value; } }
+    [SerializeField]
+    private int maxMana;
+    public int MaxMana { get { return maxMana; } set { maxMana = value; } }
+    [SerializeField]
 
     private int attackDamage;
     public int AttackDamage { get { return attackDamage; } set { attackDamage = value; } }
@@ -80,6 +86,8 @@ public class Character : NetworkBehaviour
         characterName = characterStats.characterName;
         maxHp = characterStats.maxHp;
         currentHp = maxHp;
+        maxMana = characterStats.maxMana;
+        currentMana = maxMana;
         attackDamage = characterStats.attackDamage;
         armor = characterStats.arrmor;
         moveSpeed = characterStats.moveSpeed;

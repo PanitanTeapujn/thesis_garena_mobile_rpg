@@ -6,239 +6,221 @@ using Fusion;
 
 public class CombatUIManager : MonoBehaviour
 {
-    [Header("UI References")]
-    public GameObject combatUIPrefab; // Prefab ที่มี UI ทั้งหมด
-    public Transform safeAreaTransform; // Reference ไปยัง Safe Area ใน Canvas
+    [Header("UI Prefab")]
+    public GameObject combatUIPrefab;
 
-    [Header("Combat UI Elements")]
+    [Header("UI References - จะถูกตั้งค่าอัตโนมัติจาก Prefab")]
     public Button attackButton;
+    public Button skill1Button;
+    public Button skill2Button;
     public Slider healthBar;
+    public Slider manaBar;
     public Text healthText;
-    public GameObject skillButtonsContainer;
+    public Text manaText;
+
+    // เพิ่ม Joystick references
+    public FixedJoystick movementJoystick;
+    public FixedJoystick cameraJoystick;
 
     private Hero localHero;
     private SingleInputController inputController;
+    private GameObject uiInstance;
 
     private void Start()
     {
-        // หา Safe Area ถ้ายังไม่ได้ assign
-        if (safeAreaTransform == null)
-        {
-            GameObject safeArea = GameObject.Find("SafeArea");
-            if (safeArea != null)
-            {
-                safeAreaTransform = safeArea.transform;
-            }
-            else
-            {
-                Debug.LogError("SafeArea not found! Please create SafeArea in Canvas.");
-                return;
-            }
-        }
+        Debug.Log("CombatUIManager Start");
+        CreateCombatUIFromPrefab();
 
-        // สร้าง Combat UI ใน Safe Area
-        CreateCombatUI();
-
-        // หา Input Controller
+        // หา InputController และอัพเดท joystick references
         inputController = FindObjectOfType<SingleInputController>();
-    }
-
-    private void CreateCombatUI()
-    {
-        if (combatUIPrefab != null && safeAreaTransform != null)
+        if (inputController != null)
         {
-            // สร้าง UI instance ใน Safe Area
-            GameObject uiInstance = Instantiate(combatUIPrefab, safeAreaTransform);
-
-            // ตั้งค่า RectTransform ให้เต็ม Safe Area
-            RectTransform rectTransform = uiInstance.GetComponent<RectTransform>();
-            if (rectTransform != null)
-            {
-                rectTransform.anchorMin = Vector2.zero;
-                rectTransform.anchorMax = Vector2.one;
-                rectTransform.offsetMin = Vector2.zero;
-                rectTransform.offsetMax = Vector2.zero;
-            }
-
-            // Get references from instantiated UI
-            attackButton = uiInstance.GetComponentInChildren<Button>();
-            healthBar = uiInstance.GetComponentInChildren<Slider>();
-            healthText = uiInstance.GetComponentInChildren<Text>();
-
-            // Setup attack button
-            if (attackButton != null)
-            {
-                attackButton.onClick.AddListener(OnAttackButtonPressed);
-            }
-        }
-        else
-        {
-            // ถ้าไม่มี prefab ให้สร้าง UI แบบ manual
-            CreateManualCombatUI();
+            inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
+            Debug.Log("Updated InputController with new joystick references");
         }
     }
 
-    private void CreateManualCombatUI()
+    private void CreateCombatUIFromPrefab()
     {
-        // สร้าง Container สำหรับ Combat UI
-        GameObject combatUIContainer = new GameObject("CombatUI");
-        combatUIContainer.transform.SetParent(safeAreaTransform, false);
+        if (combatUIPrefab == null)
+        {
+            Debug.LogError("Combat UI Prefab not assigned!");
+            return;
+        }
 
-        RectTransform containerRect = combatUIContainer.AddComponent<RectTransform>();
-        containerRect.anchorMin = Vector2.zero;
-        containerRect.anchorMax = Vector2.one;
-        containerRect.offsetMin = Vector2.zero;
-        containerRect.offsetMax = Vector2.zero;
+        Canvas canvas = FindObjectOfType<Canvas>();
+        if (canvas == null)
+        {
+            Debug.LogError("Canvas not found!");
+            return;
+        }
 
-        // สร้างปุ่มโจมตี
-        CreateAttackButton(combatUIContainer.transform);
+        Transform safeArea = canvas.transform.Find("SafeArea");
+        if (safeArea == null)
+        {
+            GameObject safeAreaObj = new GameObject("SafeArea");
+            safeAreaObj.transform.SetParent(canvas.transform, false);
 
-        // สร้าง Health Bar
-        CreateHealthBar(combatUIContainer.transform);
+            RectTransform safeAreaRect = safeAreaObj.AddComponent<RectTransform>();
+            safeAreaRect.anchorMin = Vector2.zero;
+            safeAreaRect.anchorMax = Vector2.one;
+            safeAreaRect.offsetMin = Vector2.zero;
+            safeAreaRect.offsetMax = Vector2.zero;
+
+            safeArea = safeAreaRect;
+            Debug.Log("Created SafeArea");
+        }
+
+        uiInstance = Instantiate(combatUIPrefab, safeArea);
+        Debug.Log($"UI Instance created: {uiInstance.name}");
+
+        SetupUIReferences();
+        SetupButtonEvents();
     }
 
-    private void CreateAttackButton(Transform parent)
+    private void SetupUIReferences()
     {
-        // สร้าง Attack Button
-        GameObject attackButtonObj = new GameObject("AttackButton");
-        attackButtonObj.transform.SetParent(parent, false);
+        if (uiInstance == null)
+        {
+            Debug.LogError("UI Instance is null!");
+            return;
+        }
 
-        RectTransform rectTransform = attackButtonObj.AddComponent<RectTransform>();
-        rectTransform.anchorMin = new Vector2(0.8f, 0.1f);
-        rectTransform.anchorMax = new Vector2(0.95f, 0.25f);
-        rectTransform.offsetMin = Vector2.zero;
-        rectTransform.offsetMax = Vector2.zero;
+        // หา UI elements โดยใช้วิธีที่มั่นใจกว่า
+        attackButton = FindUIComponent<Button>("AttackButton");
+        skill1Button = FindUIComponent<Button>("Skill1Button");
+        skill2Button = FindUIComponent<Button>("Skill2Button");
 
-        // เพิ่ม Image component
-        Image buttonImage = attackButtonObj.AddComponent<Image>();
-        buttonImage.color = new Color(1f, 0.2f, 0.2f, 0.8f);
+        healthBar = FindUIComponent<Slider>("HealthBar");
+        manaBar = FindUIComponent<Slider>("ManaBar");
 
-        // เพิ่ม Button component
-        attackButton = attackButtonObj.AddComponent<Button>();
-        attackButton.onClick.AddListener(OnAttackButtonPressed);
+        healthText = FindUIComponent<Text>("HealthText");
+        manaText = FindUIComponent<Text>("ManaText");
 
-        // เพิ่ม Text
-        GameObject textObj = new GameObject("Text");
-        textObj.transform.SetParent(attackButtonObj.transform, false);
+        // หา Joysticks
+        movementJoystick = FindUIComponent<FixedJoystick>("JoystickCharacter");
+        cameraJoystick = FindUIComponent<FixedJoystick>("CameraJoystick");
 
-        RectTransform textRect = textObj.AddComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        Text buttonText = textObj.AddComponent<Text>();
-        buttonText.text = "Attack";
-        buttonText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        buttonText.fontSize = 24;
-        buttonText.alignment = TextAnchor.MiddleCenter;
-        buttonText.color = Color.white;
+        // Debug log
+        Debug.Log($"UI Setup Results:");
+        Debug.Log($"- Attack Button: {attackButton != null}");
+        Debug.Log($"- Health Bar: {healthBar != null}");
+        Debug.Log($"- Mana Bar: {manaBar != null}");
+        Debug.Log($"- Movement Joystick: {movementJoystick != null}");
+        Debug.Log($"- Camera Joystick: {cameraJoystick != null}");
     }
 
-    private void CreateHealthBar(Transform parent)
+    private T FindUIComponent<T>(string name) where T : Component
     {
-        // สร้าง Health Bar Container
-        GameObject healthBarContainer = new GameObject("HealthBar");
-        healthBarContainer.transform.SetParent(parent, false);
+        // วิธีที่ 1: หาจาก direct child
+        Transform directChild = uiInstance.transform.Find(name);
+        if (directChild != null)
+        {
+            T component = directChild.GetComponent<T>();
+            if (component != null)
+            {
+                Debug.Log($"Found {name} as direct child");
+                return component;
+            }
+        }
 
-        RectTransform containerRect = healthBarContainer.AddComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0.05f, 0.85f);
-        containerRect.anchorMax = new Vector2(0.35f, 0.95f);
-        containerRect.offsetMin = Vector2.zero;
-        containerRect.offsetMax = Vector2.zero;
+        // วิธีที่ 2: หาจาก children ทั้งหมด
+        T[] allComponents = uiInstance.GetComponentsInChildren<T>(true);
+        foreach (T comp in allComponents)
+        {
+            if (comp.gameObject.name == name)
+            {
+                Debug.Log($"Found {name} in children");
+                return comp;
+            }
+        }
 
-        // Background
-        Image bgImage = healthBarContainer.AddComponent<Image>();
-        bgImage.color = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+        // วิธีที่ 3: หาจาก type เฉพาะกรณีที่มีตัวเดียว
+        if (allComponents.Length == 1)
+        {
+            Debug.Log($"Found single {typeof(T).Name} component, assuming it's {name}");
+            return allComponents[0];
+        }
 
-        // Health Bar Fill
-        GameObject fillObj = new GameObject("Fill");
-        fillObj.transform.SetParent(healthBarContainer.transform, false);
+        Debug.LogWarning($"Could not find {name} of type {typeof(T).Name}");
+        return null;
+    }
 
-        RectTransform fillRect = fillObj.AddComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero;
-        fillRect.anchorMax = new Vector2(1f, 1f);
-        fillRect.offsetMin = new Vector2(5, 5);
-        fillRect.offsetMax = new Vector2(-5, -5);
+    private void SetupButtonEvents()
+    {
+        if (inputController == null)
+        {
+            Debug.LogError("InputController not found!");
+            return;
+        }
 
-        Image fillImage = fillObj.AddComponent<Image>();
-        fillImage.color = new Color(0.2f, 0.8f, 0.2f, 1f);
+        if (attackButton != null)
+        {
+            attackButton.onClick.AddListener(() => {
+                Debug.Log("Attack button pressed");
+                inputController.SetAttackPressed();
+            });
+            Debug.Log("Attack button event setup complete");
+        }
 
-        // Create Slider
-        healthBar = healthBarContainer.AddComponent<Slider>();
-        healthBar.fillRect = fillRect;
-        healthBar.targetGraphic = fillImage;
-        healthBar.minValue = 0;
-        healthBar.maxValue = 100;
-        healthBar.value = 100;
+        if (skill1Button != null)
+        {
+            skill1Button.onClick.AddListener(() => {
+                Debug.Log("Skill1 button pressed");
+                inputController.SetSkill1Pressed();
+            });
+        }
 
-        // Health Text
-        GameObject textObj = new GameObject("HealthText");
-        textObj.transform.SetParent(healthBarContainer.transform, false);
-
-        RectTransform textRect = textObj.AddComponent<RectTransform>();
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = Vector2.zero;
-        textRect.offsetMax = Vector2.zero;
-
-        healthText = textObj.AddComponent<Text>();
-        healthText.text = "100/100";
-        healthText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        healthText.fontSize = 18;
-        healthText.alignment = TextAnchor.MiddleCenter;
-        healthText.color = Color.white;
+        if (skill2Button != null)
+        {
+            skill2Button.onClick.AddListener(() => {
+                Debug.Log("Skill2 button pressed");
+                inputController.SetSkill2Pressed();
+            });
+        }
     }
 
     public void SetLocalHero(Hero hero)
     {
         localHero = hero;
-        UpdateHealthBar();
-    }
-
-    private void OnAttackButtonPressed()
-    {
-        // Set attack flag in input controller
-        if (inputController != null)
-        {
-            inputController.SetAttackPressed();
-        }
+        Debug.Log($"Local hero set: {hero.CharacterName}");
+        UpdateUI();
     }
 
     private void Update()
     {
-        // Update health bar
         if (localHero != null)
         {
-            UpdateHealthBar();
+            UpdateUI();
         }
     }
 
-    private void UpdateHealthBar()
+    private void UpdateUI()
     {
-        if (localHero == null || healthBar == null) return;
+        if (localHero == null) return;
 
-        float healthPercentage = (float)localHero.CurrentHp / localHero.MaxHp;
-        healthBar.value = healthPercentage * 100f;
+        // Update Health Bar
+        if (healthBar != null)
+        {
+            float healthPercentage = (float)localHero.CurrentHp / localHero.MaxHp;
+            healthBar.value = healthPercentage;
+        }
 
         if (healthText != null)
         {
             healthText.text = $"{localHero.CurrentHp}/{localHero.MaxHp}";
         }
 
-        // Change color based on health
-        if (healthBar.fillRect != null)
+        // Update Mana Bar
+        if (manaBar != null)
         {
-            Image fillImage = healthBar.fillRect.GetComponent<Image>();
-            if (fillImage != null)
-            {
-                if (healthPercentage > 0.6f)
-                    fillImage.color = Color.green;
-                else if (healthPercentage > 0.3f)
-                    fillImage.color = Color.yellow;
-                else
-                    fillImage.color = Color.red;
-            }
+            float manaPercentage = (float)localHero.CurrentMana / localHero.MaxMana;
+            manaBar.value = manaPercentage;
+        }
+
+        if (manaText != null)
+        {
+            manaText.text = $"{localHero.CurrentMana}/{localHero.MaxMana}";
         }
     }
 }

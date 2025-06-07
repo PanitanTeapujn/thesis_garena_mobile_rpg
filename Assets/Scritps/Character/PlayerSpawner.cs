@@ -21,6 +21,9 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     [Header("Combat UI")]
     public CombatUIManager combatUIManagerPrefab;
+
+    [Header("World UI")]
+    public GameObject worldSpaceUIPrefab;
     // Dictionary เพื่อเก็บข้อมูลตัวละครของแต่ละ player
     private Dictionary<PlayerRef, PlayerSelectionData.CharacterType> playerCharacters = new Dictionary<PlayerRef, PlayerSelectionData.CharacterType>();
 
@@ -50,28 +53,31 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         Hero hero = playerObject.GetComponent<Hero>();
         if (hero == null) return;
 
-        // Only create UI for local player
+        // Setup Screen Space UI (เฉพาะ local player)
         if (hero.HasInputAuthority)
         {
-            // Find or create CombatUIManager
             CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
 
             if (combatUI == null && combatUIManagerPrefab != null)
             {
-                // Create from prefab
                 combatUI = Instantiate(combatUIManagerPrefab);
             }
-            else if (combatUI == null)
+
+            if (combatUI != null)
             {
-                // Create new GameObject
-                GameObject uiManagerObj = new GameObject("CombatUIManager");
-                combatUI = uiManagerObj.AddComponent<CombatUIManager>();
+                combatUI.SetLocalHero(hero);
             }
+        }
 
-            // Set the local hero reference
-            combatUI.SetLocalHero(hero);
-
-            Debug.Log("Combat UI setup completed for local player");
+        // Setup World Space UI (ทุกคน)
+        if (worldSpaceUIPrefab != null)
+        {
+            GameObject worldUI = Instantiate(worldSpaceUIPrefab);
+            WorldSpaceUI worldSpaceUI = worldUI.GetComponent<WorldSpaceUI>();
+            if (worldSpaceUI != null)
+            {
+                worldSpaceUI.Initialize(hero);
+            }
         }
     }
     private void Update()
