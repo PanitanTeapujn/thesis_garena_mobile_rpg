@@ -9,7 +9,7 @@ public class CombatUIManager : MonoBehaviour
     [Header("UI Prefab")]
     public GameObject combatUIPrefab;
 
-    [Header("UI References - จะถูกตั้งค่าอัตโนมัติจาก Prefab")]
+    [Header("UI References")]
     public Button attackButton;
     public Button skill1Button;
     public Button skill2Button;
@@ -17,8 +17,6 @@ public class CombatUIManager : MonoBehaviour
     public Slider manaBar;
     public Text healthText;
     public Text manaText;
-
-    // เพิ่ม Joystick references
     public FixedJoystick movementJoystick;
     public FixedJoystick cameraJoystick;
 
@@ -26,17 +24,48 @@ public class CombatUIManager : MonoBehaviour
     private SingleInputController inputController;
     private GameObject uiInstance;
 
+    // เพิ่มการรอหา InputController
+    private bool inputControllerFound = false;
+
     private void Start()
     {
         Debug.Log("CombatUIManager Start");
         CreateCombatUIFromPrefab();
 
-        // หา InputController และอัพเดท joystick references
-        inputController = FindObjectOfType<SingleInputController>();
-        if (inputController != null)
+        // ใช้ Coroutine เพื่อหา InputController
+        StartCoroutine(FindInputControllerRoutine());
+    }
+
+    // เพิ่ม Coroutine สำหรับหา InputController
+    private IEnumerator FindInputControllerRoutine()
+    {
+        float timeout = 5f; // รอสูงสุด 5 วินาที
+        float elapsed = 0f;
+
+        while (inputController == null && elapsed < timeout)
         {
-            inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
-            Debug.Log("Updated InputController with new joystick references");
+            inputController = FindObjectOfType<SingleInputController>();
+
+            if (inputController != null)
+            {
+                Debug.Log("InputController found!");
+                inputControllerFound = true;
+
+                // อัพเดท joystick references
+                inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
+
+                // Setup button events
+                SetupButtonEvents();
+                break;
+            }
+
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        if (inputController == null)
+        {
+            Debug.LogError("InputController not found after timeout!");
         }
     }
 
@@ -68,25 +97,20 @@ public class CombatUIManager : MonoBehaviour
             safeAreaRect.offsetMax = Vector2.zero;
 
             safeArea = safeAreaRect;
-            Debug.Log("Created SafeArea");
         }
 
         uiInstance = Instantiate(combatUIPrefab, safeArea);
         Debug.Log($"UI Instance created: {uiInstance.name}");
 
         SetupUIReferences();
-        SetupButtonEvents();
+        // ไม่เรียก SetupButtonEvents() ที่นี่ เพราะจะเรียกใน Coroutine
     }
 
     private void SetupUIReferences()
     {
-        if (uiInstance == null)
-        {
-            Debug.LogError("UI Instance is null!");
-            return;
-        }
+        if (uiInstance == null) return;
 
-        // หา UI elements โดยใช้วิธีที่มั่นใจกว่า
+        // หา UI elements
         attackButton = FindUIComponent<Button>("AttackButton");
         skill1Button = FindUIComponent<Button>("Skill1Button");
         skill2Button = FindUIComponent<Button>("Skill2Button");
@@ -97,11 +121,9 @@ public class CombatUIManager : MonoBehaviour
         healthText = FindUIComponent<Text>("HealthText");
         manaText = FindUIComponent<Text>("ManaText");
 
-        // หา Joysticks
         movementJoystick = FindUIComponent<FixedJoystick>("JoystickCharacter");
         cameraJoystick = FindUIComponent<FixedJoystick>("CameraJoystick");
 
-        // Debug log
         Debug.Log($"UI Setup Results:");
         Debug.Log($"- Attack Button: {attackButton != null}");
         Debug.Log($"- Health Bar: {healthBar != null}");
@@ -112,34 +134,20 @@ public class CombatUIManager : MonoBehaviour
 
     private T FindUIComponent<T>(string name) where T : Component
     {
-        // วิธีที่ 1: หาจาก direct child
         Transform directChild = uiInstance.transform.Find(name);
         if (directChild != null)
         {
             T component = directChild.GetComponent<T>();
-            if (component != null)
-            {
-                Debug.Log($"Found {name} as direct child");
-                return component;
-            }
+            if (component != null) return component;
         }
 
-        // วิธีที่ 2: หาจาก children ทั้งหมด
         T[] allComponents = uiInstance.GetComponentsInChildren<T>(true);
         foreach (T comp in allComponents)
         {
             if (comp.gameObject.name == name)
             {
-                Debug.Log($"Found {name} in children");
                 return comp;
             }
-        }
-
-        // วิธีที่ 3: หาจาก type เฉพาะกรณีที่มีตัวเดียว
-        if (allComponents.Length == 1)
-        {
-            Debug.Log($"Found single {typeof(T).Name} component, assuming it's {name}");
-            return allComponents[0];
         }
 
         Debug.LogWarning($"Could not find {name} of type {typeof(T).Name}");
@@ -150,12 +158,14 @@ public class CombatUIManager : MonoBehaviour
     {
         if (inputController == null)
         {
-            Debug.LogError("InputController not found!");
+            Debug.LogError("InputController still not found when setting up buttons!");
             return;
         }
 
         if (attackButton != null)
         {
+            // ลบ listener เก่าก่อน (ป้องกันการ add ซ้ำ)
+            attackButton.onClick.RemoveAllListeners();
             attackButton.onClick.AddListener(() => {
                 Debug.Log("Attack button pressed");
                 inputController.SetAttackPressed();
@@ -165,30 +175,48 @@ public class CombatUIManager : MonoBehaviour
 
         if (skill1Button != null)
         {
+            skill1Button.onClick.RemoveAllListeners();
             skill1Button.onClick.AddListener(() => {
                 Debug.Log("Skill1 button pressed");
                 inputController.SetSkill1Pressed();
             });
+            Debug.Log("Skill1 button event setup complete");
         }
 
         if (skill2Button != null)
         {
+            skill2Button.onClick.RemoveAllListeners();
             skill2Button.onClick.AddListener(() => {
                 Debug.Log("Skill2 button pressed");
                 inputController.SetSkill2Pressed();
             });
+            Debug.Log("Skill2 button event setup complete");
         }
     }
 
     public void SetLocalHero(Hero hero)
     {
         localHero = hero;
-        Debug.Log($"Local hero set: {hero.CharacterName}");
+        Debug.Log($"Local hero set: {hero.CharacterName} - HP: {hero.CurrentHp}/{hero.MaxHp}");
         UpdateUI();
     }
 
     private void Update()
     {
+        // หา InputController ถ้ายังไม่เจอ
+        if (!inputControllerFound && inputController == null)
+        {
+            inputController = FindObjectOfType<SingleInputController>();
+            if (inputController != null)
+            {
+                inputControllerFound = true;
+                inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
+                SetupButtonEvents();
+                Debug.Log("InputController found in Update!");
+            }
+        }
+
+        // อัพเดท UI
         if (localHero != null)
         {
             UpdateUI();

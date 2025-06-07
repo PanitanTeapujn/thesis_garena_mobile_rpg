@@ -35,10 +35,14 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
 
         instance = this;
         DontDestroyOnLoad(gameObject);
+        Debug.Log("SingleInputController created and set as singleton");
+
     }
 
     private void Start()
     {
+        Debug.Log("SingleInputController Start");
+
         runner = FindObjectOfType<NetworkRunner>();
         FindJoysticks();
     }

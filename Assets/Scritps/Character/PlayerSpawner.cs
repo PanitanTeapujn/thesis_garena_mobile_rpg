@@ -56,17 +56,31 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         // Setup Screen Space UI (เฉพาะ local player)
         if (hero.HasInputAuthority)
         {
+            Debug.Log($"Setting up Combat UI for local player: {hero.CharacterName}");
+
+            // หา CombatUIManager ที่มีอยู่แล้ว หรือสร้างใหม่
             CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
 
             if (combatUI == null && combatUIManagerPrefab != null)
             {
                 combatUI = Instantiate(combatUIManagerPrefab);
+                Debug.Log("Created new CombatUIManager from prefab");
+            }
+            else if (combatUI == null)
+            {
+                // สร้าง GameObject ใหม่
+                GameObject uiManagerObj = new GameObject("CombatUIManager");
+                combatUI = uiManagerObj.AddComponent<CombatUIManager>();
+                Debug.Log("Created new CombatUIManager component");
             }
 
             if (combatUI != null)
             {
-                combatUI.SetLocalHero(hero);
+                // รอสักครู่แล้วค่อย set hero เพื่อให้ UI setup เสร็จก่อน
+                StartCoroutine(SetHeroAfterDelay(combatUI, hero));
             }
+
+            Debug.Log("Combat UI setup completed for local player");
         }
 
         // Setup World Space UI (ทุกคน)
@@ -79,6 +93,14 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
                 worldSpaceUI.Initialize(hero);
             }
         }
+    }
+    private IEnumerator SetHeroAfterDelay(CombatUIManager combatUI, Hero hero)
+    {
+        // รอให้ CombatUIManager setup เสร็จ
+        yield return new WaitForSeconds(0.5f);
+
+        combatUI.SetLocalHero(hero);
+        Debug.Log($"Hero set to CombatUIManager after delay: {hero.CharacterName}");
     }
     private void Update()
     {
