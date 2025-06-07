@@ -9,7 +9,7 @@ public class NetworkRunnerHandler : MonoBehaviour
     public NetworkRunner runnerPrefab;
     private PlayerSpawner _spawner;
     private SingleInputController _inputController;
-
+    public GameObject enemySpawnerPrefab;
     private async void Start()
     {
         // หา PlayerSpawner
@@ -39,11 +39,6 @@ public class NetworkRunnerHandler : MonoBehaviour
         runner.AddCallbacks(_spawner);
         runner.AddCallbacks(_inputController);
 
-        Debug.Log($"Added {_spawner.name} and SingleInputController as callbacks to {runner.name}");
-
-        // ต้องเปิด ProvideInput เพื่อให้ส่ง input ได้
-        runner.ProvideInput = true;
-
         var startGameArgs = new StartGameArgs()
         {
             GameMode = GameMode.AutoHostOrClient,
@@ -57,13 +52,31 @@ public class NetworkRunnerHandler : MonoBehaviour
         {
             await runner.StartGame(startGameArgs);
             Debug.Log($"Game started successfully - IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
+
+            // ย้ายการ spawn EnemySpawner มาหลัง StartGame
+            if (runner.IsServer)
+            {
+                Debug.Log("Running as Server - Setting up EnemySpawner");
+                SetupEnemySpawner(runner);
+            }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"Error starting game: {e.Message}");
         }
     }
-
+    private void SetupEnemySpawner(NetworkRunner runner)
+    {
+        if (enemySpawnerPrefab != null)
+        {
+            Debug.Log("Spawning EnemySpawner from prefab");
+            runner.Spawn(enemySpawnerPrefab);
+        }
+        else
+        {
+            Debug.LogError("EnemySpawner prefab not assigned!");
+        }
+    }
     public void LoadScene(string sceneName)
     {
         UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);

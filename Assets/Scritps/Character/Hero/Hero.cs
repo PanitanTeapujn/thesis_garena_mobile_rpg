@@ -39,7 +39,7 @@ public class Hero : Character
     {
         base.Start();
         InitializeCombat();
-        Debug.Log($"[SPAWNED] {gameObject.name} - Input: {HasInputAuthority}, State: {HasStateAuthority}");
+       // Debug.Log($"[SPAWNED] {gameObject.name} - Input: {HasInputAuthority}, State: {HasStateAuthority}");
 
         // กำหนดค่าเริ่มต้นของ scale
         NetworkedScale = transform.localScale;
@@ -342,7 +342,7 @@ public class Hero : Character
     // ========== Fusion Methods ==========
     public override void Spawned()
     {
-        Debug.Log($"[NETWORK SPAWNED] {gameObject.name} on {Runner.LocalPlayer}, Object ID: {Object.Id}");
+      //  Debug.Log($"[NETWORK SPAWNED] {gameObject.name} on {Runner.LocalPlayer}, Object ID: {Object.Id}");
     }
 
     public override void Render()

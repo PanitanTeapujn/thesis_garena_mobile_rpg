@@ -16,7 +16,7 @@ public class NetworkPlayerManager : NetworkBehaviour
         if (HasInputAuthority)
         {
             localInstance = this;
-            Debug.Log($"NetworkPlayerManager spawned for local player. IsServer: {Runner.IsServer}");
+         //   Debug.Log($"NetworkPlayerManager spawned for local player. IsServer: {Runner.IsServer}");
 
             // ถ้าเป็น Client ให้รอ 1 frame แล้วค่อยส่ง RPC
             if (!Runner.IsServer)

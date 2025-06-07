@@ -89,7 +89,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
+       // Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
 
         _runner = runner;
 
@@ -116,7 +116,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
                 if (manager != null)
                 {
                     playerManagers[player] = manager;
-                    Debug.Log($"NetworkPlayerManager spawned for player {player}");
+                  //  Debug.Log($"NetworkPlayerManager spawned for player {player}");
                 }
             }
         }
@@ -144,7 +144,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
         string spawnKey = $"{player}_{Time.time}";
 
-        Debug.Log($"[DELAYED SPAWN] Starting for {player}, Key: {spawnKey}");
+      //  Debug.Log($"[DELAYED SPAWN] Starting for {player}, Key: {spawnKey}");
 
         // ตรวจสอบว่ามี request ซ้ำหรือไม่
         if (spawnRequests.Contains(player.ToString()))
@@ -169,8 +169,8 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
         // ใช้ runner ที่หาได้ล่าสุด
         NetworkRunner currentRunner = _runner;
-        Debug.Log($"[SPAWN] Attempting to spawn for {player}, Already spawned: {spawnedCharacters.ContainsKey(player)}");
-        Debug.Log($"[SPAWN] Called for {player}, Stack: {System.Environment.StackTrace}");
+     //   Debug.Log($"[SPAWN] Attempting to spawn for {player}, Already spawned: {spawnedCharacters.ContainsKey(player)}");
+       // Debug.Log($"[SPAWN] Called for {player}, Stack: {System.Environment.StackTrace}");
 
         if (spawnedCharacters.ContainsKey(player))
         {
@@ -359,7 +359,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         }
         else
         {
-            Debug.Log($"{characterName} prefab has NetworkObject component");
+          //  Debug.Log($"{characterName} prefab has NetworkObject component");
         }
 
         // ตรวจสอบ Character component (Hero หรือ sub-class)

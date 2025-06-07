@@ -1,7 +1,8 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
+using Fusion.Sockets;
 
 public class EnemySpawner : NetworkBehaviour
 {
@@ -16,7 +17,18 @@ public class EnemySpawner : NetworkBehaviour
 
     private float nextSpawnTime = 0f;
     private List<NetworkEnemy> activeEnemies = new List<NetworkEnemy>();
-
+    private void Start()
+    {
+        // ถ้ายังไม่มี Runner reference ให้หา
+        if (Runner == null)
+        {
+            var networkRunner = FindObjectOfType<NetworkRunner>();
+            if (networkRunner != null)
+            {
+                Debug.Log("EnemySpawner found NetworkRunner");
+            }
+        }
+    }
     public override void FixedUpdateNetwork()
     {
         // Only Host/Server spawns enemies
@@ -90,4 +102,5 @@ public class EnemySpawner : NetworkBehaviour
             }
         }
     }
+   
 }
