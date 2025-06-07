@@ -48,6 +48,15 @@ public class Hero : Character
     public float moveInputX;
     public float moveInputZ;
 
+    [Header("Movement Settings")]
+    private float movementDeadZone = 0.2f; // Dead zone สำหรับ movement input
+    private Vector2 lastMovementInput = Vector2.zero;
+    private Vector3 lastVelocity = Vector3.zero;
+    private float movementSmoothTime = 0.1f;
+
+    [Header("Rotation Settings")]
+    private float lastYRotation = 0f;
+    private float rotationThreshold = 2f; // threshold สำหรับการเปลี่ยน rotation
     [Header("Skill Cooldowns")]
     public float skill1Cooldown = 1f;
     public float skill2Cooldown = 1f;
@@ -59,17 +68,14 @@ public class Hero : Character
     private float nextSkill3Time = 0f;
     private float nextSkill4Time = 0f;
 
-    private bool prevAttack = false;
-    private bool prevSkill1 = false;
-    private bool prevSkill2 = false;
-    private bool prevSkill3 = false;
-    private bool prevSkill4 = false;
+  
     protected override void Start()
     {
         base.Start();
         InitializeCombat();
-       // Debug.Log($"[SPAWNED] {gameObject.name} - Input: {HasInputAuthority}, State: {HasStateAuthority}");
-
+        // Debug.Log($"[SPAWNED] {gameObject.name} - Input: {HasInputAuthority}, State: {HasStateAuthority}");
+        SetRotationThreshold(3f);
+        SetMovementDeadZone(0.1f);
         // กำหนดค่าเริ่มต้นของ scale
         NetworkedScale = transform.localScale;
 
@@ -261,6 +267,14 @@ public class Hero : Character
         if (!HasInputAuthority) return;
 
         Vector3 moveDirection = Vector3.zero;
+        Vector2 currentInput = networkInputData.movementInput;
+
+        // ลด dead zone ให้เหมาะสม และใช้เฉพาะ magnitude
+        float inputMagnitude = currentInput.magnitude;
+        if (inputMagnitude < 0.15f) // ลดจาก 0.2 เป็น 0.15
+        {
+            currentInput = Vector2.zero; // ใส่ zero หากน้อยกว่า dead zone
+        }
 
         if (cameraTransform != null)
         {
@@ -271,36 +285,57 @@ public class Hero : Character
             camForward.Normalize();
             camRight.Normalize();
 
-            moveDirection = camForward * networkInputData.movementInput.y +
-                           camRight * networkInputData.movementInput.x;
+            moveDirection = camForward * currentInput.y + camRight * currentInput.x;
         }
 
         if (rb != null)
         {
             if (moveDirection.magnitude > 0.1f)
             {
-                Vector3 newVelocity = new Vector3(
+                Vector3 targetVelocity = new Vector3(
                     moveDirection.x * MoveSpeed,
                     rb.velocity.y,
                     moveDirection.z * MoveSpeed
                 );
 
+                // ใช้ Lerp แทน SmoothDamp เพื่อความง่าย
+                Vector3 newVelocity = Vector3.Lerp(
+                    rb.velocity,
+                    targetVelocity,
+                    Time.fixedDeltaTime * 15f // ปรับความเร็วการ lerp
+                );
+
+                // เซ็ต velocity เสมอเมื่อมีการเคลื่อนไหว
                 rb.velocity = newVelocity;
-                FlipCharacterNetwork(networkInputData.movementInput.x);
+                FlipCharacterNetwork(currentInput.x);
             }
             else
             {
-                // Smooth stop แทนการหยุดทันที
+                // Smooth stop
                 Vector3 currentVel = rb.velocity;
-                rb.velocity = new Vector3(
+                Vector3 stoppedVelocity = new Vector3(
                     Mathf.Lerp(currentVel.x, 0, Time.fixedDeltaTime * 10f),
                     currentVel.y,
                     Mathf.Lerp(currentVel.z, 0, Time.fixedDeltaTime * 10f)
                 );
+
+                rb.velocity = stoppedVelocity;
             }
         }
+
+        // เก็บค่า input ล่าสุด
+        lastMovementInput = currentInput;
     }
 
+    public void SetMovementDeadZone(float deadZone)
+    {
+        movementDeadZone = Mathf.Clamp(deadZone, 0.1f, 0.5f);
+    }
+
+    public void SetMovementSmoothTime(float smoothTime)
+    {
+        movementSmoothTime = Mathf.Clamp(smoothTime, 0.05f, 0.3f);
+    }
     protected virtual void ProcessCameraRotation()
     {
         if (!HasInputAuthority || cameraTransform == null) return;
@@ -322,13 +357,33 @@ public class Hero : Character
 
         if (lookDir != Vector3.zero)
         {
-            transform.rotation = Quaternion.LookRotation(lookDir);
-            NetworkedYRotation = transform.eulerAngles.y;
+            // คำนวณ target rotation
+            Quaternion targetRotation = Quaternion.LookRotation(lookDir);
+            float targetYRotation = targetRotation.eulerAngles.y;
+
+            // ตรวจสอบความแตกต่างของ rotation
+            float rotationDifference = Mathf.DeltaAngle(lastYRotation, targetYRotation);
+
+            // อัพเดท rotation เฉพาะเมื่อมีการเปลี่ยนแปลงที่ชัดเจน
+            if (Mathf.Abs(rotationDifference) > rotationThreshold)
+            {
+                // ใช้ Lerp เพื่อ smooth rotation แทนการเซ็ตตรงๆ
+                transform.rotation = Quaternion.Lerp(
+                    transform.rotation,
+                    targetRotation,
+                    Time.fixedDeltaTime * 8f
+                );
+
+                NetworkedYRotation = transform.eulerAngles.y;
+                lastYRotation = NetworkedYRotation;
+            }
         }
     }
 
     protected void FlipCharacterNetwork(float horizontalInput)
     {
+        // เก็บ rotation ปัจจุบันไว้
+        Quaternion currentRotation = transform.rotation;
         Vector3 newScale = transform.localScale;
 
         if (horizontalInput > 0.1f)
@@ -343,6 +398,13 @@ public class Hero : Character
         }
 
         transform.localScale = newScale;
+
+        // คืนค่า rotation เพื่อป้องกันการเปลี่ยนแปลงจาก scale
+        transform.rotation = currentRotation;
+    }
+    public void SetRotationThreshold(float threshold)
+    {
+        rotationThreshold = Mathf.Clamp(threshold, 1f, 10f);
     }
 
     // ========== Original Methods (Non-Network) ==========
@@ -351,12 +413,7 @@ public class Hero : Character
         base.Update();
 
         // Camera follow สำหรับ local player
-        if (HasInputAuthority && cameraTransform != null)
-        {
-            Vector3 desiredPosition = transform.position + Quaternion.AngleAxis(currentCameraAngle, Vector3.up) * cameraOffset;
-            cameraTransform.position = Vector3.Lerp(cameraTransform.position, desiredPosition, Time.deltaTime * 5f);
-            cameraTransform.LookAt(transform.position);
-        }
+       
     }
 
     public void Move(Vector3 moveDirection)
