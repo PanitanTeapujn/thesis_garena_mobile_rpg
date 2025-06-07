@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8be475e45e1e9254ca6be9e8a24b20f3, type: 3}
+  m_Name: Steel Leggings
+  m_EditorClassIdentifier: 
+  itemName: Steel Leggings
+  itemId: steel_leggings
+  description: Heavy steel leg protection
+  icon: {fileID: 0}
+  itemType: 1
+  rarity: 2
+  isStackable: 0
+  maxStackSize: 1
+  equipmentType: 3
+  stats:
+    attackDamage: 0
+    armor: 15
+    maxHp: 35
+    maxMana: 0
+    moveSpeed: -0.05
+    attackSpeed: 0
+    criticalChance: 0
+    criticalDamage: 0
+  healAmount: 0
+  manaAmount: 0
+  buffDuration: 0
+  buyPrice: 160
+  sellPrice: 80
