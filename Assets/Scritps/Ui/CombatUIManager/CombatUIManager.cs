@@ -12,7 +12,9 @@ public class CombatUIManager : MonoBehaviour
     [Header("UI References")]
     public Button attackButton;
     public Button skill1Button;
-    public Button skill2Button;
+    public Button skill2Button; 
+    public Button skill3Button;
+    public Button skill4Button;
     public Slider healthBar;
     public Slider manaBar;
     public Text healthText;
@@ -114,6 +116,8 @@ public class CombatUIManager : MonoBehaviour
         attackButton = FindUIComponent<Button>("AttackButton");
         skill1Button = FindUIComponent<Button>("Skill1Button");
         skill2Button = FindUIComponent<Button>("Skill2Button");
+        skill3Button = FindUIComponent<Button>("Skill3Button");
+        skill4Button = FindUIComponent<Button>("Skill4Button");
 
         healthBar = FindUIComponent<Slider>("HealthBar");
         manaBar = FindUIComponent<Slider>("ManaBar");
@@ -191,6 +195,25 @@ public class CombatUIManager : MonoBehaviour
                 inputController.SetSkill2Pressed();
             });
             Debug.Log("Skill2 button event setup complete");
+        } 
+        
+        if (skill3Button != null)
+        {
+            skill3Button.onClick.RemoveAllListeners();
+            skill3Button.onClick.AddListener(() => {
+                Debug.Log("Skill3 button pressed");
+                inputController.SetSkill3Pressed();
+            });
+            Debug.Log("Skill3 button event setup complete");
+        }
+        if (skill4Button != null)
+        {
+            skill4Button.onClick.RemoveAllListeners();
+            skill4Button.onClick.AddListener(() => {
+                Debug.Log("Skill4 button pressed");
+                inputController.SetSkill4Pressed();
+            });
+            Debug.Log("Skill4 button event setup complete");
         }
     }
 

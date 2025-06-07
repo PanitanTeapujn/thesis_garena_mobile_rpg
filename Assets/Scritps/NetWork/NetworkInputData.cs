@@ -13,7 +13,9 @@ public struct NetworkInputData : INetworkInput
     // ข้อมูลการกระทำ
     public NetworkBool attack;         // ปุ่มโจมตี
     public NetworkBool skill1;
-    public NetworkBool skill2;
+    public NetworkBool skill2; 
+    public NetworkBool skill3;
+    public NetworkBool skill4;
     public NetworkBool dodge;
 
     // ข้อมูลเพิ่มเติม

@@ -16,11 +16,15 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
 
     private bool attackPressed = false;
     private bool skill1Pressed = false;
-    private bool skill2Pressed = false;
+    private bool skill2Pressed = false; 
+    private bool skill3Pressed = false;
+    private bool skill4Pressed = false;
 
     private float attackPressedTime = 0f;
     private float skill1PressedTime = 0f;
     private float skill2PressedTime = 0f;
+    private float skill3PressedTime = 0f;
+    private float skill4PressedTime = 0f;
 
     private const float buttonPressDuration = 0.1f;
 
@@ -99,7 +103,6 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         if (!runner.IsRunning)
             return;
 
-        // ถ้ายังไม่มี Joystick ให้หาใหม่
         if (movementJoystick == null || cameraJoystick == null)
         {
             FindJoysticks();
@@ -134,13 +137,24 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         {
             skill2Pressed = false;
         }
+        if (skill3Pressed && Time.time - skill3PressedTime > buttonPressDuration)
+        {
+            skill3Pressed = false;
+        }
+        if (skill4Pressed && Time.time - skill4PressedTime > buttonPressDuration)
+        {
+            skill4Pressed = false;
+        }
 
-        // Set input
+        // Set input states - แต่ละสกิลทำงานอิสระ
         localInput.attack = attackPressed;
         localInput.skill1 = skill1Pressed;
         localInput.skill2 = skill2Pressed;
+        localInput.skill3 = skill3Pressed;
+        localInput.skill4 = skill4Pressed;
     }
 
+   
     public void SetAttackPressed()
     {
         attackPressed = true;
@@ -160,6 +174,18 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         skill2Pressed = true;
         skill2PressedTime = Time.time;
         Debug.Log("Skill2 input set");
+    }  
+    public void SetSkill3Pressed()
+    {
+        skill3Pressed = true;
+        skill3PressedTime = Time.time;
+        Debug.Log("Skill3 input set");
+    } 
+    public void SetSkill4Pressed()
+    {
+        skill4Pressed = true;
+        skill4PressedTime = Time.time;
+        Debug.Log("Skill4 input set");
     }
 
     public void OnInput(NetworkRunner runner, NetworkInput input)
@@ -172,11 +198,20 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (runner != null && runner.IsRunning)
         {
-            GUI.Label(new Rect(10, 70, 300, 20), $"Input System Active - Runner: {runner.name}");
-            GUI.Label(new Rect(10, 90, 300, 20), $"Movement: {localInput.movementInput}");
-            GUI.Label(new Rect(10, 110, 300, 20), $"Camera: {localInput.cameraRotationInput}");
-            GUI.Label(new Rect(10, 130, 300, 20), $"Attack: {localInput.attack}");
-            GUI.Label(new Rect(10, 150, 300, 20), $"Joysticks: Move={movementJoystick != null}, Cam={cameraJoystick != null}");
+            GUI.Label(new Rect(10, 70, 400, 20), $"Input System Active");
+            GUI.Label(new Rect(10, 90, 400, 20), $"Movement: {localInput.movementInput}");
+            GUI.Label(new Rect(10, 110, 400, 20), $"Camera: {localInput.cameraRotationInput}");
+            GUI.Label(new Rect(10, 130, 400, 20), $"Attack: {localInput.attack}");
+            GUI.Label(new Rect(10, 150, 400, 20), $"Skills: S1={localInput.skill1} S2={localInput.skill2} S3={localInput.skill3} S4={localInput.skill4}");
+
+            // แสดงปุ่มที่กดค้างอยู่
+            string pressedButtons = "";
+            if (attackPressed) pressedButtons += "ATK ";
+            if (skill1Pressed) pressedButtons += "S1 ";
+            if (skill2Pressed) pressedButtons += "S2 ";
+            if (skill3Pressed) pressedButtons += "S3 ";
+            if (skill4Pressed) pressedButtons += "S4 ";
+            GUI.Label(new Rect(10, 170, 400, 20), $"Pressed: {pressedButtons}");
         }
     }
 

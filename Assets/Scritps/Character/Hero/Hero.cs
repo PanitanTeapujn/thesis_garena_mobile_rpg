@@ -26,6 +26,11 @@ public class Hero : Character
     // Network input data
     protected NetworkInputData networkInputData;
     protected float currentCameraAngle = 0f;
+    private NetworkInputData prevInputData;
+    private bool skill1Consumed = false;
+    private bool skill2Consumed = false;
+    private bool skill3Consumed = false;
+    private bool skill4Consumed = false;
 
     // ========== Camera Properties ==========
     [Header("Camera")]
@@ -34,10 +39,31 @@ public class Hero : Character
     public float cameraRotationSpeed = 50f;
     public Vector3 cameraOffset = new Vector3(0, 12, -13);
 
+    public float cameraFollowSpeed = 8f;
+    public float cameraRotationSmoothTime = 0.1f;
+    private Vector3 cameraVelocity;
+    private Vector3 lastPlayerPosition;
+
     [Header("Move")]
     public float moveInputX;
     public float moveInputZ;
 
+    [Header("Skill Cooldowns")]
+    public float skill1Cooldown = 1f;
+    public float skill2Cooldown = 1f;
+    public float skill3Cooldown = 1f;
+    public float skill4Cooldown = 1f;
+
+    private float nextSkill1Time = 0f;
+    private float nextSkill2Time = 0f;
+    private float nextSkill3Time = 0f;
+    private float nextSkill4Time = 0f;
+
+    private bool prevAttack = false;
+    private bool prevSkill1 = false;
+    private bool prevSkill2 = false;
+    private bool prevSkill3 = false;
+    private bool prevSkill4 = false;
     protected override void Start()
     {
         base.Start();
@@ -52,6 +78,48 @@ public class Hero : Character
         {
             cameraTransform = Camera.main?.transform;
         }
+    }
+    private void LateUpdate()
+    {
+        // Camera logic เฉพาะ local player
+        if (HasInputAuthority && cameraTransform != null)
+        {
+            UpdateCameraSmooth();
+        }
+    }
+    private void UpdateCameraSmooth()
+    {
+        // ใช้ position ที่ smooth แล้ว
+        Vector3 targetPosition = transform.position;
+
+        // Smooth position changes เพื่อลด jitter
+        if (Vector3.Distance(lastPlayerPosition, targetPosition) > 0.01f)
+        {
+            lastPlayerPosition = Vector3.Lerp(lastPlayerPosition, targetPosition, Time.deltaTime * cameraFollowSpeed);
+        }
+
+        // คำนวณ camera position ที่ต้องการ
+        Quaternion cameraRotation = Quaternion.AngleAxis(currentCameraAngle, Vector3.up);
+        Vector3 desiredPosition = lastPlayerPosition + cameraRotation * cameraOffset;
+
+        // Smooth camera movement
+        cameraTransform.position = Vector3.SmoothDamp(
+            cameraTransform.position,
+            desiredPosition,
+            ref cameraVelocity,
+            cameraRotationSmoothTime
+        );
+
+        // Smooth camera look at
+        Vector3 lookTarget = lastPlayerPosition + Vector3.up * 1.5f; // เพิ่มความสูงเล็กน้อย
+        Vector3 targetDirection = (lookTarget - cameraTransform.position).normalized;
+        Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
+
+        cameraTransform.rotation = Quaternion.Slerp(
+            cameraTransform.rotation,
+            targetRotation,
+            Time.deltaTime * cameraFollowSpeed
+        );
     }
     private void InitializeCombat()
     {
@@ -222,7 +290,13 @@ public class Hero : Character
             }
             else
             {
-                rb.velocity = new Vector3(0, rb.velocity.y, 0);
+                // Smooth stop แทนการหยุดทันที
+                Vector3 currentVel = rb.velocity;
+                rb.velocity = new Vector3(
+                    Mathf.Lerp(currentVel.x, 0, Time.fixedDeltaTime * 10f),
+                    currentVel.y,
+                    Mathf.Lerp(currentVel.z, 0, Time.fixedDeltaTime * 10f)
+                );
             }
         }
     }
@@ -233,13 +307,9 @@ public class Hero : Character
 
         if (Mathf.Abs(networkInputData.cameraRotationInput) > 0.1f)
         {
-            currentCameraAngle += networkInputData.cameraRotationInput * cameraRotationSpeed * Runner.DeltaTime;
-
-            Quaternion rotation = Quaternion.AngleAxis(currentCameraAngle, Vector3.up);
-            Vector3 rotatedOffset = rotation * new Vector3(0, 10, -10);
-
-            cameraTransform.position = transform.position + rotatedOffset;
-            cameraTransform.LookAt(transform.position);
+            // ลด sensitivity เล็กน้อยเพื่อให้ smooth
+            float rotationSpeed = cameraRotationSpeed * 0.7f;
+            currentCameraAngle += networkInputData.cameraRotationInput * rotationSpeed * Runner.DeltaTime;
         }
     }
 
@@ -370,46 +440,122 @@ public class Hero : Character
     }
 
     #region Combat
+
     protected virtual void ProcessClassSpecificAbilities()
     {
         if (HasInputAuthority)
         {
             if (GetInput(out networkInputData))
             {
-                if (networkInputData.attack)
+                // Reset consumed flags เมื่อ input เป็น false
+                if (!networkInputData.skill1) skill1Consumed = false;
+                if (!networkInputData.skill2) skill2Consumed = false;
+                if (!networkInputData.skill3) skill3Consumed = false;
+                if (!networkInputData.skill4) skill4Consumed = false;
+
+                // เช็ค Attack
+                if (networkInputData.attack && Time.time >= nextAttackTime)
                 {
                     TryAttack();
+                    nextAttackTime = Time.time + AttackCooldown;
                 }
-                if (networkInputData.skill1)
+
+                // เช็ค Skills พร้อม consumed flag และ cooldown
+                if (networkInputData.skill1 && !skill1Consumed)
                 {
-                    TryUseSkill1();
+                    if (Time.time >= nextSkill1Time)
+                    {
+                        TryUseSkill1();
+                        nextSkill1Time = Time.time + skill1Cooldown;
+                        skill1Consumed = true;
+                        Debug.Log($"Skill1 used! Next available at: {nextSkill1Time:F2} (cooldown: {skill1Cooldown}s)");
+                    }
+                    else
+                    {
+                        float remainingCooldown = nextSkill1Time - Time.time;
+                        Debug.Log($"Skill1 on cooldown! {remainingCooldown:F1}s remaining");
+                    }
                 }
-                if (networkInputData.skill2)
+
+                if (networkInputData.skill2 && !skill2Consumed)
                 {
-                    TryUseSkill2();
+                    if (Time.time >= nextSkill2Time)
+                    {
+                        TryUseSkill2();
+                        nextSkill2Time = Time.time + skill2Cooldown;
+                        skill2Consumed = true;
+                        Debug.Log($"Skill2 used! Next available at: {nextSkill2Time:F2} (cooldown: {skill2Cooldown}s)");
+                    }
+                    else
+                    {
+                        float remainingCooldown = nextSkill2Time - Time.time;
+                        Debug.Log($"Skill2 on cooldown! {remainingCooldown:F1}s remaining");
+                    }
+                }
+
+                if (networkInputData.skill3 && !skill3Consumed)
+                {
+                    if (Time.time >= nextSkill3Time)
+                    {
+                        TryUseSkill3();
+                        nextSkill3Time = Time.time + skill3Cooldown;
+                        skill3Consumed = true;
+                        Debug.Log($"Skill3 used! Next available at: {nextSkill3Time:F2} (cooldown: {skill3Cooldown}s)");
+                    }
+                    else
+                    {
+                        float remainingCooldown = nextSkill3Time - Time.time;
+                        Debug.Log($"Skill3 on cooldown! {remainingCooldown:F1}s remaining");
+                    }
+                }
+
+                if (networkInputData.skill4 && !skill4Consumed)
+                {
+                    if (Time.time >= nextSkill4Time)
+                    {
+                        TryUseSkill4();
+                        nextSkill4Time = Time.time + skill4Cooldown;
+                        skill4Consumed = true;
+                        Debug.Log($"Skill4 used! Next available at: {nextSkill4Time:F2} (cooldown: {skill4Cooldown}s)");
+                    }
+                    else
+                    {
+                        float remainingCooldown = nextSkill4Time - Time.time;
+                        Debug.Log($"Skill4 on cooldown! {remainingCooldown:F1}s remaining");
+                    }
                 }
             }
         }
 
-        // Sync health
+        // Sync health and mana
         if (HasStateAuthority)
         {
             NetworkedCurrentHp = CurrentHp;
             NetworkedCurrentMana = CurrentMana;
-
         }
-        // Override ใน class ลูกสำหรับ abilities เฉพาะ
     }
     protected virtual void TryUseSkill1()
     {
-        // Override ใน subclass
-        Debug.Log("Skill 1 used");
+        Debug.Log($"=== SKILL 1 EXECUTED at {Time.time:F2} ===");
+        UseMana(10); // ตัวอย่างการใช้ mana
     }
 
     protected virtual void TryUseSkill2()
     {
-        // Override ใน subclass  
-        Debug.Log("Skill 2 used");
+        Debug.Log($"=== SKILL 2 EXECUTED at {Time.time:F2} ===");
+        UseMana(15);
+    }
+
+    protected virtual void TryUseSkill3()
+    {
+        Debug.Log($"=== SKILL 3 EXECUTED at {Time.time:F2} ===");
+        UseMana(20);
+    }
+
+    protected virtual void TryUseSkill4()
+    {
+        Debug.Log($"=== SKILL 4 EXECUTED at {Time.time:F2} ===");
+        UseMana(25);
     }
     public void UseMana(int amount)
     {
