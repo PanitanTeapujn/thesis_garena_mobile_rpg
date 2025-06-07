@@ -15,6 +15,7 @@ MonoBehaviour:
   characterName: Berserker
   moveSpeed: 4
   maxHp: 500
+  maxMana: 100
   attackDamage: 27
   arrmor: 5
   attackCoolDown: 1

@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4665137723371551355
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5922742798777716565}
+  - component: {fileID: 2739373631496783188}
+  m_Layer: 0
+  m_Name: playerspawn
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5922742798777716565
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4665137723371551355}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 11.16, y: 0, z: 23.75}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2739373631496783188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4665137723371551355}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bb5137ea429542468125e3e6e4d8f41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bloodKnightPrefab: {fileID: 9004255372814543956, guid: a976eb4efccbf6c43b6016e8c610f792,
+    type: 3}
+  archerPrefab: {fileID: 9004255372814543956, guid: 666a23d7ed56f964e83c1fe926514559,
+    type: 3}
+  assassinPrefab: {fileID: 9004255372814543956, guid: d93f02d6599f17a4593d4ca316577698,
+    type: 3}
+  ironJuggernautPrefab: {fileID: 9004255372814543956, guid: 8129d076e3474ef4a8c81a3793bba620,
+    type: 3}
+  networkPlayerManagerPrefab: {fileID: 4782166870162731387, guid: c4af10e1dbb9c5f4aa2a9c2b396e8c3f,
+    type: 3}
+  combatUIManagerPrefab: {fileID: 0}
+  worldSpaceUIPrefab: {fileID: 4127338694680314456, guid: 11d9c7d7330edfa4697b54986a5f3a64,
+    type: 3}

@@ -15,6 +15,7 @@ MonoBehaviour:
   characterName: Acher
   moveSpeed: 7
   maxHp: 300
+  maxMana: 100
   attackDamage: 25
   arrmor: 3
   attackCoolDown: 1

@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 8616611362426657684}
   - component: {fileID: 7532131204607746142}
   - component: {fileID: -2050685904617345397}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Archer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -175,6 +175,8 @@ MonoBehaviour:
   characterName: 
   currentHp: 0
   maxHp: 0
+  currentMana: 0
+  maxMana: 0
   attackDamage: 0
   armor: 0
   moveSpeed: 0
@@ -183,13 +185,18 @@ MonoBehaviour:
   rb: {fileID: 3679239757140484306}
   characterRenderer: {fileID: 0}
   originalColor: {r: 0, g: 0, b: 0, a: 0}
+  _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedFlipX: 0
+  _NetworkedYRotation: 0
+  _NetworkedScale: {x: 0, y: 0, z: 0}
+  _NetworkedCurrentHp: 0
+  _NetworkedMaxHp: 0
+  _NetworkedCurrentMana: 0
+  _NetworkedMaxMana: 0
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 0}
   cameraRotationSpeed: 50
   cameraOffset: {x: 0, y: 12, z: -13}
   moveInputX: 0
   moveInputZ: 0
-  _NetworkedPosition: {x: 0, y: 0, z: 0}
-  _NetworkedVelocity: {x: 0, y: 0, z: 0}
-  _NetworkedFlipX: 0
-  _NetworkedYRotation: 0

@@ -10,14 +10,13 @@ GameObject:
   m_Component:
   - component: {fileID: 4666444454410863303}
   - component: {fileID: 3868879171586899509}
-  - component: {fileID: 7573433470289648643}
   - component: {fileID: 3679239757140484306}
   - component: {fileID: 8616611362426657684}
   - component: {fileID: 7532131204607746142}
-  - component: {fileID: 6031354943333226893}
-  - component: {fileID: -1733259182911068541}
-  m_Layer: 0
-  m_Name: BloodKinghtOnline
+  - component: {fileID: 3480378996170370022}
+  - component: {fileID: 2003741299331756152}
+  m_Layer: 6
+  m_Name: BloodKinght
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -94,48 +93,6 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &7573433470289648643
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9004255372814543956}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f8129cb5650e2bd468947868efef1769, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  characterStats: {fileID: 11400000, guid: 71494caa12fd8a14c9fd2fb8f922c03d, type: 2}
-  characterName: 
-  currentHp: 0
-  maxHp: 0
-  attackDamage: 0
-  armor: 0
-  moveSpeed: 0
-  attackRange: 0
-  attackCooldown: 0
-  rb: {fileID: 3679239757140484306}
-  characterRenderer: {fileID: 3868879171586899509}
-  originalColor: {r: 0, g: 0, b: 0, a: 0}
-  _NetworkedPosition: {x: 0, y: 0, z: 0}
-  _NetworkedVelocity: {x: 0, y: 0, z: 0}
-  _NetworkedFlipX: 0
-  _NetworkedYRotation: 0
-  _NetworkedScale: {x: 0, y: 0, z: 0}
-  _NetworkedCurrentHp: 0
-  _NetworkedMaxHp: 0
-  moveDirection: {x: 0, y: 0, z: 0}
-  cameraTransform: {fileID: 4094491500809194850, guid: 3cf8d464fcb65dd40b40433fd106348b,
-    type: 3}
-  cameraRotationSpeed: 50
-  cameraOffset: {x: 0, y: 10, z: -10}
-  moveInputX: 0
-  moveInputZ: 0
-  rageMultiplier: 1.5
-  rageDuration: 5
-  _IsRageActive: 0
-  _RageTimeRemaining: 0
 --- !u!54 &3679239757140484306
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -182,7 +139,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.84, y: 3.78, z: 0.2}
+  m_Size: {x: 2.15, y: 3.69, z: 0.2}
   m_Center: {x: 0, y: -0.39, z: 0}
 --- !u!114 &7532131204607746142
 MonoBehaviour:
@@ -196,14 +153,59 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SortKey: 255927506
+  SortKey: 1294974975
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 7573433470289648643}
+  - {fileID: 3480378996170370022}
   ForceRemoteRenderTimeframe: 0
---- !u!95 &6031354943333226893
+--- !u!114 &3480378996170370022
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8129cb5650e2bd468947868efef1769, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterStats: {fileID: 11400000, guid: 71494caa12fd8a14c9fd2fb8f922c03d, type: 2}
+  characterName: 
+  currentHp: 0
+  maxHp: 0
+  currentMana: 0
+  maxMana: 0
+  attackDamage: 0
+  armor: 0
+  moveSpeed: 0
+  attackRange: 0
+  attackCooldown: 0
+  rb: {fileID: 0}
+  characterRenderer: {fileID: 0}
+  originalColor: {r: 0, g: 0, b: 0, a: 0}
+  _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedFlipX: 0
+  _NetworkedYRotation: 0
+  _NetworkedScale: {x: 0, y: 0, z: 0}
+  _NetworkedCurrentHp: 0
+  _NetworkedMaxHp: 0
+  _NetworkedCurrentMana: 0
+  _NetworkedMaxMana: 0
+  moveDirection: {x: 0, y: 0, z: 0}
+  cameraTransform: {fileID: 0}
+  cameraRotationSpeed: 50
+  cameraOffset: {x: 0, y: 12, z: -13}
+  moveInputX: 0
+  moveInputZ: 0
+  rageMultiplier: 1.5
+  rageDuration: 5
+  _IsRageActive: 0
+  _RageTimeRemaining: 0
+--- !u!95 &2003741299331756152
 Animator:
   serializedVersion: 5
   m_ObjectHideFlags: 0
@@ -224,15 +226,3 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!114 &-1733259182911068541
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9004255372814543956}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bacd2181c61a0a347b3cd7e6928b0726, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
