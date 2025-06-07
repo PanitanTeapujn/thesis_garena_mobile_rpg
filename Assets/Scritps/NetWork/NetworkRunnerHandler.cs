@@ -77,8 +77,33 @@ public class NetworkRunnerHandler : MonoBehaviour
             Debug.LogError("EnemySpawner prefab not assigned!");
         }
     }
+    private void OnDestroy()
+    {
+        // Cleanup เมื่อ GameObject ถูกทำลาย
+        if (_spawner != null)
+        {
+            _spawner.CleanupOnGameExit();
+        }
+    }
     public void LoadScene(string sceneName)
     {
+        CleanupNetworkComponents();
         UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+    }
+    private void CleanupNetworkComponents()
+    {
+        // Shutdown NetworkRunner
+        NetworkRunner runner = FindObjectOfType<NetworkRunner>();
+        if (runner != null)
+        {
+            Debug.Log("Shutting down NetworkRunner");
+            runner.Shutdown();
+        }
+
+        // Cleanup PlayerSpawner
+        if (_spawner != null)
+        {
+            _spawner.CleanupOnGameExit();
+        }
     }
 }

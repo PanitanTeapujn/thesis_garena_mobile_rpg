@@ -89,15 +89,29 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-       // Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
+        Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
 
         _runner = runner;
 
-        // เฉพาะ Host/Server เท่านั้นที่สามารถ spawn ได้
         if (!runner.IsServer)
         {
             Debug.Log("Not server, skipping spawn");
             return;
+        }
+
+        // ตรวจสอบและลบข้อมูลเก่าของผู้เล่นนี้ (ถ้ามี)
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            Debug.Log($"Removing old character data for player {player}");
+            spawnedCharacters.Remove(player);
+        }
+        if (playerCharacters.ContainsKey(player))
+        {
+            playerCharacters.Remove(player);
+        }
+        if (playerManagers.ContainsKey(player))
+        {
+            playerManagers.Remove(player);
         }
 
         // Spawn NetworkPlayerManager สำหรับ player นี้ก่อน
@@ -116,18 +130,16 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
                 if (manager != null)
                 {
                     playerManagers[player] = manager;
-                  //  Debug.Log($"NetworkPlayerManager spawned for player {player}");
+                    Debug.Log($"NetworkPlayerManager spawned for player {player}");
                 }
             }
         }
 
-        // *** แทนที่ code เดิม ด้วย code นี้ ***
+        // Spawn character
         if (player != runner.LocalPlayer)
         {
-            // Spawn player ที่ join ใหม่
             StartCoroutine(DelayedSpawn(player));
 
-            // และ re-spawn local player ถ้ายังไม่มีใน spawnedCharacters
             if (!spawnedCharacters.ContainsKey(runner.LocalPlayer))
             {
                 Debug.Log($"[SPAWNER] Also spawning host player");
@@ -136,7 +148,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         }
         else
         {
-            // ถ้าเป็น Host spawn ตัวเอง
             StartCoroutine(DelayedSpawn(player));
         }
     }
@@ -299,80 +310,31 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             playerManagers.Remove(player);
         }
     }
-
-    // ตรวจสอบว่า prefabs มี NetworkObject หรือไม่
-    private void Start()
+    public void CleanupOnGameExit()
     {
-        // ตรวจสอบ Blood Knight
-        if (bloodKnightPrefab != null)
-        {
-            CheckPrefabComponents(bloodKnightPrefab, "Blood Knight");
-        }
-        else
-        {
-            Debug.LogError("Blood Knight prefab is not assigned!");
-        }
+        Debug.Log("Cleaning up PlayerSpawner data");
 
-        // ตรวจสอบ Archer
-        if (archerPrefab != null)
-        {
-            CheckPrefabComponents(archerPrefab, "Archer");
-        }
-        else
-        {
-            Debug.LogError("Archer prefab is not assigned!");
-        }
+        // Clear ข้อมูลทั้งหมด
+        playerCharacters.Clear();
+        playerManagers.Clear();
+        spawnedCharacters.Clear();
+        spawnRequests.Clear();
 
-        // ตรวจสอบ Assassin
-        if (assassinPrefab != null)
+        // Remove callbacks
+        if (_runner != null)
         {
-            CheckPrefabComponents(assassinPrefab, "Assassin");
-        }
-        else
-        {
-            Debug.LogError("Assassin prefab is not assigned!");
-        }
-
-        // ตรวจสอบ Iron Juggernaut
-        if (ironJuggernautPrefab != null)
-        {
-            CheckPrefabComponents(ironJuggernautPrefab, "Iron Juggernaut");
-        }
-        else
-        {
-            Debug.LogError("Iron Juggernaut prefab is not assigned!");
-        }
-
-        // ตรวจสอบ NetworkPlayerManager prefab
-        if (networkPlayerManagerPrefab == null)
-        {
-            Debug.LogError("NetworkPlayerManager prefab is not assigned!");
+            _runner.RemoveCallbacks(this);
         }
     }
-
-    private void CheckPrefabComponents(GameObject prefab, string characterName)
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
-        NetworkObject networkObject = prefab.GetComponent<NetworkObject>();
-        if (networkObject == null)
-        {
-            Debug.LogError($"{characterName} prefab does not have NetworkObject component!");
-        }
-        else
-        {
-          //  Debug.Log($"{characterName} prefab has NetworkObject component");
-        }
-
-        // ตรวจสอบ Character component (Hero หรือ sub-class)
-        Character character = prefab.GetComponent<Character>();
-        if (character == null)
-        {
-            Debug.LogError($"{characterName} prefab does not have Character component!");
-        }
+        Debug.Log($"NetworkRunner shutdown: {shutdownReason}");
+        CleanupOnGameExit();
     }
+
 
     // เมธอดที่จำเป็นต้องมีสำหรับ INetworkRunnerCallbacks
     public void OnInput(NetworkRunner runner, NetworkInput input) { }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
     public void OnDisconnectedFromServer(NetworkRunner runner) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
     public void OnConnectedToServer(NetworkRunner runner) { }

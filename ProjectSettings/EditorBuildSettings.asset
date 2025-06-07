@@ -29,4 +29,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Sceneliew/PlayRoom 2.unity
     guid: 04d896fce8747bf40aa4616a946223bc
+  - enabled: 1
+    path: Assets/Scenes/Sceneliew/LoseScene.unity
+    guid: 46d766acbb9760647b12752426b29582
   m_configObjects: {}
