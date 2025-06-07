@@ -476,7 +476,7 @@ public class Hero : Character
     {
         Debug.Log($"{CharacterName} died!");
         // Handle death logic
-        SceneManager.LoadScene("Lobby");
+        SceneManager.LoadScene("LoseScene");
 
     }
 
