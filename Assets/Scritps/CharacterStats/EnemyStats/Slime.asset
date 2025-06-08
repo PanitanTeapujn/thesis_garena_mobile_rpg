@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: Slime
   moveSpeed: 3
-  maxHp: 50
+  maxHp: 100
   maxMana: 0
   attackDamage: 5
   arrmor: 3
   attackCoolDown: 1
   attackRange: 2
+  criticalChance: 5
+  criticalMultiplier: 15

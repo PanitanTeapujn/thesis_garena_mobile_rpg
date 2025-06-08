@@ -70,6 +70,14 @@ public class Character : NetworkBehaviour
     private float attackCooldown;
     public float AttackCooldown { get { return attackCooldown; } set { attackCooldown = value; } }
 
+    [Header("Critical Stats")]
+    [SerializeField]
+    private float criticalChance = 5f;
+    public float CriticalChance { get { return criticalChance; } set { criticalChance = value; } }
+
+    [SerializeField]
+    private float criticalMultiplier = 2f;
+    public float CriticalMultiplier { get { return criticalMultiplier; } set { criticalMultiplier = value; } }
     // ========== Network Properties ==========
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }
@@ -124,7 +132,8 @@ public class Character : NetworkBehaviour
         moveSpeed = characterStats.moveSpeed;
         attackRange = characterStats.attackRange;
         attackCooldown = characterStats.attackCoolDown;
-
+        criticalChance = characterStats.criticalChance;
+        criticalMultiplier = characterStats.criticalMultiplier;
         if (rb != null)
         {
             rb.freezeRotation = true;
@@ -175,15 +184,15 @@ public class Character : NetworkBehaviour
             if (IsPoisoned)
             {
                 float currentTime = (float)Runner.SimulationTime;
-                Debug.Log($"[POISON DEBUG] {CharacterName} - Duration: {PoisonDuration:F2}, Current Time: {currentTime:F2}, Next Tick Time: {PoisonNextTickTime:F2}");
+                //Debug.Log($"[POISON DEBUG] {CharacterName} - Duration: {PoisonDuration:F2}, Current Time: {currentTime:F2}, Next Tick Time: {PoisonNextTickTime:F2}");
 
                 if (currentTime >= PoisonNextTickTime)
                 {
-                    Debug.Log($"[Poison Tick] {CharacterName} applying poison damage!");
+                  //  Debug.Log($"[Poison Tick] {CharacterName} applying poison damage!");
                     ApplyPoisonDamage();
                     // ตั้งเวลาสำหรับ tick ถัดไป
                     PoisonNextTickTime = currentTime + poisonTickInterval;
-                    Debug.Log($"[Poison Tick] {CharacterName} next poison tick at: {PoisonNextTickTime:F2}");
+                   // Debug.Log($"[Poison Tick] {CharacterName} next poison tick at: {PoisonNextTickTime:F2}");
                 }
             }
 
@@ -193,7 +202,7 @@ public class Character : NetworkBehaviour
                 PoisonDuration -= Runner.DeltaTime;
                 if (PoisonDuration <= 0)
                 {
-                    Debug.Log($"[Poison] {CharacterName} poison duration expired, removing poison");
+                   // Debug.Log($"[Poison] {CharacterName} poison duration expired, removing poison");
                     RemovePoison();
                 }
             }
@@ -201,6 +210,23 @@ public class Character : NetworkBehaviour
     }
 
     // ========== Network Damage System ==========
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    {
+        if (!HasStateAuthority && !HasInputAuthority) return;
+
+        // 🎯 คำนวณ critical จาก attacker's stats
+        bool isCritical = false;
+        if (attacker != null)
+        {
+            float critRoll = Random.Range(0f, 100f);
+            isCritical = critRoll < attacker.CriticalChance;
+
+            Debug.Log($"[Critical Check] {attacker.CharacterName} rolls {critRoll:F1}% vs {attacker.CriticalChance}% = {(isCritical ? "CRITICAL!" : "Normal")}");
+        }
+
+        // เรียก TakeDamage เดิมที่มีการคำนวณ damage แล้ว
+        TakeDamage(damage, damageType, isCritical);
+    }
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
@@ -211,7 +237,7 @@ public class Character : NetworkBehaviour
         currentHp -= finalDamage;
         currentHp = Mathf.Clamp(currentHp, 0, maxHp);
 
-        Debug.Log($"[TakeDamage] {CharacterName}: {oldHp} -> {currentHp} (damage: {finalDamage}, type: {damageType})");
+        Debug.Log($"[TakeDamage] {CharacterName}: {oldHp} -> {currentHp} (damage: {finalDamage}, type: {damageType}, critical: {isCritical})");
 
         // Sync based on authority
         if (HasStateAuthority)
@@ -242,16 +268,19 @@ public class Character : NetworkBehaviour
             }
         }
     }
-
     protected virtual int CalculateDamage(int damage, bool isCritical)
     {
         if (isCritical)
         {
-            return damage; // Critical hits ignore armor
+            int criticalDamage = Mathf.RoundToInt(damage * criticalMultiplier); // Ignore armor + multiply
+            Debug.Log($"[CalculateDamage] Critical Hit! {damage} * {criticalMultiplier} = {criticalDamage} (ignoring {armor} armor)");
+            return criticalDamage;
         }
 
         int damageAfterArmor = damage - armor;
-        return Mathf.Max(1, damageAfterArmor); // Minimum 1 damage
+        int finalDamage = Mathf.Max(1, damageAfterArmor);
+        Debug.Log($"[CalculateDamage] Normal Hit: {damage} - {armor} armor = {finalDamage}");
+        return finalDamage;
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -443,42 +472,11 @@ public class Character : NetworkBehaviour
         isFlashingFromPoison = false;
     }
 
-    [ContextMenu("Test Quick Poison Self")]
-    public void TestQuickPoisonSelf()
-    {
-        if (HasStateAuthority)
-        {
-            Debug.Log($"[TEST] {CharacterName} applies quick poison to self!");
-            ApplyPoison(5, 3f); // 5 damage ต่อวินาที เป็นเวลา 3 วินาที
-        }
-    }
+    
 
-    [ContextMenu("Test Force Remove Poison")]
-    public void TestForceRemovePoison()
-    {
-        if (HasStateAuthority)
-        {
-            Debug.Log($"[TEST] {CharacterName} force removes poison!");
-            RemovePoison();
-        }
-    }
+    
 
-    [ContextMenu("Debug Poison State")]
-    public void DebugPoisonState()
-    {
-        Debug.Log($"[DEBUG POISON] {CharacterName}:");
-        Debug.Log($"  - IsPoisoned: {IsPoisoned}");
-        Debug.Log($"  - PoisonDuration: {PoisonDuration}");
-        Debug.Log($"  - PoisonDamagePerTick: {PoisonDamagePerTick}");
-        Debug.Log($"  - PoisonTickTimer.IsRunning: {!PoisonTickTimer.ExpiredOrNotRunning(Runner)}");
-        Debug.Log($"  - isTakingDamage: {isTakingDamage}");
-        Debug.Log($"  - isFlashingFromPoison: {isFlashingFromPoison}");
-        Debug.Log($"  - HasStateAuthority: {HasStateAuthority}");
-        Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
-        Debug.Log($"  - Current Color: {(characterRenderer ? characterRenderer.material.color.ToString() : "No Renderer")}");
-        Debug.Log($"  - Poison Color: {poisonColor}");
-        Debug.Log($"  - Original Color: {originalColor}");
-    }
+    
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowPoisonEffect(bool show)
@@ -505,6 +503,21 @@ public class Character : NetworkBehaviour
                 Debug.Log($"[RPC_ShowPoisonEffect] {CharacterName} color changed to original color: {originalColor}");
             }
         }
+    }
+    public virtual void RemovePoison()
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasPoisoned = IsPoisoned;
+        IsPoisoned = false;
+        PoisonDuration = 0f;
+        PoisonDamagePerTick = 0;
+        PoisonNextTickTime = 0f; // 🔧 รีเซ็ต manual timer
+
+        Debug.Log($"{CharacterName} is no longer poisoned (was poisoned: {wasPoisoned})");
+
+        // Remove visual effects for all clients
+        RPC_ShowPoisonEffect(false);
     }
 
     // ========== Status Effects Handler ==========
@@ -559,49 +572,11 @@ public class Character : NetworkBehaviour
     }
 
     // ========== Debug Methods ==========
-    public void DebugNetworkState()
-    {
-        Debug.Log($"[DEBUG] {CharacterName} Network State:");
-        Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
-        Debug.Log($"  - HasStateAuthority: {HasStateAuthority}");
-        Debug.Log($"  - IsNetworkStateReady: {IsNetworkStateReady}");
-        Debug.Log($"  - CurrentHp: {currentHp} | NetworkedCurrentHp: {NetworkedCurrentHp}");
-        Debug.Log($"  - IsPoisoned: {IsPoisoned}, Duration: {PoisonDuration}");
-    }
+   
 
     // ========== Testing Methods ==========
-    [ContextMenu("Test Apply Poison")]
-    public void TestApplyPoison()
-    {
-        if (HasStateAuthority)
-        {
-            ApplyPoison(5, 10f); // 5 damage per tick for 10 seconds
-        }
-    }
+    
 
-    [ContextMenu("Test Remove Poison")]
-    public virtual void RemovePoison()
-    {
-        if (!HasStateAuthority) return;
-
-        bool wasPoisoned = IsPoisoned;
-        IsPoisoned = false;
-        PoisonDuration = 0f;
-        PoisonDamagePerTick = 0;
-        PoisonNextTickTime = 0f; // 🔧 รีเซ็ต manual timer
-
-        Debug.Log($"{CharacterName} is no longer poisoned (was poisoned: {wasPoisoned})");
-
-        // Remove visual effects for all clients
-        RPC_ShowPoisonEffect(false);
-    }
-
-    [ContextMenu("Test Take Poison Damage")]
-    public void TestTakePoisonDamage()
-    {
-        if (HasInputAuthority)
-        {
-            TakeDamage(15, DamageType.Poison, false);
-        }
-    }
+   
+   
 }

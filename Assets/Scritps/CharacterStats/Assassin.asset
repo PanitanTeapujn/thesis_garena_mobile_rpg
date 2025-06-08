@@ -17,6 +17,8 @@ MonoBehaviour:
   maxHp: 350
   maxMana: 100
   attackDamage: 20
-  arrmor: 2
+  arrmor: 0
   attackCoolDown: 1
   attackRange: 0
+  criticalChance: 10
+  criticalMultiplier: 5

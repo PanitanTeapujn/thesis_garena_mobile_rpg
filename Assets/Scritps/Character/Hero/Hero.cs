@@ -730,9 +730,9 @@
                 Character enemy = enemyObject.GetComponent<Character>();
                 if (enemy != null)
                 {
-                    // ใช้ TakeDamage ใหม่จาก Character base class
-                    enemy.TakeDamage(AttackDamage, DamageType.Normal, false);
-                    RPC_OnAttackHit(enemyObject);
+                // ใช้ TakeDamage ใหม่จาก Character base class
+                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+                RPC_OnAttackHit(enemyObject);
                 }
                 else
                 {
@@ -740,8 +740,8 @@
                     NetworkEnemy networkEnemy = enemyObject.GetComponent<NetworkEnemy>();
                     if (networkEnemy != null && !networkEnemy.IsDead)
                     {
-                        networkEnemy.TakeDamage(AttackDamage, DamageType.Normal, false);
-                        RPC_OnAttackHit(enemyObject);
+                    networkEnemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+                    RPC_OnAttackHit(enemyObject);
                     }
                 }
             }

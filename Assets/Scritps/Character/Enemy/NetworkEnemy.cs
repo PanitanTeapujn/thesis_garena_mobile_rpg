@@ -513,14 +513,14 @@ public class NetworkEnemy : Character
             // ทำ damage ปกติก่อน
             if (targetHero.HasInputAuthority)
             {
-                targetHero.TakeDamage(AttackDamage, DamageType.Normal, false);
+                targetHero.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
             }
 
             // จากนั้นทำให้ติดพิษ (ปรับค่าให้เหมาะสม)
             if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติดพิษ
             {
                 Debug.Log($"Enemy applies poison to {targetHero.CharacterName}!");
-                targetHero.ApplyPoison(3, 5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
+                //targetHero.ApplyPoison(3, 5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
             }
         }
     }
@@ -555,19 +555,7 @@ public class NetworkEnemy : Character
             Runner.Despawn(Object);
         }
     }
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_DealProximityDamage(NetworkObject heroObject, int damage)
-    {
-        if (heroObject != null)
-        {
-            Hero hero = heroObject.GetComponent<Hero>();
-            if (hero != null && hero.HasInputAuthority)
-            {
-                hero.TakeDamage(damage, DamageType.Normal, false);
-                Debug.Log($"Enemy proximity damage: {damage} to {hero.CharacterName}");
-            }
-        }
-    }
+   
 
     // ========== 💥 Collision Damage System ==========
     public virtual void OnCollisionEnter(Collision collision)
@@ -643,60 +631,8 @@ public class NetworkEnemy : Character
             }
         }
     }
-    private void OnDrawGizmosSelected()
-    {
-        // Detection range
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, detectRange);
-
-        // Attack range
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, AttackRange);
-
-        // Min distance to player / Proximity damage range
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawWireSphere(transform.position, minDistanceToPlayer);
-
-        // Enemy spacing
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, enemySpacing);
-
-        // Line to target
-        if (targetTransform != null)
-        {
-            Gizmos.color = Color.green;
-            Gizmos.DrawLine(transform.position, targetTransform.position);
-
-            // Show current distance
-            float distance = Vector3.Distance(transform.position, targetTransform.position);
-            if (distance <= minDistanceToPlayer)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawWireCube(transform.position + Vector3.up * 2f, Vector3.one * 0.5f);
-            }
-        }
-    }
+    
 
     // ========== Context Menu Debug ==========
-    [ContextMenu("Toggle Debug Info")]
-    public void ToggleDebugInfo()
-    {
-        showDebugInfo = !showDebugInfo;
-        Debug.Log($"Enemy Debug Info: {(showDebugInfo ? "ON" : "OFF")}");
-    }
-
-    [ContextMenu("Force Find Target")]
-    public void ForceFindTarget()
-    {
-        nextTargetCheckTime = 0f;
-        FindNearestPlayer();
-        Debug.Log($"Forced target search. Target: {(targetTransform ? targetTransform.name : "None")}");
-    }
-
-    [ContextMenu("Reset Proximity Damage Cooldown")]
-    public void ResetProximityDamageCooldown()
-    {
-        nextCollisionDamageTime = 0f;
-        Debug.Log($"{CharacterName}: Proximity damage cooldown reset");
-    }
+    
 }

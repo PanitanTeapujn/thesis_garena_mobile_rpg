@@ -13,4 +13,6 @@ public class CharacterStats : ScriptableObject
     public int arrmor;
     public int attackCoolDown;
     public int attackRange;
+    public int criticalChance;
+    public int criticalMultiplier;
 }
