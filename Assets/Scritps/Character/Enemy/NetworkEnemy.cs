@@ -2,28 +2,57 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
-
+public enum EnemyState
+{
+    Chasing,
+    BackingOff,
+    Attacking,
+    Positioning
+}
 public class NetworkEnemy : Character
 {
     // ========== Network Properties ==========
-   
     [Networked] public NetworkBool IsDead { get; set; }
     [Networked] public PlayerRef CurrentTarget { get; set; }
 
     // เพิ่ม Network Position Properties เหมือน Hero
     [Networked] public Vector3 NetworkedPosition { get; set; }
     [Networked] public Vector3 NetworkedVelocity { get; set; }
-    [Networked] public Vector3 NetworkedScale { get; set; }
-    [Networked] public float NetworkedYRotation { get; set; }
+    [Networked] public Vector3 NetworkedScale { get; set; } // ใช้สำหรับ flip เท่านั้น
 
     // ========== Enemy Properties ==========
     [Header("Enemy Settings")]
     public float detectRange = 10f;
     public float attackCheckInterval = 0.5f;
 
+    [Networked] public EnemyState CurrentState { get; set; }
+    [Networked] public float StateTimer { get; set; }
+
+    [Header("🎯 Attack Pattern Settings")]
+    public float backOffDistance = 3f;      // ระยะที่ต้องถอยออกไป
+    public float backOffTime = 1f;          // เวลาที่ใช้ในการถอย
+    public float positionTime = 0.5f;       // เวลาหยุดก่อนเข้าโจมตี
+    public float rushSpeed = 3f;          // ความเร็วตอนเข้าโจมตี
+
+    [Header("🎯 Improved Movement Settings")]
+    public float minDistanceToPlayer = 1.0f; // ระยะห่างขั้นต่ำจากผู้เล่น
+    public float enemySpacing = 2.0f;        // ระยะห่างระหว่างศัตรูด้วยกัน
+    public LayerMask enemyLayer;             // Layer ของศัตรู
+    public bool useCircling = true;          // เปิดใช้การเคลื่อนที่แบบวนรอบผู้เล่น
+    public float circlingSpeed = 0.5f;
+    public bool isCollidingWithPlayer;
+    [Header("🔧 Debug Settings")]
+    public bool showDebugInfo = false;
+
+    [Header("💥 Proximity Damage")]
+    public float collisionDamageCooldown = 2.0f;
+    public float collisionDamageMultiplier = 0.5f;
+    private float nextCollisionDamageTime = 0f;
+
     private float nextTargetCheckTime = 0f;
     private Transform targetTransform;
     private float nextAttackTime = 0f;
+
 
     // Check if properly spawned
     public bool IsSpawned => Object != null && Object.IsValid;
@@ -33,6 +62,34 @@ public class NetworkEnemy : Character
     {
         base.Start();
         Debug.Log($"Enemy Start - HasStateAuthority: {HasStateAuthority}");
+
+        // ตั้งค่า enemy layer
+        if (enemyLayer == 0)
+        {
+            enemyLayer = LayerMask.GetMask("Enemy");
+        }
+
+        
+        // ========== Debug ==========
+
+        // ตั้งค่า physics สำหรับ 2D movement
+        if (rb != null)
+        {
+            rb.freezeRotation = true; // ห้ามหมุนทุกแกน - ใช้แค่ flip
+            rb.useGravity = true;
+            rb.drag = 2.0f; // เพิ่ม drag เพื่อให้หยุดได้เร็วขึ้น
+            rb.mass = 5f;   // ลด mass เพื่อให้เคลื่อนที่ได้ง่ายขึ้น
+        }
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"=== Enemy Movement Settings ===");
+            Debug.Log($"minDistanceToPlayer: {minDistanceToPlayer}");
+            Debug.Log($"enemySpacing: {enemySpacing}");
+            Debug.Log($"useCircling: {useCircling}");
+            Debug.Log($"circlingSpeed: {circlingSpeed}");
+            Debug.Log($"===============================");
+        }
     }
 
     // Called when spawned by Fusion
@@ -46,10 +103,12 @@ public class NetworkEnemy : Character
             NetworkedMaxHp = MaxHp;
             NetworkedCurrentHp = CurrentHp;
             IsDead = false;
+            CurrentState = EnemyState.Chasing; // เริ่มต้นด้วยการไล่ตาม
+            StateTimer = 0f;
+
             // กำหนดค่าเริ่มต้นของ position และ scale
             NetworkedPosition = transform.position;
             NetworkedScale = transform.localScale;
-            NetworkedYRotation = transform.eulerAngles.y;
         }
     }
 
@@ -67,12 +126,10 @@ public class NetworkEnemy : Character
         {
             if (!IsDead)
             {
-                // Enemy AI logic
+                // 🔧 ใช้ระบบ AI ใหม่ที่ปรับปรุงแล้ว
                 FindNearestPlayer();
-                MoveTowardsTarget();
+                ImprovedMoveTowardsTarget();
                 TryAttackTarget();
-
-                // ❌ ลบออก: NetworkedCurrentHp = CurrentHp; // ใช้จาก base class แล้ว
 
                 // Check death
                 if (CurrentHp <= 0 && !IsDead)
@@ -82,10 +139,9 @@ public class NetworkEnemy : Character
                 }
             }
 
-            // อัพเดท Network Properties เหมือน Hero
+            // อัพเดท Network Properties
             NetworkedPosition = transform.position;
-            NetworkedScale = transform.localScale;
-            NetworkedYRotation = transform.eulerAngles.y;
+            NetworkedScale = transform.localScale; // sync scale สำหรับ flip
             if (rb != null)
             {
                 NetworkedVelocity = rb.velocity;
@@ -98,7 +154,213 @@ public class NetworkEnemy : Character
         }
     }
 
-    // ========== Network State Application (เหมือน Hero) ==========
+    // ========== 🎯 Improved Movement System ==========
+    private void ImprovedMoveTowardsTarget()
+    {
+        if (targetTransform == null || rb == null) return;
+
+        Vector3 directionToPlayer = (targetTransform.position - transform.position).normalized;
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+        Vector3 moveDirection = Vector3.zero;
+
+        // อัพเดท State Timer
+        StateTimer += Runner.DeltaTime;
+
+        switch (CurrentState)
+        {
+            case EnemyState.Chasing:
+                // ไล่ตามผู้เล่นปกติ
+                if (distanceToPlayer <= AttackRange && distanceToPlayer > minDistanceToPlayer * 0.7f)
+                {
+                    // อยู่ในระยะโจมตีที่เหมาะสม เปลี่ยนเป็น Attacking
+                    CurrentState = EnemyState.Attacking;
+                    StateTimer = 0f;
+                    moveDirection = Vector3.zero; // หยุดเคลื่อนที่
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Entering attack range! Distance: {distanceToPlayer:F2}");
+                }
+                else if (distanceToPlayer <= minDistanceToPlayer * 0.7f)
+                {
+                    // เข้าใกล้เกินไป เปลี่ยนเป็น BackingOff
+                    CurrentState = EnemyState.BackingOff;
+                    StateTimer = 0f;
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Too close! Backing off... Distance: {distanceToPlayer:F2}");
+                }
+                else
+                {
+                    // ไล่ตามผู้เล่นปกติ
+                    moveDirection = directionToPlayer;
+                }
+                break;
+
+            case EnemyState.BackingOff:
+                // ถอยออกจากผู้เล่น
+                moveDirection = -directionToPlayer * 1.2f; // ถอยเร็วหน่อย
+
+                if (StateTimer >= backOffTime || distanceToPlayer >= backOffDistance)
+                {
+                    // ถอยพอแล้ว เปลี่ยนเป็น Positioning
+                    CurrentState = EnemyState.Positioning;
+                    StateTimer = 0f;
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Finished backing off, positioning... Distance: {distanceToPlayer:F2}");
+                }
+                break;
+
+            case EnemyState.Positioning:
+                // หยุดชั่วคราวก่อนเข้าโจมตี
+                moveDirection = Vector3.zero;
+
+                if (StateTimer >= positionTime)
+                {
+                    // พร้อมเข้าโจมตี
+                    CurrentState = EnemyState.Chasing;
+                    StateTimer = 0f;
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Ready to chase again! Distance: {distanceToPlayer:F2}");
+                }
+                break;
+
+            case EnemyState.Attacking:
+                // อยู่ในระยะโจมตี - ให้โจมตีได้เต็มที่
+                if (distanceToPlayer > AttackRange * 1.3f)
+                {
+                    // ผู้เล่นออกไปไกลเกินไป กลับไปไล่ตาม
+                    CurrentState = EnemyState.Chasing;
+                    StateTimer = 0f;
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Player too far, chasing... Distance: {distanceToPlayer:F2}");
+                }
+                else if (distanceToPlayer < minDistanceToPlayer * 0.5f)
+                {
+                    // ใกล้เกินไปมาก ถอยออกมา
+                    CurrentState = EnemyState.BackingOff;
+                    StateTimer = 0f;
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Player very close, backing off... Distance: {distanceToPlayer:F2}");
+                }
+                else
+                {
+                    // อยู่ในระยะที่ดี - โจมตีได้! เคลื่อนที่เล็กน้อยหรือหยุด
+                    if (useCircling && distanceToPlayer > minDistanceToPlayer)
+                    {
+                        Vector3 circleDirection = new Vector3(-directionToPlayer.z, 0, directionToPlayer.x);
+                        moveDirection = circleDirection * circlingSpeed * 0.3f;
+                    }
+                    else
+                    {
+                        moveDirection = Vector3.zero;
+                    }
+
+                    if (showDebugInfo && StateTimer > 1f) // แสดงทุก 1 วินาที
+                    {
+                        Debug.Log($"{CharacterName}: In attack state, ready to strike! Distance: {distanceToPlayer:F2}");
+                    }
+                }
+                break;
+        }
+
+        // หลีกเลี่ยงศัตรูตัวอื่น
+        Vector3 avoidanceForce = CalculateAvoidanceForce();
+        moveDirection += avoidanceForce;
+
+        // ทำให้เป็นทิศทางที่ถูกต้อง
+        moveDirection.y = 0;
+        if (moveDirection.magnitude > 1f)
+        {
+            moveDirection.Normalize();
+        }
+
+        // เคลื่อนที่
+        if (moveDirection.magnitude > 0.1f)
+        {
+            float currentMoveSpeed = MoveSpeed;
+
+            // เพิ่มความเร็วถ้าอยู่ในสถานะ BackingOff
+            if (CurrentState == EnemyState.BackingOff)
+            {
+                currentMoveSpeed *= 1.3f; // ถอยเร็วขึ้น
+            }
+
+            Vector3 newPosition = transform.position + moveDirection * currentMoveSpeed * Runner.DeltaTime;
+            rb.MovePosition(newPosition);
+
+            // การ flip
+            FlipCharacterTowardsMovement(moveDirection);
+        }
+        else
+        {
+            // หยุดการเคลื่อนที่
+            rb.velocity = new Vector3(0, rb.velocity.y, 0);
+        }
+
+        // Debug info
+        if (showDebugInfo)
+        {
+            Debug.Log($"{CharacterName}: State={CurrentState}, Timer={StateTimer:F1}, Distance={distanceToPlayer:F1}, CanAttack={CurrentState == EnemyState.Attacking}");
+        }
+    }
+
+    // 🔧 ระบบหลีกเลี่ยงศัตรูตัวอื่น
+    private Vector3 CalculateAvoidanceForce()
+    {
+        Vector3 avoidanceForce = Vector3.zero;
+
+        // ตรวจสอบศัตรูใกล้เคียง
+        Collider[] nearbyEnemies = Physics.OverlapSphere(transform.position, enemySpacing, enemyLayer);
+
+        // หาแรงผลักออกจากศัตรูแต่ละตัว
+        foreach (Collider enemyCollider in nearbyEnemies)
+        {
+            // ข้ามตัวเอง
+            if (enemyCollider.gameObject == gameObject)
+                continue;
+
+            // คำนวณทิศทางหลีกเลี่ยง
+            Vector3 directionAway = transform.position - enemyCollider.transform.position;
+            float distance = directionAway.magnitude;
+
+            // ถ้าระยะห่างน้อยกว่าที่กำหนด ให้คำนวณแรงผลัก
+            if (distance < enemySpacing && distance > 0.1f)
+            {
+                // ยิ่งใกล้ยิ่งผลักแรง
+                float strength = 1.0f - (distance / enemySpacing);
+                directionAway.y = 0; // ไม่ผลักในแกน Y
+                directionAway.Normalize();
+                avoidanceForce += directionAway * strength;
+
+                if (showDebugInfo)
+                {
+                    Debug.Log($"{CharacterName}: Avoiding enemy at distance {distance:F1}");
+                }
+            }
+        }
+
+        return avoidanceForce;
+    }
+
+    // 🔧 ระบบการ flip แบบ 2D เท่านั้น (แก้ oscillation)
+    private void FlipCharacterTowardsMovement(Vector3 moveDirection)
+    {
+        if (moveDirection.magnitude < 0.3f) return; // เพิ่ม threshold เพื่อป้องกัน flip บ่อย
+
+        // flip เฉพาะ scale.x ตามทิศทางการเคลื่อนที่
+        Vector3 newScale = transform.localScale;
+        if (moveDirection.x > 0.3f) // เพิ่ม threshold
+        {
+            newScale.x = Mathf.Abs(newScale.x); // หันขวา
+        }
+        else if (moveDirection.x < -0.3f) // เพิ่ม threshold
+        {
+            newScale.x = -Mathf.Abs(newScale.x); // หันซ้าย
+        }
+        // ถ้าอยู่ระหว่าง -0.3 ถึง 0.3 ไม่เปลี่ยน flip
+
+        transform.localScale = newScale;
+    }
+
+    // ========== Network State Application ==========
     protected virtual void ApplyNetworkState()
     {
         float positionDistance = Vector3.Distance(transform.position, NetworkedPosition);
@@ -118,7 +380,7 @@ public class NetworkEnemy : Character
             );
         }
 
-        // Scale synchronization
+        // Scale synchronization สำหรับ flip
         float scaleDistance = Vector3.Distance(transform.localScale, NetworkedScale);
         if (scaleDistance > 0.01f)
         {
@@ -128,24 +390,9 @@ public class NetworkEnemy : Character
                 Runner.DeltaTime * 15f
             );
         }
-
-        // Rotation synchronization
-        float targetYRotation = NetworkedYRotation;
-        float currentYRotation = transform.eulerAngles.y;
-        float rotationDifference = Mathf.DeltaAngle(currentYRotation, targetYRotation);
-
-        if (Mathf.Abs(rotationDifference) > 1f)
-        {
-            Quaternion targetRotation = Quaternion.Euler(0, targetYRotation, 0);
-            transform.rotation = Quaternion.Lerp(
-                transform.rotation,
-                targetRotation,
-                Runner.DeltaTime * 10f
-            );
-        }
     }
 
-    // ========== Render Method for Visual Interpolation (เหมือน Hero) ==========
+    // ========== Render Method for Visual Interpolation ==========
     public override void Render()
     {
         // Visual interpolation สำหรับ remote clients
@@ -161,21 +408,6 @@ public class NetworkEnemy : Character
             if (Vector3.Distance(transform.localScale, NetworkedScale) > 0.001f)
             {
                 transform.localScale = Vector3.Lerp(transform.localScale, NetworkedScale, alpha);
-            }
-
-            // Rotation interpolation
-            float targetYRotation = NetworkedYRotation;
-            float currentYRotation = transform.eulerAngles.y;
-            float rotationDifference = Mathf.DeltaAngle(currentYRotation, targetYRotation);
-
-            if (Mathf.Abs(rotationDifference) > 1f)
-            {
-                Quaternion targetRotation = Quaternion.Euler(0, targetYRotation, 0);
-                transform.rotation = Quaternion.Lerp(
-                    transform.rotation,
-                    targetRotation,
-                    alpha
-                );
             }
         }
     }
@@ -208,34 +440,16 @@ public class NetworkEnemy : Character
         {
             targetTransform = nearestHero.transform;
             CurrentTarget = nearestHero.Object.InputAuthority;
-            Debug.Log($"Enemy found target: {nearestHero.CharacterName}");
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"{CharacterName} found target: {nearestHero.CharacterName} at distance {nearestDistance:F1}");
+            }
         }
         else
         {
             targetTransform = null;
             CurrentTarget = PlayerRef.None;
-        }
-    }
-
-    private void MoveTowardsTarget()
-    {
-        if (targetTransform == null || rb == null) return;
-
-        Vector3 direction = (targetTransform.position - transform.position).normalized;
-        float distance = Vector3.Distance(transform.position, targetTransform.position);
-
-        // Move if not in attack range
-        if (distance > AttackRange)
-        {
-            Vector3 newPosition = transform.position + direction * MoveSpeed * Runner.DeltaTime;
-            rb.MovePosition(newPosition);
-
-            // Face target
-            Vector3 lookDirection = new Vector3(direction.x, 0, direction.z);
-            if (lookDirection != Vector3.zero)
-            {
-                transform.rotation = Quaternion.LookRotation(lookDirection);
-            }
         }
     }
 
@@ -245,14 +459,35 @@ public class NetworkEnemy : Character
 
         float distance = Vector3.Distance(transform.position, targetTransform.position);
 
-        if (distance <= AttackRange && Time.time >= nextAttackTime)
-        {
-            nextAttackTime = Time.time + AttackCooldown;
+        // ปรับเงื่อนไขการโจมตีให้ง่ายขึ้น
+        bool canAttack = CurrentState == EnemyState.Attacking &&
+                         distance <= AttackRange &&
+                         distance >= minDistanceToPlayer * 0.5f && // ไม่ให้ใกล้เกินไป
+                         Runner.SimulationTime >= nextAttackTime;
 
-            // Attack via RPC
+        if (canAttack)
+        {
+            nextAttackTime = Runner.SimulationTime + AttackCooldown;
             RPC_PerformAttack(CurrentTarget);
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"{CharacterName}: *** ATTACK EXECUTED! *** Distance: {distance:F2}, State: {CurrentState}");
+            }
+        }
+        else if (showDebugInfo && CurrentState == EnemyState.Attacking)
+        {
+            // Debug ว่าทำไมไม่โจมตี
+            string reason = "";
+            if (distance > AttackRange) reason += "Too far ";
+            if (distance < minDistanceToPlayer * 0.5f) reason += "Too close ";
+            if (Runner.SimulationTime < nextAttackTime) reason += $"Cooldown ({nextAttackTime - Runner.SimulationTime:F1}s) ";
+
+            Debug.Log($"{CharacterName}: Cannot attack - {reason} | Distance: {distance:F2}");
         }
     }
+
+
 
     // ========== Combat RPCs ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -273,7 +508,7 @@ public class NetworkEnemy : Character
 
         if (targetHero != null)
         {
-            Debug.Log($"[ENEMY ATTACK] Target: {targetHero.CharacterName}, HasStateAuthority: {targetHero.HasStateAuthority}, HasInputAuthority: {targetHero.HasInputAuthority}");
+            Debug.Log($"Enemy {name} attacks {targetHero.CharacterName} for {AttackDamage} damage!");
 
             // ทำ damage ปกติก่อน
             if (targetHero.HasInputAuthority)
@@ -281,19 +516,14 @@ public class NetworkEnemy : Character
                 targetHero.TakeDamage(AttackDamage, DamageType.Normal, false);
             }
 
-            // ตรวจสอบ Authority ก่อนใส่พิษ
-            if (HasStateAuthority && targetHero.HasStateAuthority)
+            // จากนั้นทำให้ติดพิษ (ปรับค่าให้เหมาะสม)
+            if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติดพิษ
             {
-                Debug.Log($"[ENEMY ATTACK] Applying poison to {targetHero.CharacterName}!");
-                targetHero.ApplyPoison(20, 5f); // เปลี่ยนจาก 3 เป็น 20 เพื่อเห็นชัดเจน
-            }
-            else
-            {
-                Debug.LogWarning($"[ENEMY ATTACK] Cannot apply poison - Enemy Authority: {HasStateAuthority}, Hero Authority: {targetHero.HasStateAuthority}");
+                Debug.Log($"Enemy applies poison to {targetHero.CharacterName}!");
+                targetHero.ApplyPoison(3, 5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
             }
         }
     }
-
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_OnDeath()
@@ -315,7 +545,6 @@ public class NetworkEnemy : Character
         // Destroy after delay
         StartCoroutine(DestroyAfterDelay());
     }
-    // ========== Visual Effects ==========
 
     private IEnumerator DestroyAfterDelay()
     {
@@ -326,9 +555,94 @@ public class NetworkEnemy : Character
             Runner.Despawn(Object);
         }
     }
-   
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_DealProximityDamage(NetworkObject heroObject, int damage)
+    {
+        if (heroObject != null)
+        {
+            Hero hero = heroObject.GetComponent<Hero>();
+            if (hero != null && hero.HasInputAuthority)
+            {
+                hero.TakeDamage(damage, DamageType.Normal, false);
+                Debug.Log($"Enemy proximity damage: {damage} to {hero.CharacterName}");
+            }
+        }
+    }
 
-    // ========== Debug ==========
+    // ========== 💥 Collision Damage System ==========
+    public virtual void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Player"))
+        {
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Collision with player detected - using new attack pattern");
+
+            isCollidingWithPlayer = true;
+            // ไม่ทำ damage - ให้ state machine จัดการ
+        }
+    }
+
+    public virtual void OnCollisionStay(Collision collision)
+    {
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Player"))
+        {
+            // ไม่ทำ damage ต่อเนื่อง - ให้ state machine จัดการ
+            if (showDebugInfo && StateTimer > 2f) // แสดงทุก 2 วินาที
+            {
+                Debug.Log($"{CharacterName}: Still near player - State: {CurrentState}");
+            }
+        }
+    }
+
+   public virtual void OnCollisionExit(Collision collision)
+{
+    if (collision.gameObject.layer == LayerMask.NameToLayer("Player"))
+    {
+        isCollidingWithPlayer = false;
+        if (showDebugInfo)
+            Debug.Log($"{CharacterName}: Stopped colliding with player");
+    }
+}
+
+    private void TryDealCollisionDamage(GameObject playerObject)
+    {
+        // ตรวจสอบว่าพ้นช่วงเวลาคูลดาวน์หรือยัง
+        if (Time.time >= nextCollisionDamageTime)
+        {
+            Hero hero = playerObject.GetComponent<Hero>();
+            if (hero != null)
+            {
+                // คำนวณดาเมจจากการชน
+                int collisionDamage = Mathf.RoundToInt(AttackDamage * collisionDamageMultiplier);
+                if (collisionDamage < 1) collisionDamage = 1;
+
+                // ทำดาเมจผ่าน RPC
+                RPC_DealCollisionDamage(hero.Object, collisionDamage);
+
+                // ตั้งค่าคูลดาวน์ใหม่
+                nextCollisionDamageTime = Time.time + collisionDamageCooldown;
+
+                if (showDebugInfo)
+                {
+                    Debug.Log($"{CharacterName}: Collision damage {collisionDamage} to {hero.CharacterName}");
+                }
+            }
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_DealCollisionDamage(NetworkObject heroObject, int damage)
+    {
+        if (heroObject != null)
+        {
+            Hero hero = heroObject.GetComponent<Hero>();
+            if (hero != null && hero.HasInputAuthority)
+            {
+                hero.TakeDamage(damage, DamageType.Normal, false);
+                Debug.Log($"Enemy collision damage: {damage} to {hero.CharacterName}");
+            }
+        }
+    }
     private void OnDrawGizmosSelected()
     {
         // Detection range
@@ -339,11 +653,50 @@ public class NetworkEnemy : Character
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, AttackRange);
 
+        // Min distance to player / Proximity damage range
+        Gizmos.color = Color.magenta;
+        Gizmos.DrawWireSphere(transform.position, minDistanceToPlayer);
+
+        // Enemy spacing
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, enemySpacing);
+
         // Line to target
         if (targetTransform != null)
         {
             Gizmos.color = Color.green;
             Gizmos.DrawLine(transform.position, targetTransform.position);
+
+            // Show current distance
+            float distance = Vector3.Distance(transform.position, targetTransform.position);
+            if (distance <= minDistanceToPlayer)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawWireCube(transform.position + Vector3.up * 2f, Vector3.one * 0.5f);
+            }
         }
+    }
+
+    // ========== Context Menu Debug ==========
+    [ContextMenu("Toggle Debug Info")]
+    public void ToggleDebugInfo()
+    {
+        showDebugInfo = !showDebugInfo;
+        Debug.Log($"Enemy Debug Info: {(showDebugInfo ? "ON" : "OFF")}");
+    }
+
+    [ContextMenu("Force Find Target")]
+    public void ForceFindTarget()
+    {
+        nextTargetCheckTime = 0f;
+        FindNearestPlayer();
+        Debug.Log($"Forced target search. Target: {(targetTransform ? targetTransform.name : "None")}");
+    }
+
+    [ContextMenu("Reset Proximity Damage Cooldown")]
+    public void ResetProximityDamageCooldown()
+    {
+        nextCollisionDamageTime = 0f;
+        Debug.Log($"{CharacterName}: Proximity damage cooldown reset");
     }
 }
