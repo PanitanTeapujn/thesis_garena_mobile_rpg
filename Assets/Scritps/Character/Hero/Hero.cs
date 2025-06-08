@@ -270,8 +270,15 @@
         protected virtual void ProcessMovement()
         {
             if (!HasInputAuthority) return;
-
-            Vector3 moveDirection = Vector3.zero;
+        if (IsStunned)
+        {
+            if (rb != null)
+            {
+                rb.velocity = new Vector3(0, rb.velocity.y, 0); // หยุด movement แต่คง gravity
+            }
+            return; // ออกจากฟังก์ชันทันที
+        }
+        Vector3 moveDirection = Vector3.zero;
             Vector2 currentInput = networkInputData.movementInput;
 
             // ลด dead zone ให้เหมาะสม และใช้เฉพาะ magnitude
@@ -297,7 +304,12 @@
             {
                 if (moveDirection.magnitude > 0.1f)
                 {
-                    Vector3 targetVelocity = new Vector3(
+                float currentMoveSpeed = MoveSpeed;
+                if (IsFrozen)
+                {
+                    currentMoveSpeed *= 0.3f; // ลดความเร็วเหลือ 30% เมื่อ freeze
+                }
+                Vector3 targetVelocity = new Vector3(
                         moveDirection.x * MoveSpeed,
                         rb.velocity.y,
                         moveDirection.z * MoveSpeed

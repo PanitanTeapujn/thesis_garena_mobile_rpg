@@ -489,7 +489,7 @@ public class NetworkEnemy : Character
 
 
 
-    // ========== Combat RPCs ==========
+    #region // ========== Combat RPCs ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_PerformAttack(PlayerRef targetPlayer)
     {
@@ -520,7 +520,7 @@ public class NetworkEnemy : Character
             if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติดพิษ
             {
                 Debug.Log($"Enemy applies poison to {targetHero.CharacterName}!");
-                //targetHero.ApplyPoison(3, 5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
+                targetHero.ApplyPoison(3,5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
             }
         }
     }
@@ -555,8 +555,8 @@ public class NetworkEnemy : Character
             Runner.Despawn(Object);
         }
     }
-   
 
+    #endregion
     // ========== 💥 Collision Damage System ==========
     public virtual void OnCollisionEnter(Collision collision)
     {
