@@ -218,18 +218,28 @@ public class Character : NetworkBehaviour
         {
             NetworkedCurrentHp = currentHp;
             RPC_BroadcastHealthUpdate(currentHp);
+
+            // 🔧 เฉพาะ StateAuthority เท่านั้นที่เรียก damage flash
+            RPC_TriggerDamageFlash(damageType, isCritical);
+
+            // 🔧 เฉพาะ StateAuthority เท่านั้นที่เรียก death
+            if (currentHp <= 0)
+            {
+                RPC_OnDeath();
+            }
         }
         else if (HasInputAuthority)
         {
             RPC_UpdateHealth(currentHp);
-        }
 
-        // Trigger damage flash for everyone to see
-        RPC_TriggerDamageFlash(damageType, isCritical);
+            // 🔧 InputAuthority ส่งไปให้ StateAuthority handle
+            RPC_RequestDamageFlash(damageType, isCritical);
 
-        if (currentHp <= 0)
-        {
-            RPC_OnDeath();
+            // 🔧 InputAuthority ส่งไปให้ StateAuthority handle death
+            if (currentHp <= 0)
+            {
+                RPC_RequestDeath();
+            }
         }
     }
 
@@ -261,13 +271,29 @@ public class Character : NetworkBehaviour
         Debug.Log($"[RPC_BroadcastHealthUpdate] Health broadcasted: {newHp} for {CharacterName}");
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]  // 🔧 เปลี่ยนเป็น StateAuthority
     private void RPC_TriggerDamageFlash(DamageType damageType, bool isCritical)
     {
         StartCoroutine(NetworkDamageFlash(damageType, isCritical));
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    // 🆕 เพิ่ม RPC สำหรับ InputAuthority ขอให้ StateAuthority ทำ damage flash
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestDamageFlash(DamageType damageType, bool isCritical)
+    {
+        // StateAuthority รับคำขอแล้วส่ง flash ให้ทุกคน
+        RPC_TriggerDamageFlash(damageType, isCritical);
+    }
+
+    // 🆕 เพิ่ม RPC สำหรับ InputAuthority ขอให้ StateAuthority handle death
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestDeath()
+    {
+        // StateAuthority รับคำขอแล้วส่ง death ให้ทุกคน
+        RPC_OnDeath();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]  // 🔧 เปลี่ยนเป็น StateAuthority
     private void RPC_OnDeath()
     {
         Debug.Log($"{CharacterName} died!");
