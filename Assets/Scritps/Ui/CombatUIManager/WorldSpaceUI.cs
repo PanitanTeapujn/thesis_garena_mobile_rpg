@@ -14,6 +14,7 @@ public class WorldSpaceUI : MonoBehaviour
 
     private Hero targetHero;
     private Camera mainCamera;
+    private bool isInitialized = false;
 
     public void Initialize(Hero hero)
     {
@@ -24,13 +25,18 @@ public class WorldSpaceUI : MonoBehaviour
         {
             playerNameText.text = hero.CharacterName;
         }
+
+        isInitialized = true;
+        Debug.Log($"WorldSpaceUI initialized for {hero.CharacterName}");
+
+        // อัปเดต UI ทันทีหลังจาก initialize
+        UpdateBars();
     }
 
     private void Update()
     {
-        if (targetHero == null || mainCamera == null)
+        if (!isInitialized || targetHero == null || mainCamera == null)
         {
-            // ลองหา camera อีกครั้ง
             if (mainCamera == null)
                 mainCamera = Camera.main;
             return;
@@ -58,17 +64,21 @@ public class WorldSpaceUI : MonoBehaviour
     }
 
 
+
     private void UpdateBars()
     {
         if (targetHero == null) return;
 
-        if (healthBar != null && targetHero.MaxHp > 0)
+        // รอให้ network state พร้อม
+        if (!targetHero.IsNetworkStateReady) return;
+
+        if (healthBar != null && targetHero.NetworkedMaxHp > 0)
         {
             float healthPercent = (float)targetHero.NetworkedCurrentHp / targetHero.NetworkedMaxHp;
             healthBar.value = Mathf.Clamp01(healthPercent);
         }
 
-        if (manaBar != null && targetHero.MaxMana > 0)
+        if (manaBar != null && targetHero.NetworkedMaxMana > 0)
         {
             float manaPercent = (float)targetHero.NetworkedCurrentMana / targetHero.NetworkedMaxMana;
             manaBar.value = Mathf.Clamp01(manaPercent);

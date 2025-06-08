@@ -699,35 +699,30 @@ public class Hero : Character
 
         CurrentHp -= damage;
         CurrentHp = Mathf.Clamp(CurrentHp, 0, MaxHp);
-
-        // Send damage info to server
         RPC_UpdateHealth(CurrentHp);
-
-        // Visual feedback
         StartCoroutine(DamageFlash());
 
         Debug.Log($"{CharacterName} takes {damage} damage. HP: {CurrentHp}/{MaxHp}");
 
         if (CurrentHp <= 0)
         {
-            // Handle death
             RPC_OnDeath();
         }
     }
+
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_UpdateHealth(int newHp)
     {
         CurrentHp = newHp;
         NetworkedCurrentHp = newHp;
+        Debug.Log($"Health updated via RPC: {newHp} for {CharacterName}");
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
     private void RPC_OnDeath()
     {
         Debug.Log($"{CharacterName} died!");
-        // Handle death logic
         SceneManager.LoadScene("LoseScene");
-
     }
 
     private IEnumerator DamageFlash()
@@ -755,7 +750,6 @@ public class Hero : Character
     }
     private IEnumerator OnSpawnComplete()
     {
-        // รอให้ network properties setup เสร็จ
         yield return new WaitForSeconds(0.2f);
 
         // Initialize network properties
@@ -765,13 +759,31 @@ public class Hero : Character
             NetworkedCurrentHp = CurrentHp;
             NetworkedMaxMana = MaxMana;
             NetworkedCurrentMana = CurrentMana;
+            IsNetworkStateReady = true;
         }
+
+        // รอให้ network state sync เสร็จ
+        yield return new WaitForSeconds(0.1f);
 
         // แจ้งให้ PlayerSpawner ทราบว่า spawn เสร็จแล้ว
         PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
         if (spawner != null)
         {
             spawner.OnHeroSpawnComplete(this);
+        }
+
+        // แจ้งให้สร้าง WorldSpaceUI สำหรับทุกคน
+        RPC_NotifyUISpawn();
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_NotifyUISpawn()
+    {
+        // หา PlayerSpawner และขอให้สร้าง WorldSpaceUI
+        PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
+        if (spawner != null)
+        {
+            spawner.CreateWorldSpaceUIForHero(this);
         }
     }
     #endregion
