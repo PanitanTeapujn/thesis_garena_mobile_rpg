@@ -28,31 +28,50 @@ public class WorldSpaceUI : MonoBehaviour
 
     private void Update()
     {
-        if (targetHero == null || mainCamera == null) return;
+        if (targetHero == null || mainCamera == null)
+        {
+            // ลองหา camera อีกครั้ง
+            if (mainCamera == null)
+                mainCamera = Camera.main;
+            return;
+        }
+
+        // ตรวจสอบว่า Hero ยังมีอยู่
+        if (!targetHero.gameObject.activeInHierarchy)
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         // Follow target position
         transform.position = targetHero.transform.position + offset;
 
         // Face camera
-        transform.LookAt(transform.position + mainCamera.transform.rotation * Vector3.forward,
-                        mainCamera.transform.rotation * Vector3.up);
+        if (mainCamera != null)
+        {
+            transform.LookAt(transform.position + mainCamera.transform.rotation * Vector3.forward,
+                            mainCamera.transform.rotation * Vector3.up);
+        }
 
         // Update bars
         UpdateBars();
     }
 
+
     private void UpdateBars()
     {
-        if (healthBar != null)
+        if (targetHero == null) return;
+
+        if (healthBar != null && targetHero.MaxHp > 0)
         {
-            float healthPercent = (float)targetHero.CurrentHp / targetHero.MaxHp;
-            healthBar.value = healthPercent;
+            float healthPercent = (float)targetHero.NetworkedCurrentHp / targetHero.NetworkedMaxHp;
+            healthBar.value = Mathf.Clamp01(healthPercent);
         }
 
-        if (manaBar != null)
+        if (manaBar != null && targetHero.MaxMana > 0)
         {
-            float manaPercent = (float)targetHero.CurrentMana / targetHero.MaxMana;
-            manaBar.value = manaPercent;
+            float manaPercent = (float)targetHero.NetworkedCurrentMana / targetHero.NetworkedMaxMana;
+            manaBar.value = Mathf.Clamp01(manaPercent);
         }
     }
 }

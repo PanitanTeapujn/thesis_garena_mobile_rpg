@@ -22,7 +22,7 @@ public class CombatUIManager : MonoBehaviour
     public FixedJoystick movementJoystick;
     public FixedJoystick cameraJoystick;
 
-    private Hero localHero;
+    public Hero localHero { get; private set; }
     private SingleInputController inputController;
     private GameObject uiInstance;
 
@@ -37,7 +37,39 @@ public class CombatUIManager : MonoBehaviour
         // ใช้ Coroutine เพื่อหา InputController
         StartCoroutine(FindInputControllerRoutine());
     }
-
+    private void Update()
+    {
+        // หา InputController ถ้ายังไม่เจอ
+        if (!inputControllerFound && inputController == null)
+        {
+            inputController = FindObjectOfType<SingleInputController>();
+            if (inputController != null)
+            {
+                inputControllerFound = true;
+                inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
+                SetupButtonEvents();
+                Debug.Log("InputController found in Update!");
+            }
+        }
+        if (localHero == null)
+        {
+            Hero[] heroes = FindObjectsOfType<Hero>();
+            foreach (Hero hero in heroes)
+            {
+                if (hero.HasInputAuthority && hero.IsSpawned)
+                {
+                    SetLocalHero(hero);
+                    Debug.Log($"Found local hero in Update: {hero.CharacterName}");
+                    break;
+                }
+            }
+        }
+        // อัพเดท UI
+        if (localHero != null)
+        {
+            UpdateUI();
+        }
+    }
     // เพิ่ม Coroutine สำหรับหา InputController
     private IEnumerator FindInputControllerRoutine()
     {
@@ -224,54 +256,34 @@ public class CombatUIManager : MonoBehaviour
         UpdateUI();
     }
 
-    private void Update()
-    {
-        // หา InputController ถ้ายังไม่เจอ
-        if (!inputControllerFound && inputController == null)
-        {
-            inputController = FindObjectOfType<SingleInputController>();
-            if (inputController != null)
-            {
-                inputControllerFound = true;
-                inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
-                SetupButtonEvents();
-                Debug.Log("InputController found in Update!");
-            }
-        }
 
-        // อัพเดท UI
-        if (localHero != null)
-        {
-            UpdateUI();
-        }
-    }
 
     private void UpdateUI()
     {
         if (localHero == null) return;
 
-        // Update Health Bar
-        if (healthBar != null)
+        // ใช้ NetworkedCurrentHp/NetworkedMaxHp แทน
+        if (healthBar != null && localHero.NetworkedMaxHp > 0)
         {
-            float healthPercentage = (float)localHero.CurrentHp / localHero.MaxHp;
-            healthBar.value = healthPercentage;
+            float healthPercentage = (float)localHero.NetworkedCurrentHp / localHero.NetworkedMaxHp;
+            healthBar.value = Mathf.Clamp01(healthPercentage);
         }
 
         if (healthText != null)
         {
-            healthText.text = $"{localHero.CurrentHp}/{localHero.MaxHp}";
+            healthText.text = $"{localHero.NetworkedCurrentHp}/{localHero.NetworkedMaxHp}";
         }
 
-        // Update Mana Bar
-        if (manaBar != null)
+        // ใช้ NetworkedCurrentMana/NetworkedMaxMana แทน
+        if (manaBar != null && localHero.NetworkedMaxMana > 0)
         {
-            float manaPercentage = (float)localHero.CurrentMana / localHero.MaxMana;
-            manaBar.value = manaPercentage;
+            float manaPercentage = (float)localHero.NetworkedCurrentMana / localHero.NetworkedMaxMana;
+            manaBar.value = Mathf.Clamp01(manaPercentage);
         }
 
         if (manaText != null)
         {
-            manaText.text = $"{localHero.CurrentMana}/{localHero.MaxMana}";
+            manaText.text = $"{localHero.NetworkedCurrentMana}/{localHero.NetworkedMaxMana}";
         }
     }
 }

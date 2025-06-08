@@ -53,47 +53,54 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         Hero hero = playerObject.GetComponent<Hero>();
         if (hero == null) return;
 
-        // Setup Screen Space UI (เฉพาะ local player)
-        if (hero.HasInputAuthority)
+        // เพิ่ม Coroutine เพื่อรอให้ Hero setup เสร็จก่อน
+        StartCoroutine(SetupCombatUIWithDelay(hero, playerObject));
+    }
+    private IEnumerator SetupCombatUIWithDelay(Hero hero, NetworkObject playerObject)
+{
+    // รอให้ network object spawn เสร็จสมบูรณ์
+    yield return new WaitForSeconds(0.5f);
+    
+    // รอจนกว่า Hero จะ setup เสร็จ
+    while (!hero.IsSpawned )
+    {
+        yield return null;
+    }
+
+    // Setup Screen Space UI (เฉพาะ local player)
+    if (hero.HasInputAuthority)
+    {
+        Debug.Log($"Setting up Combat UI for local player: {hero.CharacterName}");
+
+        CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
+
+        if (combatUI == null && combatUIManagerPrefab != null)
         {
-            Debug.Log($"Setting up Combat UI for local player: {hero.CharacterName}");
-
-            // หา CombatUIManager ที่มีอยู่แล้ว หรือสร้างใหม่
-            CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
-
-            if (combatUI == null && combatUIManagerPrefab != null)
-            {
-                combatUI = Instantiate(combatUIManagerPrefab);
-                Debug.Log("Created new CombatUIManager from prefab");
-            }
-            else if (combatUI == null)
-            {
-                // สร้าง GameObject ใหม่
-                GameObject uiManagerObj = new GameObject("CombatUIManager");
-                combatUI = uiManagerObj.AddComponent<CombatUIManager>();
-                Debug.Log("Created new CombatUIManager component");
-            }
-
-            if (combatUI != null)
-            {
-                // รอสักครู่แล้วค่อย set hero เพื่อให้ UI setup เสร็จก่อน
-                StartCoroutine(SetHeroAfterDelay(combatUI, hero));
-            }
-
-            Debug.Log("Combat UI setup completed for local player");
+            combatUI = Instantiate(combatUIManagerPrefab);
+            Debug.Log("Created new CombatUIManager from prefab");
         }
 
-        // Setup World Space UI (ทุกคน)
-        if (worldSpaceUIPrefab != null)
+        if (combatUI != null)
         {
-            GameObject worldUI = Instantiate(worldSpaceUIPrefab);
-            WorldSpaceUI worldSpaceUI = worldUI.GetComponent<WorldSpaceUI>();
-            if (worldSpaceUI != null)
-            {
-                worldSpaceUI.Initialize(hero);
-            }
+            // รอให้ UI setup เสร็จ
+            yield return new WaitForEndOfFrame();
+            combatUI.SetLocalHero(hero);
         }
     }
+
+    // Setup World Space UI (ทุกคน)
+    if (worldSpaceUIPrefab != null)
+    {
+        GameObject worldUI = Instantiate(worldSpaceUIPrefab);
+        WorldSpaceUI worldSpaceUI = worldUI.GetComponent<WorldSpaceUI>();
+        if (worldSpaceUI != null)
+        {
+            worldSpaceUI.Initialize(hero);
+            Debug.Log($"WorldSpaceUI initialized for {hero.CharacterName}");
+        }
+    }
+
+}
     private IEnumerator SetHeroAfterDelay(CombatUIManager combatUI, Hero hero)
     {
         // รอให้ CombatUIManager setup เสร็จ
@@ -114,7 +121,29 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             }
         }
     }
+    public void OnHeroSpawnComplete(Hero hero)
+    {
+        Debug.Log($"Hero spawn complete: {hero.CharacterName}, HasInput: {hero.HasInputAuthority}");
 
+        // Setup UI อีกครั้งเมื่อ Hero พร้อมแล้ว
+        if (hero.HasInputAuthority)
+        {
+            StartCoroutine(EnsureUISetup(hero));
+        }
+    }
+    private IEnumerator EnsureUISetup(Hero hero)
+    {
+        yield return new WaitForSeconds(0.1f);
+
+        // ตรวจสอบว่ามี CombatUIManager หรือยัง
+        CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
+
+        if (combatUI != null && combatUI.localHero == null)
+        {
+            combatUI.SetLocalHero(hero);
+            Debug.Log("UI setup completed for late-joining player");
+        }
+    }
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");

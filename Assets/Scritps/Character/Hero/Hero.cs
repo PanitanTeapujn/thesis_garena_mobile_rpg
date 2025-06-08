@@ -17,6 +17,7 @@ public class Hero : Character
     [Networked] public int NetworkedMaxHp { get; set; }
     [Networked] public int NetworkedCurrentMana { get; set; }
     [Networked] public int NetworkedMaxMana { get; set; }
+    [Networked] public bool IsNetworkStateReady { get; set; }
 
     [Networked] public TickTimer AttackCooldownTimer { get; set; }
     float nextAttackTime = 0f;
@@ -68,7 +69,7 @@ public class Hero : Character
     private float nextSkill3Time = 0f;
     private float nextSkill4Time = 0f;
 
-  
+
     protected override void Start()
     {
         base.Start();
@@ -474,7 +475,10 @@ public class Hero : Character
     // ========== Fusion Methods ==========
     public override void Spawned()
     {
-      //  Debug.Log($"[NETWORK SPAWNED] {gameObject.name} on {Runner.LocalPlayer}, Object ID: {Object.Id}");
+        base.Spawned();
+
+        // เพิ่ม delay เพื่อให้ network state setup เสร็จ
+        StartCoroutine(OnSpawnComplete());
     }
 
     public override void Render()
@@ -733,6 +737,41 @@ public class Hero : Character
             characterRenderer.material.color = Color.red;
             yield return new WaitForSeconds(0.2f);
             characterRenderer.material.color = originalColor;
+        }
+    }
+    #endregion
+
+    #region Ui
+    public void ForceUpdateUI()
+    {
+        if (HasStateAuthority)
+        {
+            NetworkedMaxHp = MaxHp;
+            NetworkedCurrentHp = CurrentHp;
+            NetworkedMaxMana = MaxMana;
+            NetworkedCurrentMana = CurrentMana;
+            IsNetworkStateReady = true;
+        }
+    }
+    private IEnumerator OnSpawnComplete()
+    {
+        // รอให้ network properties setup เสร็จ
+        yield return new WaitForSeconds(0.2f);
+
+        // Initialize network properties
+        if (HasStateAuthority)
+        {
+            NetworkedMaxHp = MaxHp;
+            NetworkedCurrentHp = CurrentHp;
+            NetworkedMaxMana = MaxMana;
+            NetworkedCurrentMana = CurrentMana;
+        }
+
+        // แจ้งให้ PlayerSpawner ทราบว่า spawn เสร็จแล้ว
+        PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
+        if (spawner != null)
+        {
+            spawner.OnHeroSpawnComplete(this);
         }
     }
     #endregion
