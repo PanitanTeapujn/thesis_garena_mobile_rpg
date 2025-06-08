@@ -24,7 +24,32 @@ public enum DamageType
     Stun,
     Bleed
 }
+[System.Serializable]
+public class StatusResistance
+{
+    [Header("Physical Resistance (Stun, Armor Break, Blind, Weakness)")]
+    [Range(0f, 80f)] public float physicalResistance = 0f;
 
+    [Header("Magical Resistance (Poison, Burn, Bleed, Freeze)")]
+    [Range(0f, 80f)] public float magicalResistance = 0f;
+
+    [Header("Equipment & Rune Bonuses")]
+    public float equipmentPhysicalBonus = 0f;
+    public float equipmentMagicalBonus = 0f;
+    public float runePhysicalBonus = 0f;
+    public float runeMagicalBonus = 0f;
+
+    // คำนวณค่า resistance รวม
+    public float GetTotalPhysicalResistance()
+    {
+        return Mathf.Clamp(physicalResistance + equipmentPhysicalBonus + runePhysicalBonus, 0f, 80f);
+    }
+
+    public float GetTotalMagicalResistance()
+    {
+        return Mathf.Clamp(magicalResistance + equipmentMagicalBonus + runeMagicalBonus, 0f, 80f);
+    }
+}
 public class Character : NetworkBehaviour
 {
     [Header("Base Stats")]
@@ -78,12 +103,49 @@ public class Character : NetworkBehaviour
     [SerializeField]
     private float criticalMultiplier = 2f;
     public float CriticalMultiplier { get { return criticalMultiplier; } set { criticalMultiplier = value; } }
+
+
+    
+
     // ========== Network Properties ==========
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }
     [Networked] public int NetworkedCurrentMana { get; set; }
     [Networked] public int NetworkedMaxMana { get; set; }
     [Networked] public bool IsNetworkStateReady { get; set; }
+
+
+    [Header("Status Resistance")]
+    public StatusResistance statusResistance = new StatusResistance();
+    [Networked] public bool IsArmorBreak { get; set; }
+    [Networked] public float ArmorBreakDuration { get; set; }
+    [Networked] public float ArmorBreakAmount { get; set; } // 0.5 = 50% reduction
+
+    // Blind Status  
+    [Networked] public bool IsBlind { get; set; }
+    [Networked] public float BlindDuration { get; set; }
+    [Networked] public float BlindAmount { get; set; } // 0.8 = 80% reduction
+
+    // Weakness Status
+    [Networked] public bool IsWeak { get; set; }
+    [Networked] public float WeaknessDuration { get; set; }
+    [Networked] public float WeaknessAmount { get; set; } // 0.4 = 40% reduction
+
+    // ========== เพิ่มใน Visual Headers ==========
+    [Header("Physical Status Effects Colors")]
+    public Color armorBreakColor = new Color(0.8f, 0.8f, 0.3f); // สีน้ำตาลทอง
+    public Color blindColor = new Color(0.2f, 0.2f, 0.2f);      // สีเทาเข้ม
+    public Color weaknessColor = new Color(0.6f, 0.4f, 0.8f);   // สีม่วงอ่อน
+
+    public GameObject armorBreakVFX;
+    public GameObject blindVFX;
+    public GameObject weaknessVFX;
+
+    // เพิ่ม flags สำหรับ flash effects
+    private bool isFlashingFromArmorBreak = false;
+    private bool isFlashingFromBlind = false;
+    private bool isFlashingFromWeakness = false;
+
 
     // ========== Network Status Effects ==========
     [Networked] public bool IsPoisoned { get; set; }
@@ -186,6 +248,13 @@ public class Character : NetworkBehaviour
         if (freezeVFX != null) freezeVFX.SetActive(false);
         if (stunVFX != null) stunVFX.SetActive(false);
         if (bleedVFX != null) bleedVFX.SetActive(false);
+        if (armorBreakVFX != null) armorBreakVFX.SetActive(false);
+        if (blindVFX != null) blindVFX.SetActive(false);
+        if (weaknessVFX != null) weaknessVFX.SetActive(false);
+
+        // Set default resistance values
+        statusResistance.physicalResistance = 100f; // 5% base
+        statusResistance.magicalResistance = 5f;  // 5% base
     }
 
     protected virtual void Update()
@@ -298,6 +367,32 @@ public class Character : NetworkBehaviour
                     RemoveBleed();
                 }
             }
+            if (IsArmorBreak)
+            {
+                ArmorBreakDuration -= Runner.DeltaTime;
+                if (ArmorBreakDuration <= 0)
+                {
+                    RemoveArmorBreak();
+                }
+            }
+
+            if (IsBlind)
+            {
+                BlindDuration -= Runner.DeltaTime;
+                if (BlindDuration <= 0)
+                {
+                    RemoveBlind();
+                }
+            }
+
+            if (IsWeak)
+            {
+                WeaknessDuration -= Runner.DeltaTime;
+                if (WeaknessDuration <= 0)
+                {
+                    RemoveWeakness();
+                }
+            }
         }
     }
 
@@ -308,16 +403,33 @@ public class Character : NetworkBehaviour
 
         // 🎯 คำนวณ critical จาก attacker's stats
         bool isCritical = false;
+        int finalDamage = damage;
+
         if (attacker != null)
         {
-            float critRoll = Random.Range(0f, 100f);
-            isCritical = critRoll < attacker.CriticalChance;
+            // 💪 ตรวจสอบ Weakness effect ของ attacker
+            if (attacker.IsWeak)
+            {
+                finalDamage = Mathf.RoundToInt(damage * (1f - attacker.WeaknessAmount));
+                Debug.Log($"[Weakness Effect] {attacker.CharacterName} damage reduced from {damage} to {finalDamage} ({attacker.WeaknessAmount * 100}% reduction)");
+            }
 
-            Debug.Log($"[Critical Check] {attacker.CharacterName} rolls {critRoll:F1}% vs {attacker.CriticalChance}% = {(isCritical ? "CRITICAL!" : "Normal")}");
+            float critRoll = Random.Range(0f, 100f);
+            float attackerCritChance = attacker.CriticalChance;
+
+            // 👁️ ตรวจสอบ Blind effect ของ attacker
+            if (attacker.IsBlind)
+            {
+                attackerCritChance *= (1f - attacker.BlindAmount);
+                Debug.Log($"[Blind Effect] {attacker.CharacterName} critical chance reduced to {attackerCritChance:F1}%");
+            }
+
+            isCritical = critRoll < attackerCritChance;
+            Debug.Log($"[Critical Check] {attacker.CharacterName} rolls {critRoll:F1}% vs {attackerCritChance:F1}% = {(isCritical ? "CRITICAL!" : "Normal")}");
         }
 
         // เรียก TakeDamage เดิมที่มีการคำนวณ damage แล้ว
-        TakeDamage(damage, damageType, isCritical);
+        TakeDamage(finalDamage, damageType, isCritical);
     }
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
@@ -362,16 +474,45 @@ public class Character : NetworkBehaviour
     }
     protected virtual int CalculateDamage(int damage, bool isCritical)
     {
+        // คำนวณ critical และ armor เหมือนเดิม
         if (isCritical)
         {
-            int criticalDamage = Mathf.RoundToInt(damage * criticalMultiplier); // Ignore armor + multiply
-            Debug.Log($"[CalculateDamage] Critical Hit! {damage} * {criticalMultiplier} = {criticalDamage} (ignoring {armor} armor)");
-            return criticalDamage;
+            // 👁️ ตรวจสอบ Blind effect ก่อนทำ critical
+            if (IsBlind)
+            {
+                // ลดโอกาส critical ตาม blind amount
+                float blindReduction = BlindAmount; // 0.8 = 80%
+                float newCritChance = criticalChance * (1f - blindReduction);
+
+                // Roll ใหม่ด้วย critical chance ที่ลดลง
+                if (Random.Range(0f, 100f) >= newCritChance)
+                {
+                    isCritical = false; // ไม่ critical เพราะ blind
+                    Debug.Log($"[Blind Effect] Critical blocked by blind! ({blindReduction * 100}% reduction)");
+                }
+            }
+
+            if (isCritical)
+            {
+                int criticalDamage = Mathf.RoundToInt(damage * criticalMultiplier);
+                Debug.Log($"[CalculateDamage] Critical Hit! {damage} * {criticalMultiplier} = {criticalDamage} (ignoring armor)");
+                return criticalDamage;
+            }
         }
 
-        int damageAfterArmor = damage - armor;
+        // คำนวณ armor ปกติ + armor break effect
+        int currentArmor = armor;
+
+        // 🛡️ ตรวจสอบ Armor Break effect
+        if (IsArmorBreak)
+        {
+            currentArmor = Mathf.RoundToInt(currentArmor * (1f - ArmorBreakAmount));
+            Debug.Log($"[Armor Break Effect] Armor reduced from {armor} to {currentArmor} ({ArmorBreakAmount * 100}% reduction)");
+        }
+
+        int damageAfterArmor = damage - currentArmor;
         int finalDamage = Mathf.Max(1, damageAfterArmor);
-        Debug.Log($"[CalculateDamage] Normal Hit: {damage} - {armor} armor = {finalDamage}");
+        Debug.Log($"[CalculateDamage] Normal Hit: {damage} - {currentArmor} armor = {finalDamage}");
         return finalDamage;
     }
 
@@ -470,39 +611,55 @@ public class Character : NetworkBehaviour
     private Color GetReturnColor()
     {
         // ลำดับความสำคัญของสี (สถานะที่สำคัญกว่าจะแสดงก่อน)
-        if (IsPoisoned) return poisonColor;
-        if (IsBurning) return burnColor;
-        if (IsBleeding) return bleedColor;
-        if (IsFrozen) return freezeColor;
-        if (IsStunned) return stunColor;
+        if (IsStunned) return stunColor;           // ⚡ Stun - สำคัญที่สุด
+        if (IsFrozen) return freezeColor;          // ❄️ Freeze
+        if (IsArmorBreak) return armorBreakColor;  // 🛡️ Armor Break
+        if (IsBlind) return blindColor;            // 👁️ Blind
+        if (IsWeak) return weaknessColor;          // 💪 Weakness
+        if (IsPoisoned) return poisonColor;        // 🧪 Poison
+        if (IsBurning) return burnColor;           // 🔥 Burn
+        if (IsBleeding) return bleedColor;         // 🩸 Bleed
 
         return originalColor;
     }
 
     // ========== Poison Status Effect System ==========
-    #region Status Effect
+    #region Status Effect Magic
     public virtual void ApplyPoison(int damagePerTick, float duration)
     {
         if (!HasStateAuthority) return;
 
-        // 🔧 ปรับปรุงการตั้งค่าพิษ
+        // 🧪 คำนวณ resistance (Magical)
+        float totalResistance = statusResistance.GetTotalMagicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f; // 60% ของ resistance
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Poison Resisted] {CharacterName} resisted poison! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาและดาเมจตาม resistance
+        float durationReduction = totalResistance / 100f;
+        float damageReduction = (totalResistance * 0.5f) / 100f; // 50% ของ resistance
+
+        duration = duration * (1f - durationReduction);
+        damagePerTick = Mathf.RoundToInt(damagePerTick * (1f - damageReduction));
+
         bool wasAlreadyPoisoned = IsPoisoned;
 
         IsPoisoned = true;
-        PoisonDamagePerTick = damagePerTick;
-        PoisonDuration = duration;
+        PoisonDamagePerTick = Mathf.Max(1, damagePerTick);
+        PoisonDuration = Mathf.Max(0.5f, duration);
 
-        // 🔧 ตั้งค่า manual timer ให้ tick ทันทีในครั้งแรก
         float currentTime = (float)Runner.SimulationTime;
         if (!wasAlreadyPoisoned)
         {
-            PoisonNextTickTime = currentTime + 0.1f; // ให้ tick เร็วในครั้งแรก
-            Debug.Log($"[ApplyPoison] {CharacterName} first poison tick scheduled at: {PoisonNextTickTime:F2} (current: {currentTime:F2})");
+            PoisonNextTickTime = currentTime + 0.1f;
         }
 
-        Debug.Log($"[ApplyPoison] {CharacterName} is poisoned! {damagePerTick} damage per {poisonTickInterval}s for {duration}s");
-
-        // Visual effects for all clients
+        Debug.Log($"[ApplyPoison] {CharacterName} is poisoned! {PoisonDamagePerTick} damage per {poisonTickInterval}s for {PoisonDuration:F1}s (Resistance: {totalResistance:F1}%)");
         RPC_ShowPoisonEffect(true);
     }
 
@@ -612,11 +769,29 @@ public class Character : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
+        // 🔥 คำนวณ resistance (Magical)
+        float totalResistance = statusResistance.GetTotalMagicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f;
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Burn Resisted] {CharacterName} resisted burn! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาและดาเมจตาม resistance
+        float durationReduction = totalResistance / 100f;
+        float damageReduction = (totalResistance * 0.5f) / 100f;
+
+        duration = duration * (1f - durationReduction);
+        damagePerTick = Mathf.RoundToInt(damagePerTick * (1f - damageReduction));
+
         bool wasAlreadyBurning = IsBurning;
 
         IsBurning = true;
-        BurnDamagePerTick = damagePerTick;
-        BurnDuration = duration;
+        BurnDamagePerTick = Mathf.Max(1, damagePerTick);
+        BurnDuration = Mathf.Max(0.5f, duration);
 
         float currentTime = (float)Runner.SimulationTime;
         if (!wasAlreadyBurning)
@@ -624,7 +799,7 @@ public class Character : NetworkBehaviour
             BurnNextTickTime = currentTime + 0.1f;
         }
 
-        Debug.Log($"[ApplyBurn] {CharacterName} is burning! {damagePerTick} damage per {burnTickInterval}s for {duration}s");
+        Debug.Log($"[ApplyBurn] {CharacterName} is burning! {BurnDamagePerTick} damage per {burnTickInterval}s for {BurnDuration:F1}s (Resistance: {totalResistance:F1}%)");
         RPC_ShowBurnEffect(true);
     }
 
@@ -713,24 +888,38 @@ public class Character : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
+        // ❄️ คำนวณ resistance (Magical)
+        float totalResistance = statusResistance.GetTotalMagicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f;
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Freeze Resisted] {CharacterName} resisted freeze! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาตาม resistance
+        float durationReduction = totalResistance / 100f;
+        duration = duration * (1f - durationReduction);
+
         bool wasAlreadyFrozen = IsFrozen;
 
         IsFrozen = true;
-        FreezeDuration = duration;
+        FreezeDuration = Mathf.Max(0.5f, duration);
 
         if (!wasAlreadyFrozen)
         {
             OriginalMoveSpeed = moveSpeed;
             moveSpeed *= 0.3f; // ลดความเร็วเหลือ 30%
 
-            // หยุด movement ของ rigidbody
             if (rb != null)
             {
                 rb.velocity = Vector3.zero;
             }
         }
 
-        Debug.Log($"[ApplyFreeze] {CharacterName} is frozen for {duration}s! Move speed: {moveSpeed}");
+        Debug.Log($"[ApplyFreeze] {CharacterName} is frozen for {FreezeDuration:F1}s! Move speed: {moveSpeed} (Resistance: {totalResistance:F1}%)");
         RPC_ShowFreezeEffect(true);
     }
 
@@ -770,65 +959,36 @@ public class Character : NetworkBehaviour
     }
 
     // ========== ⚡ Stun Status Effect System ==========
-    public virtual void ApplyStun(float duration)
-    {
-        if (!HasStateAuthority) return;
-
-        IsStunned = true;
-        StunDuration = duration;
-
-        // หยุดการเคลื่อนไหวทั้งหมด
-        if (rb != null)
-        {
-            rb.velocity = Vector3.zero;
-        }
-
-        Debug.Log($"[ApplyStun] {CharacterName} is stunned for {duration}s!");
-        RPC_ShowStunEffect(true);
-    }
-
-    public virtual void RemoveStun()
-    {
-        if (!HasStateAuthority) return;
-
-        IsStunned = false;
-        StunDuration = 0f;
-
-        Debug.Log($"{CharacterName} is no longer stunned");
-        RPC_ShowStunEffect(false);
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowStunEffect(bool show)
-    {
-        if (stunVFX != null)
-        {
-            stunVFX.SetActive(show);
-        }
-
-        if (characterRenderer != null && !isFlashingFromStun && !isTakingDamage)
-        {
-            if (show)
-            {
-                characterRenderer.material.color = stunColor;
-            }
-            else
-            {
-                characterRenderer.material.color = GetReturnColor();
-            }
-        }
-    }
+   
 
     // ========== 🩸 Bleed Status Effect System ==========
     public virtual void ApplyBleed(int damagePerTick, float duration)
     {
         if (!HasStateAuthority) return;
 
+        // 🩸 คำนวณ resistance (Magical)
+        float totalResistance = statusResistance.GetTotalMagicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f;
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Bleed Resisted] {CharacterName} resisted bleed! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาและดาเมจตาม resistance
+        float durationReduction = totalResistance / 100f;
+        float damageReduction = (totalResistance * 0.5f) / 100f;
+
+        duration = duration * (1f - durationReduction);
+        damagePerTick = Mathf.RoundToInt(damagePerTick * (1f - damageReduction));
+
         bool wasAlreadyBleeding = IsBleeding;
 
         IsBleeding = true;
-        BleedDamagePerTick = damagePerTick;
-        BleedDuration = duration;
+        BleedDamagePerTick = Mathf.Max(1, damagePerTick);
+        BleedDuration = Mathf.Max(0.5f, duration);
 
         float currentTime = (float)Runner.SimulationTime;
         if (!wasAlreadyBleeding)
@@ -836,7 +996,7 @@ public class Character : NetworkBehaviour
             BleedNextTickTime = currentTime + 0.1f;
         }
 
-        Debug.Log($"[ApplyBleed] {CharacterName} is bleeding! {damagePerTick} damage per {bleedTickInterval}s for {duration}s");
+        Debug.Log($"[ApplyBleed] {CharacterName} is bleeding! {BleedDamagePerTick} damage per {bleedTickInterval}s for {BleedDuration:F1}s (Resistance: {totalResistance:F1}%)");
         RPC_ShowBleedEffect(true);
     }
 
@@ -937,11 +1097,7 @@ public class Character : NetworkBehaviour
     // 🔧 ปรับปรุง UpdateVisualEffects ให้ไม่ override การ flash
     private void UpdateVisualEffects()
     {
-        // Update poison visual effect based on network state
-        if (poisonVFX != null && poisonVFX.activeSelf != IsPoisoned)
-        {
-            poisonVFX.SetActive(IsPoisoned);
-        }
+        // Update all VFX based on network state
         if (poisonVFX != null && poisonVFX.activeSelf != IsPoisoned)
             poisonVFX.SetActive(IsPoisoned);
 
@@ -957,24 +1113,310 @@ public class Character : NetworkBehaviour
         if (bleedVFX != null && bleedVFX.activeSelf != IsBleeding)
             bleedVFX.SetActive(IsBleeding);
 
+        if (armorBreakVFX != null && armorBreakVFX.activeSelf != IsArmorBreak)
+            armorBreakVFX.SetActive(IsArmorBreak);
 
-        // 🔧 อัพเดทสีเฉพาะเมื่อไม่มีการ flash
-        if (characterRenderer != null && !isTakingDamage && !isFlashingFromPoison)
+        if (blindVFX != null && blindVFX.activeSelf != IsBlind)
+            blindVFX.SetActive(IsBlind);
+
+        if (weaknessVFX != null && weaknessVFX.activeSelf != IsWeak)
+            weaknessVFX.SetActive(IsWeak);
+
+        // อัพเดทสีเฉพาะเมื่อไม่มีการ flash
+        if (characterRenderer != null && !isTakingDamage &&
+            !isFlashingFromPoison && !isFlashingFromBurn &&
+            !isFlashingFromFreeze && !isFlashingFromStun && !isFlashingFromBleed &&
+            !isFlashingFromArmorBreak && !isFlashingFromBlind && !isFlashingFromWeakness)
         {
-            Color targetColor = IsPoisoned ? poisonColor : originalColor;
-
-            // ใช้ threshold ในการเปรียบเทียบสี
+            Color targetColor = GetReturnColor();
             float colorDifference = Vector4.Distance(characterRenderer.material.color, targetColor);
+
             if (colorDifference > 0.1f)
             {
                 characterRenderer.material.color = targetColor;
-                Debug.Log($"[UpdateVisualEffects] {CharacterName} color changed to: {(IsPoisoned ? "Poison" : "Original")} - {targetColor}");
             }
         }
     }
     #endregion
 
+
+    #region Status Effect Physic
+
+    public virtual void ApplyStun(float duration)
+    {
+        if (!HasStateAuthority) return;
+
+        // ⚡ คำนวณ resistance (Physical)
+        float totalResistance = statusResistance.GetTotalPhysicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f;
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Stun Resisted] {CharacterName} resisted stun! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาตาม resistance
+        float durationReduction = totalResistance / 100f;
+        duration = duration * (1f - durationReduction);
+
+        IsStunned = true;
+        StunDuration = Mathf.Max(0.5f, duration);
+
+        // หยุดการเคลื่อนไหวทั้งหมด
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+        }
+
+        Debug.Log($"[ApplyStun] {CharacterName} is stunned for {StunDuration:F1}s! (Resistance: {totalResistance:F1}%)");
+        RPC_ShowStunEffect(true);
+    }
+
+    public virtual void RemoveStun()
+    {
+        if (!HasStateAuthority) return;
+
+        IsStunned = false;
+        StunDuration = 0f;
+
+        Debug.Log($"{CharacterName} is no longer stunned");
+        RPC_ShowStunEffect(false);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowStunEffect(bool show)
+    {
+        if (stunVFX != null)
+        {
+            stunVFX.SetActive(show);
+        }
+
+        if (characterRenderer != null && !isFlashingFromStun && !isTakingDamage)
+        {
+            if (show)
+            {
+                characterRenderer.material.color = stunColor;
+            }
+            else
+            {
+                characterRenderer.material.color = GetReturnColor();
+            }
+        }
+    }
+    public virtual void ApplyArmorBreak(float duration, float reduction = 0.5f)
+    {
+        if (!HasStateAuthority) return;
+
+        // 🛡️ คำนวณ resistance (Physical)
+        float totalResistance = statusResistance.GetTotalPhysicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f; // 60% ของ resistance
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Armor Break Resisted] {CharacterName} resisted armor break! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาตาม resistance
+        float durationReduction = totalResistance / 100f;
+        duration = duration * (1f - durationReduction);
+
+        IsArmorBreak = true;
+        ArmorBreakDuration = Mathf.Max(0.5f, duration);
+        ArmorBreakAmount = reduction;
+
+        Debug.Log($"[ApplyArmorBreak] {CharacterName} armor broken! Reduction: {reduction * 100}% for {ArmorBreakDuration:F1}s (Resistance: {totalResistance:F1}%)");
+        RPC_ShowArmorBreakEffect(true);
+    }
+
+    public virtual void RemoveArmorBreak()
+    {
+        if (!HasStateAuthority) return;
+
+        IsArmorBreak = false;
+        ArmorBreakDuration = 0f;
+        ArmorBreakAmount = 0f;
+
+        Debug.Log($"{CharacterName} armor break removed");
+        RPC_ShowArmorBreakEffect(false);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowArmorBreakEffect(bool show)
+    {
+        if (armorBreakVFX != null)
+        {
+            armorBreakVFX.SetActive(show);
+        }
+
+        if (characterRenderer != null && !isFlashingFromArmorBreak && !isTakingDamage)
+        {
+            if (show)
+            {
+                characterRenderer.material.color = armorBreakColor;
+            }
+            else
+            {
+                characterRenderer.material.color = GetReturnColor();
+            }
+        }
+    }
+
+    // ========== 👁️ Blind Status Effect System ==========
+    public virtual void ApplyBlind(float duration, float reduction = 0.8f)
+    {
+        if (!HasStateAuthority) return;
+
+        // 👁️ คำนวณ resistance (Physical)
+        float totalResistance = statusResistance.GetTotalPhysicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f;
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Blind Resisted] {CharacterName} resisted blind! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาตาม resistance
+        float durationReduction = totalResistance / 100f;
+        duration = duration * (1f - durationReduction);
+
+        IsBlind = true;
+        BlindDuration = Mathf.Max(0.5f, duration);
+        BlindAmount = reduction;
+
+        Debug.Log($"[ApplyBlind] {CharacterName} is blinded! Critical reduction: {reduction * 100}% for {BlindDuration:F1}s");
+        RPC_ShowBlindEffect(true);
+    }
+
+    public virtual void RemoveBlind()
+    {
+        if (!HasStateAuthority) return;
+
+        IsBlind = false;
+        BlindDuration = 0f;
+        BlindAmount = 0f;
+
+        Debug.Log($"{CharacterName} blind removed");
+        RPC_ShowBlindEffect(false);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowBlindEffect(bool show)
+    {
+        if (blindVFX != null)
+        {
+            blindVFX.SetActive(show);
+        }
+
+        if (characterRenderer != null && !isFlashingFromBlind && !isTakingDamage)
+        {
+            if (show)
+            {
+                characterRenderer.material.color = blindColor;
+            }
+            else
+            {
+                characterRenderer.material.color = GetReturnColor();
+            }
+        }
+    }
+
+    // ========== 💪 Weakness Status Effect System ==========
+    public virtual void ApplyWeakness(float duration, float reduction = 0.4f)
+    {
+        if (!HasStateAuthority) return;
+
+        // 💪 คำนวณ resistance (Physical)
+        float totalResistance = statusResistance.GetTotalPhysicalResistance();
+
+        // ตรวจสอบโอกาสป้องกัน
+        float chanceReduction = totalResistance * 0.6f;
+        if (Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Weakness Resisted] {CharacterName} resisted weakness! ({chanceReduction:F1}% chance)");
+            return;
+        }
+
+        // ลดระยะเวลาตาม resistance
+        float durationReduction = totalResistance / 100f;
+        duration = duration * (1f - durationReduction);
+
+        IsWeak = true;
+        WeaknessDuration = Mathf.Max(0.5f, duration);
+        WeaknessAmount = reduction;
+
+        Debug.Log($"[ApplyWeakness] {CharacterName} is weakened! Attack reduction: {reduction * 100}% for {WeaknessDuration:F1}s");
+        RPC_ShowWeaknessEffect(true);
+    }
+
+    public virtual void RemoveWeakness()
+    {
+        if (!HasStateAuthority) return;
+
+        IsWeak = false;
+        WeaknessDuration = 0f;
+        WeaknessAmount = 0f;
+
+        Debug.Log($"{CharacterName} weakness removed");
+        RPC_ShowWeaknessEffect(false);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowWeaknessEffect(bool show)
+    {
+        if (weaknessVFX != null)
+        {
+            weaknessVFX.SetActive(show);
+        }
+
+        if (characterRenderer != null && !isFlashingFromWeakness && !isTakingDamage)
+        {
+            if (show)
+            {
+                characterRenderer.material.color = weaknessColor;
+            }
+            else
+            {
+                characterRenderer.material.color = GetReturnColor();
+            }
+        }
+    }
+    #endregion
     // ========== Public Methods for External Use ==========
+    #region // ========== Equipment/Rune Integration ==========
+
+    public virtual void UpdateResistanceFromEquipment(float physicalBonus, float magicalBonus)
+    {
+        statusResistance.equipmentPhysicalBonus = physicalBonus;
+        statusResistance.equipmentMagicalBonus = magicalBonus;
+
+        Debug.Log($"[Equipment] Updated resistance: Physical +{physicalBonus}%, Magical +{magicalBonus}%");
+    }
+
+    public virtual void UpdateResistanceFromRunes(float physicalBonus, float magicalBonus)
+    {
+        statusResistance.runePhysicalBonus = physicalBonus;
+        statusResistance.runeMagicalBonus = magicalBonus;
+
+        Debug.Log($"[Runes] Updated resistance: Physical +{physicalBonus}%, Magical +{magicalBonus}%");
+    }
+    public virtual void GetCurrentResistanceStats()
+    {
+        float totalPhysical = statusResistance.GetTotalPhysicalResistance();
+        float totalMagical = statusResistance.GetTotalMagicalResistance();
+
+        Debug.Log($"=== {CharacterName} Resistance Stats ===");
+        Debug.Log($"🛡️ Physical Resistance: {totalPhysical:F1}% (Base: {statusResistance.physicalResistance}% + Equipment: {statusResistance.equipmentPhysicalBonus}% + Runes: {statusResistance.runePhysicalBonus}%)");
+        Debug.Log($"🔮 Magical Resistance: {totalMagical:F1}% (Base: {statusResistance.magicalResistance}% + Equipment: {statusResistance.equipmentMagicalBonus}% + Runes: {statusResistance.runeMagicalBonus}%)");
+        Debug.Log($"Physical protects: Stun, Armor Break, Blind, Weakness");
+        Debug.Log($"Magical protects: Poison, Burn, Bleed, Freeze");
+    }
+    #endregion
     public bool IsSpawned => Object != null && Object.IsValid;
 
     public void ForceUpdateNetworkState()

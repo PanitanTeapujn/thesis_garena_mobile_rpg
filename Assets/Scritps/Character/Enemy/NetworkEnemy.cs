@@ -520,7 +520,9 @@ public class NetworkEnemy : Character
             if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติดพิษ
             {
                 Debug.Log($"Enemy applies poison to {targetHero.CharacterName}!");
-                targetHero.ApplyPoison(3,5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
+                //  targetHero.ApplyPoison(3,5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
+                targetHero.ApplyArmorBreak(10f);
+                targetHero.ApplyWeakness(10f);
             }
         }
     }
