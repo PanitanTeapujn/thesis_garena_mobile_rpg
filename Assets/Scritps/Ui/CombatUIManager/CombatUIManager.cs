@@ -258,7 +258,7 @@ public class CombatUIManager : MonoBehaviour
 
 
 
-    private void UpdateUI()
+    public void UpdateUI()
     {
         if (localHero == null) return;
 

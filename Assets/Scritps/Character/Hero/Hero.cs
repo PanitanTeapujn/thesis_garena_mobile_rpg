@@ -407,14 +407,37 @@ public class Hero : Character
     {
         rotationThreshold = Mathf.Clamp(threshold, 1f, 10f);
     }
-
+    public void DebugNetworkState()
+    {
+        Debug.Log($"[DEBUG] {CharacterName} Network State:");
+        Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
+        Debug.Log($"  - HasStateAuthority: {HasStateAuthority}");
+        Debug.Log($"  - IsNetworkStateReady: {IsNetworkStateReady}");
+        Debug.Log($"  - CurrentHp: {CurrentHp} | NetworkedCurrentHp: {NetworkedCurrentHp}");
+        Debug.Log($"  - MaxHp: {MaxHp} | NetworkedMaxHp: {NetworkedMaxHp}");
+        Debug.Log($"  - CurrentMana: {CurrentMana} | NetworkedCurrentMana: {NetworkedCurrentMana}");
+        Debug.Log($"  - MaxMana: {MaxMana} | NetworkedMaxMana: {NetworkedMaxMana}");
+    }
     // ========== Original Methods (Non-Network) ==========
     protected override void Update()
     {
         base.Update();
+        if (Time.time % 2.0f < Time.deltaTime)
+        {
+            DebugNetworkState();
+        }
+        if (HasInputAuthority)
+        {
+            CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
+            if (combatUI != null && combatUI.localHero == this)
+            {
+                // Force update ทุก frame เพื่อให้แน่ใจว่า UI ได้รับข้อมูลล่าสุด
+                combatUI.UpdateUI();
+            }
+        }
 
         // Camera follow สำหรับ local player
-       
+
     }
 
     public void Move(Vector3 moveDirection)
@@ -588,12 +611,33 @@ public class Hero : Character
             }
         }
 
-        // Sync health and mana
+        // *** เพิ่มการ sync health และ mana ทุก frame สำหรับทุก client ***
         if (HasStateAuthority)
         {
             NetworkedCurrentHp = CurrentHp;
             NetworkedCurrentMana = CurrentMana;
+            NetworkedMaxHp = MaxHp;
+            NetworkedMaxMana = MaxMana;
         }
+
+        // *** เพิ่มการ sync สำหรับ client ที่มี InputAuthority ***
+        if (HasInputAuthority && !HasStateAuthority)
+        {
+            // ส่งข้อมูล HP/Mana ไปยัง server หากมีการเปลี่ยนแปลง
+            if (NetworkedCurrentHp != CurrentHp || NetworkedCurrentMana != CurrentMana)
+            {
+                RPC_SyncHealthMana(CurrentHp, CurrentMana);
+            }
+        }
+    }
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_SyncHealthMana(int newHp, int newMana)
+    {
+        CurrentHp = newHp;
+        CurrentMana = newMana;
+        NetworkedCurrentHp = newHp;
+        NetworkedCurrentMana = newMana;
+        Debug.Log($"Health/Mana synced via RPC: HP={newHp}, Mana={newMana} for {CharacterName}");
     }
     protected virtual void TryUseSkill1()
     {
