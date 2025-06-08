@@ -15,7 +15,8 @@ MonoBehaviour:
   characterName: Slime
   moveSpeed: 3
   maxHp: 50
-  attackDamage: 10
+  maxMana: 0
+  attackDamage: 0
   arrmor: 3
   attackCoolDown: 1
   attackRange: 1

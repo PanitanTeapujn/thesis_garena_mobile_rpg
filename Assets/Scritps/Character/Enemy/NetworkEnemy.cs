@@ -6,8 +6,7 @@ using Fusion;
 public class NetworkEnemy : Character
 {
     // ========== Network Properties ==========
-    [Networked] public int NetworkedCurrentHp { get; set; }
-    [Networked] public int NetworkedMaxHp { get; set; }
+   
     [Networked] public NetworkBool IsDead { get; set; }
     [Networked] public PlayerRef CurrentTarget { get; set; }
 
@@ -57,6 +56,9 @@ public class NetworkEnemy : Character
     // ========== Network Update ==========
     public override void FixedUpdateNetwork()
     {
+        // เรียก base.FixedUpdateNetwork() ก่อนเพื่อให้ระบบ poison ทำงาน
+        base.FixedUpdateNetwork();
+
         // Safety check
         if (!IsSpawned) return;
 
@@ -70,8 +72,7 @@ public class NetworkEnemy : Character
                 MoveTowardsTarget();
                 TryAttackTarget();
 
-                // Sync health
-                NetworkedCurrentHp = CurrentHp;
+                // ❌ ลบออก: NetworkedCurrentHp = CurrentHp; // ใช้จาก base class แล้ว
 
                 // Check death
                 if (CurrentHp <= 0 && !IsDead)
@@ -272,46 +273,34 @@ public class NetworkEnemy : Character
 
         if (targetHero != null)
         {
-            Debug.Log($"Enemy {name} attacks {targetHero.CharacterName} for {AttackDamage} damage!");
+            Debug.Log($"[ENEMY ATTACK] Target: {targetHero.CharacterName}, HasStateAuthority: {targetHero.HasStateAuthority}, HasInputAuthority: {targetHero.HasInputAuthority}");
 
-            // Only the target player's client handles taking damage
+            // ทำ damage ปกติก่อน
             if (targetHero.HasInputAuthority)
             {
-                targetHero.TakeDamage(AttackDamage);
+                targetHero.TakeDamage(AttackDamage, DamageType.Normal, false);
+            }
+
+            // ตรวจสอบ Authority ก่อนใส่พิษ
+            if (HasStateAuthority && targetHero.HasStateAuthority)
+            {
+                Debug.Log($"[ENEMY ATTACK] Applying poison to {targetHero.CharacterName}!");
+                targetHero.ApplyPoison(20, 5f); // เปลี่ยนจาก 3 เป็น 20 เพื่อเห็นชัดเจน
+            }
+            else
+            {
+                Debug.LogWarning($"[ENEMY ATTACK] Cannot apply poison - Enemy Authority: {HasStateAuthority}, Hero Authority: {targetHero.HasStateAuthority}");
             }
         }
     }
 
-    public void TakeDamage(int damage, PlayerRef attacker)
-    {
-        if (!HasStateAuthority || !IsSpawned) return;
-
-        CurrentHp -= damage;
-        NetworkedCurrentHp = CurrentHp;
-
-        Debug.Log($"Enemy {name} takes {damage} damage. HP: {CurrentHp}/{MaxHp}");
-
-        // Visual feedback via RPC
-        RPC_OnTakeDamage(damage);
-
-        if (CurrentHp <= 0 && !IsDead)
-        {
-            IsDead = true;
-            RPC_OnDeath();
-        }
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_OnTakeDamage(int damage)
-    {
-        // Visual feedback on all clients
-        StartCoroutine(DamageFlash());
-    }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_OnDeath()
     {
         Debug.Log($"Enemy {name} died!");
+
+        IsDead = true;
 
         // Death effects on all clients
         if (characterRenderer != null)
@@ -326,21 +315,7 @@ public class NetworkEnemy : Character
         // Destroy after delay
         StartCoroutine(DestroyAfterDelay());
     }
-
     // ========== Visual Effects ==========
-    private IEnumerator DamageFlash()
-    {
-        if (characterRenderer != null)
-        {
-            Color originalColor = characterRenderer.material.color;
-            characterRenderer.material.color = Color.red;
-            yield return new WaitForSeconds(0.2f);
-            if (!IsDead)
-            {
-                characterRenderer.material.color = originalColor;
-            }
-        }
-    }
 
     private IEnumerator DestroyAfterDelay()
     {
@@ -351,6 +326,7 @@ public class NetworkEnemy : Character
             Runner.Despawn(Object);
         }
     }
+   
 
     // ========== Debug ==========
     private void OnDrawGizmosSelected()
