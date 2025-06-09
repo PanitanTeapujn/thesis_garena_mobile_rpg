@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: -7581183126895598035}
   - component: {fileID: 2866443350649548657}
   - component: {fileID: 4927847923645176864}
+  - component: {fileID: 4266108146747291927}
   m_Layer: 7
   m_Name: Slime
   m_TagString: Enemy
@@ -160,6 +161,7 @@ MonoBehaviour:
   - {fileID: -7581183126895598035}
   - {fileID: 2866443350649548657}
   - {fileID: 4927847923645176864}
+  - {fileID: 4266108146747291927}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &2102208964661930907
 MonoBehaviour:
@@ -186,6 +188,8 @@ MonoBehaviour:
   attackCooldown: 0
   criticalChance: 5
   criticalMultiplier: 2
+  healthRegenPerSecond: 2
+  manaRegenPerSecond: 3
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
   _NetworkedCurrentMana: 0
@@ -244,11 +248,28 @@ MonoBehaviour:
   _PoisonDuration: 0
   _PoisonDamagePerTick: 0
   _PoisonNextTickTime: 0
-  _IsStunned: 0
-  _StunDuration: 0
+  _IsBurning: 0
+  _BurnDuration: 0
+  _BurnDamagePerTick: 0
+  _BurnNextTickTime: 0
+  _IsBleeding: 0
+  _BleedDuration: 0
+  _BleedDamagePerTick: 0
+  _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
   _OriginalMoveSpeed: 0
+  _IsStunned: 0
+  _StunDuration: 0
+  _IsArmorBreak: 0
+  _ArmorBreakDuration: 0
+  _ArmorBreakAmount: 0
+  _IsBlind: 0
+  _BlindDuration: 0
+  _BlindAmount: 0
+  _IsWeak: 0
+  _WeaknessDuration: 0
+  _WeaknessAmount: 0
 --- !u!114 &4927847923645176864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -282,3 +303,31 @@ MonoBehaviour:
   damageFlashDuration: 0.2
   criticalFlashDuration: 0.3
   statusFlashDuration: 0.2
+--- !u!114 &4266108146747291927
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5c8b860c1d2ac249ad654eb328e7b90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  levelUpStats:
+    hpBonusPerLevel: 10
+    manaBonusPerLevel: 5
+    attackDamageBonusPerLevel: 2
+    armorBonusPerLevel: 1
+    criticalChanceBonusPerLevel: 0.5
+    moveSpeedBonusPerLevel: 0.1
+  expSettings:
+    baseExpToNextLevel: 100
+    expGrowthRate: 1.2
+    maxLevel: 100
+    baseEnemyExp: 25
+    enemyExpLevelMultiplier: 1.1
+  _CurrentLevel: 1
+  _CurrentExp: 0
+  _ExpToNextLevel: 100

@@ -77,8 +77,11 @@
             // Debug.Log($"[SPAWNED] {gameObject.name} - Input: {HasInputAuthority}, State: {HasStateAuthority}");
             SetRotationThreshold(3f);
             SetMovementDeadZone(0.1f);
-            // กำหนดค่าเริ่มต้นของ scale
-            NetworkedScale = transform.localScale;
+        CombatManager.OnCharacterDeath += HandleCharacterDeath;
+        LevelManager.OnLevelUp += HandleLevelUp;
+        LevelManager.OnExpGain += HandleExpGain;
+        // กำหนดค่าเริ่มต้นของ scale
+        NetworkedScale = transform.localScale;
 
             // Setup camera เฉพาะ local player
             if (HasInputAuthority)
@@ -98,6 +101,8 @@
     protected virtual void OnDestroy()
     {
         CombatManager.OnCharacterDeath -= HandleCharacterDeath;
+        LevelManager.OnLevelUp -= HandleLevelUp;
+        LevelManager.OnExpGain -= HandleExpGain;
     }
 
     // ========== Hero Death Handling ==========
@@ -107,6 +112,30 @@
         if (deadCharacter == this && HasInputAuthority)
         {
             SceneManager.LoadScene("LoseScene");
+        }
+    }
+
+    // ========== Level System Event Handlers ==========
+    private void HandleLevelUp(Character character, int newLevel)
+    {
+        if (character == this)
+        {
+            Debug.Log($"🎉 {CharacterName} reached Level {newLevel}!");
+
+            // Play celebration effects for local player
+            if (HasInputAuthority)
+            {
+                // TODO: Play level up sound, screen flash, etc.
+            }
+        }
+    }
+
+    private void HandleExpGain(Character character, int expGained, int totalExp)
+    {
+        if (character == this && HasInputAuthority)
+        {
+            Debug.Log($"💫 {CharacterName} gained {expGained} experience! (Total: {totalExp})");
+            // TODO: Update UI showing exp gain
         }
     }
     private void UpdateCameraSmooth()
@@ -865,5 +894,7 @@
                 spawner.CreateWorldSpaceUIForHero(this);
             }
         }
-        #endregion
-    }
+    #endregion
+
+   
+}

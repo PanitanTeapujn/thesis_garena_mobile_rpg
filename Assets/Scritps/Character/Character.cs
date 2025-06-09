@@ -65,6 +65,7 @@ public class Character : NetworkBehaviour
     protected CombatManager combatManager;
     protected EquipmentManager equipmentManager;
     protected CharacterVisualManager visualManager;
+    protected LevelManager levelManager;
 
     protected virtual void Awake()
     {
@@ -96,6 +97,9 @@ public class Character : NetworkBehaviour
         visualManager = GetComponent<CharacterVisualManager>();
         if (visualManager == null)
             visualManager = gameObject.AddComponent<CharacterVisualManager>();
+        levelManager = GetComponent<LevelManager>();
+        if (levelManager == null)
+            levelManager = gameObject.AddComponent<LevelManager>();
     }
 
     private void InitializePhysics()
@@ -166,22 +170,39 @@ public class Character : NetworkBehaviour
     /// <summary>
     /// ใช้ status effect ผ่าน StatusEffectManager
     /// </summary>
-    public void ApplyStatusEffect(StatusEffectType effectType, int damage = 0, float duration = 0f)
+    public void ApplyStatusEffect(StatusEffectType effectType, int damage = 0, float duration = 0f, float amount = 0f)
     {
         if (statusEffectManager == null) return;
 
         switch (effectType)
         {
+            // Magical Effects
             case StatusEffectType.Poison:
                 statusEffectManager.ApplyPoison(damage, duration);
                 break;
-            case StatusEffectType.Stun:
-                statusEffectManager.ApplyStun(duration);
+            case StatusEffectType.Burn:
+                statusEffectManager.ApplyBurn(damage, duration);
+                break;
+            case StatusEffectType.Bleed:
+                statusEffectManager.ApplyBleed(damage, duration);
                 break;
             case StatusEffectType.Freeze:
                 statusEffectManager.ApplyFreeze(duration);
                 break;
-                // เพิ่ม status effects อื่นๆ ต่อไป
+
+            // Physical Effects
+            case StatusEffectType.Stun:
+                statusEffectManager.ApplyStun(duration);
+                break;
+            case StatusEffectType.ArmorBreak:
+                statusEffectManager.ApplyArmorBreak(duration, amount > 0 ? amount : 0.5f);
+                break;
+            case StatusEffectType.Blind:
+                statusEffectManager.ApplyBlind(duration, amount > 0 ? amount : 0.8f);
+                break;
+            case StatusEffectType.Weakness:
+                statusEffectManager.ApplyWeakness(duration, amount > 0 ? amount : 0.4f);
+                break;
         }
     }
 
@@ -311,13 +332,26 @@ public class Character : NetworkBehaviour
 
         switch (effectType)
         {
+            // Magical Effects
             case StatusEffectType.Poison:
                 return statusEffectManager.IsPoisoned;
-            case StatusEffectType.Stun:
-                return statusEffectManager.IsStunned;
+            case StatusEffectType.Burn:
+                return statusEffectManager.IsBurning;
+            case StatusEffectType.Bleed:
+                return statusEffectManager.IsBleeding;
             case StatusEffectType.Freeze:
                 return statusEffectManager.IsFrozen;
-            // เพิ่ม status effects อื่นๆ ต่อไป
+
+            // Physical Effects
+            case StatusEffectType.Stun:
+                return statusEffectManager.IsStunned;
+            case StatusEffectType.ArmorBreak:
+                return statusEffectManager.IsArmorBreak;
+            case StatusEffectType.Blind:
+                return statusEffectManager.IsBlind;
+            case StatusEffectType.Weakness:
+                return statusEffectManager.IsWeak;
+
             default:
                 return false;
         }
@@ -375,6 +409,36 @@ public class Character : NetworkBehaviour
     protected virtual bool CanDie()
     {
         return NetworkedCurrentHp <= 0;
+    }
+    /// ดู level ปัจจุบัน
+
+    public int GetCurrentLevel()
+    {
+        if (levelManager == null) return 1;
+        return levelManager.CurrentLevel;
+    }
+    /// ดู exp ปัจจุบัน
+    public int GetCurrentExp()
+    {
+        if (levelManager == null) return 0;
+        return levelManager.CurrentExp;
+    }
+    public float GetExpProgress()
+    {
+        if (levelManager == null) return 0f;
+        return levelManager.GetExpProgress();
+    }
+    public void GainExp(int expAmount)
+    {
+        if (levelManager == null) return;
+        levelManager.GainExp(expAmount);
+    }
+    /// เช็คว่าถึง max level แล้วหรือยัง
+
+    public bool IsMaxLevel()
+    {
+        if (levelManager == null) return false;
+        return levelManager.IsMaxLevel();
     }
     // ========== Debug Methods ==========
     [ContextMenu("Log All Stats")]

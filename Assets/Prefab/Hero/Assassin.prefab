@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: -294174450329675486}
   - component: {fileID: -2598280145371838362}
   - component: {fileID: -3790733776071842223}
+  - component: {fileID: 9052754494654850431}
   m_Layer: 6
   m_Name: Assassin
   m_TagString: Untagged
@@ -167,6 +168,7 @@ MonoBehaviour:
   - {fileID: -294174450329675486}
   - {fileID: -2598280145371838362}
   - {fileID: -3790733776071842223}
+  - {fileID: 9052754494654850431}
   ForceRemoteRenderTimeframe: 0
 --- !u!95 &6031354943333226893
 Animator:
@@ -376,3 +378,31 @@ MonoBehaviour:
   damageFlashDuration: 0.2
   criticalFlashDuration: 0.3
   statusFlashDuration: 0.2
+--- !u!114 &9052754494654850431
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5c8b860c1d2ac249ad654eb328e7b90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  levelUpStats:
+    hpBonusPerLevel: 10
+    manaBonusPerLevel: 5
+    attackDamageBonusPerLevel: 2
+    armorBonusPerLevel: 1
+    criticalChanceBonusPerLevel: 0.5
+    moveSpeedBonusPerLevel: 0.1
+  expSettings:
+    baseExpToNextLevel: 100
+    expGrowthRate: 1.2
+    maxLevel: 100
+    baseEnemyExp: 25
+    enemyExpLevelMultiplier: 1.1
+  _CurrentLevel: 1
+  _CurrentExp: 0
+  _ExpToNextLevel: 100

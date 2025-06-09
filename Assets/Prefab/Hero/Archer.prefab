@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: -6266315648486704743}
   - component: {fileID: 4824691428113262727}
   - component: {fileID: 6381413172581057071}
+  - component: {fileID: 5072109528599857010}
   m_Layer: 6
   m_Name: Archer
   m_TagString: Untagged
@@ -166,6 +167,7 @@ MonoBehaviour:
   - {fileID: -6266315648486704743}
   - {fileID: 4824691428113262727}
   - {fileID: 6381413172581057071}
+  - {fileID: 5072109528599857010}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &-2050685904617345397
 MonoBehaviour:
@@ -354,3 +356,31 @@ MonoBehaviour:
   _NetworkedMoveSpeedBonus: 0
   _NetworkedPhysicalResistanceBonus: 0
   _NetworkedMagicalResistanceBonus: 0
+--- !u!114 &5072109528599857010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5c8b860c1d2ac249ad654eb328e7b90, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  levelUpStats:
+    hpBonusPerLevel: 10
+    manaBonusPerLevel: 5
+    attackDamageBonusPerLevel: 2
+    armorBonusPerLevel: 1
+    criticalChanceBonusPerLevel: 0.5
+    moveSpeedBonusPerLevel: 0.1
+  expSettings:
+    baseExpToNextLevel: 100
+    expGrowthRate: 1.2
+    maxLevel: 100
+    baseEnemyExp: 25
+    enemyExpLevelMultiplier: 1.1
+  _CurrentLevel: 1
+  _CurrentExp: 0
+  _ExpToNextLevel: 100

@@ -63,6 +63,7 @@ public class NetworkEnemy : Character
         base.Start();
         Debug.Log($"Enemy Start - HasStateAuthority: {HasStateAuthority}");
 
+
         // ตั้งค่า enemy layer
         if (enemyLayer == 0)
         {
@@ -89,6 +90,17 @@ public class NetworkEnemy : Character
             Debug.Log($"useCircling: {useCircling}");
             Debug.Log($"circlingSpeed: {circlingSpeed}");
             Debug.Log($"===============================");
+        }
+        LevelManager enemyLevel = GetComponent<LevelManager>();
+        if (enemyLevel != null && HasStateAuthority)
+        {
+            // Set random level 1-5 for enemy
+            int randomLevel = Random.Range(1, 6);
+            while (enemyLevel.CurrentLevel < randomLevel)
+            {
+                enemyLevel.GainExp(enemyLevel.ExpToNextLevel);
+            }
+            Debug.Log($"Enemy {CharacterName} spawned at level {randomLevel}");
         }
     }
 
@@ -527,12 +539,19 @@ public class NetworkEnemy : Character
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    protected override void RPC_OnDeath()
+    private void RPC_OnDeath()
     {
         Debug.Log($"Enemy {name} died!");
 
         IsDead = true;
 
+        // 🆕 Enemy drop exp ให้ heroes ใกล้เคียงก่อนตาย
+        if (HasStateAuthority)
+        {
+            DropExpToNearbyHeroes();
+        }
+
+        // Death visual effects
         Renderer enemyRenderer = GetComponent<Renderer>();
         if (enemyRenderer != null)
         {
@@ -552,6 +571,45 @@ public class NetworkEnemy : Character
 
         // Destroy after delay
         StartCoroutine(DestroyAfterDelay());
+    }
+
+    private void DropExpToNearbyHeroes()
+    {
+        // หา Characters ในระยะ 15 เมตร
+        Collider[] heroColliders = Physics.OverlapSphere(transform.position, 15f, LayerMask.GetMask("Player"));
+        List<Character> nearbyCharacters = new List<Character>();
+
+        foreach (Collider col in heroColliders)
+        {
+            Character character = col.GetComponent<Character>();
+            if (character != null && character.IsSpawned)
+            {
+                nearbyCharacters.Add(character);
+            }
+        }
+
+        if (nearbyCharacters.Count > 0)
+        {
+            // คำนวณ exp ที่จะให้
+            int baseExp = 25;
+
+            // Bonus exp จาก level ของ enemy
+            LevelManager enemyLevel = GetComponent<LevelManager>();
+            if (enemyLevel != null)
+            {
+                baseExp += (enemyLevel.CurrentLevel - 1) * 10;
+            }
+
+            // แบ่ง exp ให้ characters
+            int expPerCharacter = Mathf.Max(1, baseExp / nearbyCharacters.Count);
+
+            foreach (Character character in nearbyCharacters)
+            {
+                // 🔧 ใช้ method จาก Character base class
+                character.GainExp(expPerCharacter);
+                Debug.Log($"💰 {name} dropped {expPerCharacter} exp to {character.CharacterName}");
+            }
+        }
     }
 
     private IEnumerator DestroyAfterDelay()
