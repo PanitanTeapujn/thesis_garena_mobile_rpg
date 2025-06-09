@@ -253,7 +253,7 @@ public class Character : NetworkBehaviour
         if (weaknessVFX != null) weaknessVFX.SetActive(false);
 
         // Set default resistance values
-        statusResistance.physicalResistance = 100f; // 5% base
+        statusResistance.physicalResistance = 5f; // 5% base
         statusResistance.magicalResistance = 5f;  // 5% base
     }
 
@@ -549,17 +549,26 @@ public class Character : NetworkBehaviour
 
     // 🆕 เพิ่ม RPC สำหรับ InputAuthority ขอให้ StateAuthority handle death
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestDeath()
+    protected virtual void RPC_RequestDeath()
     {
         // StateAuthority รับคำขอแล้วส่ง death ให้ทุกคน
-        RPC_OnDeath();
+        if (CanDie())
+        {
+            RPC_OnDeath();
+
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]  // 🔧 เปลี่ยนเป็น StateAuthority
-    private void RPC_OnDeath()
+    protected virtual void RPC_OnDeath()
     {
         Debug.Log($"{CharacterName} died!");
         // Handle death logic here
+    }
+
+    protected virtual bool CanDie()
+    {
+        return NetworkedCurrentHp <= 0;
     }
     #endregion
     // ========== Network Damage Flash - Everyone Can See ==========

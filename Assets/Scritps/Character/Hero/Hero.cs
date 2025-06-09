@@ -195,11 +195,11 @@
             ProcessClassSpecificAbilities();
         }
 
-        // ========== Virtual Methods for Inheritance ==========
-   
+    // ========== Virtual Methods for Inheritance ==========
 
-        // ========== RPC Methods ==========
-        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    #region Move Network
+    // ========== RPC Methods ==========
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         public void RPC_UpdatePosition(Vector3 position, Vector3 velocity, Vector3 scale, float yRotation)
         {
             transform.position = position;
@@ -423,7 +423,8 @@
         {
             rotationThreshold = Mathf.Clamp(threshold, 1f, 10f);
         }
-        public void DebugNetworkState()
+    #endregion
+    public void DebugNetworkState()
         {
             Debug.Log($"[DEBUG] {CharacterName} Network State:");
             Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
@@ -455,8 +456,8 @@
             // Camera follow สำหรับ local player
 
         }
-
-        public void Move(Vector3 moveDirection)
+    #region Move Local
+    public void Move(Vector3 moveDirection)
         {
             // เก็บไว้สำหรับ non-network movement ถ้าจำเป็น
             Vector3 camForward = cameraTransform.forward;
@@ -510,9 +511,9 @@
                 cameraTransform.LookAt(transform.position);
             }
         }
-
-        // ========== Fusion Methods ==========
-        public override void Spawned()
+    #endregion
+    // ========== Fusion Methods ==========
+    public override void Spawned()
         {
             base.Spawned();
 
@@ -765,16 +766,24 @@
             Debug.Log($"{CharacterName} hit enemy!");
             // TODO: Add animation / VFX here
         }
-    
-
-    
-
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    protected override void RPC_OnDeath()
+    {
+        base.RPC_OnDeath();
+        SceneManager.LoadScene("LoseScene");
+    }
+    protected override bool CanDie()
+    {
+        return NetworkedCurrentHp <= 0; // 
+    }
    
-    
-        #endregion
 
-        #region Ui
-        public void ForceUpdateUI()
+
+
+    #endregion
+
+    #region Ui
+    public void ForceUpdateUI()
         {
             if (HasStateAuthority)
             {
