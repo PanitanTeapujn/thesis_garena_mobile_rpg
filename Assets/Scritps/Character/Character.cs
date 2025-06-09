@@ -49,7 +49,7 @@ public class Character : NetworkBehaviour
     [SerializeField] private float manaRegenPerSecond = 1f;
     private float healthRegenTimer = 0f;
     private float manaRegenTimer = 0f;
-    private float regenTickInterval = 0.5f; // regen ทุก 1 วินาที
+    private float regenTickInterval = 2f; // regen ทุก 1 วินาที
     // ========== Network Properties ==========
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }
@@ -280,6 +280,7 @@ public class Character : NetworkBehaviour
 
     private void RegenerateMana()
     {
+        int regenAmount = 1;
         // 🔧 รวม equipment bonus
         float totalManaRegen = manaRegenPerSecond;
 
@@ -289,7 +290,6 @@ public class Character : NetworkBehaviour
             // totalManaRegen += equipmentManager.GetManaRegenBonus();
         }
 
-        int regenAmount = Mathf.RoundToInt(totalManaRegen);
 
         int oldMana = currentMana;
         currentMana = Mathf.Min(currentMana + regenAmount, maxMana);

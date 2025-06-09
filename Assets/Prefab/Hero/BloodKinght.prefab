@@ -15,6 +15,10 @@ GameObject:
   - component: {fileID: 7532131204607746142}
   - component: {fileID: 3480378996170370022}
   - component: {fileID: 2003741299331756152}
+  - component: {fileID: -5327034250042855781}
+  - component: {fileID: 8104572141956159835}
+  - component: {fileID: -1077019274387567252}
+  - component: {fileID: -4358717056583938751}
   m_Layer: 6
   m_Name: BloodKinght
   m_TagString: Untagged
@@ -159,6 +163,10 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 3480378996170370022}
+  - {fileID: -5327034250042855781}
+  - {fileID: 8104572141956159835}
+  - {fileID: -1077019274387567252}
+  - {fileID: -4358717056583938751}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &3480378996170370022
 MonoBehaviour:
@@ -183,9 +191,16 @@ MonoBehaviour:
   moveSpeed: 0
   attackRange: 0
   attackCooldown: 0
+  criticalChance: 5
+  criticalMultiplier: 2
+  healthRegenPerSecond: 1
+  manaRegenPerSecond: 1
+  _NetworkedCurrentHp: 0
+  _NetworkedMaxHp: 0
+  _NetworkedCurrentMana: 0
+  _NetworkedMaxMana: 0
+  _IsNetworkStateReady: 0
   rb: {fileID: 0}
-  characterRenderer: {fileID: 0}
-  originalColor: {r: 0, g: 0, b: 0, a: 0}
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
@@ -195,16 +210,19 @@ MonoBehaviour:
   _NetworkedMaxHp: 0
   _NetworkedCurrentMana: 0
   _NetworkedMaxMana: 0
+  _IsNetworkStateReady: 0
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 0}
   cameraRotationSpeed: 50
   cameraOffset: {x: 0, y: 12, z: -13}
+  cameraFollowSpeed: 8
+  cameraRotationSmoothTime: 0.1
   moveInputX: 0
   moveInputZ: 0
-  rageMultiplier: 1.5
-  rageDuration: 5
-  _IsRageActive: 0
-  _RageTimeRemaining: 0
+  skill1Cooldown: 1
+  skill2Cooldown: 1
+  skill3Cooldown: 1
+  skill4Cooldown: 1
 --- !u!95 &2003741299331756152
 Animator:
   serializedVersion: 5
@@ -226,3 +244,135 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &-5327034250042855781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4a8b97a0c716d9439f53ca84e72817e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterRenderer: {fileID: 0}
+  originalColor: {r: 0, g: 0, b: 0, a: 0}
+  poisonColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  burnColor: {r: 1, g: 0.3, b: 0, a: 1}
+  freezeColor: {r: 0.3, g: 0.8, b: 1, a: 1}
+  stunColor: {r: 1, g: 1, b: 0, a: 1}
+  bleedColor: {r: 0.7, g: 0, b: 0, a: 1}
+  armorBreakColor: {r: 0.8, g: 0.8, b: 0.3, a: 1}
+  blindColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
+  weaknessColor: {r: 0.6, g: 0.4, b: 0.8, a: 1}
+  poisonVFX: {fileID: 0}
+  burnVFX: {fileID: 0}
+  freezeVFX: {fileID: 0}
+  stunVFX: {fileID: 0}
+  bleedVFX: {fileID: 0}
+  armorBreakVFX: {fileID: 0}
+  blindVFX: {fileID: 0}
+  weaknessVFX: {fileID: 0}
+  damageFlashDuration: 0.2
+  criticalFlashDuration: 0.3
+  statusFlashDuration: 0.2
+--- !u!114 &8104572141956159835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac71c5e477ae05a4588cf4f2e6b03f42, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _IsPoisoned: 0
+  _PoisonDuration: 0
+  _PoisonDamagePerTick: 0
+  _PoisonNextTickTime: 0
+  _IsBurning: 0
+  _BurnDuration: 0
+  _BurnDamagePerTick: 0
+  _BurnNextTickTime: 0
+  _IsBleeding: 0
+  _BleedDuration: 0
+  _BleedDamagePerTick: 0
+  _BleedNextTickTime: 0
+  _IsFrozen: 0
+  _FreezeDuration: 0
+  _OriginalMoveSpeed: 0
+  _IsStunned: 0
+  _StunDuration: 0
+  _IsArmorBreak: 0
+  _ArmorBreakDuration: 0
+  _ArmorBreakAmount: 0
+  _IsBlind: 0
+  _BlindDuration: 0
+  _BlindAmount: 0
+  _IsWeak: 0
+  _WeaknessDuration: 0
+  _WeaknessAmount: 0
+--- !u!114 &-1077019274387567252
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &-4358717056583938751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d22cf4e97c6f09346adc842f88800dee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  baseResistance:
+    physicalResistance: 5
+    magicalResistance: 5
+    equipmentPhysicalBonus: 0
+    equipmentMagicalBonus: 0
+    runePhysicalBonus: 0
+    runeMagicalBonus: 0
+  currentEquipmentStats:
+    attackDamageBonus: 0
+    armorBonus: 0
+    criticalChanceBonus: 0
+    criticalMultiplierBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+  currentRuneStats:
+    attackDamageBonus: 0
+    armorBonus: 0
+    criticalChanceBonus: 0
+    criticalMultiplierBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+  _NetworkedAttackDamageBonus: 0
+  _NetworkedArmorBonus: 0
+  _NetworkedCriticalChanceBonus: 0
+  _NetworkedMaxHpBonus: 0
+  _NetworkedMaxManaBonus: 0
+  _NetworkedMoveSpeedBonus: 0
+  _NetworkedPhysicalResistanceBonus: 0
+  _NetworkedMagicalResistanceBonus: 0

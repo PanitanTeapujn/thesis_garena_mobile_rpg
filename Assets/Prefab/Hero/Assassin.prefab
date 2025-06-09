@@ -214,6 +214,8 @@ MonoBehaviour:
   attackCooldown: 0
   criticalChance: 5
   criticalMultiplier: 2
+  healthRegenPerSecond: 1
+  manaRegenPerSecond: 1
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
   _NetworkedCurrentMana: 0
@@ -270,11 +272,28 @@ MonoBehaviour:
   _PoisonDuration: 0
   _PoisonDamagePerTick: 0
   _PoisonNextTickTime: 0
-  _IsStunned: 0
-  _StunDuration: 0
+  _IsBurning: 0
+  _BurnDuration: 0
+  _BurnDamagePerTick: 0
+  _BurnNextTickTime: 0
+  _IsBleeding: 0
+  _BleedDuration: 0
+  _BleedDamagePerTick: 0
+  _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
   _OriginalMoveSpeed: 0
+  _IsStunned: 0
+  _StunDuration: 0
+  _IsArmorBreak: 0
+  _ArmorBreakDuration: 0
+  _ArmorBreakAmount: 0
+  _IsBlind: 0
+  _BlindDuration: 0
+  _BlindAmount: 0
+  _IsWeak: 0
+  _WeaknessDuration: 0
+  _WeaknessAmount: 0
 --- !u!114 &-2598280145371838362
 MonoBehaviour:
   m_ObjectHideFlags: 0
