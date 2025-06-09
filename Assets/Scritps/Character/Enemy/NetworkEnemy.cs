@@ -50,7 +50,7 @@ public class NetworkEnemy : Character
     private float nextCollisionDamageTime = 0f;
 
     private float nextTargetCheckTime = 0f;
-    private Transform targetTransform;
+    protected Transform targetTransform;
     private float nextAttackTime = 0f;
 
 
@@ -167,7 +167,7 @@ public class NetworkEnemy : Character
     }
 
     // ========== 🎯 Improved Movement System ==========
-    private void ImprovedMoveTowardsTarget()
+    protected virtual void ImprovedMoveTowardsTarget()
     {
         if (targetTransform == null || rb == null) return;
 
@@ -523,17 +523,53 @@ public class NetworkEnemy : Character
             Debug.Log($"Enemy {name} attacks {targetHero.CharacterName} for {AttackDamage} damage!");
 
             // ทำ damage ปกติก่อน
-            if (targetHero.HasInputAuthority)
+            if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติด status effects
             {
-                targetHero.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
-            }
+                Debug.Log($"Enemy applies status effects to {targetHero.CharacterName}!");
 
-            // จากนั้นทำให้ติดพิษ (ปรับค่าให้เหมาะสม)
-            if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติดพิษ
-            {
-                Debug.Log($"Enemy applies poison to {targetHero.CharacterName}!");
-                //  targetHero.ApplyPoison(3,5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
-                targetHero.ApplyStatusEffect(StatusEffectType.Poison, 3, 8f);
+                // สุ่ม status effect ที่จะใส่
+                float effectRoll = Random.Range(0f, 100f);
+
+                if (effectRoll < 15f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Poison, 3, 5f);
+                    Debug.Log("Applied Poison!");
+                }
+                else if (effectRoll < 30f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Burn, 4, 4f);
+                    Debug.Log("Applied Burn!");
+                }
+                else if (effectRoll < 45f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Bleed, 2, 8f);
+                    Debug.Log("Applied Bleed!");
+                }
+                else if (effectRoll < 60f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
+                    Debug.Log("Applied Stun!");
+                }
+                else if (effectRoll < 75f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Freeze, 0, 3f);
+                    Debug.Log("Applied Freeze!");
+                }
+                else if (effectRoll < 85f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.5f);
+                    Debug.Log("Applied Armor Break!");
+                }
+                else if (effectRoll < 95f)
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Blind, 0, 6f, 0.8f);
+                    Debug.Log("Applied Blind!");
+                }
+                else
+                {
+                    targetHero.ApplyStatusEffect(StatusEffectType.Weakness, 0, 10f, 0.4f);
+                    Debug.Log("Applied Weakness!");
+                }
             }
         }
     }
