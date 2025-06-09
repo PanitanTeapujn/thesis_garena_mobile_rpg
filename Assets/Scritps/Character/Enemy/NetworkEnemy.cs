@@ -521,28 +521,34 @@ public class NetworkEnemy : Character
             {
                 Debug.Log($"Enemy applies poison to {targetHero.CharacterName}!");
                 //  targetHero.ApplyPoison(3,5f); // 3 damage ต่อวินาที เป็นเวลา 5 วินาที
-                targetHero.ApplyArmorBreak(10f);
-                targetHero.ApplyWeakness(10f);
+                targetHero.ApplyStatusEffect(StatusEffectType.Poison, 3, 8f);
             }
         }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_OnDeath()
+    protected override void RPC_OnDeath()
     {
         Debug.Log($"Enemy {name} died!");
 
         IsDead = true;
 
-        // Death effects on all clients
-        if (characterRenderer != null)
+        Renderer enemyRenderer = GetComponent<Renderer>();
+        if (enemyRenderer != null)
         {
-            characterRenderer.material.color = Color.gray;
+            enemyRenderer.material.color = Color.gray;
         }
 
         // Disable collider
         Collider col = GetComponent<Collider>();
         if (col != null) col.enabled = false;
+
+        // Clear all status effects when dead
+        StatusEffectManager statusManager = GetComponent<StatusEffectManager>();
+        if (statusManager != null)
+        {
+            statusManager.ClearAllStatusEffects();
+        }
 
         // Destroy after delay
         StartCoroutine(DestroyAfterDelay());

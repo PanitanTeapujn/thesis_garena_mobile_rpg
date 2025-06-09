@@ -14,6 +14,9 @@ GameObject:
   - component: {fileID: 3046474799503590416}
   - component: {fileID: 1153582897584543797}
   - component: {fileID: 2102208964661930907}
+  - component: {fileID: -7581183126895598035}
+  - component: {fileID: 2866443350649548657}
+  - component: {fileID: 4927847923645176864}
   m_Layer: 7
   m_Name: Slime
   m_TagString: Enemy
@@ -154,6 +157,9 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 2102208964661930907}
+  - {fileID: -7581183126895598035}
+  - {fileID: 2866443350649548657}
+  - {fileID: 4927847923645176864}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &2102208964661930907
 MonoBehaviour:
@@ -171,17 +177,108 @@ MonoBehaviour:
   characterName: 
   currentHp: 0
   maxHp: 0
+  currentMana: 0
+  maxMana: 0
   attackDamage: 0
   armor: 0
   moveSpeed: 0
   attackRange: 0
   attackCooldown: 0
-  rb: {fileID: 0}
-  characterRenderer: {fileID: 0}
-  originalColor: {r: 0, g: 0, b: 0, a: 0}
+  criticalChance: 5
+  criticalMultiplier: 2
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
+  _NetworkedCurrentMana: 0
+  _NetworkedMaxMana: 0
+  _IsNetworkStateReady: 0
+  rb: {fileID: 0}
   _IsDead:
     _value: 0
+  _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedScale: {x: 0, y: 0, z: 0}
   detectRange: 10
   attackCheckInterval: 0.5
+  _CurrentState: 0
+  _StateTimer: 0
+  backOffDistance: 3
+  backOffTime: 1
+  positionTime: 0.5
+  rushSpeed: 3
+  minDistanceToPlayer: 1
+  enemySpacing: 2
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  useCircling: 1
+  circlingSpeed: 0.5
+  isCollidingWithPlayer: 0
+  showDebugInfo: 0
+  collisionDamageCooldown: 2
+  collisionDamageMultiplier: 0.5
+--- !u!114 &-7581183126895598035
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &2866443350649548657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac71c5e477ae05a4588cf4f2e6b03f42, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _IsPoisoned: 0
+  _PoisonDuration: 0
+  _PoisonDamagePerTick: 0
+  _PoisonNextTickTime: 0
+  _IsStunned: 0
+  _StunDuration: 0
+  _IsFrozen: 0
+  _FreezeDuration: 0
+  _OriginalMoveSpeed: 0
+--- !u!114 &4927847923645176864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4a8b97a0c716d9439f53ca84e72817e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterRenderer: {fileID: 0}
+  originalColor: {r: 0, g: 0, b: 0, a: 0}
+  poisonColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  burnColor: {r: 1, g: 0.3, b: 0, a: 1}
+  freezeColor: {r: 0.3, g: 0.8, b: 1, a: 1}
+  stunColor: {r: 1, g: 1, b: 0, a: 1}
+  bleedColor: {r: 0.7, g: 0, b: 0, a: 1}
+  armorBreakColor: {r: 0.8, g: 0.8, b: 0.3, a: 1}
+  blindColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
+  weaknessColor: {r: 0.6, g: 0.4, b: 0.8, a: 1}
+  poisonVFX: {fileID: 0}
+  burnVFX: {fileID: 0}
+  freezeVFX: {fileID: 0}
+  stunVFX: {fileID: 0}
+  bleedVFX: {fileID: 0}
+  armorBreakVFX: {fileID: 0}
+  blindVFX: {fileID: 0}
+  weaknessVFX: {fileID: 0}
+  damageFlashDuration: 0.2
+  criticalFlashDuration: 0.3
+  statusFlashDuration: 0.2

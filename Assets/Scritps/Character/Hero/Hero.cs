@@ -95,7 +95,21 @@
                 UpdateCameraSmooth();
             }
         }
-        private void UpdateCameraSmooth()
+    protected virtual void OnDestroy()
+    {
+        CombatManager.OnCharacterDeath -= HandleCharacterDeath;
+    }
+
+    // ========== Hero Death Handling ==========
+    private void HandleCharacterDeath(Character deadCharacter)
+    {
+        // เฉพาะ Hero ที่เป็นเจ้าของเท่านั้นที่ไป LoseScene
+        if (deadCharacter == this && HasInputAuthority)
+        {
+            SceneManager.LoadScene("LoseScene");
+        }
+    }
+    private void UpdateCameraSmooth()
         {
             // ใช้ position ที่ smooth แล้ว
             Vector3 targetPosition = transform.position;
@@ -270,7 +284,7 @@
         protected virtual void ProcessMovement()
         {
             if (!HasInputAuthority) return;
-        if (IsStunned)
+        if (HasStatusEffect(StatusEffectType.Stun))
         {
             if (rb != null)
             {
@@ -305,7 +319,7 @@
                 if (moveDirection.magnitude > 0.1f)
                 {
                 float currentMoveSpeed = MoveSpeed;
-                if (IsFrozen)
+                if (HasStatusEffect(StatusEffectType.Freeze))
                 {
                     currentMoveSpeed *= 0.3f; // ลดความเร็วเหลือ 30% เมื่อ freeze
                 }
@@ -436,9 +450,9 @@
             Debug.Log($"  - MaxMana: {MaxMana} | NetworkedMaxMana: {NetworkedMaxMana}");
         }
         // ========== Original Methods (Non-Network) ==========
-        protected override void Update()
+        protected  void Update()
         {
-            base.Update();
+           
             if (Time.time % 2.0f < Time.deltaTime)
             {
                 DebugNetworkState();
@@ -659,13 +673,31 @@
         protected virtual void TryUseSkill1()
         {
             Debug.Log($"=== SKILL 1 EXECUTED at {Time.time:F2} ===");
-            UseMana(10); // ตัวอย่างการใช้ mana
+         Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, LayerMask.GetMask("Enemy"));
+
+          foreach (Collider enemyCollider in enemies)
+        {
+            Character enemy = enemyCollider.GetComponent<Character>();
+            if (enemy != null)
+            {
+                UseMana(10);
+                // ทำดาเมจปกติก่อน
+                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+
+                // แล้วใส่พิษ
+                enemy.ApplyStatusEffect(StatusEffectType.Poison, 3, 8f); // 3 damage ต่อวินาที เป็นเวลา 8 วินาที
+
+                Debug.Log($"Applied poison to {enemy.CharacterName}!");
+            }
+           }
+        // ตัวอย่างการใช้ mana
         }
 
         protected virtual void TryUseSkill2()
         {
             Debug.Log($"=== SKILL 2 EXECUTED at {Time.time:F2} ===");
-            UseMana(15);
+          Heal(30);
+          UseMana(15);
         }
 
         protected virtual void TryUseSkill3()
@@ -769,14 +801,15 @@
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     protected override void RPC_OnDeath()
     {
-        base.RPC_OnDeath();
-        SceneManager.LoadScene("LoseScene");
+        base.RPC_OnDeath(); // เรียก base logic ก่อน
+        SceneManager.LoadScene("Lobby");
     }
+
     protected override bool CanDie()
     {
-        return NetworkedCurrentHp <= 0; // 
+        return NetworkedCurrentHp <= 0; // Hero-specific validation
     }
-   
+
 
 
 
