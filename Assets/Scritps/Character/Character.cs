@@ -251,7 +251,7 @@ public class Character : NetworkBehaviour
     /// <summary>
     /// รับดาเมจผ่าน CombatManager
     /// </summary>
-    public void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
+    public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (combatManager == null) return;
         combatManager.TakeDamage(damage, damageType, isCritical);
@@ -260,7 +260,7 @@ public class Character : NetworkBehaviour
     /// <summary>
     /// รับดาเมจจากผู้โจมตี ผ่าน CombatManager
     /// </summary>
-    public void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         if (combatManager == null) return;
         combatManager.TakeDamageFromAttacker(damage, attacker, damageType);

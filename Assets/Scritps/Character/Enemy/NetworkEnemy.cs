@@ -51,7 +51,7 @@ public class NetworkEnemy : Character
 
     private float nextTargetCheckTime = 0f;
     protected Transform targetTransform;
-    private float nextAttackTime = 0f;
+    protected float nextAttackTime = 0f;
 
 
     // Check if properly spawned
@@ -353,7 +353,7 @@ public class NetworkEnemy : Character
     }
 
     // 🔧 ระบบการ flip แบบ 2D เท่านั้น (แก้ oscillation)
-    private void FlipCharacterTowardsMovement(Vector3 moveDirection)
+    protected void FlipCharacterTowardsMovement(Vector3 moveDirection)
     {
         if (moveDirection.magnitude < 0.3f) return; // เพิ่ม threshold เพื่อป้องกัน flip บ่อย
 
@@ -425,7 +425,7 @@ public class NetworkEnemy : Character
     }
 
     // ========== Enemy AI ==========
-    private void FindNearestPlayer()
+    protected void FindNearestPlayer()
     {
         if (Time.time < nextTargetCheckTime) return;
         nextTargetCheckTime = Time.time + attackCheckInterval;

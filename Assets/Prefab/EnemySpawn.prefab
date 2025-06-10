@@ -130,6 +130,7 @@ Transform:
   - {fileID: 5449713855246032909}
   - {fileID: 6023309308642714384}
   - {fileID: 3756664571040027359}
+  - {fileID: 6608536978320820854}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4145889400217059357
@@ -161,6 +162,25 @@ MonoBehaviour:
     spawnCooldown: 1
     lastSpawnTime: 0
     currentCount: 0
+  bossConditions:
+  - bossPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
+      type: 3}
+    bossName: 
+    enemiesToKill: 20
+    includeSpecificEnemies: 0
+    specificEnemyNames: []
+    bossRespawnCooldown: 0
+    maxBossInstances: 0
+    announceSpawn: 0
+    spawnWarningTime: 0
+    currentKillCount: 0
+    lastBossDeathTime: 0
+    currentBossCount: 0
+    isSpawningBoss: 0
+  enableBossSpawning: 1
+  bossSpawnPoints:
+  - {fileID: 6608536978320820854}
+  useBossSpawnPoints: 1
   maxTotalEnemies: 10
   spawnInterval: 5
   randomizeSpawnInterval: 1
@@ -222,7 +242,7 @@ Transform:
   m_GameObject: {fileID: 5985569395981594469}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 19.46, y: 0, z: 0}
+  m_LocalPosition: {x: 5.9, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -259,6 +279,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8188879087975435533}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &9002464700413267846
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6608536978320820854}
+  m_Layer: 0
+  m_Name: GameObject (7)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6608536978320820854
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9002464700413267846}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.4, y: 0, z: 9.2}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8188879087975435533}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &9124788995687505417
 GameObject:
   m_ObjectHideFlags: 0
@@ -284,7 +335,7 @@ Transform:
   m_GameObject: {fileID: 9124788995687505417}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 19.46, y: 0, z: -8.14}
+  m_LocalPosition: {x: 10.41, y: 0, z: -8.14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
