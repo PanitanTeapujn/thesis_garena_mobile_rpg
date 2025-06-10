@@ -26,6 +26,7 @@ public class CharacterSelectionManager : MonoBehaviour
     public Button assassinButton;
     public Button ironJuggernautButton;
     public Button confirmButton;
+
     [Header("Player Name Input")]
     public TMP_InputField playerNameInput;
     public TextMeshProUGUI errorMessageText;
@@ -34,7 +35,6 @@ public class CharacterSelectionManager : MonoBehaviour
     public TextMeshProUGUI characterDescriptionText;
     public TextMeshProUGUI characterNameText;
 
-    // เพิ่ม Loading Panel
     [Header("Loading")]
     public GameObject loadingPanel;
 
@@ -62,14 +62,16 @@ public class CharacterSelectionManager : MonoBehaviour
 
         // โหลดชื่อผู้เล่นจาก PlayerPrefs (ถ้ามี)
         string savedPlayerName = PlayerPrefs.GetString("PlayerName", "");
-       
+        if (!string.IsNullOrEmpty(savedPlayerName))
+        {
+            playerNameInput.text = savedPlayerName;
+        }
 
         // ซ่อน loading panel
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
     }
 
-    // เปลี่ยนเป็น Coroutine เพื่อรอการบันทึกข้อมูล
     private IEnumerator ConfirmSelectionCoroutine()
     {
         // ตรวจสอบชื่อ
@@ -94,8 +96,8 @@ public class CharacterSelectionManager : MonoBehaviour
         PlayerPrefs.SetString("PlayerName", playerName);
         PlayerSelectionData.SaveCharacterSelection(selectedCharacter);
 
-        // บันทึกข้อมูลใน Firebase และรอให้เสร็จ
-        yield return StartCoroutine(SaveCharacterAndPlayerDataToFirebase(playerName));
+        // สร้าง PlayerProgressData แบบเต็มและบันทึกผ่าน PersistentPlayerData
+        yield return StartCoroutine(CreateAndSaveCompletePlayerData(playerName));
 
         // ซ่อน loading
         ShowLoading(false);
@@ -104,6 +106,128 @@ public class CharacterSelectionManager : MonoBehaviour
         SceneManager.LoadScene("Lobby");
     }
 
+    // ========== NEW: สร้าง PlayerProgressData แบบเต็ม ==========
+    private IEnumerator CreateAndSaveCompletePlayerData(string playerName)
+    {
+        Debug.Log($"[CharacterSelection] Creating complete player data for {playerName}, Character: {selectedCharacter}");
+
+        // สร้าง PlayerProgressData ใหม่แบบเต็ม
+        PlayerProgressData newPlayerData = new PlayerProgressData();
+
+        // ข้อมูลพื้นฐาน
+        newPlayerData.playerName = playerName;
+        newPlayerData.lastCharacterSelected = selectedCharacter.ToString(); // ✅ ตรงนี้สำคัญ!
+        newPlayerData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        newPlayerData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        // โหลด base stats จาก CharacterStats ScriptableObject
+        CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
+        if (characterStats != null)
+        {
+            newPlayerData.InitializeFromCharacterStats(characterStats, 1);
+            Debug.Log($"✅ Applied stats from ScriptableObject: {characterStats.characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"Could not find CharacterStats for {selectedCharacter}. Using default stats.");
+            ApplyDefaultStats(newPlayerData);
+        }
+
+        // ใส่ข้อมูลใน PersistentPlayerData
+        PersistentPlayerData.Instance.currentPlayerData = newPlayerData;
+        PersistentPlayerData.Instance.isDataLoaded = true;
+
+        // บันทึกลง Firebase ผ่าน PersistentPlayerData
+        PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+        // รอให้ save เสร็จ
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log($"✅ Complete player data created and saved: {playerName}, {selectedCharacter}");
+        newPlayerData.LogProgressInfo();
+    }
+
+    // ========== NEW: หา CharacterStats ScriptableObject ==========
+    private CharacterStats GetCharacterStatsForCharacter(PlayerSelectionData.CharacterType characterType)
+    {
+        string characterName = characterType.ToString();
+
+        // ลองหาจาก Resources folder
+        CharacterStats[] allCharacterStats = Resources.LoadAll<CharacterStats>("Characters");
+
+        foreach (CharacterStats stats in allCharacterStats)
+        {
+            if (stats.name.Contains(characterName) ||
+                stats.characterName.Equals(characterName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return stats;
+            }
+        }
+
+        // ลองหาจากชื่อไฟล์โดยตรง
+        switch (characterType)
+        {
+            case PlayerSelectionData.CharacterType.BloodKnight:
+                return Resources.Load<CharacterStats>("Characters/BloodKnightStats");
+            case PlayerSelectionData.CharacterType.Archer:
+                return Resources.Load<CharacterStats>("Characters/ArcherStats");
+            case PlayerSelectionData.CharacterType.Assassin:
+                return Resources.Load<CharacterStats>("Characters/AssassinStats");
+            case PlayerSelectionData.CharacterType.IronJuggernaut:
+                return Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
+            default:
+                Debug.LogWarning($"Unknown character type: {characterType}");
+                return null;
+        }
+    }
+
+    // ========== NEW: Default Stats Fallback ==========
+    private void ApplyDefaultStats(PlayerProgressData playerData)
+    {
+        // Default stats สำหรับแต่ละตัวละคร
+        switch (selectedCharacter)
+        {
+            case PlayerSelectionData.CharacterType.BloodKnight:
+                playerData.totalMaxHp = 120;
+                playerData.totalMaxMana = 60;
+                playerData.totalAttackDamage = 25;
+                playerData.totalArmor = 8;
+                break;
+            case PlayerSelectionData.CharacterType.Archer:
+                playerData.totalMaxHp = 80;
+                playerData.totalMaxMana = 80;
+                playerData.totalAttackDamage = 30;
+                playerData.totalArmor = 3;
+                break;
+            case PlayerSelectionData.CharacterType.Assassin:
+                playerData.totalMaxHp = 70;
+                playerData.totalMaxMana = 40;
+                playerData.totalAttackDamage = 35;
+                playerData.totalArmor = 2;
+                break;
+            case PlayerSelectionData.CharacterType.IronJuggernaut:
+            default:
+                playerData.totalMaxHp = 150;
+                playerData.totalMaxMana = 40;
+                playerData.totalAttackDamage = 20;
+                playerData.totalArmor = 12;
+                break;
+        }
+
+        // Common stats
+        playerData.currentLevel = 1;
+        playerData.currentExp = 0;
+        playerData.expToNextLevel = 100;
+        playerData.totalCriticalChance = 5f;
+        playerData.totalCriticalMultiplier = 2f;
+        playerData.totalMoveSpeed = 5f;
+        playerData.totalAttackRange = 2f;
+        playerData.totalAttackCooldown = 1f;
+
+        Debug.Log($"Applied default stats for {selectedCharacter}");
+    }
+
+    // ========== UI Methods (เหมือนเดิม) ==========
     private void ShowError(string message)
     {
         if (errorMessageText != null)
@@ -127,7 +251,6 @@ public class CharacterSelectionManager : MonoBehaviour
         if (loadingPanel != null)
             loadingPanel.SetActive(show);
 
-        // ปิด/เปิด UI elements
         confirmButton.interactable = !show;
         playerNameInput.interactable = !show;
         bloodKnightButton.interactable = !show;
@@ -153,16 +276,13 @@ public class CharacterSelectionManager : MonoBehaviour
         if (prefabToSpawn != null)
         {
             currentPreview = Instantiate(prefabToSpawn, previewPosition, Quaternion.Euler(previewRotation), characterPreviewParent);
-
-            // ปิดส่วนประกอบที่ไม่จำเป็น (เช่น scripts, colliders)
             DisableComponents(currentPreview);
         }
 
         // อัพเดทข้อมูลตัวละคร
         UpdateCharacterInfo(character);
 
-        // เอาการบันทึก Firebase ออกจากตรงนี้ เพราะจะทำตอน Confirm แทน
-        // SaveCharacterToFirebase(character);
+        Debug.Log($"[CharacterSelection] Selected character: {character}");
     }
 
     private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)
@@ -188,7 +308,7 @@ public class CharacterSelectionManager : MonoBehaviour
         MonoBehaviour[] components = character.GetComponentsInChildren<MonoBehaviour>();
         foreach (MonoBehaviour component in components)
         {
-            if (!(component is Animator))  // ให้ Animator ทำงานต่อไป
+            if (!(component is Animator))
             {
                 component.enabled = false;
             }
@@ -215,7 +335,7 @@ public class CharacterSelectionManager : MonoBehaviour
         {
             case PlayerSelectionData.CharacterType.BloodKnight:
                 characterNameText.text = "Blood Knight";
-                characterDescriptionText.text = "Blood Siphon grew up in an aristocratic family of the insect tribe, but rejected the luxurious life to join the army.With his remarkable ability to absorb the blood and life force of his enemies, he was appointed as one of the insect's elite soldiers. ";
+                characterDescriptionText.text = "Blood Siphon grew up in an aristocratic family of the insect tribe, but rejected the luxurious life to join the army. With his remarkable ability to absorb the blood and life force of his enemies, he was appointed as one of the insect's elite soldiers.";
                 break;
             case PlayerSelectionData.CharacterType.Archer:
                 characterNameText.text = "Archer";
@@ -232,70 +352,17 @@ public class CharacterSelectionManager : MonoBehaviour
         }
     }
 
-    // ฟังก์ชันใหม่ที่บันทึกทั้งชื่อและตัวละครพร้อมกัน
-    private IEnumerator SaveCharacterAndPlayerDataToFirebase(string playerName)
+    // ========== Context Menu สำหรับ Debug ==========
+    [ContextMenu("Test Create Player Data")]
+    public void Debug_TestCreatePlayerData()
     {
-        if (auth.CurrentUser != null)
-        {
-            string userId = auth.CurrentUser.UserId;
-
-            var updates = new Dictionary<string, object>
-            {
-                { "playerName", playerName },
-                { "lastCharacterSelected", selectedCharacter.ToString() },
-                { "lastLoginDate", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") }
-            };
-
-            var task = databaseReference.Child("players").Child(userId).UpdateChildrenAsync(updates);
-            yield return new WaitUntil(() => task.IsCompleted);
-
-            if (task.Exception != null)
-            {
-                Debug.LogError($"Failed to save character and player data: {task.Exception}");
-                ShowError("Failed to save data. Please try again.");
-            }
-            else
-            {
-                Debug.Log($"Character and player data saved successfully: {playerName}, {selectedCharacter}");
-            }
-        }
-        else
-        {
-            Debug.LogError("User not authenticated");
-            ShowError("User not authenticated. Please login again.");
-        }
+        StartCoroutine(CreateAndSaveCompletePlayerData("TestPlayer"));
     }
 
-    private void StartGame()
+    [ContextMenu("Check Selected Character")]
+    public void Debug_CheckSelectedCharacter()
     {
-        // โหลดฉากเล่นเกม
-        SceneManager.LoadScene("PlayRoom1");
-    }
-
-    // เก็บฟังก์ชันเก่าไว้ในกรณีที่ต้องการใช้
-    void SaveCharacterToFirebase(PlayerSelectionData.CharacterType character)
-    {
-        if (auth.CurrentUser != null)
-        {
-            string userId = auth.CurrentUser.UserId;
-
-            var updates = new Dictionary<string, object>
-            {
-                { "lastCharacterSelected", character.ToString() }
-            };
-
-            databaseReference.Child("players").Child(userId).UpdateChildrenAsync(updates)
-                .ContinueWith(task =>
-                {
-                    if (task.Exception != null)
-                    {
-                        Debug.LogError($"Failed to save character selection: {task.Exception}");
-                    }
-                    else
-                    {
-                        Debug.Log($"Character selection saved: {character}");
-                    }
-                });
-        }
+        Debug.Log($"Current Selected Character: {selectedCharacter}");
+        Debug.Log($"PlayerSelectionData: {PlayerSelectionData.GetSelectedCharacter()}");
     }
 }

@@ -360,6 +360,70 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 105079261}
   m_CullTransparentMesh: 1
+--- !u!1 &140433956
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 140433958}
+  - component: {fileID: 140433957}
+  m_Layer: 0
+  m_Name: PersistentPlayerData
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &140433957
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 140433956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d523cf6ee746bc74abd4f4afc9f46a95, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentPlayerData:
+    playerName: 
+    password: 
+    lastCharacterSelected: IronJuggernaut
+    registrationDate: 2025-06-10 15:55:14
+    lastLoginDate: 2025-06-10 15:55:14
+    currentLevel: 1
+    currentExp: 0
+    expToNextLevel: 100
+    totalMaxHp: 0
+    totalMaxMana: 0
+    totalAttackDamage: 0
+    totalArmor: 0
+    totalCriticalChance: 0
+    totalCriticalMultiplier: 0
+    totalMoveSpeed: 0
+    totalAttackRange: 0
+    totalAttackCooldown: 0
+    baseCharacterStatsId: 
+  isDataLoaded: 0
+--- !u!4 &140433958
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 140433956}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1485.9542, y: 887.7265, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &192632480
 GameObject:
   m_ObjectHideFlags: 0
@@ -3094,3 +3158,4 @@ SceneRoots:
   - {fileID: 1919899005}
   - {fileID: 1612650802}
   - {fileID: 654044995}
+  - {fileID: 140433958}

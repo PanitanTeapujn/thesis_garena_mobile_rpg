@@ -76,8 +76,51 @@ public class Character : NetworkBehaviour
     protected virtual void Start()
     {
         InitializeStats();
+        if (HasInputAuthority && this is Hero)
+        {
+            TryApplyFirebaseStatsLater();
+        }
     }
+    private void TryApplyFirebaseStatsLater()
+    {
+        // ใช้ Invoke แทน coroutine (เบากว่า)
+        Invoke("CheckAndApplyFirebaseStats", 2f);
+    }
+    private void CheckAndApplyFirebaseStats()
+    {
+        if (PersistentPlayerData.Instance.HasValidData())
+        {
+            PlayerProgressData data = PersistentPlayerData.Instance.GetPlayerData();
+            if (data?.IsValid() == true)
+            {
+                ApplyFirebaseStats(data);
+                Debug.Log($"✅ [Character] Applied Firebase stats for {CharacterName} (delayed)");
+            }
+        }
+        else
+        {
+            // ถ้าไม่มีข้อมูล Firebase ก็ไม่เป็นไร ใช้ ScriptableObject ต่อไป
+            Debug.Log($"[Character] Using ScriptableObject stats for {CharacterName}");
+        }
+    }
+    private void ApplyFirebaseStats(PlayerProgressData data)
+    {
+        // Apply เฉพาะ stats ที่สำคัญ (ไม่ override ชื่อ)
+        maxHp = data.totalMaxHp;
+        currentHp = maxHp;
+        maxMana = data.totalMaxMana;
+        currentMana = maxMana;
+        attackDamage = data.totalAttackDamage;
+        armor = data.totalArmor;
+        criticalChance = data.totalCriticalChance;
+        moveSpeed = data.totalMoveSpeed;
 
+        // Force update network สำหรับ multiplayer
+        if (HasStateAuthority)
+        {
+            ForceUpdateNetworkState();
+        }
+    }
     // ========== Component Initialization ==========
     private void InitializeComponents()
     {
@@ -117,7 +160,7 @@ public class Character : NetworkBehaviour
         }
     }
 
-    private void InitializeStats()
+    protected virtual void InitializeStats()
     {
         if (characterStats != null)
         {
@@ -135,7 +178,6 @@ public class Character : NetworkBehaviour
             criticalMultiplier = characterStats.criticalMultiplier;
         }
     }
-
     // ========== Fusion Network Methods ==========
     public override void Spawned()
     {

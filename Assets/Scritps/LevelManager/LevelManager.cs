@@ -8,25 +8,25 @@ using System;
 public class LevelUpStats
 {
     [Header("Stats Bonus Per Level")]
-    public int hpBonusPerLevel = 10;           // +10 HP ต่อ level
-    public int manaBonusPerLevel = 5;          // +5 Mana ต่อ level
-    public int attackDamageBonusPerLevel = 2;  // +2 Attack ต่อ level
-    public int armorBonusPerLevel = 1;         // +1 Armor ต่อ level
-    public float criticalChanceBonusPerLevel = 0.5f; // +0.5% Crit ต่อ level
-    public float moveSpeedBonusPerLevel = 0.1f;     // +0.1 Speed ต่อ level
+    public int hpBonusPerLevel = 10;
+    public int manaBonusPerLevel = 5;
+    public int attackDamageBonusPerLevel = 2;
+    public int armorBonusPerLevel = 1;
+    public float criticalChanceBonusPerLevel = 0.5f;
+    public float moveSpeedBonusPerLevel = 0.1f;
 }
 
 [System.Serializable]
 public class ExpSettings
 {
     [Header("Experience Settings")]
-    public int baseExpToNextLevel = 100;     // exp ที่ต้องการสำหรับ level 2
-    public float expGrowthRate = 1.2f;       // เพิ่มขึ้น 20% ต่อ level
-    public int maxLevel = 100;               // level สูงสุด
+    public int baseExpToNextLevel = 100;
+    public float expGrowthRate = 1.2f;
+    public int maxLevel = 100;
 
     [Header("Enemy Exp Rewards")]
-    public int baseEnemyExp = 25;            // exp พื้นฐานจาก enemy
-    public float enemyExpLevelMultiplier = 1.1f; // exp เพิ่มตาม level ของ enemy
+    public int baseEnemyExp = 25;
+    public float enemyExpLevelMultiplier = 1.1f;
 }
 
 public class LevelManager : NetworkBehaviour
@@ -39,32 +39,28 @@ public class LevelManager : NetworkBehaviour
     [Networked] public int CurrentLevel { get; set; } = 1;
     [Networked] public int CurrentExp { get; set; } = 0;
     [Networked] public int ExpToNextLevel { get; set; } = 100;
+    [Networked] public bool IsInitialized { get; set; } = false;
 
     // ========== Events ==========
-    public static event Action<Character, int> OnLevelUp;           // character, newLevel
-    public static event Action<Character, int, int> OnExpGain;      // character, expGained, totalExp
-    public static event Action<Character, LevelUpStats> OnStatsIncreased; // character, statBonus
+    public static event Action<Character, int> OnLevelUp;
+    public static event Action<Character, int, int> OnExpGain;
+    public static event Action<Character, LevelUpStats> OnStatsIncreased;
 
     // ========== Component References ==========
     private Character character;
-    private EquipmentManager equipmentManager;
+    private bool hasTriedFirebaseLoad = false;
 
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
-        equipmentManager = GetComponent<EquipmentManager>();
     }
 
     protected virtual void Start()
     {
-        // Subscribe to death events สำหรับ exp gain
         CombatManager.OnCharacterDeath += HandleCharacterDeath;
 
-        if (HasStateAuthority)
-        {
-            // Initialize first level requirements
-            ExpToNextLevel = CalculateExpToNextLevel(CurrentLevel);
-        }
+        // Delayed initialization - ไม่ block การ spawn
+        Invoke("TryInitialize", 1f);
     }
 
     protected virtual void OnDestroy()
@@ -74,154 +70,224 @@ public class LevelManager : NetworkBehaviour
 
     public override void Spawned()
     {
-        if (HasStateAuthority && CurrentLevel == 1)
+        base.Spawned();
+        // Quick initialization for network
+        if (HasStateAuthority && !IsInitialized)
         {
-            // Apply level 1 base stats
-            ApplyLevelUpStats(true); // isInitialSetup = true
+            InitializeBasicLevelSystem();
         }
     }
 
-    // ========== Experience System ==========
+    // ========== Lightweight Initialization ==========
+    private void TryInitialize()
+    {
+        if (HasInputAuthority && !hasTriedFirebaseLoad)
+        {
+            hasTriedFirebaseLoad = true;
+            TryLoadFromFirebase();
+        }
+    }
+
+    private void TryLoadFromFirebase()
+    {
+        // ไม่ใช้ coroutine - check แบบง่ายๆ
+        if (PersistentPlayerData.Instance.HasValidData())
+        {
+            ApplyFirebaseData();
+        }
+        else
+        {
+            // ลองรอ 2 วินาที แล้วค่อยใช้ default
+            Invoke("FallbackToDefault", 2f);
+        }
+    }
+
+    private void ApplyFirebaseData()
+    {
+        PlayerProgressData data = PersistentPlayerData.Instance.GetPlayerData();
+        if (data?.IsValid() == true && HasInputAuthority)
+        {
+            // ส่งข้อมูลไปยัง server
+            RPC_ApplyFirebaseStats(
+                data.currentLevel,
+                data.currentExp,
+                data.expToNextLevel,
+                data.totalMaxHp,
+                data.totalMaxMana,
+                data.totalAttackDamage,
+                data.totalArmor,
+                data.totalCriticalChance,
+                data.totalMoveSpeed
+            );
+
+            Debug.Log($"✅ Applied Firebase data: Level {data.currentLevel}");
+        }
+    }
+
+    private void FallbackToDefault()
+    {
+        if (!IsInitialized && HasInputAuthority)
+        {
+            Debug.Log("Using fallback default stats");
+            InitializeBasicLevelSystem();
+        }
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_ApplyFirebaseStats(int level, int exp, int expToNext, int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed)
+    {
+        CurrentLevel = level;
+        CurrentExp = exp;
+        ExpToNextLevel = expToNext;
+
+        character.MaxHp = maxHp;
+        character.CurrentHp = maxHp;
+        character.MaxMana = maxMana;
+        character.CurrentMana = maxMana;
+        character.AttackDamage = attackDamage;
+        character.Armor = armor;
+        character.CriticalChance = critChance;
+        character.MoveSpeed = moveSpeed;
+
+        character.ForceUpdateNetworkState();
+        IsInitialized = true;
+
+        // Broadcast to all clients
+        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_BroadcastStats(int level, int exp, int expToNext, int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed)
+    {
+        CurrentLevel = level;
+        CurrentExp = exp;
+        ExpToNextLevel = expToNext;
+
+        character.MaxHp = maxHp;
+        character.CurrentHp = maxHp;
+        character.MaxMana = maxMana;
+        character.CurrentMana = maxMana;
+        character.AttackDamage = attackDamage;
+        character.Armor = armor;
+        character.CriticalChance = critChance;
+        character.MoveSpeed = moveSpeed;
+
+        IsInitialized = true;
+    }
+
+    private void InitializeBasicLevelSystem()
+    {
+        if (IsInitialized) return;
+
+        // Use ScriptableObject stats as fallback
+        if (character.characterStats != null)
+        {
+            character.MaxHp = character.characterStats.maxHp;
+            character.CurrentHp = character.MaxHp;
+            character.MaxMana = character.characterStats.maxMana;
+            character.CurrentMana = character.MaxMana;
+            character.AttackDamage = character.characterStats.attackDamage;
+            character.Armor = character.characterStats.arrmor;
+            character.CriticalChance = character.characterStats.criticalChance;
+            character.MoveSpeed = character.characterStats.moveSpeed;
+        }
+
+        CurrentLevel = 1;
+        CurrentExp = 0;
+        ExpToNextLevel = expSettings.baseExpToNextLevel;
+        IsInitialized = true;
+
+        Debug.Log($"✅ Initialized basic level system for {character.CharacterName}");
+    }
+
+    // ========== Experience System (Simplified) ==========
     public virtual void GainExp(int expAmount)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
+        if (!IsInitialized) return;
 
-        int oldExp = CurrentExp;
         CurrentExp += expAmount;
 
-        Debug.Log($"[Exp Gain] {character.CharacterName} gained {expAmount} exp! ({oldExp} -> {CurrentExp})");
-
-        // Sync to network
-        if (HasStateAuthority)
-        {
-            RPC_BroadcastExpGain(expAmount, CurrentExp);
-        }
-        else if (HasInputAuthority)
-        {
-            RPC_UpdateExp(CurrentExp);
-        }
-
-        // Check for level up
-        CheckLevelUp();
-
-        // Fire event
-        OnExpGain?.Invoke(character, expAmount, CurrentExp);
-    }
-
-    private void CheckLevelUp()
-    {
-        while (CurrentExp >= ExpToNextLevel && CurrentLevel < expSettings.maxLevel)
+        // Check level up (max 1 level per call to prevent loops)
+        if (CurrentExp >= ExpToNextLevel && CurrentLevel < expSettings.maxLevel)
         {
             LevelUp();
         }
+
+        OnExpGain?.Invoke(character, expAmount, CurrentExp);
+
+        // Quick save
+        QuickSave();
     }
 
     private void LevelUp()
     {
         CurrentExp -= ExpToNextLevel;
         CurrentLevel++;
-
-        // Calculate new exp requirement
         ExpToNextLevel = CalculateExpToNextLevel(CurrentLevel);
 
-        Debug.Log($"🎉 [LEVEL UP!] {character.CharacterName} reached Level {CurrentLevel}!");
-
         // Apply stat bonuses
-        ApplyLevelUpStats(false);
+        character.MaxHp += levelUpStats.hpBonusPerLevel;
+        character.MaxMana += levelUpStats.manaBonusPerLevel;
+        character.AttackDamage += levelUpStats.attackDamageBonusPerLevel;
+        character.Armor += levelUpStats.armorBonusPerLevel;
+        character.CriticalChance += levelUpStats.criticalChanceBonusPerLevel;
+        character.MoveSpeed += levelUpStats.moveSpeedBonusPerLevel;
 
-        // Sync to network
-        if (HasStateAuthority)
-        {
-            RPC_BroadcastLevelUp(CurrentLevel, CurrentExp, ExpToNextLevel);
-        }
+        // Full restore on level up
+        character.CurrentHp = character.MaxHp;
+        character.CurrentMana = character.MaxMana;
 
-        // Fire event
+        character.ForceUpdateNetworkState();
+
+        Debug.Log($"🎉 {character.CharacterName} reached Level {CurrentLevel}!");
+
+        // Fire events
         OnLevelUp?.Invoke(character, CurrentLevel);
         OnStatsIncreased?.Invoke(character, levelUpStats);
 
-        // Visual/Audio effects
-        RPC_PlayLevelUpEffects();
+        // Quick save
+        QuickSave();
     }
 
-    private void ApplyLevelUpStats(bool isInitialSetup)
+    // ========== Quick Save (Non-blocking) ==========
+    private void QuickSave()
     {
-        // คำนวณ stats bonus จาก level
-        int levelBonus = isInitialSetup ? 0 : 1; // ถ้าเป็น initial setup ไม่บวก bonus
-        int totalLevels = isInitialSetup ? CurrentLevel - 1 : CurrentLevel - 1 + levelBonus;
+        if (!HasInputAuthority) return;
 
-        if (totalLevels <= 0) return;
-
-        // คำนวณ stats ที่ได้จาก level
-        int hpBonus = totalLevels * levelUpStats.hpBonusPerLevel;
-        int manaBonus = totalLevels * levelUpStats.manaBonusPerLevel;
-        int attackBonus = totalLevels * levelUpStats.attackDamageBonusPerLevel;
-        int armorBonus = totalLevels * levelUpStats.armorBonusPerLevel;
-        float critBonus = totalLevels * levelUpStats.criticalChanceBonusPerLevel;
-        float speedBonus = totalLevels * levelUpStats.moveSpeedBonusPerLevel;
-
-        if (!isInitialSetup)
-        {
-            // เฉพาะเมื่อ level up เท่านั้น ถึงจะบวก stats
-            character.MaxHp += levelUpStats.hpBonusPerLevel;
-            character.MaxMana += levelUpStats.manaBonusPerLevel;
-            character.AttackDamage += levelUpStats.attackDamageBonusPerLevel;
-            character.Armor += levelUpStats.armorBonusPerLevel;
-            character.CriticalChance += levelUpStats.criticalChanceBonusPerLevel;
-            character.MoveSpeed += levelUpStats.moveSpeedBonusPerLevel;
-
-            // รักษาเลือดและ mana เต็มเมื่อ level up
-            character.CurrentHp = character.MaxHp;
-            character.CurrentMana = character.MaxMana;
-
-            Debug.Log($"[Level Up Stats] {character.CharacterName} gained: HP+{levelUpStats.hpBonusPerLevel}, ATK+{levelUpStats.attackDamageBonusPerLevel}, etc.");
-        }
-        else
-        {
-            // Setup เริ่มต้น - apply stats รวมจาก level ปัจจุบัน
-            character.MaxHp += hpBonus;
-            character.MaxMana += manaBonus;
-            character.AttackDamage += attackBonus;
-            character.Armor += armorBonus;
-            character.CriticalChance += critBonus;
-            character.MoveSpeed += speedBonus;
-
-            character.CurrentHp = character.MaxHp;
-            character.CurrentMana = character.MaxMana;
-
-            Debug.Log($"[Initial Level Stats] {character.CharacterName} Level {CurrentLevel}: Total bonus applied");
-        }
-
-        // Force update network state
-        character.ForceUpdateNetworkState();
+        PersistentPlayerData.Instance.UpdateLevelAndStats(
+            CurrentLevel,
+            CurrentExp,
+            ExpToNextLevel,
+            character.MaxHp,
+            character.MaxMana,
+            character.AttackDamage,
+            character.Armor,
+            character.CriticalChance,
+            character.MoveSpeed
+        );
     }
 
-    // ========== Enemy Death Handler ==========
+    // ========== Enemy Death Handler (Simplified) ==========
     private void HandleCharacterDeath(Character deadCharacter)
     {
-        // ให้ exp เฉพาะเมื่อ enemy ตาย
-        if (deadCharacter.gameObject.layer == LayerMask.NameToLayer("Enemy"))
+        if (deadCharacter.gameObject.layer != LayerMask.NameToLayer("Enemy")) return;
+
+        Hero[] heroes = FindNearbyHeroes(deadCharacter.transform.position, 10f);
+        if (heroes.Length == 0) return;
+
+        int expReward = expSettings.baseEnemyExp;
+        int expPerHero = Mathf.Max(1, expReward / heroes.Length);
+
+        foreach (Hero hero in heroes)
         {
-            // หา Heroes ที่อยู่ใกล้ๆ ให้ exp
-            Hero[] nearbyHeroes = FindNearbyHeroes(deadCharacter.transform.position, 10f);
-
-            if (nearbyHeroes.Length > 0)
+            if (hero?.IsSpawned == true)
             {
-                int expReward = CalculateEnemyExpReward(deadCharacter);
-                int expPerHero = Mathf.Max(1, expReward / nearbyHeroes.Length); // แบ่ง exp
-
-                foreach (Hero hero in nearbyHeroes)
+                LevelManager heroLevelManager = hero.GetComponent<LevelManager>();
+                if (heroLevelManager?.IsInitialized == true)
                 {
-                    if (hero != null && hero.IsSpawned)
-                    {
-                        LevelManager heroLevelManager = hero.GetComponent<LevelManager>();
-                        if (heroLevelManager != null)
-                        {
-                            heroLevelManager.GainExp(expPerHero);
-                        }
-                    }
+                    heroLevelManager.GainExp(expPerHero);
                 }
-
-                Debug.Log($"[Enemy Death] {deadCharacter.CharacterName} gave {expPerHero} exp to {nearbyHeroes.Length} heroes");
             }
         }
     }
@@ -233,126 +299,41 @@ public class LevelManager : NetworkBehaviour
 
         foreach (Hero hero in allHeroes)
         {
-            if (hero != null && hero.IsSpawned)
+            if (hero?.IsSpawned == true && Vector3.Distance(position, hero.transform.position) <= range)
             {
-                float distance = Vector3.Distance(position, hero.transform.position);
-                if (distance <= range)
-                {
-                    nearbyHeroes.Add(hero);
-                }
+                nearbyHeroes.Add(hero);
             }
         }
 
         return nearbyHeroes.ToArray();
     }
 
-    private int CalculateEnemyExpReward(Character enemy)
-    {
-        // Base exp
-        int baseExp = expSettings.baseEnemyExp;
-
-        // Bonus จาก level ของ enemy (ถ้ามี LevelManager)
-        LevelManager enemyLevelManager = enemy.GetComponent<LevelManager>();
-        if (enemyLevelManager != null)
-        {
-            float levelMultiplier = Mathf.Pow(expSettings.enemyExpLevelMultiplier, enemyLevelManager.CurrentLevel - 1);
-            baseExp = Mathf.RoundToInt(baseExp * levelMultiplier);
-        }
-
-        return baseExp;
-    }
-
     // ========== Utility Methods ==========
     private int CalculateExpToNextLevel(int level)
     {
         if (level >= expSettings.maxLevel) return int.MaxValue;
-
-        float expRequired = expSettings.baseExpToNextLevel * Mathf.Pow(expSettings.expGrowthRate, level - 1);
-        return Mathf.RoundToInt(expRequired);
+        return Mathf.RoundToInt(expSettings.baseExpToNextLevel * Mathf.Pow(expSettings.expGrowthRate, level - 1));
     }
 
-    // ========== Network RPCs ==========
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_UpdateExp(int newExp)
-    {
-        CurrentExp = newExp;
-        RPC_BroadcastExpGain(0, newExp); // broadcast without showing gain
-    }
+    // ========== Public Methods ==========
+    public float GetExpProgress() => ExpToNextLevel == 0 ? 1f : (float)CurrentExp / ExpToNextLevel;
+    public bool IsMaxLevel() => CurrentLevel >= expSettings.maxLevel;
+    public void ForceSaveToFirebase() => QuickSave();
+    public void ForceLoadFromFirebase() => TryLoadFromFirebase();
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_BroadcastExpGain(int expGained, int totalExp)
-    {
-        CurrentExp = totalExp;
-        // Update UI here if needed
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_BroadcastLevelUp(int newLevel, int remainingExp, int expToNext)
-    {
-        CurrentLevel = newLevel;
-        CurrentExp = remainingExp;
-        ExpToNextLevel = expToNext;
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_PlayLevelUpEffects()
-    {
-        // Play level up VFX/SFX
-        Debug.Log($"🎉✨ {character.CharacterName} LEVEL UP EFFECTS! ✨🎉");
-
-        // TODO: Add particle effects, sound, screen flash, etc.
-    }
-
-    // ========== Public Query Methods ==========
-    public float GetExpProgress()
-    {
-        if (ExpToNextLevel == 0) return 1f;
-        return (float)CurrentExp / ExpToNextLevel;
-    }
-
-    public int GetTotalStatsFromLevel()
-    {
-        return (CurrentLevel - 1) * (levelUpStats.hpBonusPerLevel + levelUpStats.manaBonusPerLevel +
-                                   levelUpStats.attackDamageBonusPerLevel + levelUpStats.armorBonusPerLevel);
-    }
-
-    public bool IsMaxLevel()
-    {
-        return CurrentLevel >= expSettings.maxLevel;
-    }
-
-    // ========== Debug/Testing Methods ==========
+    // ========== Debug Methods ==========
     [ContextMenu("Gain 50 Exp")]
-    public void TestGainExp()
-    {
-        GainExp(50);
-    }
+    public void TestGainExp() => GainExp(50);
 
     [ContextMenu("Level Up Now")]
-    public void TestLevelUp()
-    {
-        GainExp(ExpToNextLevel);
-    }
-
-    [ContextMenu("Set Level 10")]
-    public void TestSetLevel10()
-    {
-        while (CurrentLevel < 10)
-        {
-            GainExp(ExpToNextLevel);
-        }
-    }
+    public void TestLevelUp() => GainExp(ExpToNextLevel);
 
     public void LogLevelInfo()
     {
         Debug.Log($"=== {character.CharacterName} Level Info ===");
-        Debug.Log($"📊 Level: {CurrentLevel}/{expSettings.maxLevel}");
-        Debug.Log($"⭐ Exp: {CurrentExp}/{ExpToNextLevel} ({GetExpProgress() * 100:F1}%)");
-        Debug.Log($"💪 Total Stats Bonus: {GetTotalStatsFromLevel()}");
+        Debug.Log($"📊 Level: {CurrentLevel}, Exp: {CurrentExp}/{ExpToNextLevel}");
         Debug.Log($"❤️ HP: {character.CurrentHp}/{character.MaxHp}");
-        Debug.Log($"💙 Mana: {character.CurrentMana}/{character.MaxMana}");
         Debug.Log($"⚔️ Attack: {character.AttackDamage}");
-        Debug.Log($"🛡️ Armor: {character.Armor}");
-        Debug.Log($"💥 Crit: {character.CriticalChance:F1}%");
+        Debug.Log($"🔄 Initialized: {IsInitialized}");
     }
 }
