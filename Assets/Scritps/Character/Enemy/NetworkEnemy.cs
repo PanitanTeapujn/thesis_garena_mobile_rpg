@@ -315,7 +315,7 @@ public class NetworkEnemy : Character
     }
 
     // 🔧 ระบบหลีกเลี่ยงศัตรูตัวอื่น
-    private Vector3 CalculateAvoidanceForce()
+    protected Vector3 CalculateAvoidanceForce()
     {
         Vector3 avoidanceForce = Vector3.zero;
 
@@ -465,7 +465,7 @@ public class NetworkEnemy : Character
         }
     }
 
-    private void TryAttackTarget()
+    protected virtual void TryAttackTarget()
     {
         if (targetTransform == null) return;
 

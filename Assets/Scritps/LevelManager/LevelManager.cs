@@ -13,7 +13,7 @@ public class LevelUpStats
     public int attackDamageBonusPerLevel = 2;
     public int armorBonusPerLevel = 1;
     public float criticalChanceBonusPerLevel = 0.5f;
-    public float moveSpeedBonusPerLevel = 0.1f;
+    public float moveSpeedBonusPerLevel = 0.01f;
 }
 
 [System.Serializable]
@@ -25,7 +25,7 @@ public class ExpSettings
     public int maxLevel = 100;
 
     [Header("Enemy Exp Rewards")]
-    public int baseEnemyExp = 25;
+    public int baseEnemyExp = 15;
     public float enemyExpLevelMultiplier = 1.1f;
 }
 

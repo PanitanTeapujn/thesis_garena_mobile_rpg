@@ -56,7 +56,7 @@ Transform:
   m_GameObject: {fileID: 1538009057022103995}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.13, y: 0, z: -8.14}
+  m_LocalPosition: {x: -0.9, y: 0, z: -8.14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -157,21 +157,37 @@ MonoBehaviour:
   - enemyPrefab: {fileID: 2102208964661930907, guid: 8327cd786d97d4645ab0fd919d324d79,
       type: 3}
     enemyName: 
-    spawnWeight: 5
+    spawnWeight: 2
     maxCount: -1
     spawnCooldown: 1
+    lastSpawnTime: 0
+    currentCount: 0
+  - enemyPrefab: {fileID: 4839707611699536701, guid: a34ed28bb016f414cb790b9d3fc817e5,
+      type: 3}
+    enemyName: 
+    spawnWeight: 3
+    maxCount: -1
+    spawnCooldown: 1
+    lastSpawnTime: 0
+    currentCount: 0
+  - enemyPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
+      type: 3}
+    enemyName: 
+    spawnWeight: 1
+    maxCount: 1
+    spawnCooldown: 60
     lastSpawnTime: 0
     currentCount: 0
   bossConditions:
   - bossPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
       type: 3}
-    bossName: 
+    bossName: Shadowboss
     enemiesToKill: 20
-    includeSpecificEnemies: 0
+    includeSpecificEnemies: 1
     specificEnemyNames: []
     bossRespawnCooldown: 0
-    maxBossInstances: 0
-    announceSpawn: 0
+    maxBossInstances: 1
+    announceSpawn: 1
     spawnWarningTime: 0
     currentKillCount: 0
     lastBossDeathTime: 0
@@ -192,12 +208,14 @@ MonoBehaviour:
   - {fileID: 5449713855246032909}
   - {fileID: 6023309308642714384}
   - {fileID: 3756664571040027359}
-  spawnRadius: 10
-  useSpawnPoints: 1
-  balanceEnemyTypes: 0
+  spawnRadius: 10.42
+  useSpawnPoints: 0
+  showDebugInfo: 0
+  verboseKillTracking: 1
+  balanceEnemyTypes: 1
   spawnInWaves: 0
   enemiesPerWave: 3
-  waveCooldown: 10
+  waveCooldown: 2
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -242,7 +260,7 @@ Transform:
   m_GameObject: {fileID: 5985569395981594469}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.9, y: 0, z: 0}
+  m_LocalPosition: {x: -4.3, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -335,7 +353,7 @@ Transform:
   m_GameObject: {fileID: 9124788995687505417}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10.41, y: 0, z: -8.14}
+  m_LocalPosition: {x: 0.82, y: 0, z: 1.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
