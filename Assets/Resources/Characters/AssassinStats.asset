@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: AssassinStats
   m_EditorClassIdentifier: 
   characterName: Assassin
-  moveSpeed: 5
-  maxHp: 350
-  maxMana: 100
-  attackDamage: 20
-  arrmor: 5
+  moveSpeed: 6.5
+  maxHp: 70
+  maxMana: 40
+  attackDamage: 35
+  arrmor: 2
   attackCoolDown: 1
   attackRange: 0
   criticalChance: 10

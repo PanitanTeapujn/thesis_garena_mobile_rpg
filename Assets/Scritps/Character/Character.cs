@@ -45,11 +45,11 @@ public class Character : NetworkBehaviour
     [SerializeField] private float criticalMultiplier = 2f;
     public float CriticalMultiplier { get { return criticalMultiplier; } set { criticalMultiplier = value; } }
     [Header("Regeneration Settings")]
-    [SerializeField] private float healthRegenPerSecond = 1f;
+    [SerializeField] private float healthRegenPerSecond = 0.5f;
     [SerializeField] private float manaRegenPerSecond = 1f;
     private float healthRegenTimer = 0f;
     private float manaRegenTimer = 0f;
-    private float regenTickInterval = 2f; // regen ทุก 1 วินาที
+    private float regenTickInterval = 3f; // regen ทุก 1 วินาที
     // ========== Network Properties ==========
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }

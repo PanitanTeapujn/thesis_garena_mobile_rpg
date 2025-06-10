@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: IronJuggernautStats
   m_EditorClassIdentifier: 
   characterName: Berserker
-  moveSpeed: 4
-  maxHp: 500
-  maxMana: 100
-  attackDamage: 27
-  arrmor: 5
+  moveSpeed: 4.5
+  maxHp: 150
+  maxMana: 40
+  attackDamage: 20
+  arrmor: 12
   attackCoolDown: 1
   attackRange: 0
+  criticalChance: 0
+  criticalMultiplier: 0

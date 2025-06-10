@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: ArcherStats
   m_EditorClassIdentifier: 
   characterName: Acher
-  moveSpeed: 7
-  maxHp: 300
-  maxMana: 100
-  attackDamage: 25
+  moveSpeed: 5.8
+  maxHp: 80
+  maxMana: 80
+  attackDamage: 30
   arrmor: 3
   attackCoolDown: 1
   attackRange: 0
+  criticalChance: 0
+  criticalMultiplier: 0
