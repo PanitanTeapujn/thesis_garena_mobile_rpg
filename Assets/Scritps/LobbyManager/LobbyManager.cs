@@ -315,7 +315,6 @@ public class LobbyManager : MonoBehaviour
     void StartSoloGame()
     {
         PlayerPrefs.SetString("GameMode", "Solo");
-        PlayerPrefs.SetString("IsHost", "true");
         SceneManager.LoadScene("PlayRoom1");
     }
 
@@ -323,6 +322,8 @@ public class LobbyManager : MonoBehaviour
     {
         PlayerPrefs.SetString("GameMode", "Party");
         PlayerPrefs.SetString("IsHost", "true");
+        PlayerPrefs.SetString("GameMode", "Coop");
+
         SceneManager.LoadScene("WaitingRoom");
     }
 
@@ -337,6 +338,8 @@ public class LobbyManager : MonoBehaviour
         PlayerPrefs.SetString("GameMode", "Party");
         PlayerPrefs.SetString("IsHost", "false");
         PlayerPrefs.SetString("RoomCode", roomCode);
+        PlayerPrefs.SetString("GameMode", "Coop");
+
         SceneManager.LoadScene("WaitingRoom");
     }
 

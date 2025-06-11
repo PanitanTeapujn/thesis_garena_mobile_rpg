@@ -10,11 +10,11 @@ public class NetworkRunnerHandler : MonoBehaviour
     private PlayerSpawner _spawner;
     private SingleInputController _inputController;
     public GameObject enemySpawnerPrefab;
+
     private async void Start()
     {
         // หา PlayerSpawner
         _spawner = FindObjectOfType<PlayerSpawner>();
-
         if (_spawner == null)
         {
             Debug.LogError("PlayerSpawner not found! Please add PlayerSpawner to scene.");
@@ -39,10 +39,17 @@ public class NetworkRunnerHandler : MonoBehaviour
         runner.AddCallbacks(_spawner);
         runner.AddCallbacks(_inputController);
 
+        // 🔄 กำหนด SessionName ตามโหมด
+        string gameModeSetting = PlayerPrefs.GetString("GameMode", "Coop");
+        bool isSolo = gameModeSetting == "Solo";
+        string sessionName = isSolo ? "Solo_" + Random.Range(100000, 999999) : "MainRoom";
+
+        Debug.Log($"Game mode: {(isSolo ? "Solo" : "Co-op")}, Session name: {sessionName}");
+
         var startGameArgs = new StartGameArgs()
         {
             GameMode = GameMode.AutoHostOrClient,
-            SessionName = "MyRoom",
+            SessionName = sessionName,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         };
 
@@ -53,7 +60,7 @@ public class NetworkRunnerHandler : MonoBehaviour
             await runner.StartGame(startGameArgs);
             Debug.Log($"Game started successfully - IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
 
-            // ย้ายการ spawn EnemySpawner มาหลัง StartGame
+            // ✅ Spawn EnemySpawner เฉพาะฝั่ง Server
             if (runner.IsServer)
             {
                 Debug.Log("Running as Server - Setting up EnemySpawner");
@@ -65,6 +72,7 @@ public class NetworkRunnerHandler : MonoBehaviour
             Debug.LogError($"Error starting game: {e.Message}");
         }
     }
+
     private void SetupEnemySpawner(NetworkRunner runner)
     {
         if (enemySpawnerPrefab != null)
@@ -77,22 +85,23 @@ public class NetworkRunnerHandler : MonoBehaviour
             Debug.LogError("EnemySpawner prefab not assigned!");
         }
     }
+
     private void OnDestroy()
     {
-        // Cleanup เมื่อ GameObject ถูกทำลาย
         if (_spawner != null)
         {
             _spawner.CleanupOnGameExit();
         }
     }
+
     public void LoadScene(string sceneName)
     {
         CleanupNetworkComponents();
-        UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+        SceneManager.LoadScene(sceneName);
     }
+
     private void CleanupNetworkComponents()
     {
-        // Shutdown NetworkRunner
         NetworkRunner runner = FindObjectOfType<NetworkRunner>();
         if (runner != null)
         {
@@ -100,7 +109,6 @@ public class NetworkRunnerHandler : MonoBehaviour
             runner.Shutdown();
         }
 
-        // Cleanup PlayerSpawner
         if (_spawner != null)
         {
             _spawner.CleanupOnGameExit();
