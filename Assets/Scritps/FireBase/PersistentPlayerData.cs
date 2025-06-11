@@ -147,8 +147,8 @@ public class PersistentPlayerData : MonoBehaviour
                 currentPlayerData.lastLoginDate = oldData.lastLoginDate;
 
                 // Apply character stats ตามตัวละครที่เลือก
-                ApplyCharacterStats(currentPlayerData.lastCharacterSelected);
-
+/*                ApplyCharacterStats(currentPlayerData.lastCharacterSelected);
+*/
                 isDataLoaded = true;
                 SaveToPlayerPrefs();
 
@@ -170,7 +170,7 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // ========== NEW: Apply Character Stats ==========
-    private void ApplyCharacterStats(string characterName)
+ /*   private void ApplyCharacterStats(string characterName)
     {
         // Parse character type
         PlayerSelectionData.CharacterType characterType = PlayerSelectionData.CharacterType.IronJuggernaut;
@@ -228,7 +228,7 @@ public class PersistentPlayerData : MonoBehaviour
         currentPlayerData.totalAttackCooldown = 1f;
 
         Debug.Log($"[PersistentPlayerData] Applied {characterType} stats: HP={currentPlayerData.totalMaxHp}, ATK={currentPlayerData.totalAttackDamage}");
-    }
+    }*/
 
     // ========== Fast Default Creation ==========
     private void CreateDefaultData()
@@ -256,8 +256,8 @@ public class PersistentPlayerData : MonoBehaviour
         // ถ้าไม่มีใน PlayerPrefs ใช้ character stats
         if (currentPlayerData.totalMaxHp <= 0)
         {
-            ApplyCharacterStats(selectedCharacter);
-        }
+/*            ApplyCharacterStats(selectedCharacter);
+*/        }
 
         isDataLoaded = true;
         Debug.Log($"✅ Created default data for {currentPlayerData.playerName}, Character: {currentPlayerData.lastCharacterSelected}");
