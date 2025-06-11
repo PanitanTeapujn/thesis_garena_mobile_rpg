@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8be475e45e1e9254ca6be9e8a24b20f3, type: 3}
+  m_Name: Large Mana Potion
+  m_EditorClassIdentifier: 
+  itemName: Large Mana Potion
+  itemId: mana_potion_large
+  description: Restores 120 MP
+  icon: {fileID: 0}
+  itemType: 0
+  rarity: 2
+  isStackable: 1
+  maxStackSize: 99
+  equipmentType: 0
+  stats:
+    attackDamage: 0
+    armor: 0
+    maxHp: 0
+    maxMana: 0
+    moveSpeed: 0
+    attackSpeed: 0
+    criticalChance: 0
+    criticalDamage: 0
+  healAmount: 0
+  manaAmount: 120
+  buffDuration: 0
+  buyPrice: 120
+  sellPrice: 60

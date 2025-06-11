@@ -651,14 +651,14 @@ public class InventoryUIManager : MonoBehaviour
         {
             // Add various test items
             inventoryManager.AddItem("health_potion_small", 10);
-            inventoryManager.AddItem("mana_potion_small", 5);
+           // inventoryManager.AddItem("mana_potion_small", 5);
             inventoryManager.AddItem("iron_sword", 1);
             inventoryManager.AddItem("leather_armor", 1);
             inventoryManager.AddItem("leather_helmet", 1);
             inventoryManager.AddItem("leather_pants", 1);
             inventoryManager.AddItem("leather_boots", 1);
-            inventoryManager.AddItem("steel_sword", 1);
-            inventoryManager.AddItem("chainmail", 1);
+           // inventoryManager.AddItem("steel_sword", 1);
+          //  inventoryManager.AddItem("chainmail", 1);
 
             Debug.Log("Test items added to inventory!");
             RefreshInventoryUI();

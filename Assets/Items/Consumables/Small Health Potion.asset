@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8be475e45e1e9254ca6be9e8a24b20f3, type: 3}
+  m_Name: Small Health Potion
+  m_EditorClassIdentifier: 
+  itemName: Small Health Potion
+  itemId: health_potion_small
+  description: Restores 50 HP
+  icon: {fileID: 21300000, guid: 0e0bedb917191584aa27b1e2134fecab, type: 3}
+  itemType: 0
+  rarity: 0
+  isStackable: 1
+  maxStackSize: 99
+  equipmentType: 0
+  stats:
+    attackDamage: 0
+    armor: 0
+    maxHp: 0
+    maxMana: 0
+    moveSpeed: 0
+    attackSpeed: 0
+    criticalChance: 0
+    criticalDamage: 0
+  healAmount: 50
+  manaAmount: 0
+  buffDuration: 0
+  buyPrice: 20
+  sellPrice: 10

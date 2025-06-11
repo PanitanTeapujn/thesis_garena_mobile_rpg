@@ -15,7 +15,7 @@ MonoBehaviour:
   itemName: Leather Boots
   itemId: leather_boots
   description: Basic leather footwear
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 0e7073b873373a346a2166e6abacc604, type: 3}
   itemType: 1
   rarity: 0
   isStackable: 0

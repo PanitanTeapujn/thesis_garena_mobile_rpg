@@ -11103,9 +11103,6 @@ GameObject:
   m_Component:
   - component: {fileID: 2124026316}
   - component: {fileID: 2124026315}
-  - component: {fileID: 2124026319}
-  - component: {fileID: 2124026318}
-  - component: {fileID: 2124026317}
   - component: {fileID: 2124026320}
   m_Layer: 0
   m_Name: LobbyManager
@@ -11167,56 +11164,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2124026317
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124026314}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8781dd96c03fba4792fb3b99abe2758, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &2124026318
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124026314}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b5b8b69598e30b64c831ed9eedaa785c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  weaponSlot: {fileID: 0}
-  helmetSlot: {fileID: 0}
-  armorSlot: {fileID: 0}
-  pantsSlot: {fileID: 0}
-  bootsSlot: {fileID: 0}
-  weaponPrefabs: []
-  helmetPrefabs: []
-  armorPrefabs: []
-  pantsPrefabs: []
-  bootsPrefabs: []
---- !u!114 &2124026319
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124026314}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85433d7b5898e0e4f95c93a220ab32a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxInventorySlots: 30
-  itemDatabase: {fileID: 11400000, guid: a9342a9fd48ed404a9bd076258f1d22f, type: 2}
-  _NetworkInventory: []
-  _NetworkEquipment: []
 --- !u!114 &2124026320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11233,9 +11180,7 @@ MonoBehaviour:
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []
-  NetworkedBehaviours:
-  - {fileID: 2124026319}
-  - {fileID: 2124026318}
+  NetworkedBehaviours: []
   ForceRemoteRenderTimeframe: 0
 --- !u!1 &2127417877
 GameObject:
