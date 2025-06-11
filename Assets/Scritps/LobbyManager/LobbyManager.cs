@@ -80,12 +80,15 @@ public class LobbyManager : MonoBehaviour
         InvokeRepeating("UpdatePlayerStatsUI", 2f, 2f);
     }
 
-    // ========== เพิ่มใหม่: แสดงข้อมูลพื้นฐาน ==========
+    // ========== แก้ไข: แสดงข้อมูลพื้นฐาน ==========
     private void ShowBasicPlayerInfo()
     {
-        // แสดงข้อมูลจาก PlayerPrefs ก่อน (เร็ว)
+        // แสดงชื่อจาก PlayerPrefs ก่อน (เร็ว)
         playerNameText.text = PlayerPrefs.GetString("PlayerName", "Unknown");
-        characterTypeText.text = PlayerSelectionData.GetSelectedCharacter().ToString();
+
+        // ✅ Fix: ไม่แสดงตัวละครจาก PlayerSelectionData ทันที
+        // รอให้ข้อมูลจาก Firebase มาก่อน
+        characterTypeText.text = "Loading...";
 
         // แสดง level จาก PlayerPrefs ถ้ามี
         if (playerLevelText != null)
@@ -94,10 +97,10 @@ public class LobbyManager : MonoBehaviour
             playerLevelText.text = $"Level {savedLevel}";
         }
 
-        Debug.Log("[LobbyManager] Basic player info displayed");
+        Debug.Log("[LobbyManager] Basic player info displayed (without character)");
     }
 
-    // ========== เพิ่มใหม่: โหลดข้อมูล Stats ==========
+    // ========== แก้ไข: โหลดข้อมูล Stats ==========
     private IEnumerator LoadAndShowPlayerStats()
     {
         Debug.Log("[LobbyManager] Loading player stats...");
@@ -117,7 +120,10 @@ public class LobbyManager : MonoBehaviour
             playerData = PersistentPlayerData.Instance.GetPlayerData();
             isPlayerDataLoaded = true;
 
-            Debug.Log($"✅ [LobbyManager] Player stats loaded: {playerData.playerName}, Level {playerData.currentLevel}");
+            Debug.Log($"✅ [LobbyManager] Player stats loaded: {playerData.playerName}, Level {playerData.currentLevel}, Character: {playerData.lastCharacterSelected}");
+
+            // ✅ Fix: อัพเดท PlayerSelectionData ให้ตรงกับข้อมูลจาก Firebase
+            UpdatePlayerSelectionDataFromFirebase();
 
             // อัพเดท UI ทันที
             UpdatePlayerStatsUI();
@@ -129,7 +135,26 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    // ========== เพิ่มใหม่: Fallback จาก PlayerPrefs ==========
+    // ========== เพิ่มใหม่: อัพเดท PlayerSelectionData จาก Firebase ==========
+    private void UpdatePlayerSelectionDataFromFirebase()
+    {
+        if (playerData == null || string.IsNullOrEmpty(playerData.lastCharacterSelected)) return;
+
+        // แปลง string เป็น CharacterType
+        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(playerData.lastCharacterSelected, out var characterType))
+        {
+            // ✅ อัพเดท PlayerSelectionData ให้ตรงกับข้อมูลจาก Firebase
+            PlayerSelectionData.SaveCharacterSelection(characterType);
+
+            Debug.Log($"[LobbyManager] ✅ Updated PlayerSelectionData to: {characterType} (from Firebase: {playerData.lastCharacterSelected})");
+        }
+        else
+        {
+            Debug.LogWarning($"[LobbyManager] Cannot parse character: {playerData.lastCharacterSelected}");
+        }
+    }
+
+    // ========== แก้ไข: Fallback จาก PlayerPrefs ==========
     private void LoadStatsFromPlayerPrefs()
     {
         // สร้าง PlayerProgressData จาก PlayerPrefs
@@ -143,19 +168,37 @@ public class LobbyManager : MonoBehaviour
         playerData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 20);
         playerData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 5);
 
+        // ✅ Fix: ใช้ข้อมูลตัวละครจาก PlayerPrefs เฉพาะกรณี fallback เท่านั้น
+        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "");
+        if (!string.IsNullOrEmpty(savedCharacter))
+        {
+            playerData.lastCharacterSelected = savedCharacter;
+        }
+        else
+        {
+            // ถ้าไม่มีข้อมูลใน PlayerPrefs ใช้ default
+            playerData.lastCharacterSelected = PlayerSelectionData.GetSelectedCharacter().ToString();
+        }
+
         isPlayerDataLoaded = true;
         UpdatePlayerStatsUI();
 
-        Debug.Log("[LobbyManager] Stats loaded from PlayerPrefs fallback");
+        Debug.Log($"[LobbyManager] Stats loaded from PlayerPrefs fallback, Character: {playerData.lastCharacterSelected}");
     }
 
-    // ========== เพิ่มใหม่: อัพเดท UI ==========
+    // ========== แก้ไข: อัพเดท UI ==========
     private void UpdatePlayerStatsUI()
     {
         if (!isPlayerDataLoaded || playerData == null) return;
 
         try
         {
+            // ✅ Fix: อัพเดทชื่อตัวละครจากข้อมูลที่โหลดมา
+            if (!string.IsNullOrEmpty(playerData.lastCharacterSelected))
+            {
+                characterTypeText.text = playerData.lastCharacterSelected;
+            }
+
             // อัพเดท level และ exp
             if (playerLevelText != null)
                 playerLevelText.text = $"Level {playerData.currentLevel}";
@@ -184,7 +227,7 @@ public class LobbyManager : MonoBehaviour
             if (armorText != null)
                 armorText.text = $"Armor: {playerData.totalArmor}";
 
-            Debug.Log($"[LobbyManager] UI updated - Level {playerData.currentLevel}, HP {playerData.totalMaxHp}");
+            Debug.Log($"[LobbyManager] UI updated - Level {playerData.currentLevel}, Character: {playerData.lastCharacterSelected}, HP {playerData.totalMaxHp}");
         }
         catch (System.Exception e)
         {
@@ -200,6 +243,10 @@ public class LobbyManager : MonoBehaviour
         {
             playerData = PersistentPlayerData.Instance.GetPlayerData();
             isPlayerDataLoaded = true;
+
+            // ✅ Fix: อัพเดท PlayerSelectionData ด้วย
+            UpdatePlayerSelectionDataFromFirebase();
+
             UpdatePlayerStatsUI();
         }
     }
@@ -217,11 +264,26 @@ public class LobbyManager : MonoBehaviour
         if (playerData != null)
         {
             playerData.LogProgressInfo();
+            Debug.Log($"PlayerSelectionData says: {PlayerSelectionData.GetSelectedCharacter()}");
         }
         else
         {
             Debug.Log("[LobbyManager] No player data available");
         }
+    }
+
+    [ContextMenu("Check Character Consistency")]
+    public void Debug_CheckCharacterConsistency()
+    {
+        string firebaseChar = playerData?.lastCharacterSelected ?? "null";
+        string playerPrefsChar = PlayerSelectionData.GetSelectedCharacter().ToString();
+        string savedInPrefs = PlayerPrefs.GetString("LastCharacterSelected", "not set");
+
+        Debug.Log($"=== Character Consistency Check ===");
+        Debug.Log($"Firebase Character: {firebaseChar}");
+        Debug.Log($"PlayerSelectionData: {playerPrefsChar}");
+        Debug.Log($"PlayerPrefs LastCharacterSelected: {savedInPrefs}");
+        Debug.Log($"Match: {firebaseChar == playerPrefsChar}");
     }
 
     // ========== Methods เดิม (ไม่เปลี่ยน) ==========
