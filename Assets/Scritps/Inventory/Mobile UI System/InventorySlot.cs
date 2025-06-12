@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
@@ -44,6 +44,31 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     void Start()
     {
+        // รอให้ UI Components ถูกสร้างเสร็จก่อน
+        InitializeSlot();
+    }
+
+    private void InitializeSlot()
+    {
+        // ตรวจสอบว่า UI Components ถูก assign แล้วหรือไม่
+        if (slotBackground == null)
+        {
+            Debug.LogError($"SlotBackground is not assigned in {gameObject.name}");
+            return;
+        }
+
+        if (itemIcon == null)
+        {
+            Debug.LogError($"ItemIcon is not assigned in {gameObject.name}");
+            return;
+        }
+
+        if (quantityText == null)
+        {
+            Debug.LogError($"QuantityText is not assigned in {gameObject.name}");
+            return;
+        }
+
         ClearSlot();
     }
 
@@ -64,6 +89,13 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     public void SetItem(ItemData item, int quantity)
     {
+        if (item == null)
+        {
+            Debug.LogWarning("Trying to set null item in inventory slot");
+            ClearSlot();
+            return;
+        }
+
         currentItem = item;
 
         if (slotData == null)
@@ -74,20 +106,26 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
             slotData.quantity = quantity;
         }
 
-        // Update visual
-        itemIcon.sprite = item.icon;
-        itemIcon.color = Color.white;
-        itemIcon.gameObject.SetActive(true);
+        // Update visual with null checks
+        if (itemIcon != null)
+        {
+            itemIcon.sprite = item.icon;
+            itemIcon.color = Color.white;
+            itemIcon.gameObject.SetActive(true);
+        }
 
         // Update quantity text
-        if (quantity > 1)
+        if (quantityText != null)
         {
-            quantityText.text = quantity.ToString();
-            quantityText.gameObject.SetActive(true);
-        }
-        else
-        {
-            quantityText.gameObject.SetActive(false);
+            if (quantity > 1)
+            {
+                quantityText.text = quantity.ToString();
+                quantityText.gameObject.SetActive(true);
+            }
+            else
+            {
+                quantityText.gameObject.SetActive(false);
+            }
         }
 
         // Update rarity border
@@ -98,7 +136,10 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
         }
 
         // Update background
-        slotBackground.color = normalColor;
+        if (slotBackground != null)
+        {
+            slotBackground.color = normalColor;
+        }
     }
 
     public void ClearSlot()
@@ -113,21 +154,38 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
             slotData.quantity = 0;
         }
 
-        // Clear visual
-        itemIcon.gameObject.SetActive(false);
-        quantityText.gameObject.SetActive(false);
+        // Clear visual with null checks
+        if (itemIcon != null)
+        {
+            itemIcon.gameObject.SetActive(false);
+        }
+
+        if (quantityText != null)
+        {
+            quantityText.gameObject.SetActive(false);
+        }
 
         if (rarityBorder != null)
+        {
             rarityBorder.gameObject.SetActive(false);
+        }
 
-        slotBackground.color = normalColor;
+        if (slotBackground != null)
+        {
+            slotBackground.color = normalColor;
+        }
+
         isSelected = false;
     }
 
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        slotBackground.color = selected ? selectedColor : normalColor;
+
+        if (slotBackground != null)
+        {
+            slotBackground.color = selected ? selectedColor : normalColor;
+        }
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -137,7 +195,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (!isSelected)
+        if (!isSelected && slotBackground != null)
         {
             slotBackground.color = highlightColor;
         }
@@ -147,7 +205,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (!isSelected)
+        if (!isSelected && slotBackground != null)
         {
             slotBackground.color = normalColor;
         }
@@ -155,7 +213,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     public bool IsEmpty()
     {
-        return currentItem == null || string.IsNullOrEmpty(slotData.itemId);
+        return currentItem == null || string.IsNullOrEmpty(slotData?.itemId);
     }
 
     public ItemData GetItem()
@@ -171,5 +229,11 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler, IPointerEnterH
     public string GetItemId()
     {
         return slotData?.itemId ?? "";
+    }
+
+    // เพิ่มฟังก์ชันตรวจสอบว่า slot พร้อมใช้งานหรือไม่
+    public bool IsSlotReady()
+    {
+        return slotBackground != null && itemIcon != null && quantityText != null;
     }
 }
