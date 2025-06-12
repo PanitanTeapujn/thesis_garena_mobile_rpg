@@ -162,10 +162,16 @@ public class WaitingRoomManager : MonoBehaviour
         }
     }
 
+    // ========== แก้ไข: ใช้ด่านที่เลือก ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     void RPC_StartGame()
     {
-        runner.LoadScene("PlayRoom1");
+        // ✅ Fix: ใช้ด่านที่เลือกแทน PlayRoom1
+        string selectedStage = PlayerPrefs.GetString("SelectedStage", "PlayRoom1");
+
+        Debug.Log($"[WaitingRoomManager] Starting game with selected stage: {selectedStage}");
+
+        runner.LoadScene(selectedStage);
     }
 
     void LeaveRoom()

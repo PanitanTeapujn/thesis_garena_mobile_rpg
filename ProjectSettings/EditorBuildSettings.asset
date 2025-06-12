@@ -24,12 +24,12 @@ EditorBuildSettings:
     path: Assets/Scenes/Sceneliew/CoopRoom.unity
     guid: 6597d93f6795a4e4aa8e577517b0928c
   - enabled: 1
-    path: Assets/Scenes/Sceneliew/PlayRoom1.unity
+    path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom1.unity
     guid: 03674728668858f42ad1b6ed1d782739
-  - enabled: 1
-    path: Assets/Scenes/Sceneliew/PlayRoom 2.unity
-    guid: 04d896fce8747bf40aa4616a946223bc
   - enabled: 1
     path: Assets/Scenes/Sceneliew/LoseScene.unity
     guid: 46d766acbb9760647b12752426b29582
+  - enabled: 1
+    path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom2.unity
+    guid: bde2e524071d07b459dc2a65fd88db9c
   m_configObjects: {}
