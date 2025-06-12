@@ -19,32 +19,18 @@ public class LobbyManager : MonoBehaviour
     public TextMeshProUGUI attackText;
     public TextMeshProUGUI armorText;
 
-    [Header("Buttons")]
+    [Header("Main Lobby Buttons")]
     public Button playButton;
     public Button shopButton;
     public Button inventoryButton;
     public Button settingsButton;
     public Button logoutButton;
 
-    // ========== เพิ่มใหม่: Stage Selection Panel ==========
-    [Header("Stage Selection Panel")]
-    public GameObject stageSelectionPanel;
-    public Button leftArrowButton;
-    public Button rightArrowButton;
-    public Button confirmStageButton;
-    public Button backToLobbyButton;
-
-    [Header("Play Mode Panel")]
-    public GameObject playModePanel;
-    public Button soloButton;
-    public Button partyButton;
-    public Button closePanelButton;
-
-    [Header("Party Options Panel")]
+    [Header("Party Management")]
     public GameObject partyOptionsPanel;
     public Button createRoomButton;
     public Button joinRoomButton;
-    public Button backToModeButton;
+    public Button backToLobbyFromPartyButton;
 
     [Header("Join Room Panel")]
     public GameObject joinRoomPanel;
@@ -52,183 +38,74 @@ public class LobbyManager : MonoBehaviour
     public Button joinButton;
     public Button backToPartyButton;
 
-    // ========== เพิ่มใหม่: Stage Panels ==========
-    [System.Serializable]
-    public class StagePanel
-    {
-        public GameObject panel;
-        public string stageName;
-        public string sceneToLoad;
-    }
+    [Header("References")]
+    public StageSelectionManager stageSelectionManager;
 
-    [Header("Stage Configuration")]
-    public StagePanel[] stagePanels = new StagePanel[]
-    {
-        new StagePanel { stageName = "Stage 1: Forest", sceneToLoad = "PlayRoom1" },
-        new StagePanel { stageName = "Stage 2: Desert", sceneToLoad = "PlayRoom2" },
-        new StagePanel { stageName = "Stage 3: Ice Cave", sceneToLoad = "PlayRoom3" }
-    };
-
-    private int currentStageIndex = 0;
-    private string selectedGameMode = ""; // เก็บโหมดที่เลือก
-
-    // ข้อมูลเดิม
+    // Player data
     private PlayerProgressData playerData;
     private bool isPlayerDataLoaded = false;
 
     void Start()
     {
+        SetupEvents();
+        SetupButtons();
+
         ShowBasicPlayerInfo();
         StartCoroutine(LoadAndShowPlayerStats());
 
-        // ========== แก้ไข: Setup buttons ==========
-        playButton.onClick.AddListener(ShowStageSelectionPanel); // เปลี่ยนจากเดิม
+        HideAllPanels();
+        InvokeRepeating("UpdatePlayerStatsUI", 2f, 2f);
+    }
+
+    void SetupEvents()
+    {
+        // Subscribe to stage selection events
+        StageSelectionManager.OnSoloGameSelected += HandleSoloGameSelected;
+        StageSelectionManager.OnPartyGameSelected += HandlePartyGameSelected;
+        StageSelectionManager.OnBackToLobby += HandleBackToLobby;
+    }
+
+    void SetupButtons()
+    {
+        // Main lobby buttons
+        playButton.onClick.AddListener(ShowStageSelection);
         logoutButton.onClick.AddListener(Logout);
-
-        // Stage selection buttons (ใหม่)
-        leftArrowButton.onClick.AddListener(PreviousStage);
-        rightArrowButton.onClick.AddListener(NextStage);
-        confirmStageButton.onClick.AddListener(ConfirmStageSelection);
-        backToLobbyButton.onClick.AddListener(BackToLobby);
-
-        // Play mode buttons
-        soloButton.onClick.AddListener(() => StartGameWithMode("Solo"));
-        partyButton.onClick.AddListener(() => StartGameWithMode("Party"));
-        closePanelButton.onClick.AddListener(ShowStageSelectionPanel); // กลับไปหน้าเลือกด่าน
 
         // Party buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
-        backToModeButton.onClick.AddListener(ShowPlayModePanel);
+        backToLobbyFromPartyButton.onClick.AddListener(BackToMainLobby);
 
         // Join room buttons
         joinButton.onClick.AddListener(JoinRoom);
         backToPartyButton.onClick.AddListener(ShowPartyOptions);
-
-        HideAllPanels();
-        UpdateStageDisplay();
-
-        InvokeRepeating("UpdatePlayerStatsUI", 2f, 2f);
     }
 
-    // ========== ใหม่: Stage Selection Methods ==========
-    void ShowStageSelectionPanel()
-    {
-        HideAllPanels();
-        stageSelectionPanel.SetActive(true);
-        UpdateStageDisplay();
-    }
-
-    void PreviousStage()
-    {
-        currentStageIndex--;
-        if (currentStageIndex < 0)
-            currentStageIndex = stagePanels.Length - 1;
-        UpdateStageDisplay();
-    }
-
-    void NextStage()
-    {
-        currentStageIndex++;
-        if (currentStageIndex >= stagePanels.Length)
-            currentStageIndex = 0;
-        UpdateStageDisplay();
-    }
-
-    void UpdateStageDisplay()
-    {
-        // ซ่อน panel ทั้งหมดก่อน
-        for (int i = 0; i < stagePanels.Length; i++)
-        {
-            if (stagePanels[i].panel != null)
-            {
-                stagePanels[i].panel.SetActive(false);
-            }
-        }
-
-        // แสดง panel ปัจจุบัน
-        if (stagePanels.Length > 0 && currentStageIndex >= 0 && currentStageIndex < stagePanels.Length)
-        {
-            if (stagePanels[currentStageIndex].panel != null)
-            {
-                stagePanels[currentStageIndex].panel.SetActive(true);
-            }
-        }
-    }
-
-    void ConfirmStageSelection()
-    {
-        // บันทึกด่านที่เลือก
-        if (stagePanels.Length > 0 && currentStageIndex >= 0 && currentStageIndex < stagePanels.Length)
-        {
-            PlayerPrefs.SetString("SelectedStage", stagePanels[currentStageIndex].sceneToLoad);
-            Debug.Log($"Selected stage: {stagePanels[currentStageIndex].stageName} -> {stagePanels[currentStageIndex].sceneToLoad}");
-        }
-
-        // ไปหน้าเลือกโหมดการเล่น
-        ShowPlayModePanel();
-    }
-
-    void BackToLobby()
-    {
-        HideAllPanels();
-    }
-
-    // ========== แก้ไข: Game Mode Methods ==========
-    void StartGameWithMode(string gameMode)
-    {
-        selectedGameMode = gameMode;
-
-        if (gameMode == "Solo")
-        {
-            StartSoloGame();
-        }
-        else if (gameMode == "Party")
-        {
-            ShowPartyOptions();
-        }
-    }
-
-    // ========== แก้ไข: Start Game Methods ==========
-    void StartSoloGame()
+    // ========== Stage Selection Events ==========
+    void HandleSoloGameSelected(string sceneToLoad)
     {
         PlayerPrefs.SetString("GameMode", "Solo");
-
-        // ใช้ด่านที่เลือก
-        string selectedStage = PlayerPrefs.GetString("SelectedStage", "PlayRoom1");
-        SceneManager.LoadScene(selectedStage);
+        SceneManager.LoadScene(sceneToLoad);
     }
 
-    void CreateRoom()
+    void HandlePartyGameSelected()
     {
-        PlayerPrefs.SetString("GameMode", "Party");
-        PlayerPrefs.SetString("IsHost", "true");
-        PlayerPrefs.SetString("GameMode", "Coop");
-
-        SceneManager.LoadScene("WaitingRoom");
+        ShowPartyOptions();
     }
 
-    void JoinRoom()
+    void HandleBackToLobby()
     {
-        string roomCode = roomCodeInput.text.Trim();
-        if (string.IsNullOrEmpty(roomCode))
-        {
-            Debug.Log("Please enter room code!");
-            return;
-        }
-        PlayerPrefs.SetString("GameMode", "Party");
-        PlayerPrefs.SetString("IsHost", "false");
-        PlayerPrefs.SetString("RoomCode", roomCode);
-        PlayerPrefs.SetString("GameMode", "Coop");
-
-        SceneManager.LoadScene("WaitingRoom");
+        BackToMainLobby();
     }
 
-    // ========== แก้ไข: Panel Management ==========
-    void ShowPlayModePanel()
+    // ========== UI Navigation ==========
+    void ShowStageSelection()
     {
         HideAllPanels();
-        playModePanel.SetActive(true);
+        if (stageSelectionManager != null)
+        {
+            stageSelectionManager.ShowMainStageSelection();
+        }
     }
 
     void ShowPartyOptions()
@@ -243,26 +120,40 @@ public class LobbyManager : MonoBehaviour
         joinRoomPanel.SetActive(true);
     }
 
-    void HideAllPanels()
+    void BackToMainLobby()
     {
-        stageSelectionPanel.SetActive(false);
-        playModePanel.SetActive(false);
-        partyOptionsPanel.SetActive(false);
-        joinRoomPanel.SetActive(false);
-
-        // ซ่อน stage panels ทั้งหมดด้วย
-        HideAllStagePanels();
+        HideAllPanels();
     }
 
-    void HideAllStagePanels()
+    void HideAllPanels()
     {
-        for (int i = 0; i < stagePanels.Length; i++)
+        partyOptionsPanel.SetActive(false);
+        joinRoomPanel.SetActive(false);
+    }
+
+    // ========== Party Management ==========
+    void CreateRoom()
+    {
+        PlayerPrefs.SetString("GameMode", "Party");
+        PlayerPrefs.SetString("IsHost", "true");
+        PlayerPrefs.SetString("GameMode", "Coop");
+        SceneManager.LoadScene("WaitingRoom");
+    }
+
+    void JoinRoom()
+    {
+        string roomCode = roomCodeInput.text.Trim();
+        if (string.IsNullOrEmpty(roomCode))
         {
-            if (stagePanels[i].panel != null)
-            {
-                stagePanels[i].panel.SetActive(false);
-            }
+            Debug.Log("Please enter room code!");
+            return;
         }
+
+        PlayerPrefs.SetString("GameMode", "Party");
+        PlayerPrefs.SetString("IsHost", "false");
+        PlayerPrefs.SetString("RoomCode", roomCode);
+        PlayerPrefs.SetString("GameMode", "Coop");
+        SceneManager.LoadScene("WaitingRoom");
     }
 
     void Logout()
@@ -270,7 +161,7 @@ public class LobbyManager : MonoBehaviour
         SceneManager.LoadScene("CharacterSelection");
     }
 
-    // ========== Methods เดิมที่ไม่เปลี่ยน ==========
+    // ========== Player Data Management (เหมือนเดิม) ==========
     private void ShowBasicPlayerInfo()
     {
         playerNameText.text = PlayerPrefs.GetString("PlayerName", "Unknown");
@@ -413,6 +304,7 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
+    // ========== Debug Methods ==========
     [ContextMenu("Refresh Player Stats")]
     public void Debug_RefreshStats()
     {
@@ -433,17 +325,11 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    [ContextMenu("Check Character Consistency")]
-    public void Debug_CheckCharacterConsistency()
+    void OnDestroy()
     {
-        string firebaseChar = playerData?.lastCharacterSelected ?? "null";
-        string playerPrefsChar = PlayerSelectionData.GetSelectedCharacter().ToString();
-        string savedInPrefs = PlayerPrefs.GetString("LastCharacterSelected", "not set");
-
-        Debug.Log($"=== Character Consistency Check ===");
-        Debug.Log($"Firebase Character: {firebaseChar}");
-        Debug.Log($"PlayerSelectionData: {playerPrefsChar}");
-        Debug.Log($"PlayerPrefs LastCharacterSelected: {savedInPrefs}");
-        Debug.Log($"Match: {firebaseChar == playerPrefsChar}");
+        // Unsubscribe from events
+        StageSelectionManager.OnSoloGameSelected -= HandleSoloGameSelected;
+        StageSelectionManager.OnPartyGameSelected -= HandlePartyGameSelected;
+        StageSelectionManager.OnBackToLobby -= HandleBackToLobby;
     }
 }
