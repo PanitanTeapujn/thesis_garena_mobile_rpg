@@ -3,8 +3,8 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections;
-
-public class LobbyManager : MonoBehaviour
+using System.Collections.Generic;
+    public class LobbyManager : MonoBehaviour
 {
     [Header("UI Elements")]
     public TextMeshProUGUI playerNameText;
@@ -40,6 +40,15 @@ public class LobbyManager : MonoBehaviour
 
     [Header("References")]
     public StageSelectionManager stageSelectionManager;
+
+    [Header("Character Selection")]
+    public Button characterSelectionButton;
+    public GameObject characterSelectionPanel; // Optional: In-lobby character selection
+    public Button bloodKnightSelectButton;
+    public Button archerSelectButton;
+    public Button assassinSelectButton;
+    public Button ironJuggernautSelectButton;
+    public TextMeshProUGUI availableCharactersText;
 
     // Player data
     private PlayerProgressData playerData;
@@ -79,6 +88,95 @@ public class LobbyManager : MonoBehaviour
         // Join room buttons
         joinButton.onClick.AddListener(JoinRoom);
         backToPartyButton.onClick.AddListener(ShowPartyOptions);
+
+        if (characterSelectionButton != null)
+            characterSelectionButton.onClick.AddListener(OpenCharacterSelection);
+
+        // In-lobby character selection buttons (if using panel instead of scene)
+        if (bloodKnightSelectButton != null)
+            bloodKnightSelectButton.onClick.AddListener(() => SwitchCharacter("BloodKnight"));
+        if (archerSelectButton != null)
+            archerSelectButton.onClick.AddListener(() => SwitchCharacter("Archer"));
+        if (assassinSelectButton != null)
+            assassinSelectButton.onClick.AddListener(() => SwitchCharacter("Assassin"));
+        if (ironJuggernautSelectButton != null)
+            ironJuggernautSelectButton.onClick.AddListener(() => SwitchCharacter("IronJuggernaut"));
+    }
+    private void OpenCharacterSelection()
+    {
+        if (characterSelectionPanel != null)
+        {
+            // Show in-lobby character selection panel
+            ShowCharacterSelectionPanel();
+        }
+        else
+        {
+            // Go to character selection scene
+            SceneManager.LoadScene("CharacterSelection");
+        }
+    }
+    private void ShowCharacterSelectionPanel()
+    {
+        HideAllPanels();
+        characterSelectionPanel.SetActive(true);
+        UpdateAvailableCharactersList();
+    }
+
+    private void SwitchCharacter(string characterType)
+    {
+        Debug.Log($"[LobbyManager] Switching to character: {characterType}");
+
+        // Switch character in PersistentPlayerData
+        PersistentPlayerData.Instance.SwitchCharacter(characterType);
+
+        // Update UI
+        RefreshPlayerStats();
+
+        // Update PlayerSelectionData
+        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var characterEnum))
+        {
+            PlayerSelectionData.SaveCharacterSelection(characterEnum);
+        }
+
+        // Hide character selection panel
+        if (characterSelectionPanel != null)
+            characterSelectionPanel.SetActive(false);
+
+        Debug.Log($"✅ [LobbyManager] Successfully switched to {characterType}");
+    }
+
+    private void UpdateAvailableCharactersList()
+    {
+        if (availableCharactersText == null) return;
+
+        List<CharacterProgressData> allCharacters = PersistentPlayerData.Instance.GetAllCharacterData();
+        string currentActive = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+        string charactersList = $"<color=yellow>Current Active: {currentActive}</color>\n\n";
+        charactersList += "<color=white>Available Characters:</color>\n";
+
+        // Show all 4 character types with their levels
+        string[] allCharacterTypes = { "BloodKnight", "Archer", "Assassin", "IronJuggernaut" };
+
+        foreach (string characterType in allCharacterTypes)
+        {
+            CharacterProgressData characterData = allCharacters.Find(c => c.characterType == characterType);
+
+            if (characterData != null)
+            {
+                // Character exists - show level and stats
+                string color = (characterType == currentActive) ? "yellow" : "white";
+                charactersList += $"<color={color}>• {characterType} - Level {characterData.currentLevel}</color>\n";
+                charactersList += $"   HP: {characterData.totalMaxHp}, ATK: {characterData.totalAttackDamage}\n";
+            }
+            else
+            {
+                // Character not created yet - show as available
+                charactersList += $"<color=gray>• {characterType} - New Character</color>\n";
+            }
+        }
+
+        availableCharactersText.text = charactersList;
     }
 
     // ========== Stage Selection Events ==========
@@ -129,6 +227,10 @@ public class LobbyManager : MonoBehaviour
     {
         partyOptionsPanel.SetActive(false);
         joinRoomPanel.SetActive(false);
+
+        // Add character selection panel
+        if (characterSelectionPanel != null)
+            characterSelectionPanel.SetActive(false);
     }
 
     // ========== Party Management ==========
@@ -255,9 +357,12 @@ public class LobbyManager : MonoBehaviour
 
         try
         {
-            if (!string.IsNullOrEmpty(playerData.lastCharacterSelected))
+            // Get current active character name
+            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+            if (!string.IsNullOrEmpty(activeCharacter))
             {
-                characterTypeText.text = playerData.lastCharacterSelected;
+                characterTypeText.text = activeCharacter;
             }
 
             if (playerLevelText != null)
@@ -285,7 +390,7 @@ public class LobbyManager : MonoBehaviour
             if (armorText != null)
                 armorText.text = $"Armor: {playerData.totalArmor}";
 
-            Debug.Log($"[LobbyManager] UI updated - Level {playerData.currentLevel}, Character: {playerData.lastCharacterSelected}, HP {playerData.totalMaxHp}");
+            Debug.Log($"[LobbyManager] UI updated - Level {playerData.currentLevel}, Character: {activeCharacter}, HP {playerData.totalMaxHp}");
         }
         catch (System.Exception e)
         {
@@ -297,10 +402,17 @@ public class LobbyManager : MonoBehaviour
     {
         if (PersistentPlayerData.Instance.HasValidData())
         {
-            playerData = PersistentPlayerData.Instance.GetPlayerData();
-            isPlayerDataLoaded = true;
-            UpdatePlayerSelectionDataFromFirebase();
-            UpdatePlayerStatsUI();
+            // Get current active character data
+            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            CharacterProgressData activeCharacterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacter);
+
+            if (activeCharacterData != null)
+            {
+                // Convert to PlayerProgressData for compatibility
+                playerData = activeCharacterData.ToPlayerProgressData(PersistentPlayerData.Instance.multiCharacterData.playerName);
+                isPlayerDataLoaded = true;
+                UpdatePlayerStatsUI();
+            }
         }
     }
 

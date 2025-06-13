@@ -13,7 +13,7 @@ public class LevelUpStats
     public int attackDamageBonusPerLevel = 2;
     public int armorBonusPerLevel = 1;
     public float criticalChanceBonusPerLevel = 0.5f;
-    public float moveSpeedBonusPerLevel = 0.01f;
+    public float moveSpeedBonusPerLevel = 0f;
 }
 
 [System.Serializable]
@@ -71,12 +71,52 @@ public class LevelManager : NetworkBehaviour
     public override void Spawned()
     {
         base.Spawned();
+
         // Quick initialization for network
         if (HasStateAuthority && !IsInitialized)
         {
-            InitializeBasicLevelSystem();
+            // Check if this is the correct character type
+            if (IsCorrectCharacter())
+            {
+                string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+                InitializeForCharacter(activeCharacterType);
+            }
+            else
+            {
+                InitializeBasicLevelSystem();
+            }
         }
     }
+
+    public void RefreshCharacterData()
+    {
+        if (!HasInputAuthority) return;
+
+        string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+        CharacterProgressData characterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacterType);
+
+        if (characterData != null && IsCorrectCharacter())
+        {
+            // Apply updated character data
+            CurrentLevel = characterData.currentLevel;
+            CurrentExp = characterData.currentExp;
+            ExpToNextLevel = characterData.expToNextLevel;
+
+            character.MaxHp = characterData.totalMaxHp;
+            character.CurrentHp = characterData.totalMaxHp;
+            character.MaxMana = characterData.totalMaxMana;
+            character.CurrentMana = characterData.totalMaxMana;
+            character.AttackDamage = characterData.totalAttackDamage;
+            character.Armor = characterData.totalArmor;
+            character.CriticalChance = characterData.totalCriticalChance;
+            character.MoveSpeed = characterData.totalMoveSpeed;
+
+            character.ForceUpdateNetworkState();
+
+            Debug.Log($"✅ Refreshed character data for {activeCharacterType}");
+        }
+    }
+
 
     // ========== Lightweight Initialization ==========
     private void TryInitialize()
@@ -101,28 +141,69 @@ public class LevelManager : NetworkBehaviour
             Invoke("FallbackToDefault", 2f);
         }
     }
+    private bool IsCorrectCharacter()
+    {
+        string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+        // Get character type from the Character component
+        string currentCharacterType = GetCharacterTypeFromComponent();
+
+        return activeCharacterType == currentCharacterType;
+    }
+
+    private string GetCharacterTypeFromComponent()
+    {
+        if (character?.characterStats != null)
+        {
+            // Try to determine character type from CharacterStats name
+            string statsName = character.characterStats.name;
+
+            if (statsName.Contains("BloodKnight")) return "BloodKnight";
+            if (statsName.Contains("Archer")) return "Archer";
+            if (statsName.Contains("Assassin")) return "Assassin";
+            if (statsName.Contains("IronJuggernaut")) return "IronJuggernaut";
+        }
+
+        // Fallback to checking component name or tag
+        string objectName = character.gameObject.name;
+        if (objectName.Contains("BloodKnight")) return "BloodKnight";
+        if (objectName.Contains("Archer")) return "Archer";
+        if (objectName.Contains("Assassin")) return "Assassin";
+        if (objectName.Contains("IronJuggernaut")) return "IronJuggernaut";
+
+        return "Assassin"; // Default fallback
+    }
 
     private void ApplyFirebaseData()
     {
-        PlayerProgressData data = PersistentPlayerData.Instance.GetPlayerData();
-        if (data?.IsValid() == true && HasInputAuthority)
+        // Get current active character data instead of general player data
+        string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+        CharacterProgressData characterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacterType);
+
+        if (characterData != null && HasInputAuthority)
         {
             // ส่งข้อมูลไปยัง server
             RPC_ApplyFirebaseStats(
-                data.currentLevel,
-                data.currentExp,
-                data.expToNextLevel,
-                data.totalMaxHp,
-                data.totalMaxMana,
-                data.totalAttackDamage,
-                data.totalArmor,
-                data.totalCriticalChance,
-                data.totalMoveSpeed
+                characterData.currentLevel,
+                characterData.currentExp,
+                characterData.expToNextLevel,
+                characterData.totalMaxHp,
+                characterData.totalMaxMana,
+                characterData.totalAttackDamage,
+                characterData.totalArmor,
+                characterData.totalCriticalChance,
+                characterData.totalMoveSpeed
             );
 
-            Debug.Log($"✅ Applied Firebase data: Level {data.currentLevel}");
+            Debug.Log($"✅ Applied Firebase data for {activeCharacterType}: Level {characterData.currentLevel}");
+        }
+        else
+        {
+            Debug.LogWarning($"[LevelManager] No character data found for {activeCharacterType}");
+            FallbackToDefault();
         }
     }
+
 
     private void FallbackToDefault()
     {
@@ -255,18 +336,74 @@ public class LevelManager : NetworkBehaviour
     {
         if (!HasInputAuthority) return;
 
-        PersistentPlayerData.Instance.UpdateLevelAndStats(
-            CurrentLevel,
-            CurrentExp,
-            ExpToNextLevel,
-            character.MaxHp,
-            character.MaxMana,
-            character.AttackDamage,
-            character.Armor,
-            character.CriticalChance,
-            character.MoveSpeed
-        );
+        // Save to specific character instead of general player data
+        string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+        if (PersistentPlayerData.Instance.multiCharacterData != null)
+        {
+            PersistentPlayerData.Instance.multiCharacterData.UpdateCharacterStats(
+                activeCharacterType,
+                CurrentLevel,
+                CurrentExp,
+                ExpToNextLevel,
+                character.MaxHp,
+                character.MaxMana,
+                character.AttackDamage,
+                character.Armor,
+                character.CriticalChance,
+                character.MoveSpeed
+            );
+
+            // Also update the currentPlayerData for compatibility
+            PersistentPlayerData.Instance.UpdateLevelAndStats(
+                CurrentLevel,
+                CurrentExp,
+                ExpToNextLevel,
+                character.MaxHp,
+                character.MaxMana,
+                character.AttackDamage,
+                character.Armor,
+                character.CriticalChance,
+                character.MoveSpeed
+            );
+        }
+
+        Debug.Log($"💾 Quick saved {activeCharacterType} - Level {CurrentLevel}");
     }
+
+    private void InitializeForCharacter(string characterType)
+    {
+        if (IsInitialized) return;
+
+        CharacterProgressData characterData = PersistentPlayerData.Instance.GetCharacterData(characterType);
+
+        if (characterData != null)
+        {
+            // Apply character-specific data
+            CurrentLevel = characterData.currentLevel;
+            CurrentExp = characterData.currentExp;
+            ExpToNextLevel = characterData.expToNextLevel;
+
+            character.MaxHp = characterData.totalMaxHp;
+            character.CurrentHp = characterData.totalMaxHp;
+            character.MaxMana = characterData.totalMaxMana;
+            character.CurrentMana = characterData.totalMaxMana;
+            character.AttackDamage = characterData.totalAttackDamage;
+            character.Armor = characterData.totalArmor;
+            character.CriticalChance = characterData.totalCriticalChance;
+            character.MoveSpeed = characterData.totalMoveSpeed;
+
+            IsInitialized = true;
+            Debug.Log($"✅ Initialized LevelManager for {characterType} - Level {CurrentLevel}");
+        }
+        else
+        {
+            Debug.LogWarning($"[LevelManager] No data found for {characterType}, using defaults");
+            InitializeBasicLevelSystem();
+        }
+    }
+
+
 
     // ========== Enemy Death Handler (Simplified) ==========
     private void HandleCharacterDeath(Character deadCharacter)

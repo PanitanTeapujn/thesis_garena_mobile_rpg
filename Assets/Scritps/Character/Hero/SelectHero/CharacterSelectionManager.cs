@@ -44,13 +44,25 @@ public class CharacterSelectionManager : MonoBehaviour
     private FirebaseAuth auth;
     private DatabaseReference databaseReference;
 
+
+    [Header("Navigation")]
+    public Button backToLobbyButton;
+    public TextMeshProUGUI characterLevelsText;
+    private bool comingFromLobby = false;
+
     private void Start()
     {
         // เชื่อมปุ่มกับฟังก์ชันเลือกตัวละคร
+        if (backToLobbyButton != null)
+        {
+            backToLobbyButton.onClick.AddListener(BackToLobby);
+            backToLobbyButton.gameObject.SetActive(comingFromLobby);
+        }
         bloodKnightButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.BloodKnight));
         archerButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Archer));
         assassinButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Assassin));
         ironJuggernautButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.IronJuggernaut));
+        comingFromLobby = (PlayerPrefs.GetString("LastScene", "") == "Lobby");
 
         confirmButton.onClick.AddListener(() => StartCoroutine(ConfirmSelectionCoroutine()));
 
@@ -71,39 +83,120 @@ public class CharacterSelectionManager : MonoBehaviour
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
     }
+    private void BackToLobby()
+    {
+        PlayerPrefs.SetString("LastScene", "CharacterSelection");
+        SceneManager.LoadScene("Lobby");
+    }
 
     private IEnumerator ConfirmSelectionCoroutine()
     {
-        // ตรวจสอบชื่อ
+        // ตรวจสอบชื่อ (ถ้าไม่ได้มาจาก lobby)
         string playerName = playerNameInput.text.Trim();
 
-        if (string.IsNullOrEmpty(playerName))
+        if (!comingFromLobby)
         {
-            ShowError("Please enter your name!");
-            yield break;
-        }
+            if (string.IsNullOrEmpty(playerName))
+            {
+                ShowError("Please enter your name!");
+                yield break;
+            }
 
-        if (playerName.Length < 3 || playerName.Length > 16)
+            if (playerName.Length < 3 || playerName.Length > 16)
+            {
+                ShowError("Name must be 3-16 characters!");
+                yield break;
+            }
+        }
+        else
         {
-            ShowError("Name must be 3-16 characters!");
-            yield break;
+            // Coming from lobby - use existing player name
+            playerName = PersistentPlayerData.Instance.multiCharacterData?.playerName ??
+                        PlayerPrefs.GetString("PlayerName", "Player");
         }
 
         // แสดง loading
         ShowLoading(true);
 
-        // บันทึกข้อมูลใน PlayerPrefs
-        PlayerPrefs.SetString("PlayerName", playerName);
+        // บันทึกการเลือกตัวละคร
         PlayerSelectionData.SaveCharacterSelection(selectedCharacter);
 
-        // สร้าง PlayerProgressData แบบเต็มและบันทึกผ่าน PersistentPlayerData
-        yield return StartCoroutine(CreateAndSaveCompletePlayerData(playerName));
+        // Switch character in PersistentPlayerData
+        PersistentPlayerData.Instance.SwitchCharacter(selectedCharacter.ToString());
+
+        // Create character data if it doesn't exist
+        yield return StartCoroutine(EnsureCharacterDataExists(playerName, selectedCharacter.ToString()));
 
         // ซ่อน loading
         ShowLoading(false);
 
-        // ไปหน้า Lobby
-        SceneManager.LoadScene("Lobby");
+        // Navigate based on where we came from
+        if (comingFromLobby)
+        {
+            // Go back to lobby
+            PlayerPrefs.SetString("LastScene", "CharacterSelection");
+            SceneManager.LoadScene("Lobby");
+        }
+        else
+        {
+            // First time setup - go to lobby
+            PlayerPrefs.SetString("LastScene", "CharacterSelection");
+            SceneManager.LoadScene("Lobby");
+        }
+    }
+
+    private IEnumerator EnsureCharacterDataExists(string playerName, string characterType)
+    {
+        Debug.Log($"[CharacterSelection] Ensuring character data exists for {characterType}");
+
+        // Check if character already exists
+        CharacterProgressData existingData = PersistentPlayerData.Instance.GetCharacterData(characterType);
+
+        if (existingData != null)
+        {
+            Debug.Log($"✅ Character {characterType} already exists at level {existingData.currentLevel}");
+            yield break;
+        }
+
+        // Create new character data
+        Debug.Log($"[CharacterSelection] Creating new character data for {characterType}");
+
+        // Get or create character data (this will create it with default stats)
+        CharacterProgressData newCharacterData = PersistentPlayerData.Instance.multiCharacterData.GetOrCreateCharacterData(characterType);
+
+        // Apply stats from ScriptableObject if available
+        CharacterStats characterStats = GetCharacterStatsForCharacter(GetCharacterTypeEnum(characterType));
+        if (characterStats != null)
+        {
+            ApplyStatsFromScriptableObject(newCharacterData, characterStats);
+            Debug.Log($"✅ Applied ScriptableObject stats for {characterType}");
+        }
+
+        // Save the data
+        PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+        yield return new WaitForSeconds(0.5f);
+
+    }
+
+    private PlayerSelectionData.CharacterType GetCharacterTypeEnum(string characterType)
+    {
+        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var result))
+            return result;
+        return PlayerSelectionData.CharacterType.Assassin;
+    }
+
+    private void ApplyStatsFromScriptableObject(CharacterProgressData characterData, CharacterStats stats)
+    {
+        characterData.totalMaxHp = stats.maxHp;
+        characterData.totalMaxMana = stats.maxMana;
+        characterData.totalAttackDamage = stats.attackDamage;
+        characterData.totalArmor = stats.arrmor;
+        characterData.totalCriticalChance = stats.criticalChance;
+        characterData.totalCriticalMultiplier = stats.criticalMultiplier;
+        characterData.totalMoveSpeed = stats.moveSpeed;
+        characterData.totalAttackRange = stats.attackRange;
+        characterData.totalAttackCooldown = stats.attackCoolDown;
     }
 
     // ========== NEW: สร้าง PlayerProgressData แบบเต็ม ==========
@@ -263,7 +356,6 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         // บันทึกตัวละครที่เลือก
         selectedCharacter = character;
-        PlayerSelectionData.SaveCharacterSelection(character);
 
         // ลบตัวละครตัวอย่างเดิม (ถ้ามี)
         if (currentPreview != null)
@@ -282,9 +374,74 @@ public class CharacterSelectionManager : MonoBehaviour
         // อัพเดทข้อมูลตัวละคร
         UpdateCharacterInfo(character);
 
+        // Show character level if it exists
+        ShowCharacterLevel(character.ToString());
+
         Debug.Log($"[CharacterSelection] Selected character: {character}");
     }
 
+    private void ShowCharacterLevel(string characterType)
+    {
+        CharacterProgressData characterData = PersistentPlayerData.Instance.GetCharacterData(characterType);
+
+        if (characterData != null)
+        {
+            // Update character name text to include level
+            characterNameText.text = $"{GetDisplayName(characterType)} (Level {characterData.currentLevel})";
+
+            // Optionally show more detailed stats in description
+            string originalDescription = characterDescriptionText.text;
+            characterDescriptionText.text = originalDescription +
+                $"\n\n<color=yellow>Current Stats:</color>" +
+                $"\n• Level: {characterData.currentLevel}" +
+                $"\n• HP: {characterData.totalMaxHp}" +
+                $"\n• Attack: {characterData.totalAttackDamage}" +
+                $"\n• Armor: {characterData.totalArmor}";
+        }
+        else
+        {
+            characterNameText.text = $"{GetDisplayName(characterType)} (New Character)";
+        }
+    }
+    private void ShowCharacterLevels()
+    {
+        if (characterLevelsText == null) return;
+
+        List<CharacterProgressData> allCharacters = PersistentPlayerData.Instance.GetAllCharacterData();
+        string currentActive = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+        string levelsText = "<color=yellow>Your Characters:</color>\n";
+
+        string[] allCharacterTypes = { "BloodKnight", "Archer", "Assassin", "IronJuggernaut" };
+
+        foreach (string characterType in allCharacterTypes)
+        {
+            CharacterProgressData characterData = allCharacters.Find(c => c.characterType == characterType);
+
+            if (characterData != null)
+            {
+                string color = (characterType == currentActive) ? "yellow" : "white";
+                levelsText += $"<color={color}>• {GetDisplayName(characterType)} - Level {characterData.currentLevel}</color>\n";
+            }
+            else
+            {
+                levelsText += $"<color=gray>• {GetDisplayName(characterType)} - New</color>\n";
+            }
+        }
+
+        characterLevelsText.text = levelsText;
+    }
+    private string GetDisplayName(string characterType)
+{
+    switch (characterType)
+    {
+        case "BloodKnight": return "Blood Knight";
+        case "Archer": return "Archer";
+        case "Assassin": return "Assassin";
+        case "IronJuggernaut": return "Iron Juggernaut";
+        default: return characterType;
+    }
+}
     private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)
     {
         switch (character)
@@ -331,25 +488,29 @@ public class CharacterSelectionManager : MonoBehaviour
 
     private void UpdateCharacterInfo(PlayerSelectionData.CharacterType character)
     {
+        // Clear description first
+        string baseDescription = "";
+
         switch (character)
         {
             case PlayerSelectionData.CharacterType.BloodKnight:
-                characterNameText.text = "Blood Knight";
-                characterDescriptionText.text = "Blood Siphon grew up in an aristocratic family of the insect tribe, but rejected the luxurious life to join the army. With his remarkable ability to absorb the blood and life force of his enemies, he was appointed as one of the insect's elite soldiers.";
+                baseDescription = "Blood Siphon grew up in an aristocratic family of the insect tribe, but rejected the luxurious life to join the army. With his remarkable ability to absorb the blood and life force of his enemies, he was appointed as one of the insect's elite soldiers.";
                 break;
             case PlayerSelectionData.CharacterType.Archer:
-                characterNameText.text = "Archer";
-                characterDescriptionText.text = "Talon was born in the kingdom of Aviana, a land high above the clouds that the Bird Clan had ruled for thousands of years. From a young age, he displayed remarkable talent for archery, able to hit the target with his arrows every time, even at the age of 1.";
+                baseDescription = "Talon was born in the kingdom of Aviana, a land high above the clouds that the Bird Clan had ruled for thousands of years. From a young age, he displayed remarkable talent for archery, able to hit the target with his arrows every time, even at the age of 1.";
                 break;
             case PlayerSelectionData.CharacterType.Assassin:
-                characterNameText.text = "Assassin";
-                characterDescriptionText.text = "Shadow Prowler lost her family at a young age. She was adopted by the Shadow Claw Assassins Association and trained to become the Cat Clan's most skilled assassin. She specializes in poison and silent movement, earning the nickname Invisible Shadow.";
+                baseDescription = "Shadow Prowler lost her family at a young age. She was adopted by the Shadow Claw Assassins Association and trained to become the Cat Clan's most skilled assassin. She specializes in poison and silent movement, earning the nickname Invisible Shadow.";
                 break;
             case PlayerSelectionData.CharacterType.IronJuggernaut:
-                characterNameText.text = "Iron Juggernaut";
-                characterDescriptionText.text = "Legend has it that the Iron Rhino tribe was born from ancient warriors who inhaled fumes from forging mystical metal over many years, causing their bodies to develop steel-like properties. From a young age, Iron Rhinos are trained to master the use of their body weight and raw strength to their fullest advantage. Their primary weapons are a sword and shield forged from special volcanic steel, making them exceptionally durable. The rhino horn on their heads can also be used as a weapon in times of dire need.";
+                baseDescription = "Legend has it that the Iron Rhino tribe was born from ancient warriors who inhaled fumes from forging mystical metal over many years, causing their bodies to develop steel-like properties. From a young age, Iron Rhinos are trained to master the use of their body weight and raw strength to their fullest advantage. Their primary weapons are a sword and shield forged from special volcanic steel, making them exceptionally durable. The rhino horn on their heads can also be used as a weapon in times of dire need.";
                 break;
         }
+
+        characterDescriptionText.text = baseDescription;
+
+        // Show character level will add stats info
+        ShowCharacterLevel(character.ToString());
     }
 
     // ========== Context Menu สำหรับ Debug ==========

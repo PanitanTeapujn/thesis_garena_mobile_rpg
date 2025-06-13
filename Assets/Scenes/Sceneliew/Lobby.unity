@@ -1364,7 +1364,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: XXX
+  m_text: 'Selection Hero
+
+'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -15988,7 +15990,7 @@ GameObject:
   - component: {fileID: 2075934629}
   - component: {fileID: 2075934628}
   m_Layer: 5
-  m_Name: settingsButton
+  m_Name: SelectionCharacter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -16358,6 +16360,13 @@ MonoBehaviour:
   joinButton: {fileID: 1178578932}
   backToPartyButton: {fileID: 972892711}
   stageSelectionManager: {fileID: 1824132836}
+  characterSelectionButton: {fileID: 2075934628}
+  characterSelectionPanel: {fileID: 0}
+  bloodKnightSelectButton: {fileID: 0}
+  archerSelectButton: {fileID: 0}
+  assassinSelectButton: {fileID: 0}
+  ironJuggernautSelectButton: {fileID: 0}
+  availableCharactersText: {fileID: 0}
 --- !u!4 &2124026316
 Transform:
   m_ObjectHideFlags: 0
