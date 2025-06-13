@@ -76,12 +76,12 @@ public class Character : NetworkBehaviour
     protected virtual void Start()
     {
         InitializeStats();
-        if (HasInputAuthority && this is Hero)
+       /* if (HasInputAuthority && this is Hero)
         {
             TryApplyFirebaseStatsLater();
-        }
+        }*/
     }
-    private void TryApplyFirebaseStatsLater()
+   /* private void TryApplyFirebaseStatsLater()
     {
         // ใช้ Invoke แทน coroutine (เบากว่า)
         Invoke("CheckAndApplyFirebaseStats", 2f);
@@ -120,7 +120,7 @@ public class Character : NetworkBehaviour
         {
             ForceUpdateNetworkState();
         }
-    }
+    }*/
     // ========== Component Initialization ==========
     private void InitializeComponents()
     {
@@ -164,6 +164,7 @@ public class Character : NetworkBehaviour
     {
         if (characterStats != null)
         {
+            // ✅ ใช้ ScriptableObject เป็นหลักสำหรับทุกตัวละคร รวมทั้ง Assassin
             characterName = characterStats.characterName;
             maxHp = characterStats.maxHp;
             currentHp = maxHp;
@@ -176,6 +177,12 @@ public class Character : NetworkBehaviour
             attackCooldown = characterStats.attackCoolDown;
             criticalChance = characterStats.criticalChance;
             criticalMultiplier = characterStats.criticalMultiplier;
+
+            Debug.Log($"✅ [Character] Initialized {characterName} with ScriptableObject stats: HP={maxHp}, ATK={attackDamage}");
+        }
+        else
+        {
+            Debug.LogWarning($"[Character] No CharacterStats ScriptableObject found for {gameObject.name}!");
         }
     }
     // ========== Fusion Network Methods ==========

@@ -378,16 +378,16 @@ MonoBehaviour:
     attackDamageBonusPerLevel: 2
     armorBonusPerLevel: 1
     criticalChanceBonusPerLevel: 0.5
-    moveSpeedBonusPerLevel: 0.1
+    moveSpeedBonusPerLevel: 0
   expSettings:
-    baseExpToNextLevel: 100
-    expGrowthRate: 1.2
+    baseExpToNextLevel: 120
+    expGrowthRate: 1.5
     maxLevel: 100
     baseEnemyExp: 25
     enemyExpLevelMultiplier: 1.1
   _CurrentLevel: 1
   _CurrentExp: 0
-  _ExpToNextLevel: 100
+  _ExpToNextLevel: 150
   _IsInitialized: 0
 --- !u!114 &8179973272623384077
 MonoBehaviour:
