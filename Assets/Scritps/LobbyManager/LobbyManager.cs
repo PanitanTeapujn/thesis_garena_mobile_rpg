@@ -50,6 +50,7 @@ using System.Collections.Generic;
     public Button ironJuggernautSelectButton;
     public TextMeshProUGUI availableCharactersText;
 
+
     // Player data
     private PlayerProgressData playerData;
     private bool isPlayerDataLoaded = false;
@@ -64,6 +65,12 @@ using System.Collections.Generic;
 
         HideAllPanels();
         InvokeRepeating("UpdatePlayerStatsUI", 2f, 2f);
+
+        if (PlayerPrefs.GetString("LastScene", "") == "CharacterSelection")
+        {
+            StartCoroutine(DelayedRefresh());
+            PlayerPrefs.DeleteKey("LastScene"); // Clear the flag
+        }
     }
 
     void SetupEvents()
@@ -93,28 +100,15 @@ using System.Collections.Generic;
             characterSelectionButton.onClick.AddListener(OpenCharacterSelection);
 
         // In-lobby character selection buttons (if using panel instead of scene)
-        if (bloodKnightSelectButton != null)
-            bloodKnightSelectButton.onClick.AddListener(() => SwitchCharacter("BloodKnight"));
-        if (archerSelectButton != null)
-            archerSelectButton.onClick.AddListener(() => SwitchCharacter("Archer"));
-        if (assassinSelectButton != null)
-            assassinSelectButton.onClick.AddListener(() => SwitchCharacter("Assassin"));
-        if (ironJuggernautSelectButton != null)
-            ironJuggernautSelectButton.onClick.AddListener(() => SwitchCharacter("IronJuggernaut"));
+       
     }
     private void OpenCharacterSelection()
     {
-        if (characterSelectionPanel != null)
-        {
-            // Show in-lobby character selection panel
-            ShowCharacterSelectionPanel();
-        }
-        else
-        {
-            // Go to character selection scene
-            SceneManager.LoadScene("CharacterSelection");
-        }
+        // ✅ Set flag ว่ามาจาก Lobby และไป Scene เสมอ
+        PlayerPrefs.SetString("LastScene", "Lobby");
+        SceneManager.LoadScene("CharacterSelection");
     }
+
     private void ShowCharacterSelectionPanel()
     {
         HideAllPanels();
@@ -229,8 +223,7 @@ using System.Collections.Generic;
         joinRoomPanel.SetActive(false);
 
         // Add character selection panel
-        if (characterSelectionPanel != null)
-            characterSelectionPanel.SetActive(false);
+        
     }
 
     // ========== Party Management ==========
@@ -267,7 +260,10 @@ using System.Collections.Generic;
     private void ShowBasicPlayerInfo()
     {
         playerNameText.text = PlayerPrefs.GetString("PlayerName", "Unknown");
-        characterTypeText.text = "Loading...";
+
+        // ✅ แสดง default Assassin character
+        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
+        characterTypeText.text = savedCharacter;
 
         if (playerLevelText != null)
         {
@@ -275,12 +271,12 @@ using System.Collections.Generic;
             playerLevelText.text = $"Level {savedLevel}";
         }
 
-        Debug.Log("[LobbyManager] Basic player info displayed (without character)");
+        Debug.Log($"[LobbyManager] Basic player info displayed: {savedCharacter}");
     }
 
     private IEnumerator LoadAndShowPlayerStats()
     {
-        Debug.Log("[LobbyManager] Loading player stats...");
+        Debug.Log("[LobbyManager] Loading multi-character player stats...");
 
         float timeout = 5f;
         float elapsed = 0f;
@@ -293,13 +289,10 @@ using System.Collections.Generic;
 
         if (PersistentPlayerData.Instance.HasValidData())
         {
-            playerData = PersistentPlayerData.Instance.GetPlayerData();
-            isPlayerDataLoaded = true;
+            // ✅ Force refresh to get latest character data
+            RefreshPlayerStats();
 
-            Debug.Log($"✅ [LobbyManager] Player stats loaded: {playerData.playerName}, Level {playerData.currentLevel}, Character: {playerData.lastCharacterSelected}");
-
-            UpdatePlayerSelectionDataFromFirebase();
-            UpdatePlayerStatsUI();
+            Debug.Log($"✅ [LobbyManager] Player stats loaded successfully");
         }
         else
         {
@@ -330,26 +323,20 @@ using System.Collections.Generic;
         playerData.currentLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
         playerData.currentExp = PlayerPrefs.GetInt("PlayerExp", 0);
         playerData.expToNextLevel = PlayerPrefs.GetInt("PlayerExpToNext", 100);
-        playerData.totalMaxHp = PlayerPrefs.GetInt("PlayerMaxHp", 100);
-        playerData.totalMaxMana = PlayerPrefs.GetInt("PlayerMaxMana", 50);
-        playerData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 20);
-        playerData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 5);
+        playerData.totalMaxHp = PlayerPrefs.GetInt("PlayerMaxHp", 70);      // Assassin default
+        playerData.totalMaxMana = PlayerPrefs.GetInt("PlayerMaxMana", 40);  // Assassin default
+        playerData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 35); // Assassin default
+        playerData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 2);       // Assassin default
 
-        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "");
-        if (!string.IsNullOrEmpty(savedCharacter))
-        {
-            playerData.lastCharacterSelected = savedCharacter;
-        }
-        else
-        {
-            playerData.lastCharacterSelected = PlayerSelectionData.GetSelectedCharacter().ToString();
-        }
+        // ✅ Default character เป็น Assassin
+        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
+        playerData.lastCharacterSelected = savedCharacter;
 
         isPlayerDataLoaded = true;
         UpdatePlayerStatsUI();
 
-        Debug.Log($"[LobbyManager] Stats loaded from PlayerPrefs fallback, Character: {playerData.lastCharacterSelected}");
     }
+
 
     private void UpdatePlayerStatsUI()
     {
@@ -402,20 +389,65 @@ using System.Collections.Generic;
     {
         if (PersistentPlayerData.Instance.HasValidData())
         {
-            // Get current active character data
-            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-            CharacterProgressData activeCharacterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacter);
-
-            if (activeCharacterData != null)
+            if (PersistentPlayerData.Instance.multiCharacterData != null)
             {
-                // Convert to PlayerProgressData for compatibility
-                playerData = activeCharacterData.ToPlayerProgressData(PersistentPlayerData.Instance.multiCharacterData.playerName);
-                isPlayerDataLoaded = true;
-                UpdatePlayerStatsUI();
+                // ✅ ใช้ Multi-Character System
+                string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+                CharacterProgressData activeCharacterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacter);
+
+                if (activeCharacterData != null)
+                {
+                    // Convert to PlayerProgressData for compatibility
+                    playerData = activeCharacterData.ToPlayerProgressData(PersistentPlayerData.Instance.multiCharacterData.playerName);
+                    isPlayerDataLoaded = true;
+
+                    // ✅ Update PlayerSelectionData as well
+                    if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out var characterEnum))
+                    {
+                        PlayerSelectionData.SaveCharacterSelection(characterEnum);
+                    }
+
+                    UpdatePlayerStatsUI();
+
+                    Debug.Log($"✅ [LobbyManager] Refreshed stats for {activeCharacter} - Level {activeCharacterData.currentLevel}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[LobbyManager] No character data found for {activeCharacter}");
+                }
             }
+            else
+            {
+                // Fallback to old system
+                playerData = PersistentPlayerData.Instance.GetPlayerData();
+                if (playerData != null)
+                {
+                    isPlayerDataLoaded = true;
+                    UpdatePlayerSelectionDataFromFirebase();
+                    UpdatePlayerStatsUI();
+                }
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[LobbyManager] No valid data available for refresh");
+        }
+    }
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus)
+        {
+            // ✅ Refresh stats when returning to lobby
+            StartCoroutine(DelayedRefresh());
         }
     }
 
+    private IEnumerator DelayedRefresh()
+    {
+        yield return new WaitForSeconds(0.5f);
+        RefreshPlayerStats();
+        Debug.Log("[LobbyManager] Refreshed stats after returning to lobby");
+    }
     // ========== Debug Methods ==========
     [ContextMenu("Refresh Player Stats")]
     public void Debug_RefreshStats()

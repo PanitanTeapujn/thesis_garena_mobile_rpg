@@ -12,8 +12,8 @@ using System.Collections.Generic;
 public class FirebaseLoginManager : MonoBehaviour
 {
     [Header("Firebase")]
-    private FirebaseAuth auth;
-    private FirebaseUser user;
+    public FirebaseAuth auth;
+    public FirebaseUser user;
     private DatabaseReference databaseReference;
 
     [Header("Login UI")]
@@ -199,15 +199,37 @@ public class FirebaseLoginManager : MonoBehaviour
             user = registerTask.Result.User;
             Debug.Log($"Registration successful: {user.Email}");
 
-            // Quick setup for new user
-            SetupNewPlayerDataQuick();
+            // Quick setup for new user with default Assassin
+            SetupNewPlayerWithDefaultAssassin();
 
             // Create Firebase data in background
             StartCoroutine(CreateFirebaseDataAsync());
 
-            // ไปหน้าเลือกตัวละคร
-            SceneManager.LoadScene("CharacterSelection");
+            // ✅ เปลี่ยนจาก CharacterSelection เป็น Lobby
+            SceneManager.LoadScene("Lobby");
         }
+    }
+    private void SetupNewPlayerWithDefaultAssassin()
+    {
+        string playerName = nameInput.text.Trim();
+        PlayerPrefs.SetString("PlayerName", playerName);
+        PlayerPrefs.SetString("PlayerId", user.UserId);
+
+        // ✅ Set default character เป็น Assassin
+        PlayerSelectionData.SaveCharacterSelection(PlayerSelectionData.CharacterType.Assassin);
+        PlayerPrefs.SetString("LastCharacterSelected", "Assassin");
+
+        // Set basic default Assassin stats in PlayerPrefs
+        PlayerPrefs.SetInt("PlayerLevel", 1);
+        PlayerPrefs.SetInt("PlayerExp", 0);
+        PlayerPrefs.SetInt("PlayerMaxHp", 70);      // Assassin HP
+        PlayerPrefs.SetInt("PlayerMaxMana", 40);    // Assassin Mana  
+        PlayerPrefs.SetInt("PlayerAttackDamage", 35); // Assassin Attack
+        PlayerPrefs.SetInt("PlayerArmor", 2);       // Assassin Armor
+        PlayerPrefs.SetFloat("PlayerCritChance", 5f);
+        PlayerPrefs.SetFloat("PlayerMoveSpeed", 6.5f); // Assassin Speed
+
+        Debug.Log($"✅ New player setup completed with default Assassin for {playerName}");
     }
 
     // ========== Quick Setup Methods (No Blocking) ==========
@@ -251,29 +273,22 @@ public class FirebaseLoginManager : MonoBehaviour
     // ========== Background Firebase Operations ==========
     private IEnumerator CreateFirebaseDataAsync()
     {
-        PlayerProgressData newPlayerData = new PlayerProgressData();
+        // ✅ เปลี่ยนจาก MultiCharacterPlayerData แทน PlayerProgressData
+        MultiCharacterPlayerData newPlayerData = new MultiCharacterPlayerData();
         newPlayerData.playerName = nameInput.text.Trim();
-        newPlayerData.lastCharacterSelected = "Assasins";
+        newPlayerData.currentActiveCharacter = "Assassin"; // ✅ Set default เป็น Assassin
         newPlayerData.registrationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newPlayerData.lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // Apply basic stats
-        newPlayerData.currentLevel = 1;
-        newPlayerData.currentExp = 0;
-        newPlayerData.expToNextLevel = 100;
-        newPlayerData.totalMaxHp = 100;
-        newPlayerData.totalMaxMana = 50;
-        newPlayerData.totalAttackDamage = 20;
-        newPlayerData.totalArmor = 5;
-        newPlayerData.totalCriticalChance = 5f;
-        newPlayerData.totalCriticalMultiplier = 2f;
-        newPlayerData.totalMoveSpeed = 5f;
-        newPlayerData.totalAttackRange = 2f;
-        newPlayerData.totalAttackCooldown = 1f;
+        // Default Assassin จะถูกสร้างอัตโนมัติใน constructor ของ MultiCharacterPlayerData
 
         // Save to PersistentPlayerData
-        PersistentPlayerData.Instance.currentPlayerData = newPlayerData;
+        PersistentPlayerData.Instance.multiCharacterData = newPlayerData;
         PersistentPlayerData.Instance.isDataLoaded = true;
+
+        // Set currentPlayerData for compatibility
+        CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
+        PersistentPlayerData.Instance.currentPlayerData = assassinData.ToPlayerProgressData(newPlayerData.playerName);
 
         // Save to Firebase (background)
         string json = JsonUtility.ToJson(newPlayerData, true);
@@ -287,7 +302,8 @@ public class FirebaseLoginManager : MonoBehaviour
         }
         else
         {
-            Debug.Log($"✅ Firebase data created successfully for {newPlayerData.playerName}");
+            Debug.Log($"✅ Firebase multi-character data created successfully for {newPlayerData.playerName}");
+            newPlayerData.LogAllCharacters();
         }
     }
 

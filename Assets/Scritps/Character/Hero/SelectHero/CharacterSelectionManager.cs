@@ -53,35 +53,81 @@ public class CharacterSelectionManager : MonoBehaviour
     private void Start()
     {
         // เชื่อมปุ่มกับฟังก์ชันเลือกตัวละคร
-        if (backToLobbyButton != null)
-        {
-            backToLobbyButton.onClick.AddListener(BackToLobby);
-            backToLobbyButton.gameObject.SetActive(comingFromLobby);
-        }
         bloodKnightButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.BloodKnight));
         archerButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Archer));
         assassinButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Assassin));
         ironJuggernautButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.IronJuggernaut));
-        comingFromLobby = (PlayerPrefs.GetString("LastScene", "") == "Lobby");
 
         confirmButton.onClick.AddListener(() => StartCoroutine(ConfirmSelectionCoroutine()));
 
-        // แสดงตัวละครเริ่มต้น
-        SelectCharacter(PlayerSelectionData.GetSelectedCharacter());
+        // ✅ เพิ่มปุ่ม Back to Lobby
+        if (backToLobbyButton != null)
+            backToLobbyButton.onClick.AddListener(BackToLobby);
+
+        // ✅ Check if coming from Lobby
+        comingFromLobby = (PlayerPrefs.GetString("LastScene", "") == "Lobby");
+
+        // ✅ แสดงปุ่ม Back to Lobby ถ้ามาจาก Lobby
+        if (backToLobbyButton != null)
+            backToLobbyButton.gameObject.SetActive(comingFromLobby);
 
         auth = FirebaseAuth.DefaultInstance;
         databaseReference = FirebaseDatabase.DefaultInstance.RootReference;
 
         // โหลดชื่อผู้เล่นจาก PlayerPrefs (ถ้ามี)
         string savedPlayerName = PlayerPrefs.GetString("PlayerName", "");
-        if (!string.IsNullOrEmpty(savedPlayerName))
+        if (!string.IsNullOrEmpty(savedPlayerName) && playerNameInput != null)
         {
             playerNameInput.text = savedPlayerName;
         }
 
+        // ✅ รอให้โหลดข้อมูลก่อนแล้วค่อยเลือกตัวละคร
+        StartCoroutine(InitializeCharacterSelection());
+
         // ซ่อน loading panel
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
+    }
+
+    private IEnumerator InitializeCharacterSelection()
+    {
+        // รอให้ PersistentPlayerData โหลดเสร็จก่อน
+        float timeout = 3f;
+        float elapsed = 0f;
+
+        while (!PersistentPlayerData.Instance.HasValidData() && elapsed < timeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        // ✅ แสดงรายการตัวละครทั้งหมด
+        ShowCharacterLevels();
+
+        if (comingFromLobby)
+        {
+            // ✅ ถ้ามาจาก Lobby ให้เลือก current active character
+            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out var activeCharacterType))
+            {
+                SelectCharacter(activeCharacterType);
+            }
+            else
+            {
+                SelectCharacter(PlayerSelectionData.CharacterType.Assassin); // Fallback
+            }
+
+            // ซ่อน name input ถ้ามาจาก Lobby
+            if (playerNameInput != null)
+                playerNameInput.gameObject.SetActive(false);
+        }
+        else
+        {
+            // ✅ ผู้เล่นใหม่ - แสดงตัวละครเริ่มต้น (Assassin)
+            SelectCharacter(PlayerSelectionData.CharacterType.Assassin);
+        }
+
+        Debug.Log($"[CharacterSelection] Initialized - Coming from Lobby: {comingFromLobby}");
     }
     private void BackToLobby()
     {
@@ -91,11 +137,19 @@ public class CharacterSelectionManager : MonoBehaviour
 
     private IEnumerator ConfirmSelectionCoroutine()
     {
-        // ตรวจสอบชื่อ (ถ้าไม่ได้มาจาก lobby)
-        string playerName = playerNameInput.text.Trim();
+        string playerName;
 
-        if (!comingFromLobby)
+        if (comingFromLobby)
         {
+            // ✅ ถ้ามาจาก Lobby ใช้ชื่อที่มีอยู่แล้ว
+            playerName = PersistentPlayerData.Instance.multiCharacterData?.playerName ??
+                        PlayerPrefs.GetString("PlayerName", "Player");
+        }
+        else
+        {
+            // ตรวจสอบชื่อสำหรับผู้เล่นใหม่
+            playerName = playerNameInput.text.Trim();
+
             if (string.IsNullOrEmpty(playerName))
             {
                 ShowError("Please enter your name!");
@@ -108,41 +162,113 @@ public class CharacterSelectionManager : MonoBehaviour
                 yield break;
             }
         }
-        else
-        {
-            // Coming from lobby - use existing player name
-            playerName = PersistentPlayerData.Instance.multiCharacterData?.playerName ??
-                        PlayerPrefs.GetString("PlayerName", "Player");
-        }
 
         // แสดง loading
         ShowLoading(true);
 
-        // บันทึกการเลือกตัวละคร
+        // บันทึกข้อมูลใน PlayerPrefs
+        PlayerPrefs.SetString("PlayerName", playerName);
         PlayerSelectionData.SaveCharacterSelection(selectedCharacter);
 
-        // Switch character in PersistentPlayerData
-        PersistentPlayerData.Instance.SwitchCharacter(selectedCharacter.ToString());
-
-        // Create character data if it doesn't exist
-        yield return StartCoroutine(EnsureCharacterDataExists(playerName, selectedCharacter.ToString()));
-
-        // ซ่อน loading
-        ShowLoading(false);
-
-        // Navigate based on where we came from
         if (comingFromLobby)
         {
-            // Go back to lobby
-            PlayerPrefs.SetString("LastScene", "CharacterSelection");
-            SceneManager.LoadScene("Lobby");
+            // ✅ ถ้ามาจาก Lobby - ใช้ Multi-Character System
+            yield return StartCoroutine(HandleCharacterSwitchFromLobby(playerName));
         }
         else
         {
-            // First time setup - go to lobby
-            PlayerPrefs.SetString("LastScene", "CharacterSelection");
-            SceneManager.LoadScene("Lobby");
+            // ✅ ผู้เล่นใหม่ - สร้าง Multi-Character Data
+            yield return StartCoroutine(CreateNewMultiCharacterPlayer(playerName));
         }
+
+        // ซ่อน loading
+        ShowLoading(false);
+    }
+    private IEnumerator HandleCharacterSwitchFromLobby(string playerName)
+    {
+        Debug.Log($"[CharacterSelection] Switching character to {selectedCharacter} for existing player");
+
+        // ✅ ใช้ Multi-Character System
+        if (PersistentPlayerData.Instance.multiCharacterData != null)
+        {
+            // Switch character
+            PersistentPlayerData.Instance.SwitchCharacter(selectedCharacter.ToString());
+
+            // Ensure character data exists
+            yield return StartCoroutine(EnsureCharacterDataExists(playerName, selectedCharacter.ToString()));
+
+            // รอให้ save เสร็จ
+            yield return new WaitForSeconds(0.5f);
+
+            Debug.Log($"✅ Character switched to {selectedCharacter}");
+        }
+        else
+        {
+            Debug.LogError("[CharacterSelection] No multiCharacterData found!");
+            // Create new multi-character data
+            yield return StartCoroutine(CreateNewMultiCharacterPlayer(playerName));
+        }
+
+        // กลับไป Lobby
+        PlayerPrefs.SetString("LastScene", "CharacterSelection");
+        SceneManager.LoadScene("Lobby");
+    }
+    private IEnumerator CreateNewMultiCharacterPlayer(string playerName)
+    {
+        Debug.Log($"[CharacterSelection] Creating new multi-character player: {playerName}");
+
+        // ✅ สร้าง MultiCharacterPlayerData ใหม่
+        MultiCharacterPlayerData newMultiCharacterData = new MultiCharacterPlayerData();
+        newMultiCharacterData.playerName = playerName;
+        newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString();
+        newMultiCharacterData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        newMultiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        // ถ้าเลือก Assassin ใช้ default ที่มีอยู่แล้ว, ถ้าไม่ใช่ให้สร้างใหม่
+        if (selectedCharacter.ToString() != "Assassin")
+        {
+            // เพิ่มตัวละครที่เลือกใหม่
+            CharacterProgressData newCharacterData = newMultiCharacterData.GetOrCreateCharacterData(selectedCharacter.ToString());
+
+            // Apply stats from ScriptableObject
+            CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
+            if (characterStats != null)
+            {
+                ApplyStatsFromScriptableObject(newCharacterData, characterStats);
+                Debug.Log($"✅ Applied ScriptableObject stats for {selectedCharacter}");
+            }
+        }
+        else
+        {
+            // ใช้ default Assassin และ apply stats
+            CharacterProgressData assassinData = newMultiCharacterData.GetActiveCharacterData();
+            CharacterStats assassinStats = GetCharacterStatsForCharacter(PlayerSelectionData.CharacterType.Assassin);
+            if (assassinStats != null)
+            {
+                ApplyStatsFromScriptableObject(assassinData, assassinStats);
+            }
+        }
+
+        // Set ใน PersistentPlayerData
+        PersistentPlayerData.Instance.multiCharacterData = newMultiCharacterData;
+        PersistentPlayerData.Instance.isDataLoaded = true;
+
+        // Set currentPlayerData for compatibility
+        CharacterProgressData activeCharacterData = newMultiCharacterData.GetActiveCharacterData();
+        PersistentPlayerData.Instance.currentPlayerData = activeCharacterData.ToPlayerProgressData(playerName);
+
+        // Save to Firebase
+        PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+        // รอให้ save เสร็จ
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log($"✅ New multi-character player created: {playerName}, Active: {selectedCharacter}");
+        newMultiCharacterData.LogAllCharacters();
+
+        // ไป Lobby
+        PlayerPrefs.SetString("LastScene", "CharacterSelection");
+        SceneManager.LoadScene("Lobby");
     }
 
     private IEnumerator EnsureCharacterDataExists(string playerName, string characterType)

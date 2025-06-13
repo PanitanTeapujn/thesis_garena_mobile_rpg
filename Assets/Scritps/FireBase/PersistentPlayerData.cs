@@ -15,7 +15,7 @@ public class PersistentPlayerData : MonoBehaviour
 
     [Header("Multi-Character Support")]
     public MultiCharacterPlayerData multiCharacterData;
-
+    public FirebaseLoginManager loginManager;
     // Singleton
     private static PersistentPlayerData _instance;
     public static PersistentPlayerData Instance
@@ -261,41 +261,40 @@ public class PersistentPlayerData : MonoBehaviour
         CreateDefaultData();
     }
 
-  
+
 
     // ========== Fast Default Creation ==========
     private void CreateDefaultData()
     {
-        currentPlayerData = new PlayerProgressData();
-        currentPlayerData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
+        // ✅ สร้าง MultiCharacterPlayerData แทน PlayerProgressData
+        multiCharacterData = new MultiCharacterPlayerData();
+        multiCharacterData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
+        multiCharacterData.currentActiveCharacter = "Assassin"; // ✅ Default เป็น Assassin
 
-        // ✅ ใช้ character ที่เลือกล่าสุด
-        string selectedCharacter = PlayerSelectionData.GetSelectedCharacter().ToString();
-        currentPlayerData.lastCharacterSelected = selectedCharacter;
+        // Get default Assassin data
+        CharacterProgressData assassinData = multiCharacterData.GetActiveCharacterData();
 
-        Debug.Log($"[PersistentPlayerData] Creating default data for character: {selectedCharacter}");
-
-        // ใช้ values จาก PlayerPrefs ถ้ามี (เร็วกว่า load ScriptableObject)
-        currentPlayerData.currentLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
-        currentPlayerData.currentExp = PlayerPrefs.GetInt("PlayerExp", 0);
-        currentPlayerData.expToNextLevel = PlayerPrefs.GetInt("PlayerExpToNext", 100);
-        currentPlayerData.totalMaxHp = PlayerPrefs.GetInt("PlayerMaxHp", 0);
-        currentPlayerData.totalMaxMana = PlayerPrefs.GetInt("PlayerMaxMana", 0);
-        currentPlayerData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 0);
-        currentPlayerData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 0);
-        currentPlayerData.totalCriticalChance = PlayerPrefs.GetFloat("PlayerCritChance", 5f);
-        currentPlayerData.totalMoveSpeed = PlayerPrefs.GetFloat("PlayerMoveSpeed", 5f);
-
-        // ถ้าไม่มีใน PlayerPrefs ใช้ character stats
-        if (currentPlayerData.totalMaxHp <= 0)
-        {
-/*            ApplyCharacterStats(selectedCharacter);
-*/        }
+        // Set currentPlayerData for compatibility
+        currentPlayerData = assassinData.ToPlayerProgressData(multiCharacterData.playerName);
 
         isDataLoaded = true;
-        Debug.Log($"✅ Created default data for {currentPlayerData.playerName}, Character: {currentPlayerData.lastCharacterSelected}");
-    }
+        SaveToPlayerPrefs();
 
+        Debug.Log($"✅ Created default multi-character data with Assassin for {multiCharacterData.playerName}");
+    }
+    private void SetupPlayerDataQuick()
+    {
+        // Setup basic PlayerPrefs immediately
+        string playerName = loginManager.nameInput.text.Trim();
+        PlayerPrefs.SetString("PlayerName", playerName);
+        PlayerPrefs.SetString("PlayerId", loginManager.user.UserId);
+
+        // ✅ Set default character เป็น Assassin
+        PlayerSelectionData.SaveCharacterSelection(PlayerSelectionData.CharacterType.Assassin);
+        PlayerPrefs.SetString("LastCharacterSelected", "Assassin");
+
+        Debug.Log($"✅ Quick setup completed for {playerName} with default Assassin");
+    }
     // ========== NON-BLOCKING Save ==========
     public void SavePlayerDataAsync()
     {
