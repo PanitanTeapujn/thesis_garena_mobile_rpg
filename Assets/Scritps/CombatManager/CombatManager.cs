@@ -21,7 +21,7 @@ public class CombatManager : NetworkBehaviour
 {
     public static event Action<Character, int, DamageType, bool> OnDamageTaken;
     public static event Action<Character> OnCharacterDeath;
-
+    public static event Action<Character, int> OnCharacterHealed;
     // ========== Component References ==========
     private Character character;
     private StatusEffectManager statusEffectManager;
@@ -83,8 +83,11 @@ public class CombatManager : NetworkBehaviour
         // Sync network state
         SyncHealthUpdate();
 
-        // แจ้ง visual manager
+        // 🎯 แจ้ง damage event (จะทำให้ DamageTextManager แสดง damage text)
         OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
+
+        // 🎯 แสดง damage text ทันที (สำหรับ local client)
+        ShowDamageText(finalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)
@@ -99,9 +102,66 @@ public class CombatManager : NetworkBehaviour
         // เช็คว่าเป็น character ของเราหรือไม่
         if (targetCharacter == character)
         {
-            TakeDamage(damage, damageType, false);
+            // ใช้ TakeDamage แต่แสดง damage text แบบ status effect
+            int oldHp = character.CurrentHp;
+            character.CurrentHp -= damage;
+            character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
+
+            Debug.Log($"[StatusDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (damage: {damage}, type: {damageType})");
+
+            // Sync network state
+            SyncHealthUpdate();
+
+            // 🎯 แสดง status damage text
+            ShowStatusDamageText(damage, damageType);
+
+            // Check death
+            if (character.CurrentHp <= 0)
+            {
+                HandleDeath();
+            }
         }
     }
+    private void ShowDamageText(int damage, DamageType damageType, bool isCritical)
+    {
+        // แสดง damage text บนหัวตัวละคร
+        Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+
+        // เรียกใช้ DamageTextManager
+        if (character is Hero)
+        {
+            DamageTextManager.ShowHeroDamage(textPosition, damage, damageType, isCritical);
+        }
+        else if (character is NetworkEnemy)
+        {
+            DamageTextManager.ShowEnemyDamage(textPosition, damage, damageType, isCritical);
+        }
+        else
+        {
+            // สำหรับ character ทั่วไป
+            DamageTextManager.Instance?.ShowDamageText(textPosition, damage, damageType, isCritical, false);
+        }
+    }
+    private void ShowStatusDamageText(int damage, DamageType damageType)
+    {
+        // แสดง status effect damage text
+        Vector3 textPosition = character.transform.position + Vector3.up * 2.5f; // สูงกว่า normal damage เล็กน้อย
+
+        // แปลง DamageType เป็น StatusEffectType
+        StatusEffectType effectType = damageType switch
+        {
+            DamageType.Poison => StatusEffectType.Poison,
+            DamageType.Burn => StatusEffectType.Burn,
+            DamageType.Bleed => StatusEffectType.Bleed,
+            _ => StatusEffectType.None
+        };
+
+        if (effectType != StatusEffectType.None)
+        {
+            DamageTextManager.ShowStatusDamage(textPosition, damage, effectType);
+        }
+    }
+
 
     // ========== Damage Calculations ==========
     private int CalculateFinalDamage(int baseDamage, bool isCritical)
@@ -125,6 +185,7 @@ public class CombatManager : NetworkBehaviour
         return finalDamage;
     }
 
+
     private int GetCurrentArmor()
     {
         int baseArmor = character.Armor;
@@ -135,11 +196,13 @@ public class CombatManager : NetworkBehaviour
             baseArmor += equipmentManager.GetArmorBonus();
         }
 
-        // ตรวจสอบ Armor Break effect (จะเพิ่มใน StatusEffectManager ต่อไป)
-        // if (statusEffectManager.IsArmorBroken)
-        // {
-        //     baseArmor = Mathf.RoundToInt(baseArmor * (1f - statusEffectManager.ArmorBreakAmount));
-        // }
+        // ตรวจสอบ Armor Break effect
+        if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
+        {
+            float reduction = statusEffectManager.ArmorBreakAmount;
+            baseArmor = Mathf.RoundToInt(baseArmor * (1f - reduction));
+            Debug.Log($"[Armor Break] Armor reduced by {reduction * 100}%: {baseArmor}");
+        }
 
         return baseArmor;
     }
@@ -155,16 +218,40 @@ public class CombatManager : NetworkBehaviour
             attackerCritChance += attacker.GetComponent<EquipmentManager>().GetCriticalChanceBonus();
         }
 
+        // ลด critical chance ถ้าโดน Blind
+        if (attacker.GetComponent<StatusEffectManager>() != null)
+        {
+            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
+            if (attackerStatus.IsBlind)
+            {
+                float blindReduction = attackerStatus.BlindAmount;
+                attackerCritChance *= (1f - blindReduction);
+                Debug.Log($"[Blind Effect] Critical chance reduced by {blindReduction * 100}%");
+            }
+        }
+
         bool isCritical = critRoll < attackerCritChance;
         //Debug.Log($"[Critical Check] rolls {critRoll:F1}% vs {attackerCritChance:F1}% = {(isCritical ? "CRITICAL!" : "Normal")}");
 
         return isCritical;
     }
-
     private int ApplyAttackerStatusEffects(int damage, Character attacker)
     {
-        // จะเพิ่มการตรวจสอบ Weakness, Blind effects ใน StatusEffectManager ต่อไป
-        return damage;
+        int modifiedDamage = damage;
+
+        // ตรวจสอบ Weakness effect ของ attacker
+        if (attacker.GetComponent<StatusEffectManager>() != null)
+        {
+            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
+            if (attackerStatus.IsWeak)
+            {
+                float weaknessReduction = attackerStatus.WeaknessAmount;
+                modifiedDamage = Mathf.RoundToInt(damage * (1f - weaknessReduction));
+                Debug.Log($"[Weakness Effect] Damage reduced from {damage} to {modifiedDamage} ({weaknessReduction * 100}% reduction)");
+            }
+        }
+
+        return modifiedDamage;
     }
 
     // ========== Network Synchronization ==========
