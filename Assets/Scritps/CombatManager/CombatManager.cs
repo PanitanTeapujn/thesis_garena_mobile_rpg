@@ -21,7 +21,8 @@ public class CombatManager : NetworkBehaviour
 {
     public static event Action<Character, int, DamageType, bool> OnDamageTaken;
     public static event Action<Character> OnCharacterDeath;
-    public static event Action<Character, int> OnCharacterHealed;
+    public static event Action<Character, int> OnCharacterHealed; // เพิ่ม event สำหรับ heal
+
     // ========== Component References ==========
     private Character character;
     private StatusEffectManager statusEffectManager;
@@ -83,11 +84,8 @@ public class CombatManager : NetworkBehaviour
         // Sync network state
         SyncHealthUpdate();
 
-        // 🎯 แจ้ง damage event (จะทำให้ DamageTextManager แสดง damage text)
+        // 🎯 แจ้ง damage event (DamageTextManager จะแสดง damage text อัตโนมัติ)
         OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
-
-        // 🎯 แสดง damage text ทันที (สำหรับ local client)
-        ShowDamageText(finalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)
@@ -112,7 +110,7 @@ public class CombatManager : NetworkBehaviour
             // Sync network state
             SyncHealthUpdate();
 
-            // 🎯 แสดง status damage text
+            // 🎯 แสดง status damage text โดยตรง (เพราะไม่ผ่าน event system)
             ShowStatusDamageText(damage, damageType);
 
             // Check death
@@ -122,6 +120,8 @@ public class CombatManager : NetworkBehaviour
             }
         }
     }
+
+    // ========== Damage Text Display Methods ==========
     private void ShowDamageText(int damage, DamageType damageType, bool isCritical)
     {
         // แสดง damage text บนหัวตัวละคร
@@ -142,6 +142,7 @@ public class CombatManager : NetworkBehaviour
             DamageTextManager.Instance?.ShowDamageText(textPosition, damage, damageType, isCritical, false);
         }
     }
+
     private void ShowStatusDamageText(int damage, DamageType damageType)
     {
         // แสดง status effect damage text
@@ -161,7 +162,6 @@ public class CombatManager : NetworkBehaviour
             DamageTextManager.ShowStatusDamage(textPosition, damage, effectType);
         }
     }
-
 
     // ========== Damage Calculations ==========
     private int CalculateFinalDamage(int baseDamage, bool isCritical)
@@ -184,7 +184,6 @@ public class CombatManager : NetworkBehaviour
         Debug.Log($"[Normal Hit] {baseDamage} - {currentArmor} armor = {finalDamage}");
         return finalDamage;
     }
-
 
     private int GetCurrentArmor()
     {
@@ -235,6 +234,7 @@ public class CombatManager : NetworkBehaviour
 
         return isCritical;
     }
+
     private int ApplyAttackerStatusEffects(int damage, Character attacker)
     {
         int modifiedDamage = damage;
@@ -310,7 +310,6 @@ public class CombatManager : NetworkBehaviour
         Debug.Log($"{character.CharacterName} died!");
         OnCharacterDeath?.Invoke(character);
         SceneManager.LoadScene("LoseScene");
-
     }
 
     private bool CanDie()
@@ -325,8 +324,19 @@ public class CombatManager : NetworkBehaviour
 
         int oldHp = character.CurrentHp;
         character.CurrentHp = Mathf.Min(character.CurrentHp + amount, character.MaxHp);
+        int actualHeal = character.CurrentHp - oldHp;
 
-        Debug.Log($"[Heal] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (+{amount})");
+        Debug.Log($"[Heal] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (+{actualHeal})");
+
+        // 🎯 แสดง heal text
+        if (actualHeal > 0)
+        {
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+            DamageTextManager.ShowHealing(textPosition, actualHeal);
+
+            // Fire heal event
+            OnCharacterHealed?.Invoke(character, actualHeal);
+        }
 
         SyncHealthUpdate();
     }
@@ -334,5 +344,31 @@ public class CombatManager : NetworkBehaviour
     public float GetHealthPercentage()
     {
         return (float)character.CurrentHp / character.MaxHp;
+    }
+
+    // ========== Manual Damage Text Methods (สำหรับ testing) ==========
+    [ContextMenu("Test Normal Damage")]
+    public void TestNormalDamage()
+    {
+        ShowDamageText(25, DamageType.Normal, false);
+    }
+
+    [ContextMenu("Test Critical Damage")]
+    public void TestCriticalDamage()
+    {
+        ShowDamageText(50, DamageType.Critical, true);
+    }
+
+    [ContextMenu("Test Poison Damage")]
+    public void TestPoisonDamage()
+    {
+        ShowStatusDamageText(10, DamageType.Poison);
+    }
+
+    [ContextMenu("Test Heal")]
+    public void TestHeal()
+    {
+        Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+        DamageTextManager.ShowHealing(textPosition, 30);
     }
 }

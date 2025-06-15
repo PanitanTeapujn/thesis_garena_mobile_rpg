@@ -169,16 +169,13 @@ public class StatusEffectManager : NetworkBehaviour
 
         Debug.Log($"[PoisonTick] {character.CharacterName} takes {PoisonDamagePerTick} poison damage");
 
-        // ส่งสัญญาณให้ CombatManager ทำ damage
+        // ส่งสัญญาณให้ CombatManager ทำ damage (CombatManager จะจัดการ damage text เอง)
         OnStatusDamage?.Invoke(character, PoisonDamagePerTick, DamageType.Poison);
-
-        // 🎯 แสดง poison damage text ทันที
-        Vector3 textPosition = character.transform.position + Vector3.up * 2.2f;
-        DamageTextManager.ShowStatusDamage(textPosition, PoisonDamagePerTick, StatusEffectType.Poison);
 
         // ส่งสัญญาณให้ VisualManager ทำ flash effect
         OnStatusDamageFlash?.Invoke(character, StatusEffectType.Poison);
     }
+
     public virtual void RemovePoison()
     {
         if (!HasStateAuthority) return;
@@ -391,11 +388,8 @@ public class StatusEffectManager : NetworkBehaviour
 
         Debug.Log($"[BurnTick] {character.CharacterName} takes {BurnDamagePerTick} burn damage");
 
+        // ส่งสัญญาณให้ CombatManager ทำ damage (CombatManager จะจัดการ damage text เอง)
         OnStatusDamage?.Invoke(character, BurnDamagePerTick, DamageType.Burn);
-
-        // 🎯 แสดง burn damage text ทันที
-        Vector3 textPosition = character.transform.position + Vector3.up * 2.3f;
-        DamageTextManager.ShowStatusDamage(textPosition, BurnDamagePerTick, StatusEffectType.Burn);
 
         OnStatusDamageFlash?.Invoke(character, StatusEffectType.Burn);
     }
@@ -488,15 +482,11 @@ public class StatusEffectManager : NetworkBehaviour
 
         Debug.Log($"[BleedTick] {character.CharacterName} takes {finalDamage} bleed damage (base: {BleedDamagePerTick} x {bleedMultiplier:F1})");
 
+        // ส่งสัญญาณให้ CombatManager ทำ damage (CombatManager จะจัดการ damage text เอง)
         OnStatusDamage?.Invoke(character, finalDamage, DamageType.Bleed);
-
-        // 🎯 แสดง bleed damage text ทันที
-        Vector3 textPosition = character.transform.position + Vector3.up * 2.4f;
-        DamageTextManager.ShowStatusDamage(textPosition, finalDamage, StatusEffectType.Bleed);
 
         OnStatusDamageFlash?.Invoke(character, StatusEffectType.Bleed);
     }
-
     public virtual void RemoveBleed()
     {
         if (!HasStateAuthority) return;
