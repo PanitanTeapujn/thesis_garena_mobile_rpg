@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,6 +13,9 @@ public class CharacterStats : ScriptableObject
     public int arrmor;
     public int attackCoolDown;
     public int attackRange;
-    public int criticalChance;
-    public int criticalMultiplier;
+    public float criticalChance;
+    public float criticalMultiplier;
+    public float hitRate;      // เปอร์เซ็นต์การโจมตีโดน (85%)
+    public float evasionRate;  // เปอร์เซ็นต์การหลบหลีก (5%)
+    public float attackSpeed;
 }

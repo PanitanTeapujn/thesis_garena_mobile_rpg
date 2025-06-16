@@ -20,5 +20,8 @@ MonoBehaviour:
   arrmor: 12
   attackCoolDown: 1
   attackRange: 0
-  criticalChance: 0
-  criticalMultiplier: 0
+  criticalChance: 1.5
+  criticalMultiplier: 2
+  hitRate: 80
+  evasionRate: 5
+  attackSpeed: 1

@@ -44,6 +44,15 @@ public class Character : NetworkBehaviour
 
     [SerializeField] private float criticalMultiplier = 2f;
     public float CriticalMultiplier { get { return criticalMultiplier; } set { criticalMultiplier = value; } }
+
+    [SerializeField] private float hitRate;
+    public float HitRate { get { return hitRate; } set { hitRate = value; } }
+
+    [SerializeField] private float evasionRate;
+    public float EvasionRate { get { return evasionRate; } set { evasionRate = value; } }
+
+    [SerializeField] private float attackSpeed;
+    public float AttackSpeed { get { return attackSpeed; } set { attackSpeed = value; } }
     [Header("Regeneration Settings")]
     [SerializeField] private float healthRegenPerSecond = 0.5f;
     [SerializeField] private float manaRegenPerSecond = 1f;
@@ -76,52 +85,9 @@ public class Character : NetworkBehaviour
     protected virtual void Start()
     {
         InitializeStats();
-       /* if (HasInputAuthority && this is Hero)
-        {
-            TryApplyFirebaseStatsLater();
-        }*/
+      
     }
-   /* private void TryApplyFirebaseStatsLater()
-    {
-        // ใช้ Invoke แทน coroutine (เบากว่า)
-        Invoke("CheckAndApplyFirebaseStats", 2f);
-    }
-    private void CheckAndApplyFirebaseStats()
-    {
-        if (PersistentPlayerData.Instance.HasValidData())
-        {
-            PlayerProgressData data = PersistentPlayerData.Instance.GetPlayerData();
-            if (data?.IsValid() == true)
-            {
-                ApplyFirebaseStats(data);
-                Debug.Log($"✅ [Character] Applied Firebase stats for {CharacterName} (delayed)");
-            }
-        }
-        else
-        {
-            // ถ้าไม่มีข้อมูล Firebase ก็ไม่เป็นไร ใช้ ScriptableObject ต่อไป
-            Debug.Log($"[Character] Using ScriptableObject stats for {CharacterName}");
-        }
-    }
-    private void ApplyFirebaseStats(PlayerProgressData data)
-    {
-        // Apply เฉพาะ stats ที่สำคัญ (ไม่ override ชื่อ)
-        maxHp = data.totalMaxHp;
-        currentHp = maxHp;
-        maxMana = data.totalMaxMana;
-        currentMana = maxMana;
-        attackDamage = data.totalAttackDamage;
-        armor = data.totalArmor;
-        criticalChance = data.totalCriticalChance;
-        moveSpeed = data.totalMoveSpeed;
-
-        // Force update network สำหรับ multiplayer
-        if (HasStateAuthority)
-        {
-            ForceUpdateNetworkState();
-        }
-    }*/
-    // ========== Component Initialization ==========
+  
     private void InitializeComponents()
     {
         // Get or add components
@@ -177,6 +143,10 @@ public class Character : NetworkBehaviour
             attackCooldown = characterStats.attackCoolDown;
             criticalChance = characterStats.criticalChance;
             criticalMultiplier = characterStats.criticalMultiplier;
+            hitRate = characterStats.hitRate;
+            evasionRate = characterStats.evasionRate;
+            attackSpeed = characterStats.attackSpeed;
+
 
             Debug.Log($"✅ [Character] Initialized {characterName} with ScriptableObject stats: HP={maxHp}, ATK={attackDamage}");
         }
@@ -507,27 +477,4 @@ public class Character : NetworkBehaviour
         }
     }
 
-    [ContextMenu("Test Poison")]
-    public void TestPoison()
-    {
-        ApplyStatusEffect(StatusEffectType.Poison, 5, 10f);
-    }
-
-    [ContextMenu("Test Stun")]
-    public void TestStun()
-    {
-        ApplyStatusEffect(StatusEffectType.Stun, 0, 3f);
-    }
-
-    [ContextMenu("Test Freeze")]
-    public void TestFreeze()
-    {
-        ApplyStatusEffect(StatusEffectType.Freeze, 0, 5f);
-    }
-
-    [ContextMenu("Test Damage")]
-    public void TestDamage()
-    {
-        TakeDamage(20, DamageType.Normal, false);
-    }
 }

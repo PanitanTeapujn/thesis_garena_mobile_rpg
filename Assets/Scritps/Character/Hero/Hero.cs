@@ -789,8 +789,10 @@
                 if (nearestEnemy != null)
                 {
                     RPC_PerformAttack(nearestEnemy.Object);
-                    nextAttackTime = Time.time + AttackCooldown;
-                    Debug.Log($"Hero attacking enemy at distance: {Vector3.Distance(transform.position, nearestEnemy.transform.position)}");
+                float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, AttackSpeed);
+
+                nextAttackTime = Time.time + finalAttackCooldown;
+                Debug.Log($"Hero attacking enemy at distance: {Vector3.Distance(transform.position, nearestEnemy.transform.position)}");
                 }
             }
         }

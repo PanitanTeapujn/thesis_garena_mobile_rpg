@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using System.Collections;
 
@@ -30,6 +30,9 @@ public class DamageText : MonoBehaviour
     private float timer = 0f;
     private Camera mainCamera;
     private bool isActive = false;
+    [Header("Miss Text Settings")]
+    public Color missColor = Color.gray;
+    public string missText = "MISS";
 
     private void Awake()
     {
@@ -216,6 +219,55 @@ public class DamageText : MonoBehaviour
 
         // Return to manager pool
         DamageTextManager.Instance?.ReturnDamageText(this);
+    }
+
+    public void ShowMiss(Vector3 position)
+    {
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+
+        // Reset state
+        timer = 0f;
+        isActive = true;
+
+        // Position setup
+        originalPosition = position + GetRandomOffset();
+        targetPosition = originalPosition + Vector3.up * (moveSpeed * 0.7f); // เคลื่อนที่ช้ากว่า damage text นิดหน่อย
+        transform.position = originalPosition;
+        transform.localScale = originalScale;
+
+        // Miss text setup
+        SetMissText();
+
+        // Start animation
+        gameObject.SetActive(true);
+        StartCoroutine(AnimateDamageText());
+    }
+
+    // Overload สำหรับใช้ position ปัจจุบัน
+    public void ShowMiss()
+    {
+        ShowMiss(transform.position);
+    }
+
+    private void SetMissText()
+    {
+        if (damageTextMesh == null) return;
+
+        // Set miss text
+        damageTextMesh.text = missText;
+        damageTextMesh.color = missColor;
+        damageTextMesh.fontStyle = FontStyles.Italic; // ใช้ Italic เพื่อให้ดูแตกต่าง
+
+        // ขนาดเล็กกว่า damage text นิดหน่อย
+        transform.localScale = originalScale * 0.9f;
+    }
+
+    // เพิ่ม method สำหรับ Initialize แบบเฉพาะ Miss (optional - สำหรับใช้จาก DamageTextManager)
+    public void InitializeMiss(Vector3 position)
+    {
+        transform.position = position;
+        ShowMiss();
     }
 
     private void Update()

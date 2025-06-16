@@ -45,7 +45,8 @@ public class EquipmentStats
     public int maxManaBonus = 0;
     public float moveSpeedBonus = 0f;
     public float attackSpeedBonus = 0f;
-
+    public float hitRateBonus = 0f;
+    public float evasionRateBonus = 0f;
     [Header("Status Resistance")]
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
@@ -84,7 +85,9 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedMoveSpeedBonus { get; set; }
     [Networked] public float NetworkedPhysicalResistanceBonus { get; set; }
     [Networked] public float NetworkedMagicalResistanceBonus { get; set; }
-
+    [Networked] public float NetworkedHitRateBonus { get; set; }
+    [Networked] public float NetworkedEvasionRateBonus { get; set; }
+    [Networked] public float NetworkedAttackSpeedBonus { get; set; }
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
@@ -172,6 +175,9 @@ public class EquipmentManager : NetworkBehaviour
         character.MaxHp += currentEquipmentStats.maxHpBonus;
         character.MaxMana += currentEquipmentStats.maxManaBonus;
         character.MoveSpeed += currentEquipmentStats.moveSpeedBonus;
+        character.HitRate += currentEquipmentStats.hitRateBonus;
+        character.EvasionRate += currentEquipmentStats.evasionRateBonus;
+        character.AttackSpeed += currentEquipmentStats.attackSpeedBonus;
 
         // Ensure current HP/Mana don't exceed new max values
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
@@ -190,14 +196,18 @@ public class EquipmentManager : NetworkBehaviour
         character.MaxHp -= currentEquipmentStats.maxHpBonus;
         character.MaxMana -= currentEquipmentStats.maxManaBonus;
         character.MoveSpeed -= currentEquipmentStats.moveSpeedBonus;
-
+        character.HitRate -= currentEquipmentStats.hitRateBonus;
+        character.EvasionRate -= currentEquipmentStats.evasionRateBonus;
+        character.AttackSpeed -= currentEquipmentStats.attackSpeedBonus;
         // Ensure stats don't go negative
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
         character.Armor = Mathf.Max(0, character.Armor);
         character.MaxHp = Mathf.Max(1, character.MaxHp);
         character.MaxMana = Mathf.Max(0, character.MaxMana);
         character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
-
+        character.HitRate = Mathf.Max(5f, character.HitRate);           // ต่ำสุด 5%
+        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);   // ต่ำสุด 0%
+        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed); // ต่ำสุด 0.1x
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
@@ -211,7 +221,9 @@ public class EquipmentManager : NetworkBehaviour
         character.MaxHp += currentRuneStats.maxHpBonus;
         character.MaxMana += currentRuneStats.maxManaBonus;
         character.MoveSpeed += currentRuneStats.moveSpeedBonus;
-
+        character.HitRate += currentRuneStats.hitRateBonus;
+        character.EvasionRate += currentRuneStats.evasionRateBonus;
+        character.AttackSpeed += currentRuneStats.attackSpeedBonus;
         Debug.Log($"[Rune Applied] {character.CharacterName} - ATK: +{currentRuneStats.attackDamageBonus}");
     }
 
@@ -223,6 +235,9 @@ public class EquipmentManager : NetworkBehaviour
         character.MaxHp -= currentRuneStats.maxHpBonus;
         character.MaxMana -= currentRuneStats.maxManaBonus;
         character.MoveSpeed -= currentRuneStats.moveSpeedBonus;
+        character.HitRate -= currentRuneStats.hitRateBonus;
+        character.EvasionRate -= currentRuneStats.evasionRateBonus;
+        character.AttackSpeed -= currentRuneStats.attackSpeedBonus;
 
         // Ensure stats don't go negative
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
@@ -230,6 +245,10 @@ public class EquipmentManager : NetworkBehaviour
         character.MaxHp = Mathf.Max(1, character.MaxHp);
         character.MaxMana = Mathf.Max(0, character.MaxMana);
         character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
+        character.HitRate = Mathf.Max(5f, character.HitRate);
+        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
+        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+
     }
 
     private void UpdateAllStats()
@@ -266,6 +285,10 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedMoveSpeedBonus = totalStats.moveSpeedBonus;
             NetworkedPhysicalResistanceBonus = totalStats.physicalResistanceBonus;
             NetworkedMagicalResistanceBonus = totalStats.magicalResistanceBonus;
+            NetworkedHitRateBonus = totalStats.hitRateBonus;
+            NetworkedEvasionRateBonus = totalStats.evasionRateBonus;
+            NetworkedAttackSpeedBonus = totalStats.attackSpeedBonus;
+
         }
     }
 
@@ -295,6 +318,20 @@ public class EquipmentManager : NetworkBehaviour
         return baseResistance.GetTotalMagicalResistance();
     }
 
+    public float GetHitRateBonus()
+    {
+        return currentEquipmentStats.hitRateBonus + currentRuneStats.hitRateBonus;
+    }
+
+    public float GetEvasionRateBonus()
+    {
+        return currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
+    }
+
+    public float GetAttackSpeedBonus()
+    {
+        return currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
+    }
     public EquipmentStats GetTotalStats()
     {
         EquipmentStats total = new EquipmentStats();
@@ -306,6 +343,9 @@ public class EquipmentManager : NetworkBehaviour
         total.moveSpeedBonus = currentEquipmentStats.moveSpeedBonus + currentRuneStats.moveSpeedBonus;
         total.physicalResistanceBonus = currentEquipmentStats.physicalResistanceBonus + currentRuneStats.physicalResistanceBonus;
         total.magicalResistanceBonus = currentEquipmentStats.magicalResistanceBonus + currentRuneStats.magicalResistanceBonus;
+        total.hitRateBonus = currentEquipmentStats.hitRateBonus + currentRuneStats.hitRateBonus;
+        total.evasionRateBonus = currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
+        total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
         return total;
     }
 
@@ -322,5 +362,9 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log($"🏃 Move Speed: +{total.moveSpeedBonus:F1}");
         Debug.Log($"🛡️ Physical Resistance: {GetTotalPhysicalResistance():F1}%");
         Debug.Log($"🔮 Magical Resistance: {GetTotalMagicalResistance():F1}%");
+        Debug.Log($"🎯 Hit Rate: +{total.hitRateBonus:F1}%");
+        Debug.Log($"💨 Evasion Rate: +{total.evasionRateBonus:F1}%");
+        Debug.Log($"⚡ Attack Speed: +{total.attackSpeedBonus:F1}x");
+
     }
 }

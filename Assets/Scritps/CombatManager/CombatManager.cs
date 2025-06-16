@@ -46,11 +46,76 @@ public class CombatManager : NetworkBehaviour
         // Unsubscribe events
         StatusEffectManager.OnStatusDamage -= HandleStatusDamage;
     }
+    private bool CalculateHitSuccess(Character attacker, Character target)
+    {
+        float attackerHitRate = attacker.HitRate;
+        float targetEvasion = target.EvasionRate;
 
+        // เพิ่ม bonus จาก equipment
+        if (attacker.GetComponent<EquipmentManager>() != null)
+        {
+            attackerHitRate += attacker.GetComponent<EquipmentManager>().GetHitRateBonus();
+        }
+
+        if (target.GetComponent<EquipmentManager>() != null)
+        {
+            targetEvasion += target.GetComponent<EquipmentManager>().GetEvasionRateBonus();
+        }
+
+        // ลด hit rate ถ้าโดน Blind
+        if (attacker.GetComponent<StatusEffectManager>() != null)
+        {
+            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
+            if (attackerStatus.IsBlind)
+            {
+                float blindReduction = attackerStatus.BlindAmount;
+                attackerHitRate *= (1f - blindReduction);
+                Debug.Log($"[Blind Effect] Hit rate reduced by {blindReduction * 100}%");
+            }
+        }
+
+        // คำนวณโอกาสโดน
+        float finalHitChance = attackerHitRate - targetEvasion;
+        finalHitChance = Mathf.Clamp(finalHitChance, 5f, 95f); // จำกัดระหว่าง 5-95%
+
+        float roll = UnityEngine.Random.Range(0f, 100f);
+        bool isHit = roll < finalHitChance;
+
+        Debug.Log($"[Hit Check] {attacker.CharacterName} -> {target.CharacterName}: {roll:F1}% vs {finalHitChance:F1}% = {(isHit ? "HIT!" : "MISS!")}");
+
+        return isHit;
+    }
+    private float CalculateAttackCooldownWithSpeed(Character attacker)
+    {
+        float baseAttackCooldown = attacker.AttackCooldown;
+        float attackSpeedMultiplier = attacker.AttackSpeed;
+
+        // เพิ่ม bonus จาก equipment
+        if (attacker.GetComponent<EquipmentManager>() != null)
+        {
+            attackSpeedMultiplier += attacker.GetComponent<EquipmentManager>().GetAttackSpeedBonus();
+        }
+
+        // คำนวณ cooldown ใหม่ (ยิ่ง attackSpeed สูง ยิ่ง cooldown น้อย)
+        float finalCooldown = baseAttackCooldown / Mathf.Max(0.1f, attackSpeedMultiplier);
+
+        return finalCooldown;
+    }
     // ========== Main Damage System ==========
     public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
+
+        // 🎯 เช็ค Hit/Miss ก่อน
+        if (!CalculateHitSuccess(attacker, character))
+        {
+            // Miss! แสดง miss text
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+            DamageTextManager.ShowMissText(textPosition);
+
+            Debug.Log($"[MISS] {attacker.CharacterName} missed {character.CharacterName}!");
+            return; // ออกจากฟังก์ชันทันที ไม่ทำดาเมจ
+        }
 
         // 🎯 คำนวณ critical จาก attacker's stats
         bool isCritical = false;
@@ -58,7 +123,7 @@ public class CombatManager : NetworkBehaviour
 
         if (attacker != null)
         {
-            // ตรวจสอบ status effects ของ attacker (จะเพิ่มใน StatusEffectManager ต่อไป)
+            // ตรวจสอบ status effects ของ attacker
             finalDamage = ApplyAttackerStatusEffects(damage, attacker);
 
             // คำนวณ critical
@@ -67,6 +132,12 @@ public class CombatManager : NetworkBehaviour
 
         // เรียก TakeDamage หลัก
         TakeDamage(finalDamage, damageType, isCritical);
+
+        // 🎯 เรียก callback สำหรับ successful attack (สำหรับ status effects)
+        if (attacker is NetworkEnemy enemy)
+        {
+            enemy.OnSuccessfulAttack(character);
+        }
     }
 
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)

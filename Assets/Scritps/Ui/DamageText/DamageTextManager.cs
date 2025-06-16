@@ -275,7 +275,37 @@ public class DamageTextManager : MonoBehaviour
     {
         Instance?.ShowHealText(position, healAmount);
     }
+    public static void ShowMissText(Vector3 position)
+    {
+        if (Instance != null)
+        {
+            Instance.CreateMissText(position);
+        }
+    }
 
+
+
+    private void CreateMissText(Vector3 worldPosition)
+    {
+        // Performance checks เหมือนกับ ShowDamageText
+        if (!ShouldShowDamageText(worldPosition)) return;
+
+        // ใช้ GetDamageText() แทน GetPooledDamageText()
+        DamageText damageText = GetDamageText();
+        if (damageText == null) return;
+
+        // Add to active list
+        activeDamageTexts.Add(damageText);
+
+        // ใช้ world position โดยตรง แทนที่จะแปลงเป็น screen space
+        Vector3 adjustedPosition = worldPosition + Vector3.up * 1.5f; // แสดงเหนือหัว
+        damageText.ShowMiss(adjustedPosition);
+
+        damageText.gameObject.SetActive(true);
+        textDisplayedThisFrame++;
+
+        Debug.Log($"💨 Miss text shown at {worldPosition}");
+    }
     /// <summary>
     /// แสดง status effect damage
     /// </summary>

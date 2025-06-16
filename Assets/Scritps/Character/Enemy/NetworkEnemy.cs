@@ -479,12 +479,15 @@ public class NetworkEnemy : Character
 
         if (canAttack)
         {
-            nextAttackTime = Runner.SimulationTime + AttackCooldown;
+            // 🎯 ใช้ Attack Speed ในการคำนวณ cooldown (เหมือน Hero)
+            float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, AttackSpeed);
+            nextAttackTime = Runner.SimulationTime + finalAttackCooldown;
+
             RPC_PerformAttack(CurrentTarget);
 
             if (showDebugInfo)
             {
-                Debug.Log($"{CharacterName}: *** ATTACK EXECUTED! *** Distance: {distance:F2}, State: {CurrentState}");
+                Debug.Log($"{CharacterName}: *** ATTACK EXECUTED! *** Distance: {distance:F2}, State: {CurrentState}, Speed: {AttackSpeed:F1}x");
             }
         }
         else if (showDebugInfo && CurrentState == EnemyState.Attacking)
@@ -520,56 +523,67 @@ public class NetworkEnemy : Character
 
         if (targetHero != null)
         {
-            Debug.Log($"Enemy {name} attacks {targetHero.CharacterName} for {AttackDamage} damage!");
+            Debug.Log($"Enemy {name} attempts to attack {targetHero.CharacterName}!");
 
-            // ทำ damage ปกติก่อน
-            if (HasStateAuthority && Random.Range(0f, 100f) <= 30f) // 30% โอกาสติด status effects
+            // 🎯 ใช้ TakeDamageFromAttacker() แทน TakeDamage() เพื่อให้มีการเช็ค Hit/Miss
+            targetHero.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+
+            // 🎯 Status effects จะใส่เฉพาะเมื่อโจมตีโดนเท่านั้น (ย้ายไปใส่หลังจาก hit success)
+            // ลบส่วนนี้ออกจากที่นี่ แล้วย้ายไปใส่ใน OnSuccessfulAttack
+        }
+    }
+
+    public void OnSuccessfulAttack(Character target)
+    {
+        if (!HasStateAuthority) return;
+
+        // 30% โอกาสติด status effects เฉพาะเมื่อโจมตีโดน
+        if (Random.Range(0f, 100f) <= 30f)
+        {
+            Debug.Log($"Enemy applies status effects to {target.CharacterName}!");
+
+            // สุ่ม status effect ที่จะใส่
+            float effectRoll = Random.Range(0f, 100f);
+
+            if (effectRoll < 15f)
             {
-                Debug.Log($"Enemy applies status effects to {targetHero.CharacterName}!");
-
-                // สุ่ม status effect ที่จะใส่
-                float effectRoll = Random.Range(0f, 100f);
-
-                if (effectRoll < 15f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Poison, 3, 5f);
-                    Debug.Log("Applied Poison!");
-                }
-                else if (effectRoll < 30f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Burn, 4, 4f);
-                    Debug.Log("Applied Burn!");
-                }
-                else if (effectRoll < 45f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Bleed, 2, 8f);
-                    Debug.Log("Applied Bleed!");
-                }
-                else if (effectRoll < 60f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
-                    Debug.Log("Applied Stun!");
-                }
-                else if (effectRoll < 75f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Freeze, 0, 3f);
-                    Debug.Log("Applied Freeze!");
-                }
-                else if (effectRoll < 85f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.5f);
-                    Debug.Log("Applied Armor Break!");
-                }
-                else if (effectRoll < 95f)
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Blind, 0, 6f, 0.8f);
-                    Debug.Log("Applied Blind!");
-                }
-                else
-                {
-                    targetHero.ApplyStatusEffect(StatusEffectType.Weakness, 0, 10f, 0.4f);
-                    Debug.Log("Applied Weakness!");
-                }
+                target.ApplyStatusEffect(StatusEffectType.Poison, 3, 5f);
+                Debug.Log("Applied Poison!");
+            }
+            else if (effectRoll < 30f)
+            {
+                target.ApplyStatusEffect(StatusEffectType.Burn, 4, 4f);
+                Debug.Log("Applied Burn!");
+            }
+            else if (effectRoll < 45f)
+            {
+                target.ApplyStatusEffect(StatusEffectType.Bleed, 2, 8f);
+                Debug.Log("Applied Bleed!");
+            }
+            else if (effectRoll < 60f)
+            {
+                target.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
+                Debug.Log("Applied Stun!");
+            }
+            else if (effectRoll < 75f)
+            {
+                target.ApplyStatusEffect(StatusEffectType.Freeze, 0, 3f);
+                Debug.Log("Applied Freeze!");
+            }
+            else if (effectRoll < 85f)
+            {
+                target.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.5f);
+                Debug.Log("Applied Armor Break!");
+            }
+            else if (effectRoll < 95f)
+            {
+                target.ApplyStatusEffect(StatusEffectType.Blind, 0, 6f, 0.8f);
+                Debug.Log("Applied Blind!");
+            }
+            else
+            {
+                target.ApplyStatusEffect(StatusEffectType.Weakness, 0, 10f, 0.4f);
+                Debug.Log("Applied Weakness!");
             }
         }
     }
