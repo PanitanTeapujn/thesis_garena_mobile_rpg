@@ -228,7 +228,9 @@ public class FirebaseLoginManager : MonoBehaviour
         PlayerPrefs.SetInt("PlayerArmor", 2);       // Assassin Armor
         PlayerPrefs.SetFloat("PlayerCritChance", 5f);
         PlayerPrefs.SetFloat("PlayerMoveSpeed", 6.5f); // Assassin Speed
-
+        PlayerPrefs.SetFloat("PlayerHitRate", 85f);    // Assassin Hit Rate
+        PlayerPrefs.SetFloat("PlayerEvasionRate", 12f); // Assassin Evasion
+        PlayerPrefs.SetFloat("PlayerAttackSpeed", 1.3f); // Assassin Attack Speed
         Debug.Log($"✅ New player setup completed with default Assassin for {playerName}");
     }
 

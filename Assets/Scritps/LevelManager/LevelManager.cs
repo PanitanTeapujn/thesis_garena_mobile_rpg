@@ -110,6 +110,9 @@ public class LevelManager : NetworkBehaviour
             character.Armor = characterData.totalArmor;
             character.CriticalChance = characterData.totalCriticalChance;
             character.MoveSpeed = characterData.totalMoveSpeed;
+            character.HitRate = characterData.totalHitRate;
+            character.EvasionRate = characterData.totalEvasionRate;
+            character.AttackSpeed = characterData.totalAttackSpeed;
 
             character.ForceUpdateNetworkState();
 
@@ -176,13 +179,12 @@ public class LevelManager : NetworkBehaviour
 
     private void ApplyFirebaseData()
     {
-        // Get current active character data instead of general player data
         string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
         CharacterProgressData characterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacterType);
 
         if (characterData != null && HasInputAuthority)
         {
-            // ส่งข้อมูลไปยัง server
+            // ส่งข้อมูลไปยัง server รวม accuracy stats
             RPC_ApplyFirebaseStats(
                 characterData.currentLevel,
                 characterData.currentExp,
@@ -192,7 +194,10 @@ public class LevelManager : NetworkBehaviour
                 characterData.totalAttackDamage,
                 characterData.totalArmor,
                 characterData.totalCriticalChance,
-                characterData.totalMoveSpeed
+                characterData.totalMoveSpeed,
+                characterData.totalHitRate,
+                characterData.totalEvasionRate,
+                characterData.totalAttackSpeed
             );
 
             Debug.Log($"✅ Applied Firebase data for {activeCharacterType}: Level {characterData.currentLevel}");
@@ -204,7 +209,6 @@ public class LevelManager : NetworkBehaviour
         }
     }
 
-
     private void FallbackToDefault()
     {
         if (!IsInitialized && HasInputAuthority)
@@ -215,7 +219,9 @@ public class LevelManager : NetworkBehaviour
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_ApplyFirebaseStats(int level, int exp, int expToNext, int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed)
+    private void RPC_ApplyFirebaseStats(int level, int exp, int expToNext, int maxHp, int maxMana,
+     int attackDamage, int armor, float critChance, float moveSpeed,
+     float hitRate, float evasionRate, float attackSpeed)
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -229,16 +235,22 @@ public class LevelManager : NetworkBehaviour
         character.Armor = armor;
         character.CriticalChance = critChance;
         character.MoveSpeed = moveSpeed;
+        character.HitRate = hitRate;
+        character.EvasionRate = evasionRate;
+        character.AttackSpeed = attackSpeed;
 
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
         // Broadcast to all clients
-        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed);
+        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed,
+            hitRate, evasionRate, attackSpeed);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_BroadcastStats(int level, int exp, int expToNext, int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed)
+    private void RPC_BroadcastStats(int level, int exp, int expToNext, int maxHp, int maxMana,
+     int attackDamage, int armor, float critChance, float moveSpeed,
+     float hitRate, float evasionRate, float attackSpeed)
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -252,10 +264,12 @@ public class LevelManager : NetworkBehaviour
         character.Armor = armor;
         character.CriticalChance = critChance;
         character.MoveSpeed = moveSpeed;
+        character.HitRate = hitRate;
+        character.EvasionRate = evasionRate;
+        character.AttackSpeed = attackSpeed;
 
         IsInitialized = true;
     }
-
     private void InitializeBasicLevelSystem()
     {
         if (IsInitialized) return;
@@ -271,6 +285,9 @@ public class LevelManager : NetworkBehaviour
             character.Armor = character.characterStats.arrmor;
             character.CriticalChance = character.characterStats.criticalChance;
             character.MoveSpeed = character.characterStats.moveSpeed;
+            character.HitRate = character.characterStats.hitRate;
+            character.EvasionRate = character.characterStats.evasionRate;
+            character.AttackSpeed = character.characterStats.attackSpeed;
         }
 
         CurrentLevel = 1;
@@ -336,7 +353,6 @@ public class LevelManager : NetworkBehaviour
     {
         if (!HasInputAuthority) return;
 
-        // Save to specific character instead of general player data
         string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
 
         if (PersistentPlayerData.Instance.multiCharacterData != null)
@@ -351,7 +367,10 @@ public class LevelManager : NetworkBehaviour
                 character.AttackDamage,
                 character.Armor,
                 character.CriticalChance,
-                character.MoveSpeed
+                character.MoveSpeed,
+                character.HitRate,
+                character.EvasionRate,
+                character.AttackSpeed
             );
 
             // Also update the currentPlayerData for compatibility
@@ -364,7 +383,10 @@ public class LevelManager : NetworkBehaviour
                 character.AttackDamage,
                 character.Armor,
                 character.CriticalChance,
-                character.MoveSpeed
+                character.MoveSpeed,
+                character.HitRate,
+                character.EvasionRate,
+                character.AttackSpeed
             );
         }
 
@@ -392,6 +414,9 @@ public class LevelManager : NetworkBehaviour
             character.Armor = characterData.totalArmor;
             character.CriticalChance = characterData.totalCriticalChance;
             character.MoveSpeed = characterData.totalMoveSpeed;
+            character.HitRate = characterData.totalHitRate;
+            character.EvasionRate = characterData.totalEvasionRate;
+            character.AttackSpeed = characterData.totalAttackSpeed;
 
             IsInitialized = true;
             Debug.Log($"✅ Initialized LevelManager for {characterType} - Level {CurrentLevel}");

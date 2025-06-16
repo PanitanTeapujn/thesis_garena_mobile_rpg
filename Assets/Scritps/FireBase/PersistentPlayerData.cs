@@ -167,6 +167,14 @@ public class PersistentPlayerData : MonoBehaviour
                 convertedCharacter.totalAttackRange = oldData.totalAttackRange;
                 convertedCharacter.totalAttackCooldown = oldData.totalAttackCooldown;
 
+                // ✅ เพิ่มการ convert accuracy stats
+                convertedCharacter.totalHitRate = oldData.totalHitRate;
+                convertedCharacter.totalEvasionRate = oldData.totalEvasionRate;
+                convertedCharacter.totalAttackSpeed = oldData.totalAttackSpeed;
+
+                // ✅ ถ้า old data ไม่มี accuracy stats ให้โหลดจาก ScriptableObject
+               
+
                 // Remove default Assassin if we're converting different character
                 if (oldCharacterType != "Assassin")
                 {
@@ -204,6 +212,7 @@ public class PersistentPlayerData : MonoBehaviour
         // If conversion failed, create default
         CreateDefaultMultiCharacterData();
     }
+
 
     private void CreateDefaultMultiCharacterData()
     {
@@ -326,7 +335,9 @@ public class PersistentPlayerData : MonoBehaviour
 
 
     // ========== Quick Update ==========
-    public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed)
+    public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
+    int attackDamage, int armor, float critChance, float moveSpeed,
+    float hitRate, float evasionRate, float attackSpeed)
     {
         if (currentPlayerData == null) return;
 
@@ -340,18 +351,34 @@ public class PersistentPlayerData : MonoBehaviour
         currentPlayerData.totalArmor = armor;
         currentPlayerData.totalCriticalChance = critChance;
         currentPlayerData.totalMoveSpeed = moveSpeed;
+        currentPlayerData.totalHitRate = hitRate;
+        currentPlayerData.totalEvasionRate = evasionRate;
+        currentPlayerData.totalAttackSpeed = attackSpeed;
 
         // Update multi-character data
         if (multiCharacterData != null)
         {
             multiCharacterData.UpdateCharacterStats(
                 multiCharacterData.currentActiveCharacter,
-                level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed
+                level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed,
+                hitRate, evasionRate, attackSpeed
             );
         }
 
         SaveToPlayerPrefs();
         SavePlayerDataAsync();
+    }
+
+    public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
+    int attackDamage, int armor, float critChance, float moveSpeed)
+    {
+        // ใช้ค่า accuracy stats ปัจจุบัน
+        float hitRate = currentPlayerData?.totalHitRate ?? 85f;
+        float evasionRate = currentPlayerData?.totalEvasionRate ?? 5f;
+        float attackSpeed = currentPlayerData?.totalAttackSpeed ?? 1f;
+
+        UpdateLevelAndStats(level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed,
+            hitRate, evasionRate, attackSpeed);
     }
 
     // ========== NEW: Update Character Selection ==========
@@ -384,6 +411,9 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.SetInt("PlayerArmor", currentPlayerData.totalArmor);
         PlayerPrefs.SetFloat("PlayerCritChance", currentPlayerData.totalCriticalChance);
         PlayerPrefs.SetFloat("PlayerMoveSpeed", currentPlayerData.totalMoveSpeed);
+        PlayerPrefs.SetFloat("PlayerHitRate", currentPlayerData.totalHitRate);
+        PlayerPrefs.SetFloat("PlayerEvasionRate", currentPlayerData.totalEvasionRate);
+        PlayerPrefs.SetFloat("PlayerAttackSpeed", currentPlayerData.totalAttackSpeed);
         PlayerPrefs.Save();
     }
 
@@ -464,7 +494,12 @@ public class PersistentPlayerData : MonoBehaviour
             currentPlayerData.totalAttackDamage,
             currentPlayerData.totalArmor,
             currentPlayerData.totalCriticalChance,
-            currentPlayerData.totalMoveSpeed
+            currentPlayerData.totalMoveSpeed,
+            currentPlayerData.totalHitRate,
+            currentPlayerData.totalEvasionRate,
+            currentPlayerData.totalAttackSpeed
+
+
         );
     }
     // ========== Context Menu ==========

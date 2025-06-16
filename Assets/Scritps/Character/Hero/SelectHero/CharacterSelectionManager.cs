@@ -312,19 +312,7 @@ public class CharacterSelectionManager : MonoBehaviour
         return PlayerSelectionData.CharacterType.Assassin;
     }
 
-    private void ApplyStatsFromScriptableObject(CharacterProgressData characterData, CharacterStats stats)
-    {
-        characterData.totalMaxHp = stats.maxHp;
-        characterData.totalMaxMana = stats.maxMana;
-        characterData.totalAttackDamage = stats.attackDamage;
-        characterData.totalArmor = stats.arrmor;
-        characterData.totalCriticalChance = stats.criticalChance;
-        characterData.totalCriticalMultiplier = stats.criticalMultiplier;
-        characterData.totalMoveSpeed = stats.moveSpeed;
-        characterData.totalAttackRange = stats.attackRange;
-        characterData.totalAttackCooldown = stats.attackCoolDown;
-    }
-
+   
     // ========== NEW: สร้าง PlayerProgressData แบบเต็ม ==========
     private IEnumerator CreateAndSaveCompletePlayerData(string playerName)
     {
@@ -401,6 +389,23 @@ public class CharacterSelectionManager : MonoBehaviour
     }
 
     // ========== NEW: Default Stats Fallback ==========
+    private void ApplyStatsFromScriptableObject(CharacterProgressData characterData, CharacterStats stats)
+    {
+        characterData.totalMaxHp = stats.maxHp;
+        characterData.totalMaxMana = stats.maxMana;
+        characterData.totalAttackDamage = stats.attackDamage;
+        characterData.totalArmor = stats.arrmor;
+        characterData.totalCriticalChance = stats.criticalChance;
+        characterData.totalCriticalMultiplier = stats.criticalMultiplier;
+        characterData.totalMoveSpeed = stats.moveSpeed;
+        characterData.totalAttackRange = stats.attackRange;
+        characterData.totalAttackCooldown = stats.attackCoolDown;
+        characterData.totalHitRate = stats.hitRate;
+        characterData.totalEvasionRate = stats.evasionRate;
+        characterData.totalAttackSpeed = stats.attackSpeed;
+    }
+
+    // แก้ไข ApplyDefaultStats() method ใน CharacterSelectionManager
     private void ApplyDefaultStats(PlayerProgressData playerData)
     {
         // Default stats สำหรับแต่ละตัวละคร
@@ -411,18 +416,27 @@ public class CharacterSelectionManager : MonoBehaviour
                 playerData.totalMaxMana = 60;
                 playerData.totalAttackDamage = 25;
                 playerData.totalArmor = 8;
+                playerData.totalHitRate = 80f;
+                playerData.totalEvasionRate = 3f;
+                playerData.totalAttackSpeed = 0.9f;
                 break;
             case PlayerSelectionData.CharacterType.Archer:
                 playerData.totalMaxHp = 80;
                 playerData.totalMaxMana = 80;
                 playerData.totalAttackDamage = 30;
                 playerData.totalArmor = 3;
+                playerData.totalHitRate = 90f;
+                playerData.totalEvasionRate = 8f;
+                playerData.totalAttackSpeed = 1.2f;
                 break;
             case PlayerSelectionData.CharacterType.Assassin:
                 playerData.totalMaxHp = 70;
                 playerData.totalMaxMana = 40;
                 playerData.totalAttackDamage = 35;
                 playerData.totalArmor = 2;
+                playerData.totalHitRate = 85f;
+                playerData.totalEvasionRate = 12f;
+                playerData.totalAttackSpeed = 1.3f;
                 break;
             case PlayerSelectionData.CharacterType.IronJuggernaut:
             default:
@@ -430,6 +444,9 @@ public class CharacterSelectionManager : MonoBehaviour
                 playerData.totalMaxMana = 40;
                 playerData.totalAttackDamage = 20;
                 playerData.totalArmor = 12;
+                playerData.totalHitRate = 75f;
+                playerData.totalEvasionRate = 2f;
+                playerData.totalAttackSpeed = 0.8f;
                 break;
         }
 
@@ -445,6 +462,7 @@ public class CharacterSelectionManager : MonoBehaviour
 
         Debug.Log($"Applied default stats for {selectedCharacter}");
     }
+
 
     // ========== UI Methods (เหมือนเดิม) ==========
     private void ShowError(string message)

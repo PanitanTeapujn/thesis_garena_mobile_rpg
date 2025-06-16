@@ -26,7 +26,9 @@ public class PlayerProgressData
     public float totalMoveSpeed;
     public float totalAttackRange;
     public float totalAttackCooldown;
-
+    public float totalHitRate;
+    public float totalEvasionRate;
+    public float totalAttackSpeed;
     [Header("Base Stats (from ScriptableObject)")]
     public string baseCharacterStatsId; // ใช้เป็น reference ไปยัง ScriptableObject
 
@@ -64,6 +66,9 @@ public class PlayerProgressData
         float baseMoveSpeed = characterStats.moveSpeed;
         float baseAttackRange = characterStats.attackRange;
         float baseAttackCooldown = characterStats.attackCoolDown;
+        float baseHitRate = characterStats.hitRate;
+        float baseEvasionRate = characterStats.evasionRate;
+        float baseAttackSpeed = characterStats.attackSpeed;
 
         // คำนวณ level bonus (level - 1 เพราะ level 1 ไม่มี bonus)
         int levelBonus = level - 1;
@@ -86,7 +91,9 @@ public class PlayerProgressData
         totalMoveSpeed = baseMoveSpeed + (levelBonus * speedBonusPerLevel);
         totalAttackRange = baseAttackRange; // ไม่เปลี่ยน
         totalAttackCooldown = baseAttackCooldown; // ไม่เปลี่ยน
-
+        totalHitRate = baseHitRate;
+        totalEvasionRate = baseEvasionRate;
+        totalAttackSpeed = baseAttackSpeed;
         currentLevel = level;
     }
 

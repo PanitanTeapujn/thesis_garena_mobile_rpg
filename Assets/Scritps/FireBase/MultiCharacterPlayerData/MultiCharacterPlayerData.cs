@@ -36,19 +36,45 @@ public class MultiCharacterPlayerData
         defaultAssassin.currentExp = 0;
         defaultAssassin.expToNextLevel = 100;
 
-        // Default Assassin stats
-        defaultAssassin.totalMaxHp = 70;
-        defaultAssassin.totalMaxMana = 40;
-        defaultAssassin.totalAttackDamage = 35;
-        defaultAssassin.totalArmor = 2;
-        defaultAssassin.totalCriticalChance = 5f;
-        defaultAssassin.totalCriticalMultiplier = 2f;
-        defaultAssassin.totalMoveSpeed = 6.5f;
-        defaultAssassin.totalAttackRange = 2f;
-        defaultAssassin.totalAttackCooldown = 1f;
+        // ✅ ใช้ ScriptableObject แทนการ hardcode
+        CharacterStats assassinStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
+        if (assassinStats != null)
+        {
+            defaultAssassin.totalMaxHp = assassinStats.maxHp;
+            defaultAssassin.totalMaxMana = assassinStats.maxMana;
+            defaultAssassin.totalAttackDamage = assassinStats.attackDamage;
+            defaultAssassin.totalArmor = assassinStats.arrmor;
+            defaultAssassin.totalCriticalChance = assassinStats.criticalChance;
+            defaultAssassin.totalCriticalMultiplier = assassinStats.criticalMultiplier;
+            defaultAssassin.totalMoveSpeed = assassinStats.moveSpeed;
+            defaultAssassin.totalAttackRange = assassinStats.attackRange;
+            defaultAssassin.totalAttackCooldown = assassinStats.attackCoolDown;
+            // ✅ เพิ่มค่าที่หายไป
+            defaultAssassin.totalHitRate = assassinStats.hitRate;
+            defaultAssassin.totalEvasionRate = assassinStats.evasionRate;
+            defaultAssassin.totalAttackSpeed = assassinStats.attackSpeed;
+        }
+        else
+        {
+            // Fallback ถ้าหา ScriptableObject ไม่เจอ
+            defaultAssassin.totalMaxHp = 70;
+            defaultAssassin.totalMaxMana = 40;
+            defaultAssassin.totalAttackDamage = 35;
+            defaultAssassin.totalArmor = 2;
+            defaultAssassin.totalCriticalChance = 5f;
+            defaultAssassin.totalCriticalMultiplier = 2f;
+            defaultAssassin.totalMoveSpeed = 6.5f;
+            defaultAssassin.totalAttackRange = 2f;
+            defaultAssassin.totalAttackCooldown = 1f;
+            // ✅ เพิ่ม default values
+            defaultAssassin.totalHitRate = 85f;
+            defaultAssassin.totalEvasionRate = 12f;
+            defaultAssassin.totalAttackSpeed = 1.3f;
+        }
 
         characters.Add(defaultAssassin);
     }
+
 
     // Get character data by type
     public CharacterProgressData GetCharacterData(string characterType)
@@ -92,59 +118,105 @@ public class MultiCharacterPlayerData
         newCharacter.currentExp = 0;
         newCharacter.expToNextLevel = 100;
 
-        // Apply default stats based on character type
+        // ✅ พยายามโหลดจาก ScriptableObject ก่อน
+        CharacterStats characterStats = null;
+
         switch (characterType)
         {
             case "BloodKnight":
-                newCharacter.totalMaxHp = 120;
-                newCharacter.totalMaxMana = 60;
-                newCharacter.totalAttackDamage = 25;
-                newCharacter.totalArmor = 8;
-                newCharacter.totalMoveSpeed = 5.2f;
+                characterStats = Resources.Load<CharacterStats>("Characters/BloodKnightStats");
                 break;
             case "Archer":
-                newCharacter.totalMaxHp = 80;
-                newCharacter.totalMaxMana = 80;
-                newCharacter.totalAttackDamage = 30;
-                newCharacter.totalArmor = 3;
-                newCharacter.totalMoveSpeed = 5.8f;
+                characterStats = Resources.Load<CharacterStats>("Characters/ArcherStats");
                 break;
             case "Assassin":
-                newCharacter.totalMaxHp = 70;
-                newCharacter.totalMaxMana = 40;
-                newCharacter.totalAttackDamage = 35;
-                newCharacter.totalArmor = 2;
-                newCharacter.totalMoveSpeed = 6.5f;
+                characterStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
                 break;
             case "IronJuggernaut":
-                newCharacter.totalMaxHp = 150;
-                newCharacter.totalMaxMana = 40;
-                newCharacter.totalAttackDamage = 20;
-                newCharacter.totalArmor = 12;
-                newCharacter.totalMoveSpeed = 4.5f;
-                break;
-            default:
-                // Default to Assassin stats
-                newCharacter.totalMaxHp = 70;
-                newCharacter.totalMaxMana = 40;
-                newCharacter.totalAttackDamage = 35;
-                newCharacter.totalArmor = 2;
-                newCharacter.totalMoveSpeed = 6.5f;
+                characterStats = Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
                 break;
         }
 
-        // Common default stats
-        newCharacter.totalCriticalChance = 5f;
-        newCharacter.totalCriticalMultiplier = 2f;
-        newCharacter.totalAttackRange = 2f;
-        newCharacter.totalAttackCooldown = 1f;
+        if (characterStats != null)
+        {
+            // ✅ ใช้ค่าจาก ScriptableObject
+            newCharacter.totalMaxHp = characterStats.maxHp;
+            newCharacter.totalMaxMana = characterStats.maxMana;
+            newCharacter.totalAttackDamage = characterStats.attackDamage;
+            newCharacter.totalArmor = characterStats.arrmor;
+            newCharacter.totalCriticalChance = characterStats.criticalChance;
+            newCharacter.totalCriticalMultiplier = characterStats.criticalMultiplier;
+            newCharacter.totalMoveSpeed = characterStats.moveSpeed;
+            newCharacter.totalAttackRange = characterStats.attackRange;
+            newCharacter.totalAttackCooldown = characterStats.attackCoolDown;
+            // ✅ เพิ่มค่าที่หายไป
+            newCharacter.totalHitRate = characterStats.hitRate;
+            newCharacter.totalEvasionRate = characterStats.evasionRate;
+            newCharacter.totalAttackSpeed = characterStats.attackSpeed;
+
+            Debug.Log($"✅ Used ScriptableObject stats for {characterType}");
+        }
+        else
+        {
+            // ✅ Fallback ถ้าหา ScriptableObject ไม่เจอ
+            Debug.LogWarning($"⚠️ ScriptableObject not found for {characterType}, using fallback stats");
+
+            switch (characterType)
+            {
+                case "BloodKnight":
+                    newCharacter.totalMaxHp = 120;
+                    newCharacter.totalMaxMana = 60;
+                    newCharacter.totalAttackDamage = 25;
+                    newCharacter.totalArmor = 8;
+                    newCharacter.totalMoveSpeed = 5.2f;
+                    newCharacter.totalHitRate = 80f;
+                    newCharacter.totalEvasionRate = 3f;
+                    newCharacter.totalAttackSpeed = 0.9f;
+                    break;
+                case "Archer":
+                    newCharacter.totalMaxHp = 80;
+                    newCharacter.totalMaxMana = 80;
+                    newCharacter.totalAttackDamage = 30;
+                    newCharacter.totalArmor = 3;
+                    newCharacter.totalMoveSpeed = 5.8f;
+                    newCharacter.totalHitRate = 90f;
+                    newCharacter.totalEvasionRate = 8f;
+                    newCharacter.totalAttackSpeed = 1.2f;
+                    break;
+                case "Assassin":
+                    newCharacter.totalMaxHp = 70;
+                    newCharacter.totalMaxMana = 40;
+                    newCharacter.totalAttackDamage = 35;
+                    newCharacter.totalArmor = 2;
+                    newCharacter.totalMoveSpeed = 6.5f;
+                    newCharacter.totalHitRate = 85f;
+                    newCharacter.totalEvasionRate = 12f;
+                    newCharacter.totalAttackSpeed = 1.3f;
+                    break;
+                case "IronJuggernaut":
+                default:
+                    newCharacter.totalMaxHp = 150;
+                    newCharacter.totalMaxMana = 40;
+                    newCharacter.totalAttackDamage = 20;
+                    newCharacter.totalArmor = 12;
+                    newCharacter.totalMoveSpeed = 4.5f;
+                    newCharacter.totalHitRate = 75f;
+                    newCharacter.totalEvasionRate = 2f;
+                    newCharacter.totalAttackSpeed = 0.8f;
+                    break;
+            }
+
+            // Common fallback stats
+            newCharacter.totalCriticalChance = 5f;
+            newCharacter.totalCriticalMultiplier = 2f;
+            newCharacter.totalAttackRange = 2f;
+            newCharacter.totalAttackCooldown = 1f;
+        }
 
         return newCharacter;
     }
-
-    // Update character stats
     public void UpdateCharacterStats(string characterType, int level, int exp, int expToNext,
-        int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed)
+        int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed,float hitRate,float evaSion,float attackSpeed)
     {
         CharacterProgressData character = GetOrCreateCharacterData(characterType);
         character.currentLevel = level;
@@ -156,6 +228,9 @@ public class MultiCharacterPlayerData
         character.totalArmor = armor;
         character.totalCriticalChance = critChance;
         character.totalMoveSpeed = moveSpeed;
+        character.totalHitRate = hitRate;
+        character.totalEvasionRate = evaSion;
+        character.totalAttackSpeed = attackSpeed;
     }
 
     // Validate data
@@ -200,7 +275,9 @@ public class CharacterProgressData
     public float totalMoveSpeed;
     public float totalAttackRange;
     public float totalAttackCooldown;
-
+    public float totalHitRate;
+    public float totalEvasionRate;
+    public float totalAttackSpeed; 
     // Convert to PlayerProgressData for backward compatibility
     public PlayerProgressData ToPlayerProgressData(string playerName)
     {
@@ -219,6 +296,9 @@ public class CharacterProgressData
         progressData.totalMoveSpeed = totalMoveSpeed;
         progressData.totalAttackRange = totalAttackRange;
         progressData.totalAttackCooldown = totalAttackCooldown;
+        progressData.totalHitRate = totalHitRate;
+        progressData.totalEvasionRate = totalEvasionRate;
+        progressData.totalAttackSpeed = totalAttackSpeed;
 
         return progressData;
     }
