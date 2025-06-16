@@ -10,12 +10,11 @@ public class MultiCharacterPlayerData
     public string password;
     public string registrationDate;
     public string lastLoginDate;
-    public string currentActiveCharacter = "Assassin"; // Default character
+    public string currentActiveCharacter = "Assassin";
 
     [Header("Character Data")]
     public List<CharacterProgressData> characters = new List<CharacterProgressData>();
 
-    // Constructor
     public MultiCharacterPlayerData()
     {
         playerName = "";
@@ -24,7 +23,6 @@ public class MultiCharacterPlayerData
         lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         currentActiveCharacter = "Assassin";
 
-        // Initialize with default Assassin character
         InitializeDefaultCharacter();
     }
 
@@ -36,7 +34,6 @@ public class MultiCharacterPlayerData
         defaultAssassin.currentExp = 0;
         defaultAssassin.expToNextLevel = 100;
 
-        // ✅ ใช้ ScriptableObject แทนการ hardcode
         CharacterStats assassinStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
         if (assassinStats != null)
         {
@@ -49,14 +46,12 @@ public class MultiCharacterPlayerData
             defaultAssassin.totalMoveSpeed = assassinStats.moveSpeed;
             defaultAssassin.totalAttackRange = assassinStats.attackRange;
             defaultAssassin.totalAttackCooldown = assassinStats.attackCoolDown;
-            // ✅ เพิ่มค่าที่หายไป
             defaultAssassin.totalHitRate = assassinStats.hitRate;
             defaultAssassin.totalEvasionRate = assassinStats.evasionRate;
             defaultAssassin.totalAttackSpeed = assassinStats.attackSpeed;
         }
         else
         {
-            // Fallback ถ้าหา ScriptableObject ไม่เจอ
             defaultAssassin.totalMaxHp = 70;
             defaultAssassin.totalMaxMana = 40;
             defaultAssassin.totalAttackDamage = 35;
@@ -66,7 +61,6 @@ public class MultiCharacterPlayerData
             defaultAssassin.totalMoveSpeed = 6.5f;
             defaultAssassin.totalAttackRange = 2f;
             defaultAssassin.totalAttackCooldown = 1f;
-            // ✅ เพิ่ม default values
             defaultAssassin.totalHitRate = 85f;
             defaultAssassin.totalEvasionRate = 12f;
             defaultAssassin.totalAttackSpeed = 1.3f;
@@ -75,41 +69,33 @@ public class MultiCharacterPlayerData
         characters.Add(defaultAssassin);
     }
 
-
-    // Get character data by type
     public CharacterProgressData GetCharacterData(string characterType)
     {
         return characters.Find(c => c.characterType == characterType);
     }
 
-    // Get or create character data
     public CharacterProgressData GetOrCreateCharacterData(string characterType)
     {
         CharacterProgressData existing = GetCharacterData(characterType);
         if (existing != null)
             return existing;
 
-        // Create new character with default stats
         CharacterProgressData newCharacter = CreateDefaultCharacterData(characterType);
         characters.Add(newCharacter);
         return newCharacter;
     }
 
-    // Get current active character data
     public CharacterProgressData GetActiveCharacterData()
     {
         return GetOrCreateCharacterData(currentActiveCharacter);
     }
 
-    // Switch active character
     public void SwitchActiveCharacter(string characterType)
     {
         currentActiveCharacter = characterType;
-        // Ensure character exists
         GetOrCreateCharacterData(characterType);
     }
 
-    // Create default character data based on type
     public CharacterProgressData CreateDefaultCharacterData(string characterType)
     {
         CharacterProgressData newCharacter = new CharacterProgressData();
@@ -118,7 +104,6 @@ public class MultiCharacterPlayerData
         newCharacter.currentExp = 0;
         newCharacter.expToNextLevel = 100;
 
-        // ✅ พยายามโหลดจาก ScriptableObject ก่อน
         CharacterStats characterStats = null;
 
         switch (characterType)
@@ -139,7 +124,6 @@ public class MultiCharacterPlayerData
 
         if (characterStats != null)
         {
-            // ✅ ใช้ค่าจาก ScriptableObject
             newCharacter.totalMaxHp = characterStats.maxHp;
             newCharacter.totalMaxMana = characterStats.maxMana;
             newCharacter.totalAttackDamage = characterStats.attackDamage;
@@ -149,7 +133,6 @@ public class MultiCharacterPlayerData
             newCharacter.totalMoveSpeed = characterStats.moveSpeed;
             newCharacter.totalAttackRange = characterStats.attackRange;
             newCharacter.totalAttackCooldown = characterStats.attackCoolDown;
-            // ✅ เพิ่มค่าที่หายไป
             newCharacter.totalHitRate = characterStats.hitRate;
             newCharacter.totalEvasionRate = characterStats.evasionRate;
             newCharacter.totalAttackSpeed = characterStats.attackSpeed;
@@ -158,7 +141,6 @@ public class MultiCharacterPlayerData
         }
         else
         {
-            // ✅ Fallback ถ้าหา ScriptableObject ไม่เจอ
             Debug.LogWarning($"⚠️ ScriptableObject not found for {characterType}, using fallback stats");
 
             switch (characterType)
@@ -206,7 +188,6 @@ public class MultiCharacterPlayerData
                     break;
             }
 
-            // Common fallback stats
             newCharacter.totalCriticalChance = 5f;
             newCharacter.totalCriticalMultiplier = 2f;
             newCharacter.totalAttackRange = 2f;
@@ -215,8 +196,10 @@ public class MultiCharacterPlayerData
 
         return newCharacter;
     }
+
     public void UpdateCharacterStats(string characterType, int level, int exp, int expToNext,
-        int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed,float hitRate,float evaSion,float attackSpeed)
+        int maxHp, int maxMana, int attackDamage, int armor, float critChance, float moveSpeed,
+        float hitRate, float evasion, float attackSpeed)
     {
         CharacterProgressData character = GetOrCreateCharacterData(characterType);
         character.currentLevel = level;
@@ -229,11 +212,10 @@ public class MultiCharacterPlayerData
         character.totalCriticalChance = critChance;
         character.totalMoveSpeed = moveSpeed;
         character.totalHitRate = hitRate;
-        character.totalEvasionRate = evaSion;
+        character.totalEvasionRate = evasion;
         character.totalAttackSpeed = attackSpeed;
     }
 
-    // Validate data
     public bool IsValid()
     {
         return !string.IsNullOrEmpty(playerName) &&
@@ -241,7 +223,6 @@ public class MultiCharacterPlayerData
                characters.Count > 0;
     }
 
-    // Debug info
     public void LogAllCharacters()
     {
         Debug.Log($"=== {playerName}'s Characters ===");
@@ -277,29 +258,5 @@ public class CharacterProgressData
     public float totalAttackCooldown;
     public float totalHitRate;
     public float totalEvasionRate;
-    public float totalAttackSpeed; 
-    // Convert to PlayerProgressData for backward compatibility
-    public PlayerProgressData ToPlayerProgressData(string playerName)
-    {
-        PlayerProgressData progressData = new PlayerProgressData();
-        progressData.playerName = playerName;
-        progressData.lastCharacterSelected = characterType;
-        progressData.currentLevel = currentLevel;
-        progressData.currentExp = currentExp;
-        progressData.expToNextLevel = expToNextLevel;
-        progressData.totalMaxHp = totalMaxHp;
-        progressData.totalMaxMana = totalMaxMana;
-        progressData.totalAttackDamage = totalAttackDamage;
-        progressData.totalArmor = totalArmor;
-        progressData.totalCriticalChance = totalCriticalChance;
-        progressData.totalCriticalMultiplier = totalCriticalMultiplier;
-        progressData.totalMoveSpeed = totalMoveSpeed;
-        progressData.totalAttackRange = totalAttackRange;
-        progressData.totalAttackCooldown = totalAttackCooldown;
-        progressData.totalHitRate = totalHitRate;
-        progressData.totalEvasionRate = totalEvasionRate;
-        progressData.totalAttackSpeed = totalAttackSpeed;
-
-        return progressData;
-    }
+    public float totalAttackSpeed;
 }

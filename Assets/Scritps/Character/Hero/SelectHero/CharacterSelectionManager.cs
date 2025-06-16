@@ -44,7 +44,6 @@ public class CharacterSelectionManager : MonoBehaviour
     private FirebaseAuth auth;
     private DatabaseReference databaseReference;
 
-
     [Header("Navigation")]
     public Button backToLobbyButton;
     public TextMeshProUGUI characterLevelsText;
@@ -129,6 +128,7 @@ public class CharacterSelectionManager : MonoBehaviour
 
         Debug.Log($"[CharacterSelection] Initialized - Coming from Lobby: {comingFromLobby}");
     }
+
     private void BackToLobby()
     {
         PlayerPrefs.SetString("LastScene", "CharacterSelection");
@@ -142,8 +142,7 @@ public class CharacterSelectionManager : MonoBehaviour
         if (comingFromLobby)
         {
             // ✅ ถ้ามาจาก Lobby ใช้ชื่อที่มีอยู่แล้ว
-            playerName = PersistentPlayerData.Instance.multiCharacterData?.playerName ??
-                        PlayerPrefs.GetString("PlayerName", "Player");
+            playerName = PersistentPlayerData.Instance.GetPlayerName();
         }
         else
         {
@@ -184,6 +183,7 @@ public class CharacterSelectionManager : MonoBehaviour
         // ซ่อน loading
         ShowLoading(false);
     }
+
     private IEnumerator HandleCharacterSwitchFromLobby(string playerName)
     {
         Debug.Log($"[CharacterSelection] Switching character to {selectedCharacter} for existing player");
@@ -213,29 +213,35 @@ public class CharacterSelectionManager : MonoBehaviour
         PlayerPrefs.SetString("LastScene", "CharacterSelection");
         SceneManager.LoadScene("Lobby");
     }
+
     private IEnumerator CreateNewMultiCharacterPlayer(string playerName)
     {
         Debug.Log($"[CharacterSelection] Creating new multi-character player: {playerName}");
 
-        // สร้าง MultiCharacterPlayerData ใหม่
+        // ✅ สร้าง MultiCharacterPlayerData ใหม่
         MultiCharacterPlayerData newMultiCharacterData = new MultiCharacterPlayerData();
         newMultiCharacterData.playerName = playerName;
         newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString();
         newMultiCharacterData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newMultiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // Apply stats from ScriptableObject
+        // ถ้าเลือก Assassin ใช้ default ที่มีอยู่แล้ว, ถ้าไม่ใช่ให้สร้างใหม่
         if (selectedCharacter.ToString() != "Assassin")
         {
+            // เพิ่มตัวละครที่เลือกใหม่
             CharacterProgressData newCharacterData = newMultiCharacterData.GetOrCreateCharacterData(selectedCharacter.ToString());
+
+            // Apply stats from ScriptableObject
             CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
             if (characterStats != null)
             {
                 ApplyStatsFromScriptableObject(newCharacterData, characterStats);
+                Debug.Log($"✅ Applied ScriptableObject stats for {selectedCharacter}");
             }
         }
         else
         {
+            // ใช้ default Assassin และ apply stats
             CharacterProgressData assassinData = newMultiCharacterData.GetActiveCharacterData();
             CharacterStats assassinStats = GetCharacterStatsForCharacter(PlayerSelectionData.CharacterType.Assassin);
             if (assassinStats != null)
@@ -248,15 +254,16 @@ public class CharacterSelectionManager : MonoBehaviour
         PersistentPlayerData.Instance.multiCharacterData = newMultiCharacterData;
         PersistentPlayerData.Instance.isDataLoaded = true;
 
-        // ❌ ลบออก: PersistentPlayerData.Instance.currentPlayerData = ...
-
         // Save to Firebase
         PersistentPlayerData.Instance.SavePlayerDataAsync();
 
+        // รอให้ save เสร็จ
         yield return new WaitForSeconds(1f);
 
+        Debug.Log($"✅ New multi-character player created: {playerName}, Active: {selectedCharacter}");
         newMultiCharacterData.LogAllCharacters();
 
+        // ไป Lobby
         PlayerPrefs.SetString("LastScene", "CharacterSelection");
         SceneManager.LoadScene("Lobby");
     }
@@ -292,7 +299,6 @@ public class CharacterSelectionManager : MonoBehaviour
         PersistentPlayerData.Instance.SavePlayerDataAsync();
 
         yield return new WaitForSeconds(0.5f);
-
     }
 
     private PlayerSelectionData.CharacterType GetCharacterTypeEnum(string characterType)
@@ -300,48 +306,6 @@ public class CharacterSelectionManager : MonoBehaviour
         if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var result))
             return result;
         return PlayerSelectionData.CharacterType.Assassin;
-    }
-
-   
-    // ========== NEW: สร้าง PlayerProgressData แบบเต็ม ==========
-    private IEnumerator CreateAndSaveCompletePlayerData(string playerName)
-    {
-        Debug.Log($"[CharacterSelection] Creating complete player data for {playerName}, Character: {selectedCharacter}");
-
-        // สร้าง PlayerProgressData ใหม่แบบเต็ม
-        PlayerProgressData newPlayerData = new PlayerProgressData();
-
-        // ข้อมูลพื้นฐาน
-        newPlayerData.playerName = playerName;
-        newPlayerData.lastCharacterSelected = selectedCharacter.ToString(); // ✅ ตรงนี้สำคัญ!
-        newPlayerData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-        newPlayerData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-
-        // โหลด base stats จาก CharacterStats ScriptableObject
-        CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
-        if (characterStats != null)
-        {
-            newPlayerData.InitializeFromCharacterStats(characterStats, 1);
-            Debug.Log($"✅ Applied stats from ScriptableObject: {characterStats.characterName}");
-        }
-        else
-        {
-            Debug.LogWarning($"Could not find CharacterStats for {selectedCharacter}. Using default stats.");
-            ApplyDefaultStats(newPlayerData);
-        }
-
-        // ใส่ข้อมูลใน PersistentPlayerData
-        PersistentPlayerData.Instance.currentPlayerData = newPlayerData;
-        PersistentPlayerData.Instance.isDataLoaded = true;
-
-        // บันทึกลง Firebase ผ่าน PersistentPlayerData
-        PersistentPlayerData.Instance.SavePlayerDataAsync();
-
-        // รอให้ save เสร็จ
-        yield return new WaitForSeconds(1f);
-
-        Debug.Log($"✅ Complete player data created and saved: {playerName}, {selectedCharacter}");
-        newPlayerData.LogProgressInfo();
     }
 
     // ========== NEW: หา CharacterStats ScriptableObject ==========
@@ -378,7 +342,7 @@ public class CharacterSelectionManager : MonoBehaviour
         }
     }
 
-    // ========== NEW: Default Stats Fallback ==========
+    // ========== Apply Stats from ScriptableObject ==========
     private void ApplyStatsFromScriptableObject(CharacterProgressData characterData, CharacterStats stats)
     {
         characterData.totalMaxHp = stats.maxHp;
@@ -395,66 +359,7 @@ public class CharacterSelectionManager : MonoBehaviour
         characterData.totalAttackSpeed = stats.attackSpeed;
     }
 
-    // แก้ไข ApplyDefaultStats() method ใน CharacterSelectionManager
-    private void ApplyDefaultStats(PlayerProgressData playerData)
-    {
-        // Default stats สำหรับแต่ละตัวละคร
-        switch (selectedCharacter)
-        {
-            case PlayerSelectionData.CharacterType.BloodKnight:
-                playerData.totalMaxHp = 120;
-                playerData.totalMaxMana = 60;
-                playerData.totalAttackDamage = 25;
-                playerData.totalArmor = 8;
-                playerData.totalHitRate = 80f;
-                playerData.totalEvasionRate = 3f;
-                playerData.totalAttackSpeed = 0.9f;
-                break;
-            case PlayerSelectionData.CharacterType.Archer:
-                playerData.totalMaxHp = 80;
-                playerData.totalMaxMana = 80;
-                playerData.totalAttackDamage = 30;
-                playerData.totalArmor = 3;
-                playerData.totalHitRate = 90f;
-                playerData.totalEvasionRate = 8f;
-                playerData.totalAttackSpeed = 1.2f;
-                break;
-            case PlayerSelectionData.CharacterType.Assassin:
-                playerData.totalMaxHp = 70;
-                playerData.totalMaxMana = 40;
-                playerData.totalAttackDamage = 35;
-                playerData.totalArmor = 2;
-                playerData.totalHitRate = 85f;
-                playerData.totalEvasionRate = 12f;
-                playerData.totalAttackSpeed = 1.3f;
-                break;
-            case PlayerSelectionData.CharacterType.IronJuggernaut:
-            default:
-                playerData.totalMaxHp = 150;
-                playerData.totalMaxMana = 40;
-                playerData.totalAttackDamage = 20;
-                playerData.totalArmor = 12;
-                playerData.totalHitRate = 75f;
-                playerData.totalEvasionRate = 2f;
-                playerData.totalAttackSpeed = 0.8f;
-                break;
-        }
-
-        // Common stats
-        playerData.currentLevel = 1;
-        playerData.currentExp = 0;
-        playerData.expToNextLevel = 100;
-        playerData.totalCriticalChance = 5f;
-        playerData.totalCriticalMultiplier = 2f;
-        playerData.totalMoveSpeed = 5f;
-        playerData.totalAttackRange = 2f;
-        playerData.totalAttackCooldown = 1f;
-
-        Debug.Log($"Applied default stats for {selectedCharacter}");
-    }
-
-
-    // ========== UI Methods (เหมือนเดิม) ==========
+    // ========== UI Methods ==========
     private void ShowError(string message)
     {
         if (errorMessageText != null)
@@ -479,7 +384,7 @@ public class CharacterSelectionManager : MonoBehaviour
             loadingPanel.SetActive(show);
 
         confirmButton.interactable = !show;
-        playerNameInput.interactable = !show;
+        if (playerNameInput != null) playerNameInput.interactable = !show;
         bloodKnightButton.interactable = !show;
         archerButton.interactable = !show;
         assassinButton.interactable = !show;
@@ -537,6 +442,7 @@ public class CharacterSelectionManager : MonoBehaviour
             characterNameText.text = $"{GetDisplayName(characterType)} (New Character)";
         }
     }
+
     private void ShowCharacterLevels()
     {
         if (characterLevelsText == null) return;
@@ -565,17 +471,19 @@ public class CharacterSelectionManager : MonoBehaviour
 
         characterLevelsText.text = levelsText;
     }
+
     private string GetDisplayName(string characterType)
-{
-    switch (characterType)
     {
-        case "BloodKnight": return "Blood Knight";
-        case "Archer": return "Archer";
-        case "Assassin": return "Assassin";
-        case "IronJuggernaut": return "Iron Juggernaut";
-        default: return characterType;
+        switch (characterType)
+        {
+            case "BloodKnight": return "Blood Knight";
+            case "Archer": return "Archer";
+            case "Assassin": return "Assassin";
+            case "IronJuggernaut": return "Iron Juggernaut";
+            default: return characterType;
+        }
     }
-}
+
     private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)
     {
         switch (character)
@@ -648,16 +556,41 @@ public class CharacterSelectionManager : MonoBehaviour
     }
 
     // ========== Context Menu สำหรับ Debug ==========
-    [ContextMenu("Test Create Player Data")]
-    public void Debug_TestCreatePlayerData()
+    [ContextMenu("🧪 Test Create Multi-Character Player")]
+    public void Debug_TestCreateMultiCharacterPlayer()
     {
-        StartCoroutine(CreateAndSaveCompletePlayerData("TestPlayer"));
+        if (string.IsNullOrEmpty(playerNameInput.text))
+        {
+            playerNameInput.text = "TestPlayer";
+        }
+
+        StartCoroutine(CreateNewMultiCharacterPlayer(playerNameInput.text));
     }
 
-    [ContextMenu("Check Selected Character")]
+    [ContextMenu("🔍 Check Selected Character")]
     public void Debug_CheckSelectedCharacter()
     {
         Debug.Log($"Current Selected Character: {selectedCharacter}");
         Debug.Log($"PlayerSelectionData: {PlayerSelectionData.GetSelectedCharacter()}");
+    }
+
+    [ContextMenu("📊 Check PersistentPlayerData State")]
+    public void Debug_CheckPersistentPlayerDataState()
+    {
+        var instance = PersistentPlayerData.Instance;
+        Debug.Log($"=== PersistentPlayerData State ===");
+        Debug.Log($"📊 Has Valid Data: {instance.HasValidData()}");
+        Debug.Log($"👤 Player Name: {instance.GetPlayerName()}");
+        Debug.Log($"🎯 Active Character: {instance.GetCurrentActiveCharacter()}");
+
+        if (instance.multiCharacterData != null)
+        {
+            Debug.Log($"🎭 Total Characters: {instance.multiCharacterData.characters.Count}");
+            instance.multiCharacterData.LogAllCharacters();
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ multiCharacterData is null!");
+        }
     }
 }

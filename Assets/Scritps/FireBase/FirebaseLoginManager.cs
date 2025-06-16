@@ -308,8 +308,7 @@ public class FirebaseLoginManager : MonoBehaviour
         PersistentPlayerData.Instance.isDataLoaded = true;
 
         // ✅ Force sync currentPlayerData
-        PersistentPlayerData.Instance.Debug_ForceSyncCurrentPlayerData();
-
+        Debug.Log($"🔄 MultiCharacterPlayerData created with {newPlayerData.characters.Count} characters");
         // Save to Firebase (background)
         string json = JsonUtility.ToJson(newPlayerData, true);
         Debug.Log($"📝 Firebase JSON to save: {json.Substring(0, Mathf.Min(200, json.Length))}...");

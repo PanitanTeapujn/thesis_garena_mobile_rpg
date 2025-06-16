@@ -4,7 +4,8 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections;
 using System.Collections.Generic;
-    public class LobbyManager : MonoBehaviour
+
+public class LobbyManager : MonoBehaviour
 {
     [Header("UI Elements")]
     public TextMeshProUGUI playerNameText;
@@ -43,16 +44,15 @@ using System.Collections.Generic;
 
     [Header("Character Selection")]
     public Button characterSelectionButton;
-    public GameObject characterSelectionPanel; // Optional: In-lobby character selection
+    public GameObject characterSelectionPanel;
     public Button bloodKnightSelectButton;
     public Button archerSelectButton;
     public Button assassinSelectButton;
     public Button ironJuggernautSelectButton;
     public TextMeshProUGUI availableCharactersText;
 
-
     // Player data
-    private PlayerProgressData playerData;
+    private CharacterProgressData currentCharacterData;
     private bool isPlayerDataLoaded = false;
 
     void Start()
@@ -69,13 +69,12 @@ using System.Collections.Generic;
         if (PlayerPrefs.GetString("LastScene", "") == "CharacterSelection")
         {
             StartCoroutine(DelayedRefresh());
-            PlayerPrefs.DeleteKey("LastScene"); // Clear the flag
+            PlayerPrefs.DeleteKey("LastScene");
         }
     }
 
     void SetupEvents()
     {
-        // Subscribe to stage selection events
         StageSelectionManager.OnSoloGameSelected += HandleSoloGameSelected;
         StageSelectionManager.OnPartyGameSelected += HandlePartyGameSelected;
         StageSelectionManager.OnBackToLobby += HandleBackToLobby;
@@ -83,28 +82,32 @@ using System.Collections.Generic;
 
     void SetupButtons()
     {
-        // Main lobby buttons
         playButton.onClick.AddListener(ShowStageSelection);
         logoutButton.onClick.AddListener(Logout);
 
-        // Party buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
         backToLobbyFromPartyButton.onClick.AddListener(BackToMainLobby);
 
-        // Join room buttons
         joinButton.onClick.AddListener(JoinRoom);
         backToPartyButton.onClick.AddListener(ShowPartyOptions);
 
         if (characterSelectionButton != null)
             characterSelectionButton.onClick.AddListener(OpenCharacterSelection);
 
-        // In-lobby character selection buttons (if using panel instead of scene)
-       
+        // In-lobby character selection buttons
+        if (bloodKnightSelectButton != null)
+            bloodKnightSelectButton.onClick.AddListener(() => SwitchCharacter("BloodKnight"));
+        if (archerSelectButton != null)
+            archerSelectButton.onClick.AddListener(() => SwitchCharacter("Archer"));
+        if (assassinSelectButton != null)
+            assassinSelectButton.onClick.AddListener(() => SwitchCharacter("Assassin"));
+        if (ironJuggernautSelectButton != null)
+            ironJuggernautSelectButton.onClick.AddListener(() => SwitchCharacter("IronJuggernaut"));
     }
+
     private void OpenCharacterSelection()
     {
-        // ✅ Set flag ว่ามาจาก Lobby และไป Scene เสมอ
         PlayerPrefs.SetString("LastScene", "Lobby");
         SceneManager.LoadScene("CharacterSelection");
     }
@@ -112,27 +115,25 @@ using System.Collections.Generic;
     private void ShowCharacterSelectionPanel()
     {
         HideAllPanels();
-        characterSelectionPanel.SetActive(true);
-        UpdateAvailableCharactersList();
+        if (characterSelectionPanel != null)
+        {
+            characterSelectionPanel.SetActive(true);
+            UpdateAvailableCharactersList();
+        }
     }
 
     private void SwitchCharacter(string characterType)
     {
         Debug.Log($"[LobbyManager] Switching to character: {characterType}");
 
-        // Switch character in PersistentPlayerData
         PersistentPlayerData.Instance.SwitchCharacter(characterType);
-
-        // Update UI
         RefreshPlayerStats();
 
-        // Update PlayerSelectionData
         if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var characterEnum))
         {
             PlayerSelectionData.SaveCharacterSelection(characterEnum);
         }
 
-        // Hide character selection panel
         if (characterSelectionPanel != null)
             characterSelectionPanel.SetActive(false);
 
@@ -149,7 +150,6 @@ using System.Collections.Generic;
         string charactersList = $"<color=yellow>Current Active: {currentActive}</color>\n\n";
         charactersList += "<color=white>Available Characters:</color>\n";
 
-        // Show all 4 character types with their levels
         string[] allCharacterTypes = { "BloodKnight", "Archer", "Assassin", "IronJuggernaut" };
 
         foreach (string characterType in allCharacterTypes)
@@ -158,14 +158,12 @@ using System.Collections.Generic;
 
             if (characterData != null)
             {
-                // Character exists - show level and stats
                 string color = (characterType == currentActive) ? "yellow" : "white";
                 charactersList += $"<color={color}>• {characterType} - Level {characterData.currentLevel}</color>\n";
                 charactersList += $"   HP: {characterData.totalMaxHp}, ATK: {characterData.totalAttackDamage}\n";
             }
             else
             {
-                // Character not created yet - show as available
                 charactersList += $"<color=gray>• {characterType} - New Character</color>\n";
             }
         }
@@ -222,8 +220,8 @@ using System.Collections.Generic;
         partyOptionsPanel.SetActive(false);
         joinRoomPanel.SetActive(false);
 
-        // Add character selection panel
-        
+        if (characterSelectionPanel != null)
+            characterSelectionPanel.SetActive(false);
     }
 
     // ========== Party Management ==========
@@ -256,14 +254,16 @@ using System.Collections.Generic;
         SceneManager.LoadScene("CharacterSelection");
     }
 
-    // ========== Player Data Management (เหมือนเดิม) ==========
+    // ========== Player Data Management ==========
     private void ShowBasicPlayerInfo()
     {
-        playerNameText.text = PlayerPrefs.GetString("PlayerName", "Unknown");
+        string playerName = PlayerPrefs.GetString("PlayerName", "Unknown");
+        if (playerNameText != null)
+            playerNameText.text = playerName;
 
-        // ✅ แสดง default Assassin character
         string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
-        characterTypeText.text = savedCharacter;
+        if (characterTypeText != null)
+            characterTypeText.text = savedCharacter;
 
         if (playerLevelText != null)
         {
@@ -289,9 +289,7 @@ using System.Collections.Generic;
 
         if (PersistentPlayerData.Instance.HasValidData())
         {
-            // ✅ Force refresh to get latest character data
             RefreshPlayerStats();
-
             Debug.Log($"✅ [LobbyManager] Player stats loaded successfully");
         }
         else
@@ -301,83 +299,60 @@ using System.Collections.Generic;
         }
     }
 
-    private void UpdatePlayerSelectionDataFromFirebase()
-    {
-        if (playerData == null || string.IsNullOrEmpty(playerData.lastCharacterSelected)) return;
-
-        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(playerData.lastCharacterSelected, out var characterType))
-        {
-            PlayerSelectionData.SaveCharacterSelection(characterType);
-            Debug.Log($"[LobbyManager] ✅ Updated PlayerSelectionData to: {characterType} (from Firebase: {playerData.lastCharacterSelected})");
-        }
-        else
-        {
-            Debug.LogWarning($"[LobbyManager] Cannot parse character: {playerData.lastCharacterSelected}");
-        }
-    }
-
     private void LoadStatsFromPlayerPrefs()
     {
-        playerData = new PlayerProgressData();
-        playerData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
-        playerData.currentLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
-        playerData.currentExp = PlayerPrefs.GetInt("PlayerExp", 0);
-        playerData.expToNextLevel = PlayerPrefs.GetInt("PlayerExpToNext", 100);
-        playerData.totalMaxHp = PlayerPrefs.GetInt("PlayerMaxHp", 70);      // Assassin default
-        playerData.totalMaxMana = PlayerPrefs.GetInt("PlayerMaxMana", 40);  // Assassin default
-        playerData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 35); // Assassin default
-        playerData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 2);       // Assassin default
-
-        // ✅ Default character เป็น Assassin
-        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
-        playerData.lastCharacterSelected = savedCharacter;
+        currentCharacterData = new CharacterProgressData();
+        currentCharacterData.characterType = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
+        currentCharacterData.currentLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
+        currentCharacterData.currentExp = PlayerPrefs.GetInt("PlayerExp", 0);
+        currentCharacterData.expToNextLevel = PlayerPrefs.GetInt("PlayerExpToNext", 100);
+        currentCharacterData.totalMaxHp = PlayerPrefs.GetInt("PlayerMaxHp", 70);
+        currentCharacterData.totalMaxMana = PlayerPrefs.GetInt("PlayerMaxMana", 40);
+        currentCharacterData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 35);
+        currentCharacterData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 2);
 
         isPlayerDataLoaded = true;
         UpdatePlayerStatsUI();
-
     }
-
 
     private void UpdatePlayerStatsUI()
     {
-        if (!isPlayerDataLoaded || playerData == null) return;
+        if (!isPlayerDataLoaded || currentCharacterData == null) return;
 
         try
         {
-            // Get current active character name
             string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-
-            if (!string.IsNullOrEmpty(activeCharacter))
+            if (!string.IsNullOrEmpty(activeCharacter) && characterTypeText != null)
             {
                 characterTypeText.text = activeCharacter;
             }
 
             if (playerLevelText != null)
-                playerLevelText.text = $"Level {playerData.currentLevel}";
+                playerLevelText.text = $"Level {currentCharacterData.currentLevel}";
 
             if (playerExpText != null)
-                playerExpText.text = $"EXP: {playerData.currentExp}/{playerData.expToNextLevel}";
+                playerExpText.text = $"EXP: {currentCharacterData.currentExp}/{currentCharacterData.expToNextLevel}";
 
             if (expProgressSlider != null)
             {
-                float progress = playerData.expToNextLevel > 0 ?
-                    (float)playerData.currentExp / playerData.expToNextLevel : 1f;
+                float progress = currentCharacterData.expToNextLevel > 0 ?
+                    (float)currentCharacterData.currentExp / currentCharacterData.expToNextLevel : 1f;
                 expProgressSlider.value = progress;
             }
 
             if (hpText != null)
-                hpText.text = $"HP: {playerData.totalMaxHp}";
+                hpText.text = $"HP: {currentCharacterData.totalMaxHp}";
 
             if (manaText != null)
-                manaText.text = $"Mana: {playerData.totalMaxMana}";
+                manaText.text = $"Mana: {currentCharacterData.totalMaxMana}";
 
             if (attackText != null)
-                attackText.text = $"Attack: {playerData.totalAttackDamage}";
+                attackText.text = $"Attack: {currentCharacterData.totalAttackDamage}";
 
             if (armorText != null)
-                armorText.text = $"Armor: {playerData.totalArmor}";
+                armorText.text = $"Armor: {currentCharacterData.totalArmor}";
 
-            Debug.Log($"[LobbyManager] UI updated - Level {playerData.currentLevel}, Character: {activeCharacter}, HP {playerData.totalMaxHp}");
+            Debug.Log($"[LobbyManager] UI updated - Level {currentCharacterData.currentLevel}, Character: {activeCharacter}, HP {currentCharacterData.totalMaxHp}");
         }
         catch (System.Exception e)
         {
@@ -389,43 +364,26 @@ using System.Collections.Generic;
     {
         if (PersistentPlayerData.Instance.HasValidData())
         {
-            if (PersistentPlayerData.Instance.multiCharacterData != null)
+            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            CharacterProgressData activeCharacterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacter);
+
+            if (activeCharacterData != null)
             {
-                // ✅ ใช้ Multi-Character System
-                string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-                CharacterProgressData activeCharacterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacter);
+                currentCharacterData = activeCharacterData;
+                isPlayerDataLoaded = true;
 
-                if (activeCharacterData != null)
+                if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out var characterEnum))
                 {
-                    // Convert to PlayerProgressData for compatibility
-                    playerData = activeCharacterData.ToPlayerProgressData(PersistentPlayerData.Instance.multiCharacterData.playerName);
-                    isPlayerDataLoaded = true;
-
-                    // ✅ Update PlayerSelectionData as well
-                    if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out var characterEnum))
-                    {
-                        PlayerSelectionData.SaveCharacterSelection(characterEnum);
-                    }
-
-                    UpdatePlayerStatsUI();
-
-                    Debug.Log($"✅ [LobbyManager] Refreshed stats for {activeCharacter} - Level {activeCharacterData.currentLevel}");
+                    PlayerSelectionData.SaveCharacterSelection(characterEnum);
                 }
-                else
-                {
-                    Debug.LogWarning($"[LobbyManager] No character data found for {activeCharacter}");
-                }
+
+                UpdatePlayerStatsUI();
+
+                Debug.Log($"✅ [LobbyManager] Refreshed stats for {activeCharacter} - Level {activeCharacterData.currentLevel}");
             }
             else
             {
-                // Fallback to old system
-                playerData = PersistentPlayerData.Instance.GetPlayerData();
-                if (playerData != null)
-                {
-                    isPlayerDataLoaded = true;
-                    UpdatePlayerSelectionDataFromFirebase();
-                    UpdatePlayerStatsUI();
-                }
+                Debug.LogWarning($"[LobbyManager] No character data found for {activeCharacter}");
             }
         }
         else
@@ -433,11 +391,11 @@ using System.Collections.Generic;
             Debug.LogWarning("[LobbyManager] No valid data available for refresh");
         }
     }
+
     void OnApplicationFocus(bool hasFocus)
     {
         if (hasFocus)
         {
-            // ✅ Refresh stats when returning to lobby
             StartCoroutine(DelayedRefresh());
         }
     }
@@ -448,6 +406,7 @@ using System.Collections.Generic;
         RefreshPlayerStats();
         Debug.Log("[LobbyManager] Refreshed stats after returning to lobby");
     }
+
     // ========== Debug Methods ==========
     [ContextMenu("Refresh Player Stats")]
     public void Debug_RefreshStats()
@@ -458,9 +417,9 @@ using System.Collections.Generic;
     [ContextMenu("Log Player Data")]
     public void Debug_LogPlayerData()
     {
-        if (playerData != null)
+        if (currentCharacterData != null)
         {
-            playerData.LogProgressInfo();
+            Debug.Log($"Character: {currentCharacterData.characterType}, Level: {currentCharacterData.currentLevel}, HP: {currentCharacterData.totalMaxHp}");
             Debug.Log($"PlayerSelectionData says: {PlayerSelectionData.GetSelectedCharacter()}");
         }
         else
@@ -471,7 +430,6 @@ using System.Collections.Generic;
 
     void OnDestroy()
     {
-        // Unsubscribe from events
         StageSelectionManager.OnSoloGameSelected -= HandleSoloGameSelected;
         StageSelectionManager.OnPartyGameSelected -= HandlePartyGameSelected;
         StageSelectionManager.OnBackToLobby -= HandleBackToLobby;
