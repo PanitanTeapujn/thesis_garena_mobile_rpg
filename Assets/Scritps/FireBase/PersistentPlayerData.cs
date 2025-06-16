@@ -3,19 +3,20 @@ using Firebase.Auth;
 using Firebase.Database;
 using System.Collections;
 using System.Collections.Generic;
+
 /// <summary>
-/// Ultra Lightweight PersistentPlayerData - ไม่มี blocking operations + Better Character Handling
+/// ✅ Fixed PersistentPlayerData - ใช้ MultiCharacterPlayerData เป็นหลัก
 /// </summary>
 public class PersistentPlayerData : MonoBehaviour
 {
-    [Header("Player Data")]
-    public PlayerProgressData currentPlayerData;
+    [Header("Multi-Character Data")]
+    public MultiCharacterPlayerData multiCharacterData;
     public bool isDataLoaded = false;
 
+    // ✅ เก็บไว้เพื่อ backward compatibility แต่จะถูกอัพเดทอัตโนมัติ
+    [Header("Legacy Support (Auto-Updated)")]
+    public PlayerProgressData currentPlayerData;
 
-    [Header("Multi-Character Support")]
-    public MultiCharacterPlayerData multiCharacterData;
-    public FirebaseLoginManager loginManager;
     // Singleton
     private static PersistentPlayerData _instance;
     public static PersistentPlayerData Instance
@@ -59,11 +60,34 @@ public class PersistentPlayerData : MonoBehaviour
         databaseReference = FirebaseDatabase.DefaultInstance.RootReference;
     }
 
+    // ========== Helper Methods ==========
+    public CharacterProgressData GetCurrentCharacterData()
+    {
+        if (multiCharacterData == null) return null;
+        return multiCharacterData.GetActiveCharacterData();
+    }
+
+    public string GetPlayerName()
+    {
+        return multiCharacterData?.playerName ?? "Player";
+    }
+
+    public int GetCurrentLevel()
+    {
+        var characterData = GetCurrentCharacterData();
+        return characterData?.currentLevel ?? 1;
+    }
+
+    public int GetCurrentExp()
+    {
+        var characterData = GetCurrentCharacterData();
+        return characterData?.currentExp ?? 0;
+    }
+
     // ========== NON-BLOCKING Load ==========
     public void LoadPlayerDataAsync()
     {
         if (isDataLoaded) return;
-
         StartCoroutine(LoadDataCoroutine());
     }
 
@@ -91,7 +115,6 @@ public class PersistentPlayerData : MonoBehaviour
         if (task.IsCompleted && task.Exception == null && task.Result.Exists)
         {
             string json = task.Result.GetRawJsonValue();
-
             bool loaded = false;
 
             // Try to load as MultiCharacterPlayerData first
@@ -100,9 +123,8 @@ public class PersistentPlayerData : MonoBehaviour
                 multiCharacterData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
                 if (multiCharacterData != null && multiCharacterData.IsValid())
                 {
-                    // Set current character data
-                    CharacterProgressData activeCharacter = multiCharacterData.GetActiveCharacterData();
-                    currentPlayerData = activeCharacter.ToPlayerProgressData(multiCharacterData.playerName);
+                    // ✅ อัพเดท currentPlayerData อัตโนมัติ
+                    SyncCurrentPlayerData();
 
                     isDataLoaded = true;
                     loaded = true;
@@ -128,6 +150,7 @@ public class PersistentPlayerData : MonoBehaviour
             CreateDefaultMultiCharacterData();
         }
     }
+
     private IEnumerator ConvertOldDataToMultiCharacter(string json)
     {
         try
@@ -166,14 +189,22 @@ public class PersistentPlayerData : MonoBehaviour
                 convertedCharacter.totalMoveSpeed = oldData.totalMoveSpeed;
                 convertedCharacter.totalAttackRange = oldData.totalAttackRange;
                 convertedCharacter.totalAttackCooldown = oldData.totalAttackCooldown;
-
-                // ✅ เพิ่มการ convert accuracy stats
                 convertedCharacter.totalHitRate = oldData.totalHitRate;
                 convertedCharacter.totalEvasionRate = oldData.totalEvasionRate;
                 convertedCharacter.totalAttackSpeed = oldData.totalAttackSpeed;
 
                 // ✅ ถ้า old data ไม่มี accuracy stats ให้โหลดจาก ScriptableObject
-               
+                if (convertedCharacter.totalHitRate == 0 || convertedCharacter.totalEvasionRate == 0 || convertedCharacter.totalAttackSpeed == 0)
+                {
+                    CharacterStats characterStats = GetCharacterStatsForCharacterType(oldCharacterType);
+                    if (characterStats != null)
+                    {
+                        convertedCharacter.totalHitRate = characterStats.hitRate;
+                        convertedCharacter.totalEvasionRate = characterStats.evasionRate;
+                        convertedCharacter.totalAttackSpeed = characterStats.attackSpeed;
+                        Debug.Log($"✅ Applied missing accuracy stats from ScriptableObject for {oldCharacterType}");
+                    }
+                }
 
                 // Remove default Assassin if we're converting different character
                 if (oldCharacterType != "Assassin")
@@ -191,8 +222,8 @@ public class PersistentPlayerData : MonoBehaviour
                     multiCharacterData.characters[0] = convertedCharacter;
                 }
 
-                // Set current player data
-                currentPlayerData = convertedCharacter.ToPlayerProgressData(multiCharacterData.playerName);
+                // ✅ อัพเดท currentPlayerData
+                SyncCurrentPlayerData();
 
                 isDataLoaded = true;
                 SaveToPlayerPrefs();
@@ -213,101 +244,61 @@ public class PersistentPlayerData : MonoBehaviour
         CreateDefaultMultiCharacterData();
     }
 
+    // ✅ Helper method to get CharacterStats
+    private CharacterStats GetCharacterStatsForCharacterType(string characterType)
+    {
+        switch (characterType)
+        {
+            case "BloodKnight":
+                return Resources.Load<CharacterStats>("Characters/BloodKnightStats");
+            case "Archer":
+                return Resources.Load<CharacterStats>("Characters/ArcherStats");
+            case "Assassin":
+                return Resources.Load<CharacterStats>("Characters/AssassinStats");
+            case "IronJuggernaut":
+                return Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
+            default:
+                return null;
+        }
+    }
 
     private void CreateDefaultMultiCharacterData()
     {
         multiCharacterData = new MultiCharacterPlayerData();
         multiCharacterData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
+        multiCharacterData.currentActiveCharacter = "Assassin";
 
-        // Set current character data
-        CharacterProgressData activeCharacter = multiCharacterData.GetActiveCharacterData();
-        currentPlayerData = activeCharacter.ToPlayerProgressData(multiCharacterData.playerName);
-
-        isDataLoaded = true;
-        SaveToPlayerPrefs();
-
-        Debug.Log($"✅ Created default multi-character data with Assassin");
-    }
-    // ========== NEW: Convert Old Data Format ==========
-    private IEnumerator ConvertOldDataFormat(string json)
-    {
-        try
-        {
-            // ลองแปลงจาก SimplePlayerData format
-            var oldData = JsonUtility.FromJson<FirebaseLoginManager.SimplePlayerData>(json);
-
-            if (oldData != null && !string.IsNullOrEmpty(oldData.playerName))
-            {
-                Debug.Log($"[PersistentPlayerData] Converting old data for {oldData.playerName}, Character: {oldData.lastCharacterSelected}");
-
-                // สร้าง PlayerProgressData ใหม่จากข้อมูลเก่า
-                currentPlayerData = new PlayerProgressData();
-                currentPlayerData.playerName = oldData.playerName;
-                currentPlayerData.lastCharacterSelected = oldData.lastCharacterSelected; // ✅ ตรงนี้สำคัญ!
-                currentPlayerData.registrationDate = oldData.registrationDate;
-                currentPlayerData.lastLoginDate = oldData.lastLoginDate;
-
-                // Apply character stats ตามตัวละครที่เลือก
-/*                ApplyCharacterStats(currentPlayerData.lastCharacterSelected);
-*/
-                isDataLoaded = true;
-                SaveToPlayerPrefs();
-
-                // บันทึกข้อมูลใหม่กลับ Firebase
-                SavePlayerDataAsync();
-
-                Debug.Log($"✅ Converted and saved: {currentPlayerData.playerName}, Character: {currentPlayerData.lastCharacterSelected}");
-                currentPlayerData.LogProgressInfo();
-                yield break;
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"[PersistentPlayerData] Failed to convert old data: {e.Message}");
-        }
-
-        // ถ้าแปลงไม่ได้ ใช้ default
-        CreateDefaultData();
-    }
-
-
-
-    // ========== Fast Default Creation ==========
-    private void CreateDefaultData()
-    {
-        // ✅ สร้าง MultiCharacterPlayerData แทน PlayerProgressData
-        multiCharacterData = new MultiCharacterPlayerData();
-        multiCharacterData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
-        multiCharacterData.currentActiveCharacter = "Assassin"; // ✅ Default เป็น Assassin
-
-        // Get default Assassin data
-        CharacterProgressData assassinData = multiCharacterData.GetActiveCharacterData();
-
-        // Set currentPlayerData for compatibility
-        currentPlayerData = assassinData.ToPlayerProgressData(multiCharacterData.playerName);
+        // ✅ อัพเดท currentPlayerData
+        SyncCurrentPlayerData();
 
         isDataLoaded = true;
         SaveToPlayerPrefs();
 
         Debug.Log($"✅ Created default multi-character data with Assassin for {multiCharacterData.playerName}");
     }
-    private void SetupPlayerDataQuick()
+
+    // ✅ Sync currentPlayerData จาก multiCharacterData
+    private void SyncCurrentPlayerData()
     {
-        // Setup basic PlayerPrefs immediately
-        string playerName = loginManager.nameInput.text.Trim();
-        PlayerPrefs.SetString("PlayerName", playerName);
-        PlayerPrefs.SetString("PlayerId", loginManager.user.UserId);
+        if (multiCharacterData == null) return;
 
-        // ✅ Set default character เป็น Assassin
-        PlayerSelectionData.SaveCharacterSelection(PlayerSelectionData.CharacterType.Assassin);
-        PlayerPrefs.SetString("LastCharacterSelected", "Assassin");
-
-        Debug.Log($"✅ Quick setup completed for {playerName} with default Assassin");
+        CharacterProgressData activeCharacter = multiCharacterData.GetActiveCharacterData();
+        if (activeCharacter != null)
+        {
+            currentPlayerData = activeCharacter.ToPlayerProgressData(multiCharacterData.playerName);
+            Debug.Log($"🔄 Synced currentPlayerData for {multiCharacterData.currentActiveCharacter}");
+        }
     }
+
     // ========== NON-BLOCKING Save ==========
     public void SavePlayerDataAsync()
     {
-        if (currentPlayerData == null || auth?.CurrentUser == null) return;
+        // ✅ เปลี่ยนเป็นเช็ค multiCharacterData แทน
+        if (multiCharacterData == null || auth?.CurrentUser == null)
+        {
+            Debug.LogWarning("[PersistentPlayerData] Cannot save - no data or not authenticated");
+            return;
+        }
 
         StartCoroutine(SaveDataCoroutine());
     }
@@ -326,113 +317,95 @@ public class PersistentPlayerData : MonoBehaviour
         string json = JsonUtility.ToJson(multiCharacterData, true);
         var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).SetRawJsonValueAsync(json);
 
-        // Fire and forget
-        yield return new WaitForSeconds(0.1f);
+        // Wait a bit to ensure save starts
+        yield return new WaitForSeconds(0.5f);
 
         SaveToPlayerPrefs();
         Debug.Log($"💾 Saving multi-character data for {multiCharacterData.playerName} (async)");
-    }
 
+        // Check if save completed
+        if (task.IsCompleted)
+        {
+            if (task.Exception != null)
+            {
+                Debug.LogError($"❌ Failed to save to Firebase: {task.Exception.Message}");
+            }
+            else
+            {
+                Debug.Log($"✅ Successfully saved to Firebase");
+            }
+        }
+    }
 
     // ========== Quick Update ==========
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-    int attackDamage, int armor, float critChance, float moveSpeed,
-    float hitRate, float evasionRate, float attackSpeed)
+        int attackDamage, int armor, float critChance, float moveSpeed,
+        float hitRate, float evasionRate, float attackSpeed)
     {
-        if (currentPlayerData == null) return;
+        if (multiCharacterData == null) return;
 
-        // Update current PlayerProgressData
-        currentPlayerData.currentLevel = level;
-        currentPlayerData.currentExp = exp;
-        currentPlayerData.expToNextLevel = expToNext;
-        currentPlayerData.totalMaxHp = maxHp;
-        currentPlayerData.totalMaxMana = maxMana;
-        currentPlayerData.totalAttackDamage = attackDamage;
-        currentPlayerData.totalArmor = armor;
-        currentPlayerData.totalCriticalChance = critChance;
-        currentPlayerData.totalMoveSpeed = moveSpeed;
-        currentPlayerData.totalHitRate = hitRate;
-        currentPlayerData.totalEvasionRate = evasionRate;
-        currentPlayerData.totalAttackSpeed = attackSpeed;
+        // Update ตัวละครปัจจุบันใน MultiCharacterPlayerData
+        multiCharacterData.UpdateCharacterStats(
+            multiCharacterData.currentActiveCharacter,
+            level, exp, expToNext, maxHp, maxMana, attackDamage, armor,
+            critChance, moveSpeed, hitRate, evasionRate, attackSpeed);
 
-        // Update multi-character data
-        if (multiCharacterData != null)
-        {
-            multiCharacterData.UpdateCharacterStats(
-                multiCharacterData.currentActiveCharacter,
-                level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed,
-                hitRate, evasionRate, attackSpeed
-            );
-        }
+        // ✅ อัพเดท currentPlayerData ด้วย
+        SyncCurrentPlayerData();
 
         SaveToPlayerPrefs();
         SavePlayerDataAsync();
-    }
 
-    public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-    int attackDamage, int armor, float critChance, float moveSpeed)
-    {
-        // ใช้ค่า accuracy stats ปัจจุบัน
-        float hitRate = currentPlayerData?.totalHitRate ?? 85f;
-        float evasionRate = currentPlayerData?.totalEvasionRate ?? 5f;
-        float attackSpeed = currentPlayerData?.totalAttackSpeed ?? 1f;
-
-        UpdateLevelAndStats(level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed,
-            hitRate, evasionRate, attackSpeed);
-    }
-
-    // ========== NEW: Update Character Selection ==========
-    public void UpdateCharacterSelection(PlayerSelectionData.CharacterType character)
-    {
-        if (currentPlayerData == null) return;
-
-        string oldCharacter = currentPlayerData.lastCharacterSelected;
-        currentPlayerData.lastCharacterSelected = character.ToString();
-
-        Debug.Log($"[PersistentPlayerData] Character changed: {oldCharacter} → {character}");
-
-        SaveToPlayerPrefs();
-        SavePlayerDataAsync();
+        Debug.Log($"📊 Updated stats for {multiCharacterData.currentActiveCharacter}: Level {level}");
     }
 
     // ========== PlayerPrefs Cache ==========
     private void SaveToPlayerPrefs()
     {
-        if (currentPlayerData == null) return;
+        if (multiCharacterData == null) return;
 
-        PlayerPrefs.SetString("PlayerName", currentPlayerData.playerName);
-        PlayerPrefs.SetString("LastCharacterSelected", currentPlayerData.lastCharacterSelected); // ✅ บันทึก character ด้วย
-        PlayerPrefs.SetInt("PlayerLevel", currentPlayerData.currentLevel);
-        PlayerPrefs.SetInt("PlayerExp", currentPlayerData.currentExp);
-        PlayerPrefs.SetInt("PlayerExpToNext", currentPlayerData.expToNextLevel);
-        PlayerPrefs.SetInt("PlayerMaxHp", currentPlayerData.totalMaxHp);
-        PlayerPrefs.SetInt("PlayerMaxMana", currentPlayerData.totalMaxMana);
-        PlayerPrefs.SetInt("PlayerAttackDamage", currentPlayerData.totalAttackDamage);
-        PlayerPrefs.SetInt("PlayerArmor", currentPlayerData.totalArmor);
-        PlayerPrefs.SetFloat("PlayerCritChance", currentPlayerData.totalCriticalChance);
-        PlayerPrefs.SetFloat("PlayerMoveSpeed", currentPlayerData.totalMoveSpeed);
-        PlayerPrefs.SetFloat("PlayerHitRate", currentPlayerData.totalHitRate);
-        PlayerPrefs.SetFloat("PlayerEvasionRate", currentPlayerData.totalEvasionRate);
-        PlayerPrefs.SetFloat("PlayerAttackSpeed", currentPlayerData.totalAttackSpeed);
+        var currentCharacter = GetCurrentCharacterData();
+        if (currentCharacter == null)
+        {
+            Debug.LogWarning("[PersistentPlayerData] No current character data to save to PlayerPrefs");
+            return;
+        }
+
+        PlayerPrefs.SetString("PlayerName", multiCharacterData.playerName);
+        PlayerPrefs.SetString("LastCharacterSelected", multiCharacterData.currentActiveCharacter);
+        PlayerPrefs.SetInt("PlayerLevel", currentCharacter.currentLevel);
+        PlayerPrefs.SetInt("PlayerExp", currentCharacter.currentExp);
+        PlayerPrefs.SetInt("PlayerExpToNext", currentCharacter.expToNextLevel);
+        PlayerPrefs.SetInt("PlayerMaxHp", currentCharacter.totalMaxHp);
+        PlayerPrefs.SetInt("PlayerMaxMana", currentCharacter.totalMaxMana);
+        PlayerPrefs.SetInt("PlayerAttackDamage", currentCharacter.totalAttackDamage);
+        PlayerPrefs.SetInt("PlayerArmor", currentCharacter.totalArmor);
+        PlayerPrefs.SetFloat("PlayerCritChance", currentCharacter.totalCriticalChance);
+        PlayerPrefs.SetFloat("PlayerMoveSpeed", currentCharacter.totalMoveSpeed);
+        PlayerPrefs.SetFloat("PlayerHitRate", currentCharacter.totalHitRate);
+        PlayerPrefs.SetFloat("PlayerEvasionRate", currentCharacter.totalEvasionRate);
+        PlayerPrefs.SetFloat("PlayerAttackSpeed", currentCharacter.totalAttackSpeed);
         PlayerPrefs.Save();
+
+        Debug.Log($"💾 Saved to PlayerPrefs: {multiCharacterData.currentActiveCharacter} Level {currentCharacter.currentLevel}");
     }
 
     // ========== Public Methods ==========
-    public bool HasValidData() => isDataLoaded && currentPlayerData?.IsValid() == true;
+    public bool HasValidData()
+    {
+        return isDataLoaded &&
+               multiCharacterData?.IsValid() == true &&
+               GetCurrentCharacterData() != null;
+    }
+
     public PlayerProgressData GetPlayerData() => currentPlayerData;
     public void ForceSave() => SavePlayerDataAsync();
 
-    // ========== NEW: Character Methods ==========
+    // ========== Character Methods ==========
     public string GetCurrentCharacter()
     {
-        return currentPlayerData?.lastCharacterSelected ?? "IronJuggernaut";
+        return multiCharacterData?.currentActiveCharacter ?? "Assassin";
     }
-
-    public void SetCurrentCharacter(PlayerSelectionData.CharacterType character)
-    {
-        UpdateCharacterSelection(character);
-    }
-
 
     public void SwitchCharacter(string characterType)
     {
@@ -447,9 +420,8 @@ public class PersistentPlayerData : MonoBehaviour
         // Switch to new character
         multiCharacterData.SwitchActiveCharacter(characterType);
 
-        // Update currentPlayerData to reflect new character
-        CharacterProgressData newCharacterData = multiCharacterData.GetActiveCharacterData();
-        currentPlayerData = newCharacterData.ToPlayerProgressData(multiCharacterData.playerName);
+        // ✅ อัพเดท currentPlayerData
+        SyncCurrentPlayerData();
 
         // Update PlayerPrefs
         SaveToPlayerPrefs();
@@ -498,10 +470,11 @@ public class PersistentPlayerData : MonoBehaviour
             currentPlayerData.totalHitRate,
             currentPlayerData.totalEvasionRate,
             currentPlayerData.totalAttackSpeed
-
-
         );
+
+        Debug.Log($"💾 Saved current character progress for {currentCharacterType}");
     }
+
     // ========== Context Menu ==========
     [ContextMenu("Quick Load")]
     public void Debug_QuickLoad() => LoadPlayerDataAsync();
@@ -509,11 +482,25 @@ public class PersistentPlayerData : MonoBehaviour
     [ContextMenu("Quick Save")]
     public void Debug_QuickSave() => SavePlayerDataAsync();
 
+    [ContextMenu("Force Sync CurrentPlayerData")]
+    public void Debug_ForceSyncCurrentPlayerData()
+    {
+        SyncCurrentPlayerData();
+        Debug.Log("🔄 Force synced currentPlayerData");
+    }
+
     [ContextMenu("Log Current Data")]
     public void Debug_LogCurrentData()
     {
+        if (multiCharacterData != null)
+        {
+            Debug.Log("=== Multi-Character Data ===");
+            multiCharacterData.LogAllCharacters();
+        }
+
         if (currentPlayerData != null)
         {
+            Debug.Log("=== Current Player Data ===");
             currentPlayerData.LogProgressInfo();
         }
         else
@@ -527,6 +514,31 @@ public class PersistentPlayerData : MonoBehaviour
     {
         isDataLoaded = false;
         currentPlayerData = null;
-        CreateDefaultData();
+        multiCharacterData = null;
+        CreateDefaultMultiCharacterData();
+    }
+
+    [ContextMenu("Check Data Integrity")]
+    public void Debug_CheckDataIntegrity()
+    {
+        Debug.Log("=== Data Integrity Check ===");
+        Debug.Log($"🔍 isDataLoaded: {isDataLoaded}");
+        Debug.Log($"🔍 multiCharacterData: {(multiCharacterData != null ? "✅" : "❌")}");
+        Debug.Log($"🔍 currentPlayerData: {(currentPlayerData != null ? "✅" : "❌")}");
+        Debug.Log($"🔍 HasValidData(): {HasValidData()}");
+
+        if (multiCharacterData != null)
+        {
+            Debug.Log($"🔍 Active Character: {multiCharacterData.currentActiveCharacter}");
+            Debug.Log($"🔍 Character Count: {multiCharacterData.characters.Count}");
+        }
+
+        var currentCharacter = GetCurrentCharacterData();
+        if (currentCharacter != null)
+        {
+            Debug.Log($"🔍 Current Character Level: {currentCharacter.currentLevel}");
+            Debug.Log($"🔍 Current Character HP: {currentCharacter.totalMaxHp}");
+            Debug.Log($"🔍 Current Character Attack: {currentCharacter.totalAttackDamage}");
+        }
     }
 }

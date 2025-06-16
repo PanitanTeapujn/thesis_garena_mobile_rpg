@@ -156,13 +156,13 @@ public class FirebaseLoginManager : MonoBehaviour
 
             UpdateLastLogin();
 
-            // Quick setup - ไม่รอให้ Firebase load เสร็จ
+            // ✅ Setup ข้อมูลพื้นฐาน
             SetupPlayerDataQuick();
 
             // Start loading data in background
             PersistentPlayerData.Instance.LoadPlayerDataAsync();
 
-            // ไปหน้าต่อไปเลย
+            // ไปหน้าต่อไป
             SceneManager.LoadScene("Lobby");
         }
     }
@@ -199,39 +199,69 @@ public class FirebaseLoginManager : MonoBehaviour
             user = registerTask.Result.User;
             Debug.Log($"Registration successful: {user.Email}");
 
-            // Quick setup for new user with default Assassin
+            // ✅ สร้างผู้เล่นใหม่ด้วย default Assassin stats ที่ถูกต้อง
             SetupNewPlayerWithDefaultAssassin();
 
             // Create Firebase data in background
             StartCoroutine(CreateFirebaseDataAsync());
 
-            // ✅ เปลี่ยนจาก CharacterSelection เป็น Lobby
             SceneManager.LoadScene("Lobby");
         }
     }
+
+    // ✅ แก้ไข SetupNewPlayerWithDefaultAssassin ให้ครบถ้วน
     private void SetupNewPlayerWithDefaultAssassin()
     {
         string playerName = nameInput.text.Trim();
         PlayerPrefs.SetString("PlayerName", playerName);
         PlayerPrefs.SetString("PlayerId", user.UserId);
 
-        // ✅ Set default character เป็น Assassin
+        // Set default character เป็น Assassin
         PlayerSelectionData.SaveCharacterSelection(PlayerSelectionData.CharacterType.Assassin);
         PlayerPrefs.SetString("LastCharacterSelected", "Assassin");
 
-        // Set basic default Assassin stats in PlayerPrefs
-        PlayerPrefs.SetInt("PlayerLevel", 1);
-        PlayerPrefs.SetInt("PlayerExp", 0);
-        PlayerPrefs.SetInt("PlayerMaxHp", 70);      // Assassin HP
-        PlayerPrefs.SetInt("PlayerMaxMana", 40);    // Assassin Mana  
-        PlayerPrefs.SetInt("PlayerAttackDamage", 35); // Assassin Attack
-        PlayerPrefs.SetInt("PlayerArmor", 2);       // Assassin Armor
-        PlayerPrefs.SetFloat("PlayerCritChance", 5f);
-        PlayerPrefs.SetFloat("PlayerMoveSpeed", 6.5f); // Assassin Speed
-        PlayerPrefs.SetFloat("PlayerHitRate", 85f);    // Assassin Hit Rate
-        PlayerPrefs.SetFloat("PlayerEvasionRate", 12f); // Assassin Evasion
-        PlayerPrefs.SetFloat("PlayerAttackSpeed", 1.3f); // Assassin Attack Speed
-        Debug.Log($"✅ New player setup completed with default Assassin for {playerName}");
+        // ✅ โหลด Assassin stats จาก ScriptableObject
+        CharacterStats assassinStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
+
+        if (assassinStats != null)
+        {
+            // ใช้ stats จาก ScriptableObject
+            PlayerPrefs.SetInt("PlayerLevel", 1);
+            PlayerPrefs.SetInt("PlayerExp", 0);
+            PlayerPrefs.SetInt("PlayerExpToNext", 100);
+            PlayerPrefs.SetInt("PlayerMaxHp", assassinStats.maxHp);
+            PlayerPrefs.SetInt("PlayerMaxMana", assassinStats.maxMana);
+            PlayerPrefs.SetInt("PlayerAttackDamage", assassinStats.attackDamage);
+            PlayerPrefs.SetInt("PlayerArmor", assassinStats.arrmor);
+            PlayerPrefs.SetFloat("PlayerCritChance", assassinStats.criticalChance);
+            PlayerPrefs.SetFloat("PlayerMoveSpeed", assassinStats.moveSpeed);
+            PlayerPrefs.SetFloat("PlayerHitRate", assassinStats.hitRate);
+            PlayerPrefs.SetFloat("PlayerEvasionRate", assassinStats.evasionRate);
+            PlayerPrefs.SetFloat("PlayerAttackSpeed", assassinStats.attackSpeed);
+
+            Debug.Log($"✅ New player setup with ScriptableObject Assassin stats: HP={assassinStats.maxHp}, ATK={assassinStats.attackDamage}");
+        }
+        else
+        {
+            // Fallback ถ้าหา ScriptableObject ไม่เจอ
+            PlayerPrefs.SetInt("PlayerLevel", 1);
+            PlayerPrefs.SetInt("PlayerExp", 0);
+            PlayerPrefs.SetInt("PlayerExpToNext", 100);
+            PlayerPrefs.SetInt("PlayerMaxHp", 70);      // Assassin HP
+            PlayerPrefs.SetInt("PlayerMaxMana", 40);    // Assassin Mana  
+            PlayerPrefs.SetInt("PlayerAttackDamage", 35); // Assassin Attack
+            PlayerPrefs.SetInt("PlayerArmor", 2);       // Assassin Armor
+            PlayerPrefs.SetFloat("PlayerCritChance", 5f);
+            PlayerPrefs.SetFloat("PlayerMoveSpeed", 6.5f); // Assassin Speed
+            PlayerPrefs.SetFloat("PlayerHitRate", 85f);    // Assassin Hit Rate
+            PlayerPrefs.SetFloat("PlayerEvasionRate", 12f); // Assassin Evasion
+            PlayerPrefs.SetFloat("PlayerAttackSpeed", 1.3f); // Assassin Attack Speed
+
+            Debug.LogWarning("⚠️ AssassinStats ScriptableObject not found, using fallback values");
+        }
+
+        PlayerPrefs.Save();
+        Debug.Log($"✅ New player setup completed for {playerName}");
     }
 
     // ========== Quick Setup Methods (No Blocking) ==========
@@ -243,64 +273,54 @@ public class FirebaseLoginManager : MonoBehaviour
         PlayerPrefs.SetString("PlayerId", user.UserId);
 
         // Set character selection from previous session if exists
-        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "IronJuggernaut");
+        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
         if (Enum.TryParse<PlayerSelectionData.CharacterType>(savedCharacter, out var charType))
         {
             PlayerSelectionData.SaveCharacterSelection(charType);
         }
 
-        Debug.Log($"✅ Quick setup completed for {playerName}");
-    }
-
-    private void SetupNewPlayerDataQuick()
-    {
-        string playerName = nameInput.text.Trim();
-        PlayerPrefs.SetString("PlayerName", playerName);
-        PlayerPrefs.SetString("PlayerId", user.UserId);
-        PlayerSelectionData.SaveCharacterSelection(PlayerSelectionData.CharacterType.IronJuggernaut);
-
-        // Set basic default stats in PlayerPrefs
-        PlayerPrefs.SetInt("PlayerLevel", 1);
-        PlayerPrefs.SetInt("PlayerExp", 0);
-        PlayerPrefs.SetInt("PlayerMaxHp", 100);
-        PlayerPrefs.SetInt("PlayerMaxMana", 50);
-        PlayerPrefs.SetInt("PlayerAttackDamage", 20);
-        PlayerPrefs.SetInt("PlayerArmor", 5);
-        PlayerPrefs.SetFloat("PlayerCritChance", 5f);
-        PlayerPrefs.SetFloat("PlayerMoveSpeed", 5f);
-
-        Debug.Log($"✅ New player quick setup completed for {playerName}");
+        Debug.Log($"✅ Quick setup completed for {playerName} with character {savedCharacter}");
     }
 
     // ========== Background Firebase Operations ==========
     private IEnumerator CreateFirebaseDataAsync()
     {
-        // ✅ เปลี่ยนจาก MultiCharacterPlayerData แทน PlayerProgressData
+        // ✅ สร้าง MultiCharacterPlayerData ที่ถูกต้อง
         MultiCharacterPlayerData newPlayerData = new MultiCharacterPlayerData();
         newPlayerData.playerName = nameInput.text.Trim();
-        newPlayerData.currentActiveCharacter = "Assassin"; // ✅ Set default เป็น Assassin
+        newPlayerData.currentActiveCharacter = "Assassin";
         newPlayerData.registrationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newPlayerData.lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // Default Assassin จะถูกสร้างอัตโนมัติใน constructor ของ MultiCharacterPlayerData
+        // ✅ ตรวจสอบว่า Assassin data ถูกสร้างแล้วและมี stats ถูกต้อง
+        CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
+        if (assassinData != null)
+        {
+            Debug.Log($"✅ Assassin data created: Level {assassinData.currentLevel}, HP {assassinData.totalMaxHp}, ATK {assassinData.totalAttackDamage}");
+        }
+        else
+        {
+            Debug.LogError("❌ Failed to create Assassin data!");
+        }
 
         // Save to PersistentPlayerData
         PersistentPlayerData.Instance.multiCharacterData = newPlayerData;
         PersistentPlayerData.Instance.isDataLoaded = true;
 
-        // Set currentPlayerData for compatibility
-        CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
-        PersistentPlayerData.Instance.currentPlayerData = assassinData.ToPlayerProgressData(newPlayerData.playerName);
+        // ✅ Force sync currentPlayerData
+        PersistentPlayerData.Instance.Debug_ForceSyncCurrentPlayerData();
 
         // Save to Firebase (background)
         string json = JsonUtility.ToJson(newPlayerData, true);
+        Debug.Log($"📝 Firebase JSON to save: {json.Substring(0, Mathf.Min(200, json.Length))}...");
+
         var task = databaseReference.Child("players").Child(user.UserId).SetRawJsonValueAsync(json);
 
         yield return new WaitUntil(() => task.IsCompleted);
 
         if (task.Exception != null)
         {
-            Debug.LogError($"Failed to create Firebase data: {task.Exception}");
+            Debug.LogError($"❌ Failed to create Firebase data: {task.Exception}");
         }
         else
         {
@@ -347,5 +367,18 @@ public class FirebaseLoginManager : MonoBehaviour
         registerButton.interactable = !show;
         nameInput.interactable = !show;
         passwordInput.interactable = !show;
+    }
+
+    // ========== Debug Methods ==========
+    [ContextMenu("Test Create New Player")]
+    public void Debug_TestCreateNewPlayer()
+    {
+        if (string.IsNullOrEmpty(nameInput.text))
+        {
+            nameInput.text = "TestPlayer";
+        }
+
+        SetupNewPlayerWithDefaultAssassin();
+        Debug.Log("🧪 Test player creation completed");
     }
 }

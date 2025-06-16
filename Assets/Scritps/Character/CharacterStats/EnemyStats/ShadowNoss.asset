@@ -22,3 +22,6 @@ MonoBehaviour:
   attackRange: 1
   criticalChance: 15
   criticalMultiplier: 2
+  hitRate: 70
+  evasionRate: 10
+  attackSpeed: 5

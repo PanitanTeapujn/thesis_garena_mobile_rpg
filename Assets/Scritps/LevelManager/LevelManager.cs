@@ -184,7 +184,6 @@ public class LevelManager : NetworkBehaviour
 
         if (characterData != null && HasInputAuthority)
         {
-            // ส่งข้อมูลไปยัง server รวม accuracy stats
             RPC_ApplyFirebaseStats(
                 characterData.currentLevel,
                 characterData.currentExp,
@@ -201,11 +200,6 @@ public class LevelManager : NetworkBehaviour
             );
 
             Debug.Log($"✅ Applied Firebase data for {activeCharacterType}: Level {characterData.currentLevel}");
-        }
-        else
-        {
-            Debug.LogWarning($"[LevelManager] No character data found for {activeCharacterType}");
-            FallbackToDefault();
         }
     }
 
@@ -357,23 +351,7 @@ public class LevelManager : NetworkBehaviour
 
         if (PersistentPlayerData.Instance.multiCharacterData != null)
         {
-            PersistentPlayerData.Instance.multiCharacterData.UpdateCharacterStats(
-                activeCharacterType,
-                CurrentLevel,
-                CurrentExp,
-                ExpToNextLevel,
-                character.MaxHp,
-                character.MaxMana,
-                character.AttackDamage,
-                character.Armor,
-                character.CriticalChance,
-                character.MoveSpeed,
-                character.HitRate,
-                character.EvasionRate,
-                character.AttackSpeed
-            );
-
-            // Also update the currentPlayerData for compatibility
+            // Update โดยตรงใน MultiCharacterPlayerData
             PersistentPlayerData.Instance.UpdateLevelAndStats(
                 CurrentLevel,
                 CurrentExp,

@@ -217,30 +217,25 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         Debug.Log($"[CharacterSelection] Creating new multi-character player: {playerName}");
 
-        // ✅ สร้าง MultiCharacterPlayerData ใหม่
+        // สร้าง MultiCharacterPlayerData ใหม่
         MultiCharacterPlayerData newMultiCharacterData = new MultiCharacterPlayerData();
         newMultiCharacterData.playerName = playerName;
         newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString();
         newMultiCharacterData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newMultiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // ถ้าเลือก Assassin ใช้ default ที่มีอยู่แล้ว, ถ้าไม่ใช่ให้สร้างใหม่
+        // Apply stats from ScriptableObject
         if (selectedCharacter.ToString() != "Assassin")
         {
-            // เพิ่มตัวละครที่เลือกใหม่
             CharacterProgressData newCharacterData = newMultiCharacterData.GetOrCreateCharacterData(selectedCharacter.ToString());
-
-            // Apply stats from ScriptableObject
             CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
             if (characterStats != null)
             {
                 ApplyStatsFromScriptableObject(newCharacterData, characterStats);
-                Debug.Log($"✅ Applied ScriptableObject stats for {selectedCharacter}");
             }
         }
         else
         {
-            // ใช้ default Assassin และ apply stats
             CharacterProgressData assassinData = newMultiCharacterData.GetActiveCharacterData();
             CharacterStats assassinStats = GetCharacterStatsForCharacter(PlayerSelectionData.CharacterType.Assassin);
             if (assassinStats != null)
@@ -253,20 +248,15 @@ public class CharacterSelectionManager : MonoBehaviour
         PersistentPlayerData.Instance.multiCharacterData = newMultiCharacterData;
         PersistentPlayerData.Instance.isDataLoaded = true;
 
-        // Set currentPlayerData for compatibility
-        CharacterProgressData activeCharacterData = newMultiCharacterData.GetActiveCharacterData();
-        PersistentPlayerData.Instance.currentPlayerData = activeCharacterData.ToPlayerProgressData(playerName);
+        // ❌ ลบออก: PersistentPlayerData.Instance.currentPlayerData = ...
 
         // Save to Firebase
         PersistentPlayerData.Instance.SavePlayerDataAsync();
 
-        // รอให้ save เสร็จ
         yield return new WaitForSeconds(1f);
 
-        Debug.Log($"✅ New multi-character player created: {playerName}, Active: {selectedCharacter}");
         newMultiCharacterData.LogAllCharacters();
 
-        // ไป Lobby
         PlayerPrefs.SetString("LastScene", "CharacterSelection");
         SceneManager.LoadScene("Lobby");
     }
