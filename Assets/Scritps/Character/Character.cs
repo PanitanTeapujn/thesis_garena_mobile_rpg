@@ -460,21 +460,6 @@ public class Character : NetworkBehaviour
         return levelManager.IsMaxLevel();
     }
     // ========== Debug Methods ==========
-    [ContextMenu("Log All Stats")]
-    public void LogAllStats()
-    {
-        Debug.Log($"=== {CharacterName} Character Stats ===");
-        Debug.Log($"❤️ HP: {currentHp}/{maxHp}");
-        Debug.Log($"💙 Mana: {currentMana}/{maxMana}");
-        Debug.Log($"⚔️ Attack: {attackDamage}");
-        Debug.Log($"🛡️ Armor: {armor}");
-        Debug.Log($"🏃 Speed: {moveSpeed}");
-        Debug.Log($"💥 Crit: {criticalChance}% (x{criticalMultiplier})");
-
-        if (equipmentManager != null)
-        {
-            equipmentManager.LogCurrentStats();
-        }
-    }
+  
 
 }

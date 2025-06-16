@@ -269,53 +269,7 @@ public class PersistentPlayerData : MonoBehaviour
     public void ForceSave() => SavePlayerDataAsync();
 
     // ========== Debug Methods ==========
-    [ContextMenu("Quick Load")]
-    public void Debug_QuickLoad() => LoadPlayerDataAsync();
+   
 
-    [ContextMenu("Quick Save")]
-    public void Debug_QuickSave() => SavePlayerDataAsync();
-
-    [ContextMenu("Log Current Data")]
-    public void Debug_LogCurrentData()
-    {
-        if (multiCharacterData != null)
-        {
-            multiCharacterData.LogAllCharacters();
-        }
-        else
-        {
-            Debug.Log("[PersistentPlayerData] No data");
-        }
-    }
-
-    [ContextMenu("Reset Data")]
-    public void Debug_ResetData()
-    {
-        isDataLoaded = false;
-        multiCharacterData = null;
-        CreateDefaultMultiCharacterData();
-    }
-
-    [ContextMenu("Check Data Integrity")]
-    public void Debug_CheckDataIntegrity()
-    {
-        Debug.Log("=== Data Integrity Check ===");
-        Debug.Log($"🔍 isDataLoaded: {isDataLoaded}");
-        Debug.Log($"🔍 multiCharacterData: {(multiCharacterData != null ? "✅" : "❌")}");
-        Debug.Log($"🔍 HasValidData(): {HasValidData()}");
-
-        if (multiCharacterData != null)
-        {
-            Debug.Log($"🔍 Active Character: {multiCharacterData.currentActiveCharacter}");
-            Debug.Log($"🔍 Character Count: {multiCharacterData.characters.Count}");
-        }
-
-        var currentCharacter = GetCurrentCharacterData();
-        if (currentCharacter != null)
-        {
-            Debug.Log($"🔍 Current Character Level: {currentCharacter.currentLevel}");
-            Debug.Log($"🔍 Current Character HP: {currentCharacter.totalMaxHp}");
-            Debug.Log($"🔍 Current Character Attack: {currentCharacter.totalAttackDamage}");
-        }
-    }
+   
 }

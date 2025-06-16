@@ -417,29 +417,5 @@ public class CombatManager : NetworkBehaviour
         return (float)character.CurrentHp / character.MaxHp;
     }
 
-    // ========== Manual Damage Text Methods (สำหรับ testing) ==========
-    [ContextMenu("Test Normal Damage")]
-    public void TestNormalDamage()
-    {
-        ShowDamageText(25, DamageType.Normal, false);
-    }
-
-    [ContextMenu("Test Critical Damage")]
-    public void TestCriticalDamage()
-    {
-        ShowDamageText(50, DamageType.Critical, true);
-    }
-
-    [ContextMenu("Test Poison Damage")]
-    public void TestPoisonDamage()
-    {
-        ShowStatusDamageText(10, DamageType.Poison);
-    }
-
-    [ContextMenu("Test Heal")]
-    public void TestHeal()
-    {
-        Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-        DamageTextManager.ShowHealing(textPosition, 30);
-    }
+   
 }

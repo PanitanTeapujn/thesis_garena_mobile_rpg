@@ -241,24 +241,7 @@ public class FirebaseLoginManager : MonoBehaviour
 
             Debug.Log($"✅ New player setup with ScriptableObject Assassin stats: HP={assassinStats.maxHp}, ATK={assassinStats.attackDamage}");
         }
-        else
-        {
-            // Fallback ถ้าหา ScriptableObject ไม่เจอ
-            PlayerPrefs.SetInt("PlayerLevel", 1);
-            PlayerPrefs.SetInt("PlayerExp", 0);
-            PlayerPrefs.SetInt("PlayerExpToNext", 100);
-            PlayerPrefs.SetInt("PlayerMaxHp", 70);      // Assassin HP
-            PlayerPrefs.SetInt("PlayerMaxMana", 40);    // Assassin Mana  
-            PlayerPrefs.SetInt("PlayerAttackDamage", 35); // Assassin Attack
-            PlayerPrefs.SetInt("PlayerArmor", 2);       // Assassin Armor
-            PlayerPrefs.SetFloat("PlayerCritChance", 5f);
-            PlayerPrefs.SetFloat("PlayerMoveSpeed", 6.5f); // Assassin Speed
-            PlayerPrefs.SetFloat("PlayerHitRate", 85f);    // Assassin Hit Rate
-            PlayerPrefs.SetFloat("PlayerEvasionRate", 12f); // Assassin Evasion
-            PlayerPrefs.SetFloat("PlayerAttackSpeed", 1.3f); // Assassin Attack Speed
-
-            Debug.LogWarning("⚠️ AssassinStats ScriptableObject not found, using fallback values");
-        }
+        
 
         PlayerPrefs.Save();
         Debug.Log($"✅ New player setup completed for {playerName}");
@@ -369,15 +352,5 @@ public class FirebaseLoginManager : MonoBehaviour
     }
 
     // ========== Debug Methods ==========
-    [ContextMenu("Test Create New Player")]
-    public void Debug_TestCreateNewPlayer()
-    {
-        if (string.IsNullOrEmpty(nameInput.text))
-        {
-            nameInput.text = "TestPlayer";
-        }
-
-        SetupNewPlayerWithDefaultAssassin();
-        Debug.Log("🧪 Test player creation completed");
-    }
+   
 }

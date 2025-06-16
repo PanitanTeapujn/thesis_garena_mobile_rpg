@@ -462,18 +462,10 @@ public class LevelManager : NetworkBehaviour
     public void ForceLoadFromFirebase() => TryLoadFromFirebase();
 
     // ========== Debug Methods ==========
-    [ContextMenu("Gain 50 Exp")]
-    public void TestGainExp() => GainExp(50);
+   
 
     [ContextMenu("Level Up Now")]
     public void TestLevelUp() => GainExp(ExpToNextLevel);
 
-    public void LogLevelInfo()
-    {
-        Debug.Log($"=== {character.CharacterName} Level Info ===");
-        Debug.Log($"📊 Level: {CurrentLevel}, Exp: {CurrentExp}/{ExpToNextLevel}");
-        Debug.Log($"❤️ HP: {character.CurrentHp}/{character.MaxHp}");
-        Debug.Log($"⚔️ Attack: {character.AttackDamage}");
-        Debug.Log($"🔄 Initialized: {IsInitialized}");
-    }
+   
 }

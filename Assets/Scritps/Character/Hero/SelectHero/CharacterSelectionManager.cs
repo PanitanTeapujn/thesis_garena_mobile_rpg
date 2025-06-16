@@ -556,41 +556,5 @@ public class CharacterSelectionManager : MonoBehaviour
     }
 
     // ========== Context Menu สำหรับ Debug ==========
-    [ContextMenu("🧪 Test Create Multi-Character Player")]
-    public void Debug_TestCreateMultiCharacterPlayer()
-    {
-        if (string.IsNullOrEmpty(playerNameInput.text))
-        {
-            playerNameInput.text = "TestPlayer";
-        }
-
-        StartCoroutine(CreateNewMultiCharacterPlayer(playerNameInput.text));
-    }
-
-    [ContextMenu("🔍 Check Selected Character")]
-    public void Debug_CheckSelectedCharacter()
-    {
-        Debug.Log($"Current Selected Character: {selectedCharacter}");
-        Debug.Log($"PlayerSelectionData: {PlayerSelectionData.GetSelectedCharacter()}");
-    }
-
-    [ContextMenu("📊 Check PersistentPlayerData State")]
-    public void Debug_CheckPersistentPlayerDataState()
-    {
-        var instance = PersistentPlayerData.Instance;
-        Debug.Log($"=== PersistentPlayerData State ===");
-        Debug.Log($"📊 Has Valid Data: {instance.HasValidData()}");
-        Debug.Log($"👤 Player Name: {instance.GetPlayerName()}");
-        Debug.Log($"🎯 Active Character: {instance.GetCurrentActiveCharacter()}");
-
-        if (instance.multiCharacterData != null)
-        {
-            Debug.Log($"🎭 Total Characters: {instance.multiCharacterData.characters.Count}");
-            instance.multiCharacterData.LogAllCharacters();
-        }
-        else
-        {
-            Debug.LogWarning("⚠️ multiCharacterData is null!");
-        }
-    }
+   
 }
