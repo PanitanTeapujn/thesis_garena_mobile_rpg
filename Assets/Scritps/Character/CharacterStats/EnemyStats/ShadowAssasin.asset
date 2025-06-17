@@ -16,7 +16,7 @@ MonoBehaviour:
   moveSpeed: 5
   maxHp: 80
   maxMana: 0
-  attackDamage: 15
+  attackDamage: 100
   arrmor: 5
   attackCoolDown: 1
   attackRange: 1

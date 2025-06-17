@@ -19,7 +19,7 @@ MonoBehaviour:
   attackDamage: 35
   arrmor: 2
   attackCoolDown: 1
-  attackRange: 0
+  attackRange: 1
   criticalChance: 10
   criticalMultiplier: 2
   hitRate: 80

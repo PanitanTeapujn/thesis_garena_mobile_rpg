@@ -9,7 +9,7 @@ public class Assassin : Hero
     [SerializeField] private int skill1ManaCost = 15;
     [SerializeField] private int skill2ManaCost = 20;
     [SerializeField] private int skill3ManaCost = 25;
-    [SerializeField] private int skill4ManaCost = 50;
+    [SerializeField] private int skill4ManaCost = 45;
 
     [Header("🎯 Skill Parameters")]
     public float dashDistance = 8f;
@@ -38,7 +38,7 @@ public class Assassin : Hero
         skill1Cooldown = 8f;
         skill2Cooldown = 12f;
         skill3Cooldown = 15f;
-        skill4Cooldown = 45f;
+        skill4Cooldown = 20f;
 
         // สร้าง range indicator สำหรับ ultimate
         CreateRangeIndicator();
@@ -56,10 +56,14 @@ public class Assassin : Hero
         // เริ่ม Poison Infusion - ให้ 3 charges
         PoisonInfusionStacks = 3;
 
-        // คำนวณ poison damage ตาม level และ attack damage
-        int poisonDamage = GetScaledPoisonDamage(3);
+        // ✅ 🌟 เปลี่ยน: ให้ Attack Speed Aura แทนการ buff ตัวเอง
+        if (statusEffectManager != null)
+        {
+            statusEffectManager.ApplyAttackSpeedAura(6f, 0.3f, 12f); // +30% attack speed, 6m radius, 12s
+            Debug.Log($"✅ Applied Attack Speed Aura (+30% for 12s in 6m radius)");
+        }
 
-        Debug.Log($"🐍 [Poison Infusion] {CharacterName} gains 3 poison-infused attacks! (Poison: {poisonDamage} damage/s)");
+        Debug.Log($"🐍 [Poison Infusion] {CharacterName} gains 3 poison-infused attacks!");
 
         // Visual effect
         RPC_ShowSkillEffect("PoisonInfusion");
@@ -72,6 +76,13 @@ public class Assassin : Hero
         if (HasStatusEffect(StatusEffectType.Stun)) return;
 
         UseMana(skill2ManaCost);
+
+        // ✅ 🌟 เปลี่ยน: ให้ Move Speed Aura ก่อน dash
+        if (statusEffectManager != null)
+        {
+            statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f); // +25% move speed, 5m radius, 10s
+            Debug.Log($"✅ Applied Move Speed Aura (+25% for 10s)");
+        }
 
         // หาทิศทางการ dash (ตามกล้อง)
         Vector3 dashDirection = GetDashDirection();
@@ -128,9 +139,10 @@ public class Assassin : Hero
         // คำนวณ damage ตาม level
         int poisonDamage = GetScaledPoisonDamage(4);
 
-        // ใส่ Poison + Weakness
+        // ✅ ใส่ Poison + Weakness + Blind
         enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
-        enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 6f, 0.3f);
+        enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 6f, 0.3f);   // 30% damage reduction
+        enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 4f, 0.6f);      // 60% hit/crit reduction
 
         // Passive: โอกาส spread poison
         if (hasVenomMastery && Random.Range(0f, 100f) < 25f)
@@ -138,7 +150,7 @@ public class Assassin : Hero
             SpreadPoisonToNearby(enemy, 4f);
         }
 
-        Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName}! Applied Poison + Weakness");
+        Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName}! Applied Poison + Weakness + Blind");
     }
 
     // ========== 💣 Skill 3: Toxic Bomb ==========
@@ -148,12 +160,18 @@ public class Assassin : Hero
 
         UseMana(skill3ManaCost);
 
+        // ✅ 🌟 เปลี่ยน: ให้ Damage Aura
+        if (statusEffectManager != null)
+        {
+            statusEffectManager.ApplyDamageAura(6f, 0.35f, 15f); // +35% damage, 6m radius, 15s
+            Debug.Log($"✅ Applied Damage Aura (+35% for 15s)");
+        }
+
         // หาตำแหน่งที่จะโยน bomb (ข้างหน้า 5 เมตร)
         Vector3 bombPosition = transform.position + transform.forward * 5f;
 
         RPC_ThrowToxicBomb(bombPosition);
     }
-
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_ThrowToxicBomb(Vector3 position)
     {
@@ -174,7 +192,7 @@ public class Assassin : Hero
         float nextTick = 0f;
         float elapsed = 0f;
 
-        int poisonDamage = GetScaledPoisonDamage(2);
+        int poisonDamage = GetScaledPoisonDamage(3); // เพิ่มขึ้น
 
         while (elapsed < duration)
         {
@@ -189,13 +207,17 @@ public class Assassin : Hero
                     Character enemy = col.GetComponent<Character>();
                     if (enemy != null)
                     {
-                        enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 3f);
+                        // ✅ ใส่ Poison + Armor Break
+                        enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 4f);
+                        enemy.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 6f, 0.4f); // 40% armor reduction
 
                         // Passive: โอกาส spread
                         if (hasVenomMastery && Random.Range(0f, 100f) < 25f)
                         {
                             SpreadPoisonToNearby(enemy, 4f);
                         }
+
+                        Debug.Log($"💣 Toxic Bomb: Applied Poison + Armor Break to {enemy.CharacterName}");
                     }
                 }
 
@@ -212,7 +234,6 @@ public class Assassin : Hero
 
         Debug.Log($"💣 [Toxic Bomb] Area effect ended at {position}");
     }
-
     // ========== ☠️ Skill 4: Plague Outbreak (Ultimate) ==========
     protected override void TryUseSkill4()
     {
@@ -224,6 +245,7 @@ public class Assassin : Hero
 
         RPC_CreatePlagueOutbreak(cloudPosition);
     }
+
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_CreatePlagueOutbreak(Vector3 position)
@@ -243,28 +265,28 @@ public class Assassin : Hero
             plagueEffect = Instantiate(plagueCloudPrefab, position, Quaternion.identity);
         }
 
-        float duration = 15f;
+        float duration = 20f; // เพิ่มระยะเวลา
         float tickInterval = 1f;
         float nextTick = 0f;
         float elapsed = 0f;
 
         // Super Poison damage ตาม level
-        int superPoisonDamage = GetScaledPoisonDamage(6);
+        int superPoisonDamage = GetScaledPoisonDamage(8); // เพิ่มขึ้น
 
         IsInPlagueCloud = true;
         PlagueCloudEndTime = Time.time + duration;
 
         Debug.Log($"☠️ [Plague Outbreak] {CharacterName} creates massive poison cloud! ({superPoisonDamage} damage/s)");
 
-        // ✅ 🌟 เปลี่ยน: ใช้ระบบ Aura แทน ApplyStatusEffect
-        // เรียกให้ตัวเองเป็นผู้ให้ aura
+        // ✅ 🌟 แก้ไข: ให้ Aura ทีเดียวไม่ซ้ำ
         if (statusEffectManager != null)
         {
-            statusEffectManager.ApplyAttackSpeedAura(12f, 0.4f, 15f); // +40% attack speed, 12m radius, 15s
-            statusEffectManager.ApplyDamageAura(12f, 0.25f, 15f);     // +25% damage, 12m radius, 15s
-            statusEffectManager.ApplyProtectionAura(12f, 0.2f, 15f);  // -20% damage taken, 12m radius, 15s
+            statusEffectManager.ApplyAttackSpeedAura(12f, 0.5f, 20f);  // +50% attack speed, 12m radius, 20s
+            statusEffectManager.ApplyDamageAura(12f, 0.4f, 20f);      // +40% damage, 12m radius, 20s
+            statusEffectManager.ApplyProtectionAura(12f, 0.25f, 20f); // -25% damage taken, 12m radius, 20s
+            statusEffectManager.ApplyCriticalAura(12f, 0.3f, 20f);    // +30% critical chance, 12m radius, 20s
 
-            Debug.Log($"💚 [Plague Outbreak] Providing team auras: +40% attack speed, +25% damage, -20% damage taken!");
+            Debug.Log($"💚 [Plague Outbreak] Team Auras: +50% attack speed, +40% damage, -25% damage taken, +30% critical!");
         }
 
         while (elapsed < duration)
@@ -273,22 +295,29 @@ public class Assassin : Hero
 
             if (elapsed >= nextTick)
             {
-                // ผลกระทบต่อศัตรู
+                // ✅ ผลกระทบต่อศัตรู - ใส่ทุก debuffs
                 Collider[] enemies = Physics.OverlapSphere(position, 12f, LayerMask.GetMask("Enemy"));
                 foreach (Collider col in enemies)
                 {
                     Character enemy = col.GetComponent<Character>();
                     if (enemy != null)
                     {
-                        // Super Poison ที่แรงกว่าปกติ
-                        enemy.ApplyStatusEffect(StatusEffectType.Poison, superPoisonDamage, 4f);
+                        // ✅ Super Poison + ทุก debuffs
+                        enemy.ApplyStatusEffect(StatusEffectType.Poison, superPoisonDamage, 5f);
+                        enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 8f, 0.8f);        // 80% hit/crit reduction
+                        enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 8f, 0.5f);     // 50% damage reduction
+                        enemy.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.6f);   // 60% armor reduction
 
-                        // เมื่อศัตรูตาย poison จะกระจาย (implement ใน OnEnemyDeath)
+                        // ✅ เพิ่ม: โอกาส stun
+                        if (Random.Range(0f, 100f) < 20f) // 20% chance
+                        {
+                            enemy.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
+                            Debug.Log($"☠️ {enemy.CharacterName} stunned by plague cloud!");
+                        }
+
+                        Debug.Log($"☠️ Plague Cloud: Applied ALL debuffs to {enemy.CharacterName}");
                     }
                 }
-
-                // ✅ 🌟 เปลี่ยน: ไม่ต้องใส่ aura ให้ทีมแล้ว เพราะระบบ aura จะทำให้อัตโนมัติ
-                // ทีมที่อยู่ในรัศมี 12m จะได้ buff อัตโนมัติจากระบบ aura detection
 
                 nextTick += tickInterval;
             }
@@ -315,15 +344,30 @@ public class Assassin : Hero
         if (!hasVenomMastery) return;
 
         Collider[] nearbyEnemies = Physics.OverlapSphere(sourceEnemy.transform.position, range, LayerMask.GetMask("Enemy"));
+
+        int spreadCount = 0;
         foreach (Collider col in nearbyEnemies)
         {
             Character enemy = col.GetComponent<Character>();
-            if (enemy != null && enemy != sourceEnemy)
+            if (enemy != null && enemy != sourceEnemy && spreadCount < 3) // จำกัดไม่เกิน 3 ตัว
             {
                 int spreadDamage = GetScaledPoisonDamage(2);
                 enemy.ApplyStatusEffect(StatusEffectType.Poison, spreadDamage, 5f);
+
+                // ✅ เพิ่ม: โอกาสใส่ weakness
+                if (Random.Range(0f, 100f) < 50f)
+                {
+                    enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 4f, 0.2f);
+                }
+
+                spreadCount++;
                 Debug.Log($"🐍 [Venom Mastery] Poison spread to {enemy.CharacterName}!");
             }
+        }
+
+        if (spreadCount > 0)
+        {
+            Debug.Log($"🐍 [Venom Mastery] Spread poison to {spreadCount} enemies!");
         }
     }
 
@@ -333,11 +377,7 @@ public class Assassin : Hero
         if (!HasInputAuthority || !IsSpawned) return;
         if (Time.time < nextAttackTime) return;
 
-        // ✅ ใช้ enemyLayer จาก base class แทน hardcode
-        LayerMask attackLayer = LayerMask.GetMask("Enemy");
-        Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, attackLayer);
-
-        Debug.Log($"🐍 [Assassin Attack] Checking {enemies.Length} enemies in range {AttackRange}m");
+        Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, LayerMask.GetMask("Enemy"));
 
         if (enemies.Length > 0)
         {
@@ -360,14 +400,11 @@ public class Assassin : Hero
 
             if (nearestEnemy != null)
             {
-                Debug.Log($"🐍 [Assassin] Found target: {nearestEnemy.CharacterName} at distance {nearestDistance:F1}m");
+                // ✅ ง่ายขึ้น: ใช้ RPC เดียว
+                bool hasPoisonInfusion = PoisonInfusionStacks > 0;
+                bool guaranteedCrit = PoisonInfusionStacks == 1; // ครั้งสุดท้าย
 
-                // เช็ค Poison Infusion
-                bool shouldPoison = PoisonInfusionStacks > 0;
-                bool forceCritical = PoisonInfusionStacks == 1; // ครั้งที่ 3 (เหลือ 1 stack)
-
-                // ✅ ใช้ RPC เดียวกับ base class แต่เพิ่ม poison logic
-                RPC_PerformAssassinAttack(nearestEnemy.Object, shouldPoison, forceCritical);
+                RPC_PerformAssassinAttack(nearestEnemy.Object, hasPoisonInfusion, guaranteedCrit);
 
                 // ลด stack
                 if (PoisonInfusionStacks > 0)
@@ -376,23 +413,13 @@ public class Assassin : Hero
                     Debug.Log($"🐍 Poison Infusion: {PoisonInfusionStacks} stacks remaining");
                 }
 
-                // ✅ ใช้ GetEffectiveAttackSpeed() แต่มี fallback
+                // ✅ ใช้ GetEffectiveAttackSpeed() แทน AttackSpeed
                 float effectiveAttackSpeed = GetEffectiveAttackSpeed();
-                if (effectiveAttackSpeed <= 0) effectiveAttackSpeed = AttackSpeed; // fallback
-
                 float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed);
                 nextAttackTime = Time.time + finalAttackCooldown;
 
-                Debug.Log($"🐍 Assassin attack executed! Speed: {effectiveAttackSpeed:F1}x, Cooldown: {finalAttackCooldown:F1}s");
+                Debug.Log($"🐍 Assassin attack! Speed: {effectiveAttackSpeed:F1}x, Cooldown: {finalAttackCooldown:F1}s");
             }
-            else
-            {
-                Debug.Log($"🐍 [Assassin] No valid enemies found in {enemies.Length} colliders");
-            }
-        }
-        else
-        {
-            Debug.Log($"🐍 [Assassin] No enemies in attack range {AttackRange}m");
         }
     }
 
@@ -401,42 +428,36 @@ public class Assassin : Hero
     {
         if (enemyObject != null)
         {
-            Debug.Log($"🐍 [RPC_PerformAssassinAttack] Executing attack...");
-
-            // ✅ ลองหา Component ทั้งสองแบบ
             Character enemy = enemyObject.GetComponent<Character>();
-            NetworkEnemy networkEnemy = enemyObject.GetComponent<NetworkEnemy>();
-
             if (enemy != null)
             {
-                Debug.Log($"🐍 Attacking {enemy.CharacterName} with damage {AttackDamage}");
-
-                // ทำ damage ปกติ
+                // ✅ ทำ damage ปกติ
                 enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
 
-                // ใส่ poison ถ้ามี Poison Infusion
+                // ✅ ใส่ poison ถ้ามี Poison Infusion
                 if (shouldPoison)
                 {
-                    int poisonDamage = GetScaledPoisonDamage(3);
+                    int poisonDamage = GetScaledPoisonDamage(4);
                     enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
-                    Debug.Log($"🐍 Applied poison: {poisonDamage} damage/s for 8s");
 
-                    // Passive: Venom Mastery damage bonus
+                    // ✅ Venom Mastery: +20% damage bonus
                     if (hasVenomMastery)
                     {
-                        int bonusDamage = Mathf.RoundToInt(AttackDamage * 0.15f);
-                        enemy.TakeDamageFromAttacker(bonusDamage, this, DamageType.Normal);
-                        Debug.Log($"🐍 [Venom Mastery] +15% damage bonus: {bonusDamage}");
+                        int bonusDamage = Mathf.RoundToInt(AttackDamage * 0.2f);
+                        enemy.TakeDamageFromAttacker(bonusDamage, this, DamageType.Magic);
+                        Debug.Log($"🐍 [Venom Mastery] +20% poison bonus: {bonusDamage}");
                     }
 
-                    // Passive: โอกาส spread poison
-                    if (hasVenomMastery && Random.Range(0f, 100f) < 25f)
+                    // ✅ Passive: โอกาส spread poison
+                    if (hasVenomMastery && Random.Range(0f, 100f) < 30f) // เพิ่มเป็น 30%
                     {
                         SpreadPoisonToNearby(enemy, 4f);
                     }
+
+                    Debug.Log($"🐍 Applied poison: {poisonDamage} damage/s for 8s");
                 }
 
-                // Force critical ถ้าเป็นครั้งที่ 3
+                // ✅ Force critical ถ้าเป็นครั้งสุดท้าย
                 if (forceCritical)
                 {
                     int critDamage = Mathf.RoundToInt(AttackDamage * CriticalMultiplier);
@@ -446,41 +467,8 @@ public class Assassin : Hero
 
                 RPC_OnAttackHit(enemyObject);
             }
-            else if (networkEnemy != null && !networkEnemy.IsDead)
-            {
-                Debug.Log($"🐍 Attacking NetworkEnemy with damage {AttackDamage}");
-
-                // Fallback สำหรับ NetworkEnemy เก่า
-                networkEnemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
-
-                // เพิ่ม poison logic สำหรับ NetworkEnemy
-                if (shouldPoison)
-                {
-                    int poisonDamage = GetScaledPoisonDamage(3);
-                    networkEnemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
-                    Debug.Log($"🐍 Applied poison to NetworkEnemy: {poisonDamage} damage/s");
-                }
-
-                if (forceCritical)
-                {
-                    int critDamage = Mathf.RoundToInt(AttackDamage * CriticalMultiplier);
-                    networkEnemy.TakeDamageFromAttacker(critDamage, this, DamageType.Critical);
-                    Debug.Log($"🐍 Critical strike on NetworkEnemy: {critDamage} damage");
-                }
-
-                RPC_OnAttackHit(enemyObject);
-            }
-            else
-            {
-                Debug.LogError($"🐍 [RPC_PerformAssassinAttack] No valid Character or NetworkEnemy found on {enemyObject.name}!");
-            }
-        }
-        else
-        {
-            Debug.LogError($"🐍 [RPC_PerformAssassinAttack] enemyObject is null!");
         }
     }
-
     // ========== 🎨 Visual Range Indicator System ==========
     private void CreateRangeIndicator()
     {

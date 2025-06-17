@@ -216,6 +216,9 @@ MonoBehaviour:
   attackCooldown: 0
   criticalChance: 5
   criticalMultiplier: 2
+  hitRate: 0
+  evasionRate: 0
+  attackSpeed: 0
   healthRegenPerSecond: 1
   manaRegenPerSecond: 1
   _NetworkedCurrentHp: 0
@@ -246,6 +249,18 @@ MonoBehaviour:
   skill2Cooldown: 1
   skill3Cooldown: 1
   skill4Cooldown: 1
+  skill1ManaCost: 8
+  skill2ManaCost: 12
+  skill3ManaCost: 15
+  skill4ManaCost: 20
+  dashDistance: 8
+  dashSpeed: 20
+  toxicBombPrefab: {fileID: 0}
+  plagueCloudPrefab: {fileID: 0}
+  skillRangeIndicatorMaterial: {fileID: 0}
+  _PoisonInfusionStacks: 0
+  _IsInPlagueCloud: 0
+  _PlagueCloudEndTime: 0
 --- !u!114 &1314459988218318116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -270,6 +285,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71c5e477ae05a4588cf4f2e6b03f42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  auraCheckInterval: 0.5
+  teamLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   _IsPoisoned: 0
   _PoisonDuration: 0
   _PoisonDamagePerTick: 0
@@ -296,6 +315,36 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingAttackSpeedAura: 0
+  _AttackSpeedAuraDuration: 0
+  _AttackSpeedAuraRadius: 0
+  _AttackSpeedAuraAmount: 0
+  _IsProvidingDamageAura: 0
+  _DamageAuraDuration: 0
+  _DamageAuraRadius: 0
+  _DamageAuraAmount: 0
+  _IsProvidingMoveSpeedAura: 0
+  _MoveSpeedAuraDuration: 0
+  _MoveSpeedAuraRadius: 0
+  _MoveSpeedAuraAmount: 0
+  _IsProvidingProtectionAura: 0
+  _ProtectionAuraDuration: 0
+  _ProtectionAuraRadius: 0
+  _ProtectionAuraAmount: 0
+  _IsProvidingArmorAura: 0
+  _ArmorAuraDuration: 0
+  _ArmorAuraRadius: 0
+  _ArmorAuraAmount: 0
+  _IsProvidingCriticalAura: 0
+  _CriticalAuraDuration: 0
+  _CriticalAuraRadius: 0
+  _CriticalAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
 --- !u!114 &-2598280145371838362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,6 +373,8 @@ MonoBehaviour:
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
   currentRuneStats:
@@ -335,6 +386,8 @@ MonoBehaviour:
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
   _NetworkedAttackDamageBonus: 0
@@ -345,6 +398,9 @@ MonoBehaviour:
   _NetworkedMoveSpeedBonus: 0
   _NetworkedPhysicalResistanceBonus: 0
   _NetworkedMagicalResistanceBonus: 0
+  _NetworkedHitRateBonus: 0
+  _NetworkedEvasionRateBonus: 0
+  _NetworkedAttackSpeedBonus: 0
 --- !u!114 &-3790733776071842223
 MonoBehaviour:
   m_ObjectHideFlags: 0

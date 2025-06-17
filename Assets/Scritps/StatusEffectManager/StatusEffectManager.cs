@@ -158,6 +158,14 @@ public class StatusEffectManager : NetworkBehaviour
             ProcessArmorBreakEffect();
             ProcessBlindEffect();
             ProcessWeaknessEffect();
+            ProcessAllAuras();
+            float currentTime = (float)Runner.SimulationTime;
+            if (currentTime >= nextAuraCheckTime)
+            {
+                UpdateAuraEffects();
+                nextAuraCheckTime = currentTime + auraCheckInterval;
+            }
+
         }
     }
  #region DeBuff
@@ -878,11 +886,12 @@ public class StatusEffectManager : NetworkBehaviour
         // Reset ค่าที่ได้รับจาก aura
         ResetReceivedAuraBonuses();
 
-        // ค้นหา Character ทั้งหมดในฉากที่มี aura
-        Character[] allCharacters = FindObjectsOfType<Character>();
+        // ค้นหา Character ที่ใกล้เคียงผ่าน Physics.OverlapSphere
+        Collider[] nearbyColliders = Physics.OverlapSphere(transform.position, 10f, teamLayerMask);
 
-        foreach (Character auraProvider in allCharacters)
+        foreach (Collider col in nearbyColliders)
         {
+            Character auraProvider = col.GetComponent<Character>();
             if (auraProvider == null || !auraProvider.IsSpawned) continue;
 
             StatusEffectManager providerStatus = auraProvider.GetComponent<StatusEffectManager>();
@@ -892,6 +901,14 @@ public class StatusEffectManager : NetworkBehaviour
 
             // ตรวจสอบ aura แต่ละประเภท
             CheckAndApplyAuraBonus(providerStatus, distance);
+        }
+
+        // Debug info ถ้ามี aura
+        if (IsReceivingAnyAura())
+        {
+            Debug.Log($"[Aura Effects] {character.CharacterName} receiving: " +
+                     $"ATK+{ReceivedAttackSpeedBonus:F2}, DMG+{ReceivedDamageBonus:F2}, " +
+                     $"SPD+{ReceivedMoveSpeedBonus:F2}, PROT+{ReceivedProtectionBonus:F2}");
         }
     }
 
@@ -1133,5 +1150,58 @@ public class StatusEffectManager : NetworkBehaviour
     public bool HasDamageOverTime()
     {
         return IsPoisoned || IsBurning || IsBleeding;
+    }
+
+    [ContextMenu("Test Apply Attack Speed Aura")]
+    public void TestApplyAttackSpeedAura()
+    {
+        ApplyAttackSpeedAura(5f, 0.5f, 10f); // +50% attack speed, 5m radius, 10s
+        Debug.Log($"✅ Applied +50% Attack Speed Aura to {character.CharacterName}");
+    }
+
+    [ContextMenu("Test Apply Damage Aura")]
+    public void TestApplyDamageAura()
+    {
+        ApplyDamageAura(5f, 0.3f, 15f); // +30% damage, 5m radius, 15s
+        Debug.Log($"✅ Applied +30% Damage Aura to {character.CharacterName}");
+    }
+
+    [ContextMenu("Test Apply Critical Aura")]
+    public void TestApplyCriticalAura()
+    {
+        ApplyCriticalAura(6f, 0.2f, 20f); // +20% critical, 6m radius, 20s
+        Debug.Log($"✅ Applied +20% Critical Aura to {character.CharacterName}");
+    }
+
+    [ContextMenu("Test Apply Armor Break")]
+    public void TestApplyArmorBreak()
+    {
+        ApplyArmorBreak(8f, 0.5f); // 50% armor reduction for 8s
+        Debug.Log($"✅ Applied Armor Break to {character.CharacterName}");
+    }
+
+    [ContextMenu("Test Apply Blind")]
+    public void TestApplyBlind()
+    {
+        ApplyBlind(6f, 0.8f); // 80% hit/crit reduction for 6s
+        Debug.Log($"✅ Applied Blind to {character.CharacterName}");
+    }
+
+    [ContextMenu("Test Apply Weakness")]
+    public void TestApplyWeakness()
+    {
+        ApplyWeakness(10f, 0.4f); // 40% damage reduction for 10s
+        Debug.Log($"✅ Applied Weakness to {character.CharacterName}");
+    }
+
+    [ContextMenu("Show Current Status")]
+    public void DebugCurrentStatus()
+    {
+        Debug.Log($"=== {character.CharacterName} Status ===");
+        Debug.Log($"🛡️ Armor Break: {IsArmorBreak} ({ArmorBreakAmount * 100:F0}% reduction)");
+        Debug.Log($"👁️ Blind: {IsBlind} ({BlindAmount * 100:F0}% reduction)");
+        Debug.Log($"💪 Weakness: {IsWeak} ({WeaknessAmount * 100:F0}% reduction)");
+        Debug.Log($"⚡ Providing Auras: ATK={IsProvidingAttackSpeedAura}, DMG={IsProvidingDamageAura}");
+        Debug.Log($"📈 Receiving Bonuses: ATK+{ReceivedAttackSpeedBonus:F2}, DMG+{ReceivedDamageBonus:F2}");
     }
 }
