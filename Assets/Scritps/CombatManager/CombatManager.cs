@@ -96,6 +96,19 @@ public class CombatManager : NetworkBehaviour
             attackSpeedMultiplier += attacker.GetComponent<EquipmentManager>().GetAttackSpeedBonus();
         }
 
+        // ✅ 🌟 เพิ่ม: ใช้ Attack Speed Aura จาก StatusEffectManager
+        if (attacker.GetComponent<StatusEffectManager>() != null)
+        {
+            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
+            float auraMultiplier = attackerStatus.GetTotalAttackSpeedMultiplier();
+            attackSpeedMultiplier *= auraMultiplier;
+
+            if (auraMultiplier > 1f)
+            {
+                Debug.Log($"[Attack Speed Aura] Attack speed boosted by {(auraMultiplier - 1f) * 100:F0}%");
+            }
+        }
+
         // คำนวณ cooldown ใหม่ (ยิ่ง attackSpeed สูง ยิ่ง cooldown น้อย)
         float finalCooldown = baseAttackCooldown / Mathf.Max(0.1f, attackSpeedMultiplier);
 
@@ -239,20 +252,49 @@ public class CombatManager : NetworkBehaviour
     {
         int finalDamage = baseDamage;
 
+        // ✅ 🌟 เพิ่ม: ใช้ Damage Aura จาก StatusEffectManager
+        if (statusEffectManager != null)
+        {
+            float damageMultiplier = statusEffectManager.GetTotalDamageMultiplier();
+            finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
+
+            if (damageMultiplier > 1f)
+            {
+                Debug.Log($"[Damage Aura] {baseDamage} * {damageMultiplier:F2} = {finalDamage}");
+            }
+        }
+
         // Critical damage calculation
         if (isCritical)
         {
-            finalDamage = Mathf.RoundToInt(baseDamage * character.CriticalMultiplier);
-            Debug.Log($"[Critical Hit] {baseDamage} * {character.CriticalMultiplier} = {finalDamage}");
+            finalDamage = Mathf.RoundToInt(finalDamage * character.CriticalMultiplier);
+            Debug.Log($"[Critical Hit] {finalDamage} (after aura + critical)");
             return finalDamage; // Critical ignores armor
         }
 
         // Normal damage with armor
         int currentArmor = GetCurrentArmor();
-        int damageAfterArmor = baseDamage - currentArmor;
+
+        // ✅ 🌟 เพิ่ม: ใช้ Protection Aura ลด damage
+        float protectionReduction = 0f;
+        if (statusEffectManager != null)
+        {
+            protectionReduction = statusEffectManager.GetTotalDamageReduction();
+        }
+
+        // คำนวณ damage หลัง armor
+        int damageAfterArmor = finalDamage - currentArmor;
+
+        // คำนวณ damage หลัง protection aura
+        if (protectionReduction > 0f)
+        {
+            damageAfterArmor = Mathf.RoundToInt(damageAfterArmor * (1f - protectionReduction));
+            Debug.Log($"[Protection Aura] Damage reduced by {protectionReduction * 100}%");
+        }
+
         finalDamage = Mathf.Max(1, damageAfterArmor); // ไม่ให้ damage ต่ำกว่า 1
 
-        Debug.Log($"[Normal Hit] {baseDamage} - {currentArmor} armor = {finalDamage}");
+        Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (armor: {currentArmor}, protection: {protectionReduction * 100:F1}%)");
         return finalDamage;
     }
 
@@ -266,6 +308,18 @@ public class CombatManager : NetworkBehaviour
             baseArmor += equipmentManager.GetArmorBonus();
         }
 
+        // ✅ 🌟 เพิ่ม: ใช้ Armor Aura จาก StatusEffectManager
+        if (statusEffectManager != null)
+        {
+            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
+            baseArmor = Mathf.RoundToInt(baseArmor * armorMultiplier);
+
+            if (armorMultiplier > 1f)
+            {
+                Debug.Log($"[Armor Aura] Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
+            }
+        }
+
         // ตรวจสอบ Armor Break effect
         if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
         {
@@ -277,6 +331,7 @@ public class CombatManager : NetworkBehaviour
         return baseArmor;
     }
 
+
     private bool CalculateCriticalHit(Character attacker)
     {
         float critRoll = UnityEngine.Random.Range(0f, 100f);
@@ -286,6 +341,19 @@ public class CombatManager : NetworkBehaviour
         if (attacker.GetComponent<EquipmentManager>() != null)
         {
             attackerCritChance += attacker.GetComponent<EquipmentManager>().GetCriticalChanceBonus();
+        }
+
+        // ✅ 🌟 เพิ่ม: ใช้ Critical Aura จาก StatusEffectManager
+        if (attacker.GetComponent<StatusEffectManager>() != null)
+        {
+            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
+            float criticalBonus = attackerStatus.GetTotalCriticalBonus();
+            attackerCritChance += criticalBonus * 100f; // แปลง 0.15 เป็น 15%
+
+            if (criticalBonus > 0f)
+            {
+                Debug.Log($"[Critical Aura] Critical chance boosted by {criticalBonus * 100:F0}%");
+            }
         }
 
         // ลด critical chance ถ้าโดน Blind
@@ -301,11 +369,14 @@ public class CombatManager : NetworkBehaviour
         }
 
         bool isCritical = critRoll < attackerCritChance;
-        //Debug.Log($"[Critical Check] rolls {critRoll:F1}% vs {attackerCritChance:F1}% = {(isCritical ? "CRITICAL!" : "Normal")}");
+
+        if (isCritical)
+        {
+            Debug.Log($"[Critical Check] {critRoll:F1}% vs {attackerCritChance:F1}% = CRITICAL!");
+        }
 
         return isCritical;
     }
-
     private int ApplyAttackerStatusEffects(int damage, Character attacker)
     {
         int modifiedDamage = damage;

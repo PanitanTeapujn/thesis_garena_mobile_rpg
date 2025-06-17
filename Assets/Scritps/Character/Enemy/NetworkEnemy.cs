@@ -287,7 +287,8 @@ public class NetworkEnemy : Character
         // เคลื่อนที่
         if (moveDirection.magnitude > 0.1f)
         {
-            float currentMoveSpeed = MoveSpeed;
+            // ✅ 🌟 เปลี่ยน: ใช้ GetEffectiveMoveSpeed() แทน MoveSpeed
+            float currentMoveSpeed = GetEffectiveMoveSpeed();
 
             // เพิ่มความเร็วถ้าอยู่ในสถานะ BackingOff
             if (CurrentState == EnemyState.BackingOff)
@@ -479,15 +480,16 @@ public class NetworkEnemy : Character
 
         if (canAttack)
         {
-            // 🎯 ใช้ Attack Speed ในการคำนวณ cooldown (เหมือน Hero)
-            float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, AttackSpeed);
+            // ✅ 🌟 เปลี่ยน: ใช้ GetEffectiveAttackSpeed() แทน AttackSpeed
+            float effectiveAttackSpeed = GetEffectiveAttackSpeed();
+            float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed);
             nextAttackTime = Runner.SimulationTime + finalAttackCooldown;
 
             RPC_PerformAttack(CurrentTarget);
 
             if (showDebugInfo)
             {
-                Debug.Log($"{CharacterName}: *** ATTACK EXECUTED! *** Distance: {distance:F2}, State: {CurrentState}, Speed: {AttackSpeed:F1}x");
+                Debug.Log($"{CharacterName}: *** ATTACK EXECUTED! *** Distance: {distance:F2}, State: {CurrentState}, Speed: {effectiveAttackSpeed:F1}x (base: {AttackSpeed:F1}x)");
             }
         }
         else if (showDebugInfo && CurrentState == EnemyState.Attacking)

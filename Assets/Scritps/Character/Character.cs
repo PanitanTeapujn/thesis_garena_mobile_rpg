@@ -314,7 +314,7 @@ public class Character : NetworkBehaviour
         if (currentHp > oldHp)
         {
             NetworkedCurrentHp = currentHp;
-            Debug.Log($"[Health Regen] {CharacterName}: {oldHp} -> {currentHp} (+{regenAmount})");
+           // Debug.Log($"[Health Regen] {CharacterName}: {oldHp} -> {currentHp} (+{regenAmount})");
         }
     }
 
@@ -337,7 +337,7 @@ public class Character : NetworkBehaviour
         if (currentMana > oldMana)
         {
             NetworkedCurrentMana = currentMana;
-            Debug.Log($"[Mana Regen] {CharacterName}: {oldMana} -> {currentMana} (+{regenAmount}) [Base: {manaRegenPerSecond}, Total: {totalManaRegen}]");
+            //Debug.Log($"[Mana Regen] {CharacterName}: {oldMana} -> {currentMana} (+{regenAmount}) [Base: {manaRegenPerSecond}, Total: {totalManaRegen}]");
         }
     }
     // ========== Query Methods ==========
@@ -370,6 +370,19 @@ public class Character : NetworkBehaviour
                 return statusEffectManager.IsBlind;
             case StatusEffectType.Weakness:
                 return statusEffectManager.IsWeak;
+
+            case StatusEffectType.AttackSpeedAura:
+                return statusEffectManager.IsProvidingAttackSpeedAura;
+            case StatusEffectType.DamageAura:
+                return statusEffectManager.IsProvidingDamageAura;
+            case StatusEffectType.MoveSpeedAura:
+                return statusEffectManager.IsProvidingMoveSpeedAura;
+            case StatusEffectType.ProtectionAura:
+                return statusEffectManager.IsProvidingProtectionAura;
+            case StatusEffectType.ArmorAura:
+                return statusEffectManager.IsProvidingArmorAura;
+            case StatusEffectType.CriticalAura:
+                return statusEffectManager.IsProvidingCriticalAura;
 
             default:
                 return false;
@@ -424,7 +437,52 @@ public class Character : NetworkBehaviour
         Debug.Log($"{CharacterName} died!");
         // Handle death logic here
     }
+    public float GetEffectiveMoveSpeed()
+    {
+        float baseMoveSpeed = moveSpeed;
 
+        // ✅ รวม Move Speed Aura
+        if (statusEffectManager != null)
+        {
+            float moveSpeedMultiplier = statusEffectManager.GetTotalMoveSpeedMultiplier();
+            baseMoveSpeed *= moveSpeedMultiplier;
+
+            if (moveSpeedMultiplier > 1f)
+            {
+                Debug.Log($"[Move Speed Aura] {CharacterName} speed boosted by {(moveSpeedMultiplier - 1f) * 100:F0}%");
+            }
+        }
+
+        // ✅ รวม Freeze effect (ใช้ระบบเดิม)
+        if (HasStatusEffect(StatusEffectType.Freeze))
+        {
+            baseMoveSpeed *= 0.3f; // ลดความเร็วเหลือ 30% เมื่อ freeze
+        }
+
+        return baseMoveSpeed;
+    }
+
+    /// <summary>
+    /// ✅ 🌟 เพิ่ม: ดู Attack Speed รวม Aura
+    /// </summary>
+    public float GetEffectiveAttackSpeed()
+    {
+        float baseAttackSpeed = attackSpeed;
+
+        // ✅ รวม Attack Speed Aura
+        if (statusEffectManager != null)
+        {
+            float attackSpeedMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
+            baseAttackSpeed *= attackSpeedMultiplier;
+
+            if (attackSpeedMultiplier > 1f)
+            {
+                Debug.Log($"[Attack Speed Aura] {CharacterName} attack speed boosted by {(attackSpeedMultiplier - 1f) * 100:F0}%");
+            }
+        }
+
+        return baseAttackSpeed;
+    }
     protected virtual bool CanDie()
     {
         return NetworkedCurrentHp <= 0;

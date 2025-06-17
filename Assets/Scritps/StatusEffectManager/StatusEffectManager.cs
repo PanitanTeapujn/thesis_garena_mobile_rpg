@@ -16,7 +16,15 @@ public enum StatusEffectType
     Stun,
     ArmorBreak,
     Blind,
-    Weakness
+    Weakness,
+
+         // ========== 🌟 TEAM AURA BUFFS ==========
+    AttackSpeedAura,    // +30% attack speed รัศมี 5m
+    DamageAura,         // +20% damage รัศมี 5m  
+    MoveSpeedAura,      // +15% move speed รัศมี 5m
+    ProtectionAura,     // -15% damage taken รัศมี 6m
+    ArmorAura,          // +20% armor รัศมี 6m
+    CriticalAura        // +15% critical chance รัศมี 6m
 }
 
 public class StatusEffectManager : NetworkBehaviour
@@ -26,8 +34,12 @@ public class StatusEffectManager : NetworkBehaviour
     private float burnTickInterval = 0.5f;   // ทุก 0.5 วินาที
     private float bleedTickInterval = 0.7f;  // ทุก 0.7 วินาที
 
-    // ========== Network Status Properties ==========
+    [Header("🌟 Team Aura Settings")]
+    public float auraCheckInterval = 0.5f;          // ตรวจสอบทุก 0.5 วินาที
+    public LayerMask teamLayerMask = -1;
 
+    // ========== Network Status Properties ==========
+#region Magical Effects
     // 🧪 Magical Effects
     [Networked] public bool IsPoisoned { get; set; }
     [Networked] public float PoisonDuration { get; set; }
@@ -47,7 +59,9 @@ public class StatusEffectManager : NetworkBehaviour
     [Networked] public bool IsFrozen { get; set; }
     [Networked] public float FreezeDuration { get; set; }
     [Networked] public float OriginalMoveSpeed { get; set; }
+    #endregion
 
+#region Physical Effects
     // ⚡ Physical Effects
     [Networked] public bool IsStunned { get; set; }
     [Networked] public float StunDuration { get; set; }
@@ -63,7 +77,57 @@ public class StatusEffectManager : NetworkBehaviour
     [Networked] public bool IsWeak { get; set; }
     [Networked] public float WeaknessDuration { get; set; }
     [Networked] public float WeaknessAmount { get; set; } // 0.4 = 40% reduction
+    #endregion
+#region AuraBuff
 
+    // Attack Speed Aura
+    [Networked] public bool IsProvidingAttackSpeedAura { get; set; }
+    [Networked] public float AttackSpeedAuraDuration { get; set; }
+    [Networked] public float AttackSpeedAuraRadius { get; set; }
+    [Networked] public float AttackSpeedAuraAmount { get; set; }
+
+    // Damage Aura  
+    [Networked] public bool IsProvidingDamageAura { get; set; }
+    [Networked] public float DamageAuraDuration { get; set; }
+    [Networked] public float DamageAuraRadius { get; set; }
+    [Networked] public float DamageAuraAmount { get; set; }
+
+    // Move Speed Aura
+    [Networked] public bool IsProvidingMoveSpeedAura { get; set; }
+    [Networked] public float MoveSpeedAuraDuration { get; set; }
+    [Networked] public float MoveSpeedAuraRadius { get; set; }
+    [Networked] public float MoveSpeedAuraAmount { get; set; }
+
+    // Protection Aura
+    [Networked] public bool IsProvidingProtectionAura { get; set; }
+    [Networked] public float ProtectionAuraDuration { get; set; }
+    [Networked] public float ProtectionAuraRadius { get; set; }
+    [Networked] public float ProtectionAuraAmount { get; set; }
+
+    // Armor Aura
+    [Networked] public bool IsProvidingArmorAura { get; set; }
+    [Networked] public float ArmorAuraDuration { get; set; }
+    [Networked] public float ArmorAuraRadius { get; set; }
+    [Networked] public float ArmorAuraAmount { get; set; }
+
+    // Critical Aura
+    [Networked] public bool IsProvidingCriticalAura { get; set; }
+    [Networked] public float CriticalAuraDuration { get; set; }
+    [Networked] public float CriticalAuraRadius { get; set; }
+    [Networked] public float CriticalAuraAmount { get; set; }
+
+    // ========== Team Aura Receiving Properties (สิ่งที่ได้รับจากคนอื่น) ==========
+    [Networked] public float ReceivedAttackSpeedBonus { get; set; }
+    [Networked] public float ReceivedDamageBonus { get; set; }
+    [Networked] public float ReceivedMoveSpeedBonus { get; set; }
+    [Networked] public float ReceivedProtectionBonus { get; set; }
+    [Networked] public float ReceivedArmorBonus { get; set; }
+    [Networked] public float ReceivedCriticalBonus { get; set; }
+
+    // Timers
+    private float nextAuraCheckTime = 0f;
+
+    #endregion
     // ========== Events for Communication ==========
     public static event Action<Character, int, DamageType> OnStatusDamage;
     public static event Action<Character, StatusEffectType, bool> OnStatusEffectChanged;
@@ -96,7 +160,7 @@ public class StatusEffectManager : NetworkBehaviour
             ProcessWeaknessEffect();
         }
     }
-
+ #region DeBuff
     // ========== 🧪 Poison System ==========
     public virtual void ApplyPoison(int damagePerTick, float duration)
     {
@@ -661,7 +725,352 @@ public class StatusEffectManager : NetworkBehaviour
         Debug.Log($"{character.CharacterName} weakness removed");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Weakness, false);
     }
+    #endregion
 
+
+  #region Buff
+
+    public virtual void ApplyAttackSpeedAura(float radius = 5f, float bonus = 0.3f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        IsProvidingAttackSpeedAura = true;
+        AttackSpeedAuraRadius = radius;
+        AttackSpeedAuraAmount = bonus;
+        AttackSpeedAuraDuration = duration;
+
+        Debug.Log($"[AttackSpeedAura] {character.CharacterName} providing +{bonus * 100}% attack speed in {radius}m for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.AttackSpeedAura, true);
+    }
+
+    public virtual void ApplyDamageAura(float radius = 5f, float bonus = 0.2f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        IsProvidingDamageAura = true;
+        DamageAuraRadius = radius;
+        DamageAuraAmount = bonus;
+        DamageAuraDuration = duration;
+
+        Debug.Log($"[DamageAura] {character.CharacterName} providing +{bonus * 100}% damage in {radius}m for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.DamageAura, true);
+    }
+
+    public virtual void ApplyMoveSpeedAura(float radius = 5f, float bonus = 0.15f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        IsProvidingMoveSpeedAura = true;
+        MoveSpeedAuraRadius = radius;
+        MoveSpeedAuraAmount = bonus;
+        MoveSpeedAuraDuration = duration;
+
+        Debug.Log($"[MoveSpeedAura] {character.CharacterName} providing +{bonus * 100}% move speed in {radius}m for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.MoveSpeedAura, true);
+    }
+
+    public virtual void ApplyProtectionAura(float radius = 6f, float reduction = 0.15f, float duration = 20f)
+    {
+        if (!HasStateAuthority) return;
+
+        IsProvidingProtectionAura = true;
+        ProtectionAuraRadius = radius;
+        ProtectionAuraAmount = reduction;
+        ProtectionAuraDuration = duration;
+
+        Debug.Log($"[ProtectionAura] {character.CharacterName} providing -{reduction * 100}% damage taken in {radius}m for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.ProtectionAura, true);
+    }
+
+    public virtual void ApplyArmorAura(float radius = 6f, float bonus = 0.2f, float duration = 20f)
+    {
+        if (!HasStateAuthority) return;
+
+        IsProvidingArmorAura = true;
+        ArmorAuraRadius = radius;
+        ArmorAuraAmount = bonus;
+        ArmorAuraDuration = duration;
+
+        Debug.Log($"[ArmorAura] {character.CharacterName} providing +{bonus * 100}% armor in {radius}m for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.ArmorAura, true);
+    }
+
+    public virtual void ApplyCriticalAura(float radius = 6f, float bonus = 0.15f, float duration = 20f)
+    {
+        if (!HasStateAuthority) return;
+
+        IsProvidingCriticalAura = true;
+        CriticalAuraRadius = radius;
+        CriticalAuraAmount = bonus;
+        CriticalAuraDuration = duration;
+
+        Debug.Log($"[CriticalAura] {character.CharacterName} providing +{bonus * 100}% critical in {radius}m for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.CriticalAura, true);
+    }
+
+    // ========== Process Aura Durations ==========
+    private void ProcessAllAuras()
+    {
+        // Attack Speed Aura
+        if (IsProvidingAttackSpeedAura)
+        {
+            AttackSpeedAuraDuration -= Runner.DeltaTime;
+            if (AttackSpeedAuraDuration <= 0)
+            {
+                RemoveAttackSpeedAura();
+            }
+        }
+
+        // Damage Aura
+        if (IsProvidingDamageAura)
+        {
+            DamageAuraDuration -= Runner.DeltaTime;
+            if (DamageAuraDuration <= 0)
+            {
+                RemoveDamageAura();
+            }
+        }
+
+        // Move Speed Aura
+        if (IsProvidingMoveSpeedAura)
+        {
+            MoveSpeedAuraDuration -= Runner.DeltaTime;
+            if (MoveSpeedAuraDuration <= 0)
+            {
+                RemoveMoveSpeedAura();
+            }
+        }
+
+        // Protection Aura
+        if (IsProvidingProtectionAura)
+        {
+            ProtectionAuraDuration -= Runner.DeltaTime;
+            if (ProtectionAuraDuration <= 0)
+            {
+                RemoveProtectionAura();
+            }
+        }
+
+        // Armor Aura
+        if (IsProvidingArmorAura)
+        {
+            ArmorAuraDuration -= Runner.DeltaTime;
+            if (ArmorAuraDuration <= 0)
+            {
+                RemoveArmorAura();
+            }
+        }
+
+        // Critical Aura
+        if (IsProvidingCriticalAura)
+        {
+            CriticalAuraDuration -= Runner.DeltaTime;
+            if (CriticalAuraDuration <= 0)
+            {
+                RemoveCriticalAura();
+            }
+        }
+    }
+
+    // ========== Update Aura Effects (ตรวจสอบใครอยู่ในรัศมี) ==========
+    private void UpdateAuraEffects()
+    {
+        // Reset ค่าที่ได้รับจาก aura
+        ResetReceivedAuraBonuses();
+
+        // ค้นหา Character ทั้งหมดในฉากที่มี aura
+        Character[] allCharacters = FindObjectsOfType<Character>();
+
+        foreach (Character auraProvider in allCharacters)
+        {
+            if (auraProvider == null || !auraProvider.IsSpawned) continue;
+
+            StatusEffectManager providerStatus = auraProvider.GetComponent<StatusEffectManager>();
+            if (providerStatus == null) continue;
+
+            float distance = Vector3.Distance(transform.position, auraProvider.transform.position);
+
+            // ตรวจสอบ aura แต่ละประเภท
+            CheckAndApplyAuraBonus(providerStatus, distance);
+        }
+    }
+
+    private void CheckAndApplyAuraBonus(StatusEffectManager provider, float distance)
+    {
+        // Attack Speed Aura
+        if (provider.IsProvidingAttackSpeedAura && distance <= provider.AttackSpeedAuraRadius)
+        {
+            ReceivedAttackSpeedBonus = Mathf.Max(ReceivedAttackSpeedBonus, provider.AttackSpeedAuraAmount);
+        }
+
+        // Damage Aura
+        if (provider.IsProvidingDamageAura && distance <= provider.DamageAuraRadius)
+        {
+            ReceivedDamageBonus = Mathf.Max(ReceivedDamageBonus, provider.DamageAuraAmount);
+        }
+
+        // Move Speed Aura
+        if (provider.IsProvidingMoveSpeedAura && distance <= provider.MoveSpeedAuraRadius)
+        {
+            ReceivedMoveSpeedBonus = Mathf.Max(ReceivedMoveSpeedBonus, provider.MoveSpeedAuraAmount);
+        }
+
+        // Protection Aura
+        if (provider.IsProvidingProtectionAura && distance <= provider.ProtectionAuraRadius)
+        {
+            ReceivedProtectionBonus = Mathf.Max(ReceivedProtectionBonus, provider.ProtectionAuraAmount);
+        }
+
+        // Armor Aura
+        if (provider.IsProvidingArmorAura && distance <= provider.ArmorAuraRadius)
+        {
+            ReceivedArmorBonus = Mathf.Max(ReceivedArmorBonus, provider.ArmorAuraAmount);
+        }
+
+        // Critical Aura
+        if (provider.IsProvidingCriticalAura && distance <= provider.CriticalAuraRadius)
+        {
+            ReceivedCriticalBonus = Mathf.Max(ReceivedCriticalBonus, provider.CriticalAuraAmount);
+        }
+    }
+
+    private void ResetReceivedAuraBonuses()
+    {
+        ReceivedAttackSpeedBonus = 0f;
+        ReceivedDamageBonus = 0f;
+        ReceivedMoveSpeedBonus = 0f;
+        ReceivedProtectionBonus = 0f;
+        ReceivedArmorBonus = 0f;
+        ReceivedCriticalBonus = 0f;
+    }
+
+    // ========== Remove Aura Methods ==========
+    public virtual void RemoveAttackSpeedAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingAttackSpeedAura = false;
+        AttackSpeedAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} attack speed aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.AttackSpeedAura, false);
+    }
+
+    public virtual void RemoveDamageAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingDamageAura = false;
+        DamageAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} damage aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.DamageAura, false);
+    }
+
+    public virtual void RemoveMoveSpeedAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingMoveSpeedAura = false;
+        MoveSpeedAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} move speed aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.MoveSpeedAura, false);
+    }
+
+    public virtual void RemoveProtectionAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingProtectionAura = false;
+        ProtectionAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} protection aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.ProtectionAura, false);
+    }
+
+    public virtual void RemoveArmorAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingArmorAura = false;
+        ArmorAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} armor aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.ArmorAura, false);
+    }
+
+    public virtual void RemoveCriticalAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingCriticalAura = false;
+        CriticalAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} critical aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.CriticalAura, false);
+    }
+
+    #endregion
+
+
+    // ========== Public Query Methods ==========
+    public bool IsProvidingAnyAura()
+    {
+        return IsProvidingAttackSpeedAura || IsProvidingDamageAura || IsProvidingMoveSpeedAura ||
+               IsProvidingProtectionAura || IsProvidingArmorAura || IsProvidingCriticalAura;
+    }
+
+    public bool IsReceivingAnyAura()
+    {
+        return ReceivedAttackSpeedBonus > 0 || ReceivedDamageBonus > 0 || ReceivedMoveSpeedBonus > 0 ||
+               ReceivedProtectionBonus > 0 || ReceivedArmorBonus > 0 || ReceivedCriticalBonus > 0;
+    }
+
+    public void ClearAllAuras()
+    {
+        if (!HasStateAuthority) return;
+
+        if (IsProvidingAttackSpeedAura) RemoveAttackSpeedAura();
+        if (IsProvidingDamageAura) RemoveDamageAura();
+        if (IsProvidingMoveSpeedAura) RemoveMoveSpeedAura();
+        if (IsProvidingProtectionAura) RemoveProtectionAura();
+        if (IsProvidingArmorAura) RemoveArmorAura();
+        if (IsProvidingCriticalAura) RemoveCriticalAura();
+    }
+
+    public float GetTotalDamageMultiplier()
+    {
+        return 1f + ReceivedDamageBonus;
+    }
+
+    /// <summary>
+    /// ใช้โดย Character เพื่อคำนวณ attack speed
+    /// </summary>
+    public float GetTotalAttackSpeedMultiplier()
+    {
+        return 1f + ReceivedAttackSpeedBonus;
+    }
+
+    /// <summary>
+    /// ใช้โดย Character เพื่อคำนวณ move speed
+    /// </summary>
+    public float GetTotalMoveSpeedMultiplier()
+    {
+        return 1f + ReceivedMoveSpeedBonus;
+    }
+
+    /// <summary>
+    /// ใช้โดย CombatManager เพื่อคำนวณ damage reduction
+    /// </summary>
+    public float GetTotalDamageReduction()
+    {
+        return ReceivedProtectionBonus;
+    }
+
+    /// <summary>
+    /// ใช้โดย CombatManager เพื่อคำนวณ armor bonus
+    /// </summary>
+    public float GetTotalArmorMultiplier()
+    {
+        return 1f + ReceivedArmorBonus;
+    }
+
+    /// <summary>
+    /// ใช้โดย CombatManager เพื่อคำนวณ critical bonus
+    /// </summary>
+    public float GetTotalCriticalBonus()
+    {
+        return ReceivedCriticalBonus;
+    }
     // ========== Helper Methods ==========
     private float GetMagicalResistance()
     {

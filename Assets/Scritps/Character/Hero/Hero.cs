@@ -20,7 +20,7 @@
         [Networked] public bool IsNetworkStateReady { get; set; }
 
         [Networked] public TickTimer AttackCooldownTimer { get; set; }
-        float nextAttackTime = 0f;
+        protected float nextAttackTime = 0f;
 
         private float AttackRange = 2f; // Override from Character
         private LayerMask enemyLayer;
@@ -309,10 +309,11 @@
             }
         }
 
-        // ========== Movement Processing ==========
-        protected virtual void ProcessMovement()
-        {
-            if (!HasInputAuthority) return;
+    // ========== Movement Processing ==========
+    protected virtual void ProcessMovement()
+    {
+        if (!HasInputAuthority) return;
+
         if (HasStatusEffect(StatusEffectType.Stun))
         {
             if (rb != null)
@@ -321,73 +322,72 @@
             }
             return; // ออกจากฟังก์ชันทันที
         }
+
         Vector3 moveDirection = Vector3.zero;
-            Vector2 currentInput = networkInputData.movementInput;
+        Vector2 currentInput = networkInputData.movementInput;
 
-            // ลด dead zone ให้เหมาะสม และใช้เฉพาะ magnitude
-            float inputMagnitude = currentInput.magnitude;
-            if (inputMagnitude < 0.15f) // ลดจาก 0.2 เป็น 0.15
-            {
-                currentInput = Vector2.zero; // ใส่ zero หากน้อยกว่า dead zone
-            }
-
-            if (cameraTransform != null)
-            {
-                Vector3 camForward = cameraTransform.forward;
-                Vector3 camRight = cameraTransform.right;
-                camForward.y = 0;
-                camRight.y = 0;
-                camForward.Normalize();
-                camRight.Normalize();
-
-                moveDirection = camForward * currentInput.y + camRight * currentInput.x;
-            }
-
-            if (rb != null)
-            {
-                if (moveDirection.magnitude > 0.1f)
-                {
-                float currentMoveSpeed = MoveSpeed;
-                if (HasStatusEffect(StatusEffectType.Freeze))
-                {
-                    currentMoveSpeed *= 0.3f; // ลดความเร็วเหลือ 30% เมื่อ freeze
-                }
-                Vector3 targetVelocity = new Vector3(
-                        moveDirection.x * MoveSpeed,
-                        rb.velocity.y,
-                        moveDirection.z * MoveSpeed
-                    );
-
-                    // ใช้ Lerp แทน SmoothDamp เพื่อความง่าย
-                    Vector3 newVelocity = Vector3.Lerp(
-                        rb.velocity,
-                        targetVelocity,
-                        Time.fixedDeltaTime * 15f // ปรับความเร็วการ lerp
-                    );
-
-                    // เซ็ต velocity เสมอเมื่อมีการเคลื่อนไหว
-                    rb.velocity = newVelocity;
-                    FlipCharacterNetwork(currentInput.x);
-                }
-                else
-                {
-                    // Smooth stop
-                    Vector3 currentVel = rb.velocity;
-                    Vector3 stoppedVelocity = new Vector3(
-                        Mathf.Lerp(currentVel.x, 0, Time.fixedDeltaTime * 10f),
-                        currentVel.y,
-                        Mathf.Lerp(currentVel.z, 0, Time.fixedDeltaTime * 10f)
-                    );
-
-                    rb.velocity = stoppedVelocity;
-                }
-            }
-
-            // เก็บค่า input ล่าสุด
-            lastMovementInput = currentInput;
+        // ลด dead zone ให้เหมาะสม และใช้เฉพาะ magnitude
+        float inputMagnitude = currentInput.magnitude;
+        if (inputMagnitude < 0.15f) // ลดจาก 0.2 เป็น 0.15
+        {
+            currentInput = Vector2.zero; // ใส่ zero หากน้อยกว่า dead zone
         }
 
-        public void SetMovementDeadZone(float deadZone)
+        if (cameraTransform != null)
+        {
+            Vector3 camForward = cameraTransform.forward;
+            Vector3 camRight = cameraTransform.right;
+            camForward.y = 0;
+            camRight.y = 0;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            moveDirection = camForward * currentInput.y + camRight * currentInput.x;
+        }
+
+        if (rb != null)
+        {
+            if (moveDirection.magnitude > 0.1f)
+            {
+                // ✅ 🌟 เปลี่ยน: ใช้ GetEffectiveMoveSpeed() แทน MoveSpeed
+                float currentMoveSpeed = GetEffectiveMoveSpeed();
+
+                Vector3 targetVelocity = new Vector3(
+                    moveDirection.x * currentMoveSpeed,
+                    rb.velocity.y,
+                    moveDirection.z * currentMoveSpeed
+                );
+
+                // ใช้ Lerp แทน SmoothDamp เพื่อความง่าย
+                Vector3 newVelocity = Vector3.Lerp(
+                    rb.velocity,
+                    targetVelocity,
+                    Time.fixedDeltaTime * 15f // ปรับความเร็วการ lerp
+                );
+
+                // เซ็ต velocity เสมอเมื่อมีการเคลื่อนไหว
+                rb.velocity = newVelocity;
+                FlipCharacterNetwork(currentInput.x);
+            }
+            else
+            {
+                // Smooth stop
+                Vector3 currentVel = rb.velocity;
+                Vector3 stoppedVelocity = new Vector3(
+                    Mathf.Lerp(currentVel.x, 0, Time.fixedDeltaTime * 10f),
+                    currentVel.y,
+                    Mathf.Lerp(currentVel.z, 0, Time.fixedDeltaTime * 10f)
+                );
+
+                rb.velocity = stoppedVelocity;
+            }
+        }
+
+        // เก็บค่า input ล่าสุด
+        lastMovementInput = currentInput;
+    }
+
+    public void SetMovementDeadZone(float deadZone)
         {
             movementDeadZone = Mathf.Clamp(deadZone, 0.1f, 0.5f);
         }
@@ -469,14 +469,14 @@
     #endregion
     public void DebugNetworkState()
         {
-            Debug.Log($"[DEBUG] {CharacterName} Network State:");
+           /* Debug.Log($"[DEBUG] {CharacterName} Network State:");
             Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
             Debug.Log($"  - HasStateAuthority: {HasStateAuthority}");
             Debug.Log($"  - IsNetworkStateReady: {IsNetworkStateReady}");
             Debug.Log($"  - CurrentHp: {CurrentHp} | NetworkedCurrentHp: {NetworkedCurrentHp}");
             Debug.Log($"  - MaxHp: {MaxHp} | NetworkedMaxHp: {NetworkedMaxHp}");
             Debug.Log($"  - CurrentMana: {CurrentMana} | NetworkedCurrentMana: {NetworkedCurrentMana}");
-            Debug.Log($"  - MaxMana: {MaxMana} | NetworkedMaxMana: {NetworkedMaxMana}");
+            Debug.Log($"  - MaxMana: {MaxMana} | NetworkedMaxMana: {NetworkedMaxMana}");*/
         }
         // ========== Original Methods (Non-Network) ==========
         protected  void Update()
@@ -759,45 +759,48 @@
         }
         public bool IsSpawned => Object != null && Object.IsValid;
 
-        public void TryAttack()
+    public virtual void TryAttack()
+    {
+        if (!HasInputAuthority || !IsSpawned) return;
+
+        if (Time.time < nextAttackTime) return;
+
+        Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, enemyLayer);
+
+        if (enemies.Length > 0)
         {
-            if (!HasInputAuthority || !IsSpawned) return;
+            NetworkEnemy nearestEnemy = null;
+            float nearestDistance = float.MaxValue;
 
-            if (Time.time < nextAttackTime) return;
-
-            Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, enemyLayer);
-
-            if (enemies.Length > 0)
+            foreach (Collider col in enemies)
             {
-                NetworkEnemy nearestEnemy = null;
-                float nearestDistance = float.MaxValue;
-
-                foreach (Collider col in enemies)
+                NetworkEnemy enemy = col.GetComponent<NetworkEnemy>();
+                if (enemy != null && enemy.IsSpawned && !enemy.IsDead)
                 {
-                    NetworkEnemy enemy = col.GetComponent<NetworkEnemy>();
-                    if (enemy != null && enemy.IsSpawned && !enemy.IsDead)
+                    float distance = Vector3.Distance(transform.position, enemy.transform.position);
+                    if (distance < nearestDistance)
                     {
-                        float distance = Vector3.Distance(transform.position, enemy.transform.position);
-                        if (distance < nearestDistance)
-                        {
-                            nearestDistance = distance;
-                            nearestEnemy = enemy;
-                        }
+                        nearestDistance = distance;
+                        nearestEnemy = enemy;
                     }
                 }
+            }
 
-                if (nearestEnemy != null)
-                {
-                    RPC_PerformAttack(nearestEnemy.Object);
-                float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, AttackSpeed);
+            if (nearestEnemy != null)
+            {
+                RPC_PerformAttack(nearestEnemy.Object);
+
+                // ✅ 🌟 เปลี่ยน: ใช้ GetEffectiveAttackSpeed() แทน AttackSpeed
+                float effectiveAttackSpeed = GetEffectiveAttackSpeed();
+                float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed);
 
                 nextAttackTime = Time.time + finalAttackCooldown;
-                Debug.Log($"Hero attacking enemy at distance: {Vector3.Distance(transform.position, nearestEnemy.transform.position)}");
-                }
+                Debug.Log($"Hero attacking enemy at distance: {Vector3.Distance(transform.position, nearestEnemy.transform.position)} | Attack Speed: {effectiveAttackSpeed:F1}x");
             }
         }
+    }
 
-        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_PerformAttack(NetworkObject enemyObject)
         {
             if (enemyObject != null)
@@ -824,7 +827,7 @@
         }
 
         [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-        private void RPC_OnAttackHit(NetworkObject enemyObject)
+        protected virtual void RPC_OnAttackHit(NetworkObject enemyObject)
         {
             Debug.Log($"{CharacterName} hit enemy!");
             // TODO: Add animation / VFX here
