@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 1134636996539847083}
   - component: {fileID: -4769744403378424079}
   - component: {fileID: 6805999472363350751}
+  - component: {fileID: 1510399816917836651}
   m_Layer: 6
   m_Name: Berserker
   m_TagString: Untagged
@@ -169,6 +170,7 @@ MonoBehaviour:
   - {fileID: 1134636996539847083}
   - {fileID: -4769744403378424079}
   - {fileID: 6805999472363350751}
+  - {fileID: 1510399816917836651}
   ForceRemoteRenderTimeframe: 0
 --- !u!95 &6031354943333226893
 Animator:
@@ -216,6 +218,9 @@ MonoBehaviour:
   attackCooldown: 0
   criticalChance: 5
   criticalMultiplier: 2
+  hitRate: 0
+  evasionRate: 0
+  attackSpeed: 0
   healthRegenPerSecond: 2
   manaRegenPerSecond: 3
   _NetworkedCurrentHp: 0
@@ -274,6 +279,8 @@ MonoBehaviour:
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
   currentRuneStats:
@@ -285,6 +292,8 @@ MonoBehaviour:
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
   _NetworkedAttackDamageBonus: 0
@@ -295,6 +304,9 @@ MonoBehaviour:
   _NetworkedMoveSpeedBonus: 0
   _NetworkedPhysicalResistanceBonus: 0
   _NetworkedMagicalResistanceBonus: 0
+  _NetworkedHitRateBonus: 0
+  _NetworkedEvasionRateBonus: 0
+  _NetworkedAttackSpeedBonus: 0
 --- !u!114 &1597410770255714936
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -319,6 +331,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71c5e477ae05a4588cf4f2e6b03f42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  auraCheckInterval: 0.5
+  teamLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   _IsPoisoned: 0
   _PoisonDuration: 0
   _PoisonDamagePerTick: 0
@@ -345,6 +361,36 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingAttackSpeedAura: 0
+  _AttackSpeedAuraDuration: 0
+  _AttackSpeedAuraRadius: 0
+  _AttackSpeedAuraAmount: 0
+  _IsProvidingDamageAura: 0
+  _DamageAuraDuration: 0
+  _DamageAuraRadius: 0
+  _DamageAuraAmount: 0
+  _IsProvidingMoveSpeedAura: 0
+  _MoveSpeedAuraDuration: 0
+  _MoveSpeedAuraRadius: 0
+  _MoveSpeedAuraAmount: 0
+  _IsProvidingProtectionAura: 0
+  _ProtectionAuraDuration: 0
+  _ProtectionAuraRadius: 0
+  _ProtectionAuraAmount: 0
+  _IsProvidingArmorAura: 0
+  _ArmorAuraDuration: 0
+  _ArmorAuraRadius: 0
+  _ArmorAuraAmount: 0
+  _IsProvidingCriticalAura: 0
+  _CriticalAuraDuration: 0
+  _CriticalAuraRadius: 0
+  _CriticalAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
 --- !u!114 &-4769744403378424079
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -407,3 +453,23 @@ MonoBehaviour:
   _CurrentExp: 0
   _ExpToNextLevel: 150
   _IsInitialized: 0
+--- !u!114 &1510399816917836651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9e92fb849fedf143a499f0444684019, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  useNetworkMode: 1
+  autoDetectNetworkMode: 1
+  maxInventorySlots: 30
+  itemDatabase: {fileID: 11400000, guid: a9342a9fd48ed404a9bd076258f1d22f, type: 2}
+  useFirebaseSync: 1
+  usePlayerPrefsBackup: 1
+  _NetworkInventory: []
+  _NetworkEquipment: []
