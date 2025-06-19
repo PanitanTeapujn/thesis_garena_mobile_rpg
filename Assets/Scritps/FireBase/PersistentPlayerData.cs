@@ -30,7 +30,7 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
-    private FirebaseAuth auth;
+    public FirebaseAuth auth;
     private DatabaseReference databaseReference;
 
     private void Awake()
@@ -154,8 +154,65 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.Log("[PersistentPlayerData] No data found. Creating default data...");
             CreateDefaultMultiCharacterData();
         }
-    }
 
+        RegisterPlayerInDirectory();
+    }
+    private IEnumerator SendFriendRequestByUserIdCoroutine(string targetUserId)
+    {
+        Debug.Log($"🔍 Sending friend request to UserId: {targetUserId}");
+
+        // ตรวจสอบว่า userId นี้มีอยู่จริงหรือไม่
+        var checkTask = databaseReference.Child("players").Child(targetUserId).Child("playerName").GetValueAsync();
+        yield return new WaitUntil(() => checkTask.IsCompleted);
+
+        if (checkTask.Exception != null)
+        {
+            Debug.LogError($"❌ Error checking user: {checkTask.Exception.Message}");
+            yield break;
+        }
+
+        if (!checkTask.Result.Exists)
+        {
+            Debug.Log($"❌ User ID '{targetUserId}' not found!");
+            yield break;
+        }
+
+        string targetPlayerName = checkTask.Result.Value?.ToString();
+        Debug.Log($"✅ Found player: {targetPlayerName}");
+
+        // ตรวจสอบว่าเป็นตัวเองหรือไม่
+        if (targetUserId == auth.CurrentUser.UserId)
+        {
+            Debug.Log("❌ Cannot send friend request to yourself!");
+            yield break;
+        }
+
+        Debug.Log($"📤 Sending friend request to {targetPlayerName} (UserId: {targetUserId})");
+
+        // ส่ง friend request
+        var requestTask = databaseReference
+            .Child("players")
+            .Child(targetUserId)
+            .Child("pendingFriendRequests")
+            .Child(auth.CurrentUser.UserId)
+            .SetValueAsync(multiCharacterData.playerName);
+
+        yield return new WaitUntil(() => requestTask.IsCompleted);
+
+        if (requestTask.Exception == null)
+        {
+            Debug.Log($"✅ Friend request sent to {targetPlayerName}");
+        }
+        else
+        {
+            Debug.LogError($"❌ Failed to send friend request: {requestTask.Exception.Message}");
+        }
+    }
+    public void SendFriendRequestByUserId(string targetUserId)
+    {
+        if (!IsFirebaseReady()) return;
+        StartCoroutine(SendFriendRequestByUserIdCoroutine(targetUserId));
+    }
     private void CreateDefaultMultiCharacterData()
     {
         multiCharacterData = new MultiCharacterPlayerData();
@@ -266,10 +323,499 @@ public class PersistentPlayerData : MonoBehaviour
                GetCurrentCharacterData() != null;
     }
 
+
+    #region Friends
+    public void SendFriendRequest(string targetPlayerName)
+    {
+        // ตรวจสอบการเชื่อมต่อ Firebase ก่อน
+        if (!IsFirebaseReady())
+        {
+            Debug.LogError("❌ Firebase is not ready! Cannot send friend request.");
+            return;
+        }
+
+        if (auth?.CurrentUser == null)
+        {
+            Debug.LogError("❌ User not authenticated! Cannot send friend request.");
+            return;
+        }
+
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("❌ Player data not loaded! Cannot send friend request.");
+            return;
+        }
+
+        StartCoroutine(SendFriendRequestCoroutine(targetPlayerName));
+    }
+
+    private bool IsFirebaseReady()
+    {
+        if (auth == null)
+        {
+            Debug.LogError("❌ Firebase Auth is null");
+            return false;
+        }
+
+        if (databaseReference == null)
+        {
+            Debug.LogError("❌ Firebase Database Reference is null");
+            return false;
+        }
+
+        Debug.Log("✅ Firebase is ready");
+        return true;
+    }
+
+    private IEnumerator SendFriendRequestCoroutine(string targetPlayerName)
+    {
+        Debug.Log($"🔍 Starting friend request for: {targetPlayerName}");
+
+        // วิธีง่ายที่สุด: อ่านข้อมูลทุกคนและหาชื่อ
+        var task = databaseReference.Child("players").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"❌ Firebase error: {task.Exception.Message}");
+            yield break;
+        }
+
+        if (!task.Result.Exists)
+        {
+            Debug.Log("❌ No players found in Firebase!");
+            yield break;
+        }
+
+        Debug.Log($"📊 Searching through {task.Result.ChildrenCount} players...");
+
+        string targetUserId = null;
+        foreach (var player in task.Result.Children)
+        {
+            var playerData = player;
+
+            // ลองทุกวิธีที่เป็นไปได้
+            string playerName = null;
+
+            // วิธีที่ 1: มี field playerName
+            if (playerData.HasChild("playerName"))
+            {
+                playerName = playerData.Child("playerName").Value?.ToString();
+            }
+            // วิธีที่ 2: เป็น string ธรรมดา
+            else if (playerData.Value is string)
+            {
+                playerName = playerData.Value.ToString();
+            }
+
+            Debug.Log($"🔍 Player {player.Key}: '{playerName}'");
+
+            if (playerName == targetPlayerName)
+            {
+                targetUserId = player.Key;
+                Debug.Log($"✅ Found {targetPlayerName} with ID: {targetUserId}");
+                break;
+            }
+        }
+
+        if (string.IsNullOrEmpty(targetUserId))
+        {
+            Debug.Log($"❌ Player '{targetPlayerName}' not found!");
+
+            // Debug: แสดงรายชื่อผู้เล่นทั้งหมด
+            Debug.Log("📋 Available players:");
+            foreach (var player in task.Result.Children)
+            {
+                var playerData = player;
+                string playerName = "NO_NAME";
+
+                if (playerData.HasChild("playerName"))
+                    playerName = playerData.Child("playerName").Value?.ToString();
+
+                Debug.Log($"   - {player.Key}: '{playerName}'");
+            }
+            yield break;
+        }
+
+        // ส่ง friend request
+        Debug.Log($"📤 Sending friend request...");
+        var requestTask = databaseReference
+            .Child("players")
+            .Child(targetUserId)
+            .Child("pendingFriendRequests")
+            .Child(auth.CurrentUser.UserId)
+            .SetValueAsync(multiCharacterData.playerName);
+
+        yield return new WaitUntil(() => requestTask.IsCompleted);
+
+        if (requestTask.Exception == null)
+        {
+            Debug.Log($"✅ Friend request sent to {targetPlayerName}!");
+        }
+        else
+        {
+            Debug.LogError($"❌ Failed to send: {requestTask.Exception.Message}");
+        }
+    }
+
+
+    public void RegisterPlayerInDirectory()
+    {
+        if (auth?.CurrentUser == null || multiCharacterData == null) return;
+        StartCoroutine(RegisterPlayerInDirectoryCoroutine());
+    }
+
+    private IEnumerator RegisterPlayerInDirectoryCoroutine()
+    {
+        Debug.Log($"📝 Registering {multiCharacterData.playerName} in player directory...");
+
+        var task = databaseReference
+            .Child("playerDirectory")
+            .Child(multiCharacterData.playerName)
+            .SetValueAsync(auth.CurrentUser.UserId);
+
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception == null)
+        {
+            Debug.Log($"✅ Player registered in directory successfully");
+        }
+        else
+        {
+            Debug.LogError($"❌ Failed to register in directory: {task.Exception.Message}");
+        }
+    }
+    public void AcceptFriendRequest(string requesterName)
+    {
+        if (auth?.CurrentUser == null || multiCharacterData == null) return;
+        StartCoroutine(AcceptFriendRequestCoroutine(requesterName));
+    }
+
+    private IEnumerator AcceptFriendRequestCoroutine(string requesterName)
+    {
+        Debug.Log($"🔍 Accepting friend request from: {requesterName}");
+
+        // ค้นหา requester UserId
+        var task = databaseReference.Child("players").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"❌ Error reading players: {task.Exception.Message}");
+            yield break;
+        }
+
+        string requesterUserId = null;
+        foreach (var player in task.Result.Children)
+        {
+            try
+            {
+                var playerData = player;
+                if (playerData.HasChild("playerName"))
+                {
+                    string playerName = playerData.Child("playerName").Value?.ToString();
+                    if (playerName == requesterName)
+                    {
+                        requesterUserId = player.Key;
+                        break;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error processing player {player.Key}: {e.Message}");
+            }
+        }
+
+        if (string.IsNullOrEmpty(requesterUserId))
+        {
+            Debug.LogError($"❌ Could not find UserId for {requesterName}");
+            yield break;
+        }
+
+        Debug.Log($"✅ Found requester UserId: {requesterUserId}");
+
+        // เพิ่มเป็นเพื่อนทั้งสองฝ่าย
+        var currentUserId = auth.CurrentUser.UserId;
+
+        // เพิ่มเพื่อนให้ตัวเอง
+        multiCharacterData.friends.Add(requesterName);
+        var task1 = databaseReference.Child("players").Child(currentUserId).Child("friends").Child(requesterUserId).SetValueAsync(requesterName);
+
+        // เพิ่มเพื่อนให้อีกฝ่าย
+        var task2 = databaseReference.Child("players").Child(requesterUserId).Child("friends").Child(currentUserId).SetValueAsync(multiCharacterData.playerName);
+
+        // ลบ friend request
+        multiCharacterData.pendingFriendRequests.Remove(requesterName);
+        var task3 = databaseReference.Child("players").Child(currentUserId).Child("pendingFriendRequests").Child(requesterUserId).RemoveValueAsync();
+
+        // รอให้ทุก task เสร็จ
+        yield return new WaitUntil(() => task1.IsCompleted && task2.IsCompleted && task3.IsCompleted);
+
+        // ตรวจสอบผลลัพธ์
+        try
+        {
+            if (task1.Exception != null)
+            {
+                Debug.LogError($"❌ Failed to add friend to self: {task1.Exception.Message}");
+            }
+            else if (task2.Exception != null)
+            {
+                Debug.LogError($"❌ Failed to add friend to requester: {task2.Exception.Message}");
+            }
+            else if (task3.Exception != null)
+            {
+                Debug.LogError($"❌ Failed to remove friend request: {task3.Exception.Message}");
+            }
+            else
+            {
+                Debug.Log($"✅ {requesterName} is now your friend!");
+                SavePlayerDataAsync();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Exception while checking accept friend results: {e.Message}");
+        }
+    }
+    public void RejectFriendRequest(string requesterName)
+    {
+        if (multiCharacterData == null) return;
+
+        multiCharacterData.pendingFriendRequests.Remove(requesterName);
+        SavePlayerDataAsync();
+
+        Debug.Log($"❌ Rejected friend request from {requesterName}");
+    }
+
+    public void RemoveFriend(string friendName)
+    {
+        if (multiCharacterData == null) return;
+
+        multiCharacterData.friends.Remove(friendName);
+        SavePlayerDataAsync();
+
+        Debug.Log($"❌ Removed {friendName} from friends list");
+    }
+
+    public List<string> GetFriendsList()
+    {
+        return multiCharacterData?.friends ?? new List<string>();
+    }
+
+    public List<string> GetPendingFriendRequests()
+    {
+        return multiCharacterData?.pendingFriendRequests ?? new List<string>();
+    }
+
+    // ========== Load Friend Requests from Firebase ==========
+    public void LoadFriendRequestsFromFirebase()
+    {
+        if (auth?.CurrentUser == null) return;
+        StartCoroutine(LoadFriendRequestsCoroutine());
+    }
+
+    private IEnumerator LoadFriendRequestsCoroutine()
+    {
+        if (!IsFirebaseReady())
+        {
+            Debug.LogError("❌ Firebase not ready for loading friend requests");
+            yield break;
+        }
+
+        Debug.Log("🔍 Loading friend requests from Firebase...");
+
+        var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).Child("pendingFriendRequests").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        try
+        {
+            if (task.Exception != null)
+            {
+                Debug.LogError($"❌ Error loading friend requests: {task.Exception.Message}");
+                yield break;
+            }
+
+            if (task.Result.Exists)
+            {
+                if (multiCharacterData == null)
+                {
+                    Debug.LogError("❌ MultiCharacterData is null when loading friend requests!");
+                    yield break;
+                }
+
+                multiCharacterData.pendingFriendRequests.Clear();
+
+                foreach (var request in task.Result.Children)
+                {
+                    string requesterName = request.Value.ToString();
+                    if (!multiCharacterData.pendingFriendRequests.Contains(requesterName))
+                    {
+                        multiCharacterData.pendingFriendRequests.Add(requesterName);
+                    }
+                }
+
+                Debug.Log($"✅ Loaded {multiCharacterData.pendingFriendRequests.Count} friend requests");
+            }
+            else
+            {
+                Debug.Log("📭 No pending friend requests found");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Exception while loading friend requests: {e.Message}");
+        }
+    }
+    #endregion
     public void ForceSave() => SavePlayerDataAsync();
 
     // ========== Debug Methods ==========
-   
 
-   
+    [ContextMenu("Debug All Players")]
+    public void DebugAllPlayers()
+    {
+        StartCoroutine(DebugAllPlayersCoroutine());
+    }
+
+    private IEnumerator DebugAllPlayersCoroutine()
+    {
+        Debug.Log("🔍 Fetching all players from Firebase...");
+
+        var task = databaseReference.Child("players").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"❌ Error: {task.Exception.Message}");
+            yield break;
+        }
+
+        if (!task.Result.Exists)
+        {
+            Debug.Log("❌ No players found!");
+            yield break;
+        }
+
+        Debug.Log($"📊 Found {task.Result.ChildrenCount} players:");
+
+        foreach (var player in task.Result.Children)
+        {
+            var playerData = player;
+            string userId = player.Key;
+
+            // แสดงข้อมูลแบบละเอียด
+            Debug.Log($"\n👤 Player: {userId}");
+
+            if (playerData.HasChild("playerName"))
+            {
+                string playerName = playerData.Child("playerName").Value?.ToString();
+                Debug.Log($"   📝 Name: '{playerName}'");
+            }
+            else
+            {
+                Debug.Log($"   ❌ No playerName field");
+            }
+
+            // แสดง JSON structure
+            string json = playerData.GetRawJsonValue();
+            if (!string.IsNullOrEmpty(json) && json.Length < 500)
+            {
+                Debug.Log($"   📄 Data: {json}");
+            }
+        }
+
+    }
+
+    public IEnumerator RefreshFriendRequestsCoroutine()
+    {
+        if (auth?.CurrentUser == null)
+        {
+            Debug.LogError("❌ Not authenticated for refresh");
+            yield break;
+        }
+
+        Debug.Log("📡 Refreshing friend requests from Firebase...");
+
+        var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).Child("pendingFriendRequests").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"❌ Error refreshing friend requests: {task.Exception.Message}");
+            yield break;
+        }
+
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("❌ MultiCharacterData is null during refresh!");
+            yield break;
+        }
+
+        // เคลียร์และโหลดใหม่
+        int oldCount = multiCharacterData.pendingFriendRequests.Count;
+        multiCharacterData.pendingFriendRequests.Clear();
+
+        if (task.Result.Exists)
+        {
+            foreach (var request in task.Result.Children)
+            {
+                string requesterName = request.Value.ToString();
+                if (!multiCharacterData.pendingFriendRequests.Contains(requesterName))
+                {
+                    multiCharacterData.pendingFriendRequests.Add(requesterName);
+                }
+            }
+        }
+
+        int newCount = multiCharacterData.pendingFriendRequests.Count;
+        Debug.Log($"📨 Friend requests: {oldCount} → {newCount}");
+
+        if (newCount > oldCount)
+        {
+            Debug.Log($"🎉 You have {newCount - oldCount} new friend request(s)!");
+        }
+    }
+
+    public IEnumerator RefreshFriendsListCoroutine()
+    {
+        if (auth?.CurrentUser == null) yield break;
+
+        Debug.Log("📡 Refreshing friends list from Firebase...");
+
+        var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).Child("friends").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"❌ Error refreshing friends: {task.Exception.Message}");
+            yield break;
+        }
+
+        if (multiCharacterData == null) yield break;
+
+        // เคลียร์และโหลดใหม่
+        int oldCount = multiCharacterData.friends.Count;
+        multiCharacterData.friends.Clear();
+
+        if (task.Result.Exists)
+        {
+            foreach (var friend in task.Result.Children)
+            {
+                string friendName = friend.Value.ToString();
+                if (!multiCharacterData.friends.Contains(friendName))
+                {
+                    multiCharacterData.friends.Add(friendName);
+                }
+            }
+        }
+
+        int newCount = multiCharacterData.friends.Count;
+        Debug.Log($"👥 Friends: {oldCount} → {newCount}");
+    }
+
+    internal void CheckFirebaseStatus()
+    {
+        throw new System.NotImplementedException();
+    }
 }

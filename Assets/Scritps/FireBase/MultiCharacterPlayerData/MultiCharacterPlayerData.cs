@@ -17,7 +17,9 @@ public class MultiCharacterPlayerData
 
     [Header("Stage Progress")]
     public StageProgressData stageProgress = new StageProgressData();
-
+    [Header("Friends System")]
+    public List<string> friends = new List<string>();
+    public List<string> pendingFriendRequests = new List<string>();
     public MultiCharacterPlayerData()
     {
         playerName = "";

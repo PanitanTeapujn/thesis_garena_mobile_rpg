@@ -268,14 +268,16 @@ public class FirebaseLoginManager : MonoBehaviour
     // ========== Background Firebase Operations ==========
     private IEnumerator CreateFirebaseDataAsync()
     {
-        // ✅ สร้าง MultiCharacterPlayerData ที่ถูกต้อง
+        Debug.Log("🔄 Creating new player data in Firebase...");
+
+        // สร้าง MultiCharacterPlayerData ที่ถูกต้อง
         MultiCharacterPlayerData newPlayerData = new MultiCharacterPlayerData();
         newPlayerData.playerName = nameInput.text.Trim();
         newPlayerData.currentActiveCharacter = "Assassin";
         newPlayerData.registrationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newPlayerData.lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // ✅ ตรวจสอบว่า Assassin data ถูกสร้างแล้วและมี stats ถูกต้อง
+        // ตรวจสอบว่า Assassin data ถูกสร้างแล้ว
         CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
         if (assassinData != null)
         {
@@ -290,24 +292,102 @@ public class FirebaseLoginManager : MonoBehaviour
         PersistentPlayerData.Instance.multiCharacterData = newPlayerData;
         PersistentPlayerData.Instance.isDataLoaded = true;
 
-        // ✅ Force sync currentPlayerData
-        Debug.Log($"🔄 MultiCharacterPlayerData created with {newPlayerData.characters.Count} characters");
-        // Save to Firebase (background)
-        string json = JsonUtility.ToJson(newPlayerData, true);
-        Debug.Log($"📝 Firebase JSON to save: {json.Substring(0, Mathf.Min(200, json.Length))}...");
+        Debug.Log($"🔄 Saving to Firebase for user: {user.UserId}");
 
-        var task = databaseReference.Child("players").Child(user.UserId).SetRawJsonValueAsync(json);
+        // แบบที่ 1: ใช้ SetValueAsync แทน SetRawJsonValueAsync
+        var playerRef = databaseReference.Child("players").Child(user.UserId);
 
+        // สร้าง Dictionary สำหรับ Firebase
+        var playerDataDict = new Dictionary<string, object>
+    {
+        {"playerName", newPlayerData.playerName},
+        {"currentActiveCharacter", newPlayerData.currentActiveCharacter},
+        {"registrationDate", newPlayerData.registrationDate},
+        {"lastLoginDate", newPlayerData.lastLoginDate},
+        {"friends", new List<string>()},
+        {"pendingFriendRequests", new Dictionary<string, string>()}
+    };
+
+        // Save character data
+        var charactersDict = new Dictionary<string, object>();
+        foreach (var character in newPlayerData.characters)
+        {
+            var charDict = new Dictionary<string, object>
+        {
+            {"characterType", character.characterType},
+            {"currentLevel", character.currentLevel},
+            {"currentExp", character.currentExp},
+            {"expToNextLevel", character.expToNextLevel},
+            {"totalMaxHp", character.totalMaxHp},
+            {"totalMaxMana", character.totalMaxMana},
+            {"totalAttackDamage", character.totalAttackDamage},
+            {"totalArmor", character.totalArmor},
+            {"totalCriticalChance", character.totalCriticalChance},
+            {"totalMoveSpeed", character.totalMoveSpeed},
+            {"totalHitRate", character.totalHitRate},
+            {"totalEvasionRate", character.totalEvasionRate},
+            {"totalAttackSpeed", character.totalAttackSpeed}
+        };
+            charactersDict[character.characterType] = charDict;
+        }
+        playerDataDict["characters"] = charactersDict;
+
+        var task = playerRef.SetValueAsync(playerDataDict);
         yield return new WaitUntil(() => task.IsCompleted);
 
         if (task.Exception != null)
         {
             Debug.LogError($"❌ Failed to create Firebase data: {task.Exception}");
+
+            // Fallback: ลองใช้ JSON method
+            Debug.Log("🔄 Trying JSON method as fallback...");
+            string json = JsonUtility.ToJson(newPlayerData, true);
+            var jsonTask = playerRef.SetRawJsonValueAsync(json);
+            yield return new WaitUntil(() => jsonTask.IsCompleted);
+
+            if (jsonTask.Exception != null)
+            {
+                Debug.LogError($"❌ JSON method also failed: {jsonTask.Exception}");
+            }
+            else
+            {
+                Debug.Log($"✅ Firebase data created with JSON method");
+            }
         }
         else
         {
             Debug.Log($"✅ Firebase multi-character data created successfully for {newPlayerData.playerName}");
             newPlayerData.LogAllCharacters();
+
+            // ตรวจสอบว่าข้อมูลถูก save แล้ว
+            StartCoroutine(VerifyDataSaved(user.UserId, newPlayerData.playerName));
+        }
+    }
+    private IEnumerator VerifyDataSaved(string userId, string playerName)
+    {
+        yield return new WaitForSeconds(1f); // รอให้ Firebase sync
+
+        Debug.Log($"🔍 Verifying data saved for {playerName}...");
+
+        var verifyTask = databaseReference.Child("players").Child(userId).GetValueAsync();
+        yield return new WaitUntil(() => verifyTask.IsCompleted);
+
+        if (verifyTask.Exception == null && verifyTask.Result.Exists)
+        {
+            var playerData = verifyTask.Result;
+            if (playerData.HasChild("playerName"))
+            {
+                string savedName = playerData.Child("playerName").Value?.ToString();
+                Debug.Log($"✅ Verification success: Found player '{savedName}' in Firebase");
+            }
+            else
+            {
+                Debug.LogError("❌ Verification failed: playerName field not found");
+            }
+        }
+        else
+        {
+            Debug.LogError("❌ Verification failed: Could not read data back from Firebase");
         }
     }
 
