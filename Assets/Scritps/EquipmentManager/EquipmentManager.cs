@@ -367,4 +367,245 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log($"⚡ Attack Speed: +{total.attackSpeedBonus:F1}x");
 
     }
+
+#if UNITY_EDITOR
+    // ========== Context Menu for Testing ==========
+
+    [ContextMenu("Test Equipment/Equip Iron Sword")]
+    private void TestEquipIronSword()
+    {
+        EquipmentData ironSword = CreateTestWeapon("Iron Sword", 15, 0, 5f, 0f, 0f, 2f);
+        EquipItem(ironSword);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Equip Steel Sword")]
+    private void TestEquipSteelSword()
+    {
+        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25, 0, 8f, 0f, 0f, 3f);
+        EquipItem(steelSword);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Equip Legendary Blade")]
+    private void TestEquipLegendaryBlade()
+    {
+        EquipmentData legendaryBlade = CreateTestWeapon("Legendary Blade", 50, 0, 15f, 0.5f, 5f, 8f);
+        EquipItem(legendaryBlade);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Equip Leather Armor")]
+    private void TestEquipLeatherArmor()
+    {
+        EquipmentData leatherArmor = CreateTestArmor("Leather Armor", 0, 10, 0f, 50, 0, 0f);
+        EquipItem(leatherArmor);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Equip Plate Armor")]
+    private void TestEquipPlateArmor()
+    {
+        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 25, 0f, 100, 0, -1f);
+        EquipItem(plateArmor);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Equip Mage Robe")]
+    private void TestEquipMageRobe()
+    {
+        EquipmentData mageRobe = CreateTestArmor("Mage Robe", 0, 5, 0f, 0, 100, 2f);
+        EquipItem(mageRobe);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Apply Attack Rune")]
+    private void TestApplyAttackRune()
+    {
+        EquipmentStats attackRune = new EquipmentStats
+        {
+            attackDamageBonus = 20,
+            criticalChanceBonus = 10f,
+            hitRateBonus = 5f
+        };
+        ApplyRuneBonus(attackRune);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Apply Defense Rune")]
+    private void TestApplyDefenseRune()
+    {
+        EquipmentStats defenseRune = new EquipmentStats
+        {
+            armorBonus = 15,
+            maxHpBonus = 200,
+            physicalResistanceBonus = 10f,
+            magicalResistanceBonus = 10f
+        };
+        ApplyRuneBonus(defenseRune);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Apply Speed Rune")]
+    private void TestApplySpeedRune()
+    {
+        EquipmentStats speedRune = new EquipmentStats
+        {
+            moveSpeedBonus = 3f,
+            attackSpeedBonus = 0.5f,
+            evasionRateBonus = 8f
+        };
+        ApplyRuneBonus(speedRune);
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Unequip All")]
+    private void TestUnequipAll()
+    {
+        UnequipItem();
+        // Clear rune stats
+        currentRuneStats = new EquipmentStats();
+        RemoveRuneStats();
+        Debug.Log("=== All Equipment Removed ===");
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Show Current Stats")]
+    private void TestShowCurrentStats()
+    {
+        LogCurrentStats();
+        LogBaseCharacterStats();
+    }
+
+    [ContextMenu("Test Equipment/Show Network Stats")]
+    private void TestShowNetworkStats()
+    {
+        if (HasStateAuthority)
+        {
+            Debug.Log("=== Networked Equipment Stats ===");
+            Debug.Log($"⚔️ Networked Attack Damage Bonus: {NetworkedAttackDamageBonus}");
+            Debug.Log($"🛡️ Networked Armor Bonus: {NetworkedArmorBonus}");
+            Debug.Log($"💥 Networked Critical Chance Bonus: {NetworkedCriticalChanceBonus:F1}%");
+            Debug.Log($"❤️ Networked Max HP Bonus: {NetworkedMaxHpBonus}");
+            Debug.Log($"💙 Networked Max Mana Bonus: {NetworkedMaxManaBonus}");
+            Debug.Log($"🏃 Networked Move Speed Bonus: {NetworkedMoveSpeedBonus:F1}");
+            Debug.Log($"🎯 Networked Hit Rate Bonus: {NetworkedHitRateBonus:F1}%");
+            Debug.Log($"💨 Networked Evasion Rate Bonus: {NetworkedEvasionRateBonus:F1}%");
+            Debug.Log($"⚡ Networked Attack Speed Bonus: {NetworkedAttackSpeedBonus:F1}x");
+        }
+        else
+        {
+            Debug.Log("This client doesn't have StateAuthority - cannot show networked stats");
+        }
+    }
+
+    // Helper methods สำหรับสร้าง test equipment
+    private EquipmentData CreateTestWeapon(string name, int attackBonus, int armorBonus, float critChance,
+                                         float critMultiplier, float hitRate, float attackSpeed)
+    {
+        EquipmentData weapon = new EquipmentData
+        {
+            itemName = name,
+            stats = new EquipmentStats
+            {
+                attackDamageBonus = attackBonus,
+                armorBonus = armorBonus,
+                criticalChanceBonus = critChance,
+                criticalMultiplierBonus = critMultiplier,
+                hitRateBonus = hitRate,
+                attackSpeedBonus = attackSpeed
+            }
+        };
+        return weapon;
+    }
+
+    private EquipmentData CreateTestArmor(string name, int attackBonus, int armorBonus, float critChance,
+                                        int hpBonus, int manaBonus, float moveSpeed)
+    {
+        EquipmentData armor = new EquipmentData
+        {
+            itemName = name,
+            stats = new EquipmentStats
+            {
+                attackDamageBonus = attackBonus,
+                armorBonus = armorBonus,
+                criticalChanceBonus = critChance,
+                maxHpBonus = hpBonus,
+                maxManaBonus = manaBonus,
+                moveSpeedBonus = moveSpeed,
+                physicalResistanceBonus = armorBonus > 15 ? 5f : 2f, // Plate armor ให้ resistance มากกว่า
+                magicalResistanceBonus = manaBonus > 0 ? 8f : 1f     // Mage robe ให้ magic resistance มากกว่า
+            }
+        };
+        return armor;
+    }
+
+    private void LogBaseCharacterStats()
+    {
+        Debug.Log($"=== {character.CharacterName} Base Character Stats ===");
+        Debug.Log($"⚔️ Current Attack Damage: {character.AttackDamage}");
+        Debug.Log($"🛡️ Current Armor: {character.Armor}");
+        Debug.Log($"💥 Current Critical Chance: {character.CriticalChance:F1}%");
+        Debug.Log($"🔥 Current Critical Multiplier: {character.CriticalMultiplier:F1}x");
+        Debug.Log($"❤️ Current Max HP: {character.MaxHp} (Current: {character.CurrentHp})");
+        Debug.Log($"💙 Current Max Mana: {character.MaxMana} (Current: {character.CurrentMana})");
+        Debug.Log($"🏃 Current Move Speed: {character.MoveSpeed:F1}");
+        Debug.Log($"🎯 Current Hit Rate: {character.HitRate:F1}%");
+        Debug.Log($"💨 Current Evasion Rate: {character.EvasionRate:F1}%");
+        Debug.Log($"⚡ Current Attack Speed: {character.AttackSpeed:F1}x");
+
+        // แสดง effective speeds ด้วย
+        if (character is Hero hero)
+        {
+            Debug.Log($"🌟 Effective Move Speed: {hero.GetEffectiveMoveSpeed():F1}");
+            Debug.Log($"🌟 Effective Attack Speed: {hero.GetEffectiveAttackSpeed():F1}");
+        }
+    }
+
+    [ContextMenu("Test Equipment/Test Full Warrior Set")]
+    private void TestFullWarriorSet()
+    {
+        Debug.Log("=== Testing Full Warrior Equipment Set ===");
+
+        // Equip Steel Sword
+        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25, 0, 8f, 0f, 5f, 3f);
+        EquipItem(steelSword);
+
+        // Apply Attack Rune
+        EquipmentStats attackRune = new EquipmentStats
+        {
+            attackDamageBonus = 20,
+            criticalChanceBonus = 10f,
+            hitRateBonus = 5f,
+            attackSpeedBonus = 0.3f
+        };
+        ApplyRuneBonus(attackRune);
+
+        LogCurrentStats();
+        LogBaseCharacterStats();
+    }
+
+    [ContextMenu("Test Equipment/Test Full Tank Set")]
+    private void TestFullTankSet()
+    {
+        Debug.Log("=== Testing Full Tank Equipment Set ===");
+
+        // Equip Plate Armor
+        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 30, 0f, 150, 0, -1f);
+        EquipItem(plateArmor);
+
+        // Apply Defense Rune
+        EquipmentStats defenseRune = new EquipmentStats
+        {
+            armorBonus = 20,
+            maxHpBonus = 250,
+            physicalResistanceBonus = 15f,
+            magicalResistanceBonus = 10f
+        };
+        ApplyRuneBonus(defenseRune);
+
+        LogCurrentStats();
+        LogBaseCharacterStats();
+    }
+#endif
 }
