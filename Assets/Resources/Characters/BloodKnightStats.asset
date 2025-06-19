@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: BloodKinght
   moveSpeed: 5.2
-  maxHp: 120
+  maxHp: 280
   maxMana: 0
   attackDamage: 25
   arrmor: 8

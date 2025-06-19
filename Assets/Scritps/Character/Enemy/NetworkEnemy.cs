@@ -600,6 +600,8 @@ public class NetworkEnemy : Character
         // 🆕 Enemy drop exp ให้ heroes ใกล้เคียงก่อนตาย
         if (HasStateAuthority)
         {
+            EnemyKillTracker.OnEnemyKilled();
+
             DropExpToNearbyHeroes();
         }
 

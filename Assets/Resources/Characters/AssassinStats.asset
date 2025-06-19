@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: Assassin
   moveSpeed: 6.5
-  maxHp: 70
+  maxHp: 250
   maxMana: 40
   attackDamage: 35
   arrmor: 2

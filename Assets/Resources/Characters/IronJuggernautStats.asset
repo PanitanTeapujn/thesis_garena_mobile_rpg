@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: Berserker
   moveSpeed: 4.5
-  maxHp: 150
+  maxHp: 300
   maxMana: 40
   attackDamage: 20
   arrmor: 12

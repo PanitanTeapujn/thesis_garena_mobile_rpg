@@ -15,6 +15,9 @@ public class MultiCharacterPlayerData
     [Header("Character Data")]
     public List<CharacterProgressData> characters = new List<CharacterProgressData>();
 
+    [Header("Stage Progress")]
+    public StageProgressData stageProgress = new StageProgressData();
+
     public MultiCharacterPlayerData()
     {
         playerName = "";
@@ -22,6 +25,7 @@ public class MultiCharacterPlayerData
         registrationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         currentActiveCharacter = "Assassin";
+        stageProgress = new StageProgressData();
 
         InitializeDefaultCharacter();
     }

@@ -14980,20 +14980,41 @@ MonoBehaviour:
       subStageName: MapFire1-1
       sceneToLoad: Playroom1
       selectButton: {fileID: 882755276}
+      requiredEnemyKills: 10
+      requiredPreviousStages: []
+      isFirstStage: 1
     - panel: {fileID: 430931127}
       subStageName: MapFire1-2
       sceneToLoad: Playroom2
       selectButton: {fileID: 430931129}
+      requiredEnemyKills: 10
+      requiredPreviousStages:
+      - PlayRoom1
+      isFirstStage: 0
     - panel: {fileID: 959851596}
       subStageName: MapFire1-3
       sceneToLoad: Playroom3
       selectButton: {fileID: 959851598}
+      requiredEnemyKills: 10
+      requiredPreviousStages:
+      - PlayRoom2
+      isFirstStage: 0
   - panel: {fileID: 38986222}
     stageName: 
     subStagePanels: []
   - panel: {fileID: 1369753109}
     stageName: 
     subStagePanels: []
+  availableStages: []
+  stageInfoPanel: {fileID: 0}
+  stageNameText: {fileID: 0}
+  stageDescriptionText: {fileID: 0}
+  progressText: {fileID: 0}
+  unlockConditionText: {fileID: 0}
+  selectStageButton: {fileID: 0}
+  stageButtonParent: {fileID: 0}
+  stageButtonPrefab: {fileID: 0}
+  backButton: {fileID: 0}
 --- !u!1 &1824813288
 GameObject:
   m_ObjectHideFlags: 0
@@ -15270,6 +15291,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1860721830}
   m_CullTransparentMesh: 1
+--- !u!1 &1872087101
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1872087103}
+  - component: {fileID: 1872087102}
+  m_Layer: 0
+  m_Name: StageProgressManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1872087102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872087101}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7363b920b125a6c44ae836f6a7003ecc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1872087103
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872087101}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 947.2853, y: 979.479, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1881112694
 GameObject:
   m_ObjectHideFlags: 0
@@ -17872,6 +17937,8 @@ MonoBehaviour:
   itemDatabase: {fileID: 11400000, guid: a9342a9fd48ed404a9bd076258f1d22f, type: 2}
   useFirebaseSync: 1
   usePlayerPrefsBackup: 1
+  useEquipmentManagerForUse: 1
+  consumeEquipmentOnUse: 0
   _NetworkInventory:
   - itemId:
       _length: 0
@@ -18386,3 +18453,4 @@ SceneRoots:
   - {fileID: 1771695781}
   - {fileID: 2124026316}
   - {fileID: 1824132835}
+  - {fileID: 1872087103}

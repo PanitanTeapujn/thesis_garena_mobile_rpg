@@ -166,11 +166,12 @@ public class WaitingRoomManager : MonoBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     void RPC_StartGame()
     {
-        // ✅ Fix: ใช้ด่านที่เลือกแทน PlayRoom1
-        string selectedStage = PlayerPrefs.GetString("SelectedStage", "PlayRoom1");
+        string selectedStage = PlayerPrefs.GetString("SelectedStage", "PlayRoom1_1");
 
-        Debug.Log($"[WaitingRoomManager] Starting game with selected stage: {selectedStage}");
+        // ✅ เช็คใน Lobby เท่านั้น (เพราะ StageProgressManager อยู่ที่นั่น)
+        // ระบบจะบันทึกสถานะใน PlayerPrefs แล้ว
 
+        Debug.Log($"[WaitingRoomManager] Starting game with selected substage: {selectedStage}");
         runner.LoadScene(selectedStage);
     }
 

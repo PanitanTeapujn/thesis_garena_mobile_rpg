@@ -12,6 +12,12 @@ public class StageSelectionManager : MonoBehaviour
         public string subStageName;
         public string sceneToLoad;
         public Button selectButton;
+
+        [Header("🎯 Progression Settings")]
+        public int requiredEnemyKills = 10;        // จำนวน Enemy ที่ต้องกำจัด
+        public string[] requiredPreviousStages;   // substage ที่ต้องผ่านมาก่อน
+        public bool isFirstStage = false;         // ด่านแรกของแต่ละ Main Stage
+
     }
 
     [System.Serializable]
@@ -38,9 +44,29 @@ public class StageSelectionManager : MonoBehaviour
     public Button partyButton;
     public Button backToStageButton;
 
+
+
+
+   
     [Header("Stage Configuration")]
     public MainStagePanel[] mainStagePanels;
+    public StageData[] availableStages; // Game Designer กำหนดที่นี่
 
+    [Header("Stage Info Panel")]
+    public GameObject stageInfoPanel;
+    public TextMeshProUGUI stageNameText;
+    public TextMeshProUGUI stageDescriptionText;
+    public TextMeshProUGUI progressText;
+    public TextMeshProUGUI unlockConditionText;
+    public Button selectStageButton;
+
+
+
+
+    [Header("UI References")]
+    public Transform stageButtonParent;
+    public GameObject stageButtonPrefab;
+    public Button backButton;
     // Events
     public static event Action<string> OnStageSelected; // ส่ง scene name
     public static event Action<string> OnSoloGameSelected; // ส่ง scene name
@@ -60,18 +86,15 @@ public class StageSelectionManager : MonoBehaviour
 
     void SetupButtons()
     {
-        // Main stage buttons
         leftArrowButton.onClick.AddListener(PreviousMainStage);
         rightArrowButton.onClick.AddListener(NextMainStage);
         confirmStageButton.onClick.AddListener(ConfirmMainStage);
         backToLobbyButton.onClick.AddListener(BackToLobby);
 
-        // Sub-stage mode buttons
         soloButton.onClick.AddListener(StartSoloGame);
         partyButton.onClick.AddListener(StartPartyGame);
         backToStageButton.onClick.AddListener(BackToMainStageSelection);
 
-        // ปิดใช้งานปุ่ม Solo/Party ตอนเริ่มต้น
         soloButton.interactable = false;
         partyButton.interactable = false;
     }
@@ -96,12 +119,88 @@ public class StageSelectionManager : MonoBehaviour
         }
     }
 
+    void UpdateAllSubStageStatus()
+    {
+        for (int mainIndex = 0; mainIndex < mainStagePanels.Length; mainIndex++)
+        {
+            for (int subIndex = 0; subIndex < mainStagePanels[mainIndex].subStagePanels.Length; subIndex++)
+            {
+                SubStagePanel subStage = mainStagePanels[mainIndex].subStagePanels[subIndex];
+                UpdateSubStageButtonStatus(subStage);
+            }
+        }
+    }
+
+    void UpdateSubStageButtonStatus(SubStagePanel subStage)
+    {
+        if (subStage.selectButton == null) return;
+
+        bool isUnlocked = IsSubStageUnlocked(subStage);
+        bool isCompleted = StageProgressManager.IsStageCompleted(subStage.sceneToLoad);
+
+        // เปลี่ยนสีปุ่มตามสถานะ
+        ColorBlock colors = subStage.selectButton.colors;
+
+        if (isCompleted)
+        {
+            colors.normalColor = Color.green;      // เขียว = ผ่านแล้ว
+            colors.highlightedColor = Color.green * 1.2f;
+        }
+        else if (isUnlocked)
+        {
+            colors.normalColor = Color.white;      // ขาว = ปลดล็อกแล้ว
+            colors.highlightedColor = Color.cyan;
+        }
+        else
+        {
+            colors.normalColor = Color.gray;       // เทา = ล็อกอยู่
+            colors.highlightedColor = Color.gray;
+        }
+
+        subStage.selectButton.colors = colors;
+        subStage.selectButton.interactable = isUnlocked;
+
+        // เปลี่ยนข้อความในปุ่ม (ถ้ามี Text component)
+        TextMeshProUGUI buttonText = subStage.selectButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (buttonText != null)
+        {
+            if (isCompleted)
+                buttonText.text = subStage.subStageName + " ✓";
+            else if (isUnlocked)
+                buttonText.text = subStage.subStageName;
+            else
+                buttonText.text = subStage.subStageName + " 🔒";
+        }
+    }
+
+    // ✅ เช็คว่า substage ปลดล็อกแล้วหรือยัง
+    bool IsSubStageUnlocked(SubStagePanel subStage)
+    {
+        // ด่านแรกของแต่ละ Main Stage ปลดล็อกอัตโนมัติ
+        if (subStage.isFirstStage) return true;
+
+        // เช็คว่าผ่าน substage ที่ต้องการมาก่อนหรือยัง
+        if (subStage.requiredPreviousStages != null)
+        {
+            foreach (string requiredStage in subStage.requiredPreviousStages)
+            {
+                if (!StageProgressManager.IsStageCompleted(requiredStage))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     // ========== Main Stage Selection ==========
     public void ShowMainStageSelection()
     {
         HideAllPanels();
         stageSelectionPanel.SetActive(true);
         UpdateMainStageDisplay();
+        UpdateAllSubStageStatus();
     }
 
     void PreviousMainStage()
@@ -170,6 +269,8 @@ public class StageSelectionManager : MonoBehaviour
         selectedSubStageIndex = -1;
         UpdateSubStageUI();
         UpdateGameModeButtons();
+        UpdateAllSubStageStatus(); // ✅ อัปเดตสถานะ
+
     }
 
     void ShowSubStagePanels()
@@ -204,23 +305,39 @@ public class StageSelectionManager : MonoBehaviour
 
     void SelectSubStage(int mainIndex, int subIndex)
     {
-        // ตรวจสอบว่าเป็น main stage ที่ถูกต้องหรือไม่
         if (mainIndex != currentMainStageIndex) return;
 
-        selectedSubStageIndex = subIndex;
+        SubStagePanel selectedSubStage = mainStagePanels[mainIndex].subStagePanels[subIndex];
 
-        // อัพเดท UI และเซฟข้อมูล
+        // ✅ เช็คว่าปลดล็อกแล้วหรือยัง
+        if (!IsSubStageUnlocked(selectedSubStage))
+        {
+            Debug.LogWarning($"SubStage {selectedSubStage.sceneToLoad} is still locked!");
+
+            // แสดงข้อความใน UI เดิม
+            if (selectedSubStageText != null)
+            {
+                // แสดงเงื่อนไขที่ต้องทำ
+                string lockMessage = "🔒 Locked";
+                if (selectedSubStage.requiredPreviousStages != null && selectedSubStage.requiredPreviousStages.Length > 0)
+                {
+                    lockMessage += $" - Complete previous stages first";
+                }
+
+                selectedSubStageText.text = lockMessage;
+                selectedSubStageText.color = Color.red;
+            }
+            return;
+        }
+
+        selectedSubStageIndex = subIndex;
         UpdateSubStageUI();
         UpdateGameModeButtons();
 
-        // เซฟ scene ที่จะโหลด
-        string sceneToLoad = mainStagePanels[mainIndex].subStagePanels[subIndex].sceneToLoad;
-        PlayerPrefs.SetString("SelectedStage", sceneToLoad);
+        PlayerPrefs.SetString("SelectedStage", selectedSubStage.sceneToLoad);
+        Debug.Log($"Selected sub-stage: {selectedSubStage.subStageName} -> {selectedSubStage.sceneToLoad}");
 
-        Debug.Log($"Selected sub-stage: {mainStagePanels[mainIndex].subStagePanels[subIndex].subStageName} -> {sceneToLoad}");
-
-        // ส่ง event
-        OnStageSelected?.Invoke(sceneToLoad);
+        OnStageSelected?.Invoke(selectedSubStage.sceneToLoad);
     }
 
     void UpdateSubStageUI()
@@ -231,16 +348,23 @@ public class StageSelectionManager : MonoBehaviour
                 currentMainStageIndex >= 0 && currentMainStageIndex < mainStagePanels.Length &&
                 selectedSubStageIndex < mainStagePanels[currentMainStageIndex].subStagePanels.Length)
             {
-                string subStageName = mainStagePanels[currentMainStageIndex].subStagePanels[selectedSubStageIndex].subStageName;
-                selectedSubStageText.text = $"Selected: {subStageName}";
+                SubStagePanel subStage = mainStagePanels[currentMainStageIndex].subStagePanels[selectedSubStageIndex];
+                string subStageName = subStage.subStageName;
+
+                // ✅ ใช้ StageProgressManager ที่แก้ไขแล้ว
+                bool isCompleted = StageProgressManager.IsStageCompleted(subStage.sceneToLoad);
+                int currentKills = StageProgressManager.GetEnemyKills(subStage.sceneToLoad);
+                int requiredKills = EnemyKillTracker.GetRequiredKillsForStage(subStage.sceneToLoad);
+
+               
             }
             else
             {
                 selectedSubStageText.text = "Please select a sub-stage";
+                selectedSubStageText.color = Color.white;
             }
         }
     }
-
     void UpdateGameModeButtons()
     {
         bool hasSelectedSubStage = selectedSubStageIndex >= 0;

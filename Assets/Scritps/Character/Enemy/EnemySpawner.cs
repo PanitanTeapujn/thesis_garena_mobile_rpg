@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
 using Fusion.Sockets;
+using UnityEngine.SceneManagement;
 
 [System.Serializable]
 public class EnemySpawnData
@@ -413,6 +414,7 @@ public class EnemySpawner : NetworkBehaviour
                 if (!string.IsNullOrEmpty(enemyTypeName))
                 {
                     RecordEnemyKill(enemyTypeName);
+                    EnemyKillTracker.OnEnemyKilled();
 
                     if (verboseKillTracking)
                     {
@@ -899,150 +901,11 @@ public class EnemySpawner : NetworkBehaviour
 
         return progress;
     }
-
+   
     // ========== Debug Methods ==========
 
-    [ContextMenu("🔧 Log All Statistics")]
-    public void LogAllStatistics()
-    {
-        Debug.Log("=== Enemy Spawn Statistics ===");
-        Debug.Log($"Active Enemies: {activeEnemies.Count}/{maxTotalEnemies}");
-        Debug.Log($"Active Bosses: {activeBosses.Count}");
-        Debug.Log($"Total Enemies Killed: {totalEnemiesKilled}");
-        Debug.Log($"Available Spawn Points: {availableSpawnPoints.Count}");
 
-        Debug.Log("\n--- Spawn Points Status ---");
-        if (useSpawnPoints && spawnPoints != null)
-        {
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                bool isAvailable = availableSpawnPoints.Contains(i);
-                Transform point = spawnPoints[i];
-                string status = point != null ? $"Valid at {point.position}" : "NULL";
-                Debug.Log($"Spawn Point {i}: {status} - {(isAvailable ? "Available" : "Unavailable")}");
-            }
-        }
 
-        Debug.Log("\n--- Kill Counts ---");
-        foreach (var kvp in killedCounts)
-        {
-            Debug.Log($"{kvp.Key}: {kvp.Value} killed");
-        }
 
-        Debug.Log("\n--- Boss Progress ---");
-        if (bossConditions != null)
-        {
-            foreach (BossSpawnCondition condition in bossConditions)
-            {
-                float progress = (float)condition.currentKillCount / condition.enemiesToKill * 100f;
-                float cooldownRemaining = Mathf.Max(0, (condition.lastBossDeathTime + condition.bossRespawnCooldown) - Time.time);
 
-                Debug.Log($"🏆 {condition.bossName}: " +
-                         $"{condition.currentKillCount}/{condition.enemiesToKill} ({progress:F1}%) " +
-                         $"| Active: {condition.currentBossCount}/{condition.maxBossInstances} " +
-                         $"| Cooldown: {cooldownRemaining:F1}s");
-            }
-        }
-    }
-
-    [ContextMenu("🎯 Test Add 10 Kills")]
-    public void TestAdd10Kills()
-    {
-        if (Application.isPlaying && enemyPrefabs.Length > 0)
-        {
-            string enemyName = enemyPrefabs[0].enemyName;
-            AddKillCount(enemyName, 10);
-            Debug.Log($"[TEST] Added 10 kills for {enemyName}");
-        }
-    }
-
-    [ContextMenu("🏆 Force Spawn First Boss")]
-    public void ForceSpawnFirstBoss()
-    {
-        if (Application.isPlaying && bossConditions != null && bossConditions.Length > 0)
-        {
-            ForceSpawnBoss(bossConditions[0].bossName);
-            Debug.Log($"[TEST] Force spawned {bossConditions[0].bossName}");
-        }
-    }
-
-    [ContextMenu("🔄 Test Spawn Points")]
-    public void TestSpawnPoints()
-    {
-        if (!Application.isPlaying) return;
-
-        Debug.Log("=== Testing Spawn Points ===");
-        for (int i = 0; i < 10; i++)
-        {
-            Vector3 pos = GetRandomSpawnPosition();
-            Debug.Log($"Test spawn {i}: {pos}");
-        }
-    }
-
-    [ContextMenu("🔧 Reinitialize Spawn Points")]
-    public void ReinitializeSpawnPoints()
-    {
-        InitializeSpawnPoints();
-        Debug.Log("Spawn points reinitialized");
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        // Draw spawn radius
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, spawnRadius);
-
-        // Draw normal spawn points
-        if (spawnPoints != null)
-        {
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                if (spawnPoints[i] != null)
-                {
-                    // สีเขียวถ้าใช้งานได้, แดงถ้าไม่ได้
-                    Gizmos.color = availableSpawnPoints.Contains(i) ? Color.green : Color.red;
-                    Gizmos.DrawSphere(spawnPoints[i].position, 0.5f);
-
-                    // แสดงหมายเลข
-#if UNITY_EDITOR
-                    UnityEditor.Handles.Label(spawnPoints[i].position + Vector3.up, i.ToString());
-#endif
-                }
-                else
-                {
-                    // แสดงจุดที่ null
-                    Gizmos.color = Color.black;
-                    Vector3 nullPos = transform.position + Vector3.right * i * 2f;
-                    Gizmos.DrawCube(nullPos, Vector3.one * 0.3f);
-                }
-            }
-        }
-
-        // Draw boss spawn points
-        if (bossSpawnPoints != null)
-        {
-            Gizmos.color = Color.red;
-            foreach (Transform point in bossSpawnPoints)
-            {
-                if (point != null)
-                {
-                    Gizmos.DrawCube(point.position, Vector3.one * 1f);
-                    Gizmos.DrawWireSphere(point.position, 2f);
-                }
-            }
-        }
-
-        // Draw connections
-        if (useSpawnPoints && spawnPoints != null)
-        {
-            Gizmos.color = Color.green;
-            foreach (int index in availableSpawnPoints)
-            {
-                if (spawnPoints[index] != null)
-                {
-                    Gizmos.DrawLine(transform.position, spawnPoints[index].position);
-                }
-            }
-        }
-    }
 }

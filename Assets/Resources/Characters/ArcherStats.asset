@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: Acher
   moveSpeed: 5.8
-  maxHp: 80
+  maxHp: 200
   maxMana: 80
   attackDamage: 30
   arrmor: 3
