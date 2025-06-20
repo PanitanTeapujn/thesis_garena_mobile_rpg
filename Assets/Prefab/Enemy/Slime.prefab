@@ -324,7 +324,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterRenderer: {fileID: 0}
   originalColor: {r: 0, g: 0, b: 0, a: 0}
-  poisonColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  poisonColor: {r: 0.35936022, g: 0, b: 1, a: 1}
   burnColor: {r: 1, g: 0.3, b: 0, a: 1}
   freezeColor: {r: 0.3, g: 0.8, b: 1, a: 1}
   stunColor: {r: 1, g: 1, b: 0, a: 1}
