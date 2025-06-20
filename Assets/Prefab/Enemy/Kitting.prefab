@@ -49,8 +49,8 @@ SpriteRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5222262057449877171}
   m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
@@ -61,7 +61,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 7ff0de84e11f2ad459bdbda0d2028c44, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -139,8 +139,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.08, y: 1.01, z: 0.2}
-  m_Center: {x: 0, y: 0.1, z: 0}
+  m_Size: {x: 0.53, y: 0.56, z: 0.2}
+  m_Center: {x: 0, y: 0.18, z: 0}
 --- !u!114 &90628490839130136
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -188,6 +188,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac71c5e477ae05a4588cf4f2e6b03f42, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  auraCheckInterval: 0.5
+  teamLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   _IsPoisoned: 0
   _PoisonDuration: 0
   _PoisonDamagePerTick: 0
@@ -214,6 +218,36 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingAttackSpeedAura: 0
+  _AttackSpeedAuraDuration: 0
+  _AttackSpeedAuraRadius: 0
+  _AttackSpeedAuraAmount: 0
+  _IsProvidingDamageAura: 0
+  _DamageAuraDuration: 0
+  _DamageAuraRadius: 0
+  _DamageAuraAmount: 0
+  _IsProvidingMoveSpeedAura: 0
+  _MoveSpeedAuraDuration: 0
+  _MoveSpeedAuraRadius: 0
+  _MoveSpeedAuraAmount: 0
+  _IsProvidingProtectionAura: 0
+  _ProtectionAuraDuration: 0
+  _ProtectionAuraRadius: 0
+  _ProtectionAuraAmount: 0
+  _IsProvidingArmorAura: 0
+  _ArmorAuraDuration: 0
+  _ArmorAuraRadius: 0
+  _ArmorAuraAmount: 0
+  _IsProvidingCriticalAura: 0
+  _CriticalAuraDuration: 0
+  _CriticalAuraRadius: 0
+  _CriticalAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
 --- !u!114 &5001962682008256561
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -263,6 +297,7 @@ MonoBehaviour:
     hpBonusPerLevel: 10
     manaBonusPerLevel: 5
     attackDamageBonusPerLevel: 2
+    magicDamageBonusPerLevel: 2
     armorBonusPerLevel: 1
     criticalChanceBonusPerLevel: 0.5
     moveSpeedBonusPerLevel: 0.1
@@ -295,12 +330,18 @@ MonoBehaviour:
   currentMana: 0
   maxMana: 0
   attackDamage: 0
+  magicDamage: 0
   armor: 0
   moveSpeed: 0
   attackRange: 0
   attackCooldown: 0
   criticalChance: 5
   criticalMultiplier: 2
+  hitRate: 0
+  evasionRate: 0
+  attackSpeed: 0
+  reductionCoolDown: 0
+  attackType: 0
   healthRegenPerSecond: 0.5
   manaRegenPerSecond: 1
   _NetworkedCurrentHp: 0
