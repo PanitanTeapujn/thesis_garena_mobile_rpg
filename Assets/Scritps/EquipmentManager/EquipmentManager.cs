@@ -355,7 +355,10 @@ public class EquipmentManager : NetworkBehaviour
     {
         return currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
     }
-
+    public float GetCriticalMultiplierBonus()
+    {
+        return currentEquipmentStats.criticalMultiplierBonus + currentRuneStats.criticalMultiplierBonus;
+    }
     public float GetAttackSpeedBonus()
     {
         return currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;

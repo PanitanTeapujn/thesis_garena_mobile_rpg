@@ -20,4 +20,6 @@ public class CharacterStats : ScriptableObject
     public float evasionRate;  // เปอร์เซ็นต์การหลบหลีก (5%)
     public float attackSpeed;
     public float reductionCoolDown;
+
+    public AttackType attackType = AttackType.Physical;
 }

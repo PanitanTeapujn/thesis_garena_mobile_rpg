@@ -115,49 +115,55 @@ public class CombatManager : NetworkBehaviour
         return finalCooldown;
     }
     // ========== Main Damage System ==========
-    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
 
-        // 🎯 เช็ค Hit/Miss ก่อน
+        // เช็ค Hit/Miss
         if (!CalculateHitSuccess(attacker, character))
         {
-            // Miss! แสดง miss text
             Vector3 textPosition = character.transform.position + Vector3.up * 2f;
             DamageTextManager.ShowMissText(textPosition);
-
             Debug.Log($"[MISS] {attacker.CharacterName} missed {character.CharacterName}!");
-            return; // ออกจากฟังก์ชันทันที ไม่ทำดาเมจ
+            return;
         }
 
-        // 🎯 คำนวณ critical จาก attacker's stats
+        // คำนวณ critical
         bool isCritical = false;
-        int finalDamage = damage;
-
         if (attacker != null)
         {
-            // ตรวจสอบ status effects ของ attacker
-            finalDamage = ApplyAttackerStatusEffects(damage, attacker);
-
-            // คำนวณ critical
+            physicalDamage = ApplyAttackerStatusEffects(physicalDamage, attacker);
             isCritical = CalculateCriticalHit(attacker);
         }
 
-        // เรียก TakeDamage หลัก
-        TakeDamage(finalDamage, damageType, isCritical);
+        // คำนวณ damage แยกตาม type
+        int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal);
+        int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic);
 
-        // 🎯 เรียก callback สำหรับ successful attack (สำหรับ status effects)
-        if (attacker is NetworkEnemy enemy)
+        int totalDamage = finalPhysicalDamage + finalMagicDamage;
+
+        // apply damage
+        int oldHp = character.CurrentHp;
+        character.CurrentHp -= totalDamage;
+        character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
+
+        Debug.Log($"[TakeDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (Physical: {finalPhysicalDamage}, Magic: {finalMagicDamage})");
+
+        SyncHealthUpdate();
+        OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
+
+        if (character.CurrentHp <= 0)
         {
-            enemy.OnSuccessfulAttack(character);
+            HandleDeath();
         }
     }
+
 
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
 
-        int finalDamage = CalculateFinalDamage(damage, isCritical);
+        int finalDamage = CalculateFinalDamage(damage, isCritical, damageType);
 
         int oldHp = character.CurrentHp;
         character.CurrentHp -= finalDamage;
@@ -248,54 +254,76 @@ public class CombatManager : NetworkBehaviour
     }
 
     // ========== Damage Calculations ==========
-    private int CalculateFinalDamage(int baseDamage, bool isCritical)
+    // ✅ แก้ไข: Critical damage calculation
+    private int CalculateFinalDamage(int baseDamage, bool isCritical, DamageType damageType)
     {
+        if (baseDamage <= 0) return 0;
+
         int finalDamage = baseDamage;
 
-        // ✅ 🌟 เพิ่ม: ใช้ Damage Aura จาก StatusEffectManager
+        // Damage Aura bonus
         if (statusEffectManager != null)
         {
             float damageMultiplier = statusEffectManager.GetTotalDamageMultiplier();
             finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
+        }
 
-            if (damageMultiplier > 1f)
+        // ✅ แก้ไข: Critical damage เป็นแบบ additive percentage
+        if (isCritical)
+        {
+            float criticalBonus = character.GetEffectiveCriticalMultiplier();
+            int bonusDamage = Mathf.RoundToInt(finalDamage * criticalBonus);
+            finalDamage = finalDamage + bonusDamage;
+
+            Debug.Log($"[Critical Hit] Base: {finalDamage - bonusDamage} + Bonus: {bonusDamage} ({criticalBonus * 100:F0}%) = {finalDamage}");
+
+            // ✅ เปลี่ยน: Critical ยังคง ignore armor และ resistance
+            return finalDamage; // Critical ignores armor and resistance
+        }
+
+        // Apply resistance based on damage type (เฉพาะ non-critical)
+        float resistance = 0f;
+        if (equipmentManager != null)
+        {
+            if (damageType == DamageType.Magic)
             {
-                Debug.Log($"[Damage Aura] {baseDamage} * {damageMultiplier:F2} = {finalDamage}");
+                resistance = equipmentManager.GetTotalMagicalResistance();
+            }
+            else
+            {
+                resistance = equipmentManager.GetTotalPhysicalResistance();
             }
         }
 
-        // Critical damage calculation
-        if (isCritical)
-        {
-            finalDamage = Mathf.RoundToInt(finalDamage * character.CriticalMultiplier);
-            Debug.Log($"[Critical Hit] {finalDamage} (after aura + critical)");
-            return finalDamage; // Critical ignores armor
-        }
+        // Convert resistance to damage reduction
+        float damageReduction = resistance / 100f;
+        finalDamage = Mathf.RoundToInt(finalDamage * (1f - damageReduction));
 
-        // Normal damage with armor
-        int currentArmor = GetCurrentArmor();
-
-        // ✅ 🌟 เพิ่ม: ใช้ Protection Aura ลด damage
-        float protectionReduction = 0f;
+        // Protection aura
         if (statusEffectManager != null)
         {
-            protectionReduction = statusEffectManager.GetTotalDamageReduction();
+            float protectionReduction = statusEffectManager.GetTotalDamageReduction();
+            finalDamage = Mathf.RoundToInt(finalDamage * (1f - protectionReduction));
         }
 
-        // คำนวณ damage หลัง armor
-        int damageAfterArmor = finalDamage - currentArmor;
-
-        // คำนวณ damage หลัง protection aura
-        if (protectionReduction > 0f)
+        // Apply armor (only for physical damage และ non-critical)
+        if (damageType != DamageType.Magic)
         {
-            damageAfterArmor = Mathf.RoundToInt(damageAfterArmor * (1f - protectionReduction));
-            Debug.Log($"[Protection Aura] Damage reduced by {protectionReduction * 100}%");
+            int currentArmor = GetCurrentArmor();
+            finalDamage = finalDamage - currentArmor;
         }
 
-        finalDamage = Mathf.Max(1, damageAfterArmor); // ไม่ให้ damage ต่ำกว่า 1
+        finalDamage = Mathf.Max(1, finalDamage);
 
-        Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (armor: {currentArmor}, protection: {protectionReduction * 100:F1}%)");
+        Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (type: {damageType}, resistance: {resistance:F1}%)");
         return finalDamage;
+    }
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    {
+        // แยก damage เป็น physical กับ magic ตาม ratio
+        var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
+
+        TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
     }
 
     private int GetCurrentArmor()

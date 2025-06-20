@@ -2,7 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
-
+public enum AttackType
+{
+    Physical,    // โจมตีด้วย AttackDamage อย่างเดียว
+    Magic,       // โจมตีด้วย MagicDamage อย่างเดียว
+    Mixed        // โจมตีทั้งสองแบบ (ระบบเดิม)
+}
 public class Character : NetworkBehaviour
 {
     #region Base Stats
@@ -61,6 +66,12 @@ public class Character : NetworkBehaviour
 
     [SerializeField] private float reductionCoolDown;
     public float ReductionCoolDown {get{ return reductionCoolDown; }set { reductionCoolDown = value; } }
+
+    [Header("Attack Settings")]
+    [SerializeField] private AttackType attackType = AttackType.Physical; // Default เป็น Physical
+    public AttackType AttackType { get { return attackType; } set { attackType = value; } }
+
+
     #endregion
 
 
@@ -159,7 +170,7 @@ public class Character : NetworkBehaviour
             evasionRate = characterStats.evasionRate;
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
-
+            attackType = characterStats.attackType;
 
             Debug.Log($"✅ [Character] Initialized {characterName} with ScriptableObject stats: HP={maxHp}, ATK={attackDamage}");
         }
@@ -196,7 +207,116 @@ public class Character : NetworkBehaviour
 
         }
     }
+    public virtual (int physicalDamage, int magicDamage) GetAttackDamages()
+    {
+        switch (attackType)
+        {
+            case AttackType.Physical:
+                return (AttackDamage, 0); // Physical อย่างเดียว
 
+            case AttackType.Magic:
+                return (0, MagicDamage); // Magic อย่างเดียว
+
+            case AttackType.Mixed:
+                return (AttackDamage, MagicDamage); // ทั้งสองแบบ
+
+            default:
+                return (AttackDamage, 0); // Default เป็น Physical
+        }
+    }
+
+    public virtual (int physicalDamage, int magicDamage) GetSkillDamages(AttackType skillType, float physicalRatio = 1f, float magicRatio = 1f)
+    {
+        switch (skillType)
+        {
+            case AttackType.Physical:
+                int physDamage = Mathf.RoundToInt(AttackDamage * physicalRatio);
+                return (physDamage, 0);
+
+            case AttackType.Magic:
+                int magDamage = Mathf.RoundToInt(MagicDamage * magicRatio);
+                return (0, magDamage);
+
+            case AttackType.Mixed:
+                int mixedPhys = Mathf.RoundToInt(AttackDamage * physicalRatio);
+                int mixedMag = Mathf.RoundToInt(MagicDamage * magicRatio);
+                return (mixedPhys, mixedMag);
+
+            default:
+                return (AttackDamage, 0);
+        }
+    }
+
+    public virtual (int physicalDamage, int magicDamage) GetSkillDamages(AttackType skillType, int flatPhysical = 0, int flatMagic = 0)
+    {
+        switch (skillType)
+        {
+            case AttackType.Physical:
+                return (flatPhysical, 0);
+
+            case AttackType.Magic:
+                return (0, flatMagic);
+
+            case AttackType.Mixed:
+                return (flatPhysical, flatMagic);
+
+            default:
+                return (flatPhysical, 0);
+        }
+    }
+
+    // ✅ Method สำหรับ skill ที่ผสม ratio + flat
+    public virtual (int physicalDamage, int magicDamage) GetAdvancedSkillDamages(
+        float physicalRatio = 0f, float magicRatio = 0f,
+        int flatPhysical = 0, int flatMagic = 0)
+    {
+        int physDamage = Mathf.RoundToInt(AttackDamage * physicalRatio) + flatPhysical;
+        int magDamage = Mathf.RoundToInt(MagicDamage * magicRatio) + flatMagic;
+
+        return (physDamage, magDamage);
+    }
+
+    public virtual void UseSkillOnTarget(Character target, AttackType skillType, float physicalRatio = 1f, float magicRatio = 1f, DamageType damageType = DamageType.Normal)
+    {
+        if (combatManager == null) return;
+
+        var (physicalDamage, magicDamage) = GetSkillDamages(skillType, physicalRatio, magicRatio);
+
+        Debug.Log($"[Skill Attack] {CharacterName} uses {skillType} skill: Physical={physicalDamage}, Magic={magicDamage}");
+
+        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
+    }
+
+    /// <summary>
+    /// ใช้สำหรับ Skills ที่ใช้ flat damage
+    /// </summary>
+    public virtual void UseSkillOnTarget(Character target, AttackType skillType, int flatPhysical, int flatMagic, DamageType damageType = DamageType.Normal)
+    {
+        if (combatManager == null) return;
+
+        var (physicalDamage, magicDamage) = GetSkillDamages(skillType, flatPhysical, flatMagic);
+
+        Debug.Log($"[Skill Attack] {CharacterName} uses {skillType} skill: Physical={physicalDamage}, Magic={magicDamage}");
+
+        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
+    }
+
+    /// <summary>
+    /// ใช้สำหรับ Skills ขั้นสูงที่ผสม ratio + flat
+    /// </summary>
+    public virtual void UseAdvancedSkillOnTarget(Character target,
+        float physicalRatio = 0f, float magicRatio = 0f,
+        int flatPhysical = 0, int flatMagic = 0,
+        DamageType damageType = DamageType.Normal)
+    {
+        if (combatManager == null) return;
+
+        var (physicalDamage, magicDamage) = GetAdvancedSkillDamages(physicalRatio, magicRatio, flatPhysical, flatMagic);
+
+        Debug.Log($"[Advanced Skill] {CharacterName}: Physical={physicalDamage} (ratio:{physicalRatio}, flat:{flatPhysical}), Magic={magicDamage} (ratio:{magicRatio}, flat:{flatMagic})");
+
+        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
+    }
     // ========== Public Interface Methods ==========
 
     /// <summary>
@@ -475,6 +595,17 @@ public class Character : NetworkBehaviour
         return baseMoveSpeed;
     }
 
+  public float GetEffectiveReductionCoolDown()
+    {
+        float baseReductionCoolDown = reductionCoolDown;
+        if (equipmentManager != null)
+        {
+            baseReductionCoolDown += equipmentManager.GetReductionCoolDownBonus();
+        }
+
+        return baseReductionCoolDown;
+    }
+
     /// <summary>
     /// ✅ 🌟 เพิ่ม: ดู Attack Speed รวม Aura
     /// </summary>
@@ -496,12 +627,32 @@ public class Character : NetworkBehaviour
 
         return baseAttackSpeed;
     }
+
+    /// <summary>
+    /// รับดาเมจจากผู้โจมตี แยก Physical และ Magic damage
+    /// </summary>
+    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
+    {
+        if (combatManager == null) return;
+        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
+    }
     protected virtual bool CanDie()
     {
         return NetworkedCurrentHp <= 0;
     }
     /// ดู level ปัจจุบัน
+    public float GetEffectiveCriticalMultiplier()
+    {
+        float baseCritMultiplier = criticalMultiplier;
 
+        // เพิ่ม bonus จาก equipment
+        if (equipmentManager != null)
+        {
+            baseCritMultiplier += equipmentManager.GetCriticalMultiplierBonus();
+        }
+
+        return baseCritMultiplier;
+    }
     public int GetCurrentLevel()
     {
         if (levelManager == null) return 1;

@@ -469,14 +469,7 @@
     #endregion
     public void DebugNetworkState()
         {
-           /* Debug.Log($"[DEBUG] {CharacterName} Network State:");
-            Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
-            Debug.Log($"  - HasStateAuthority: {HasStateAuthority}");
-            Debug.Log($"  - IsNetworkStateReady: {IsNetworkStateReady}");
-            Debug.Log($"  - CurrentHp: {CurrentHp} | NetworkedCurrentHp: {NetworkedCurrentHp}");
-            Debug.Log($"  - MaxHp: {MaxHp} | NetworkedMaxHp: {NetworkedMaxHp}");
-            Debug.Log($"  - CurrentMana: {CurrentMana} | NetworkedCurrentMana: {NetworkedCurrentMana}");
-            Debug.Log($"  - MaxMana: {MaxMana} | NetworkedMaxMana: {NetworkedMaxMana}");*/
+          
         }
         // ========== Original Methods (Non-Network) ==========
         protected  void Update()
@@ -587,101 +580,84 @@
 
         protected virtual void ProcessClassSpecificAbilities()
         {
-            if (HasInputAuthority)
+        if (HasInputAuthority)
+        {
+            if (GetInput(out networkInputData))
             {
-                if (GetInput(out networkInputData))
+                // คำนวณ cooldown reduction
+                float effectiveReduction = GetEffectiveReductionCoolDown();
+                float reductionMultiplier = 1f - (effectiveReduction / 100f); // แปลงเป็นเปอร์เซ็น
+                reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f); // จำกัดไม่ให้ต่ำกว่า 10%
+
+                // Reset consumed flags เมื่อ input เป็น false
+                if (!networkInputData.skill1) skill1Consumed = false;
+                if (!networkInputData.skill2) skill2Consumed = false;
+                if (!networkInputData.skill3) skill3Consumed = false;
+                if (!networkInputData.skill4) skill4Consumed = false;
+
+                // เช็ค Attack
+                if (networkInputData.attack && Time.time >= nextAttackTime)
                 {
-                    // Reset consumed flags เมื่อ input เป็น false
-                    if (!networkInputData.skill1) skill1Consumed = false;
-                    if (!networkInputData.skill2) skill2Consumed = false;
-                    if (!networkInputData.skill3) skill3Consumed = false;
-                    if (!networkInputData.skill4) skill4Consumed = false;
+                    TryAttack();
+                    float effectiveAttackSpeed = GetEffectiveAttackSpeed();
+                    float attackCooldown = (AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed)) * reductionMultiplier;
+                    nextAttackTime = Time.time + attackCooldown;
+                }
 
-                    // เช็ค Attack
-                    if (networkInputData.attack && Time.time >= nextAttackTime)
+                // เช็ค Skills พร้อม cooldown reduction
+                if (networkInputData.skill1 && !skill1Consumed)
+                {
+                    if (Time.time >= nextSkill1Time)
                     {
-                        TryAttack();
-                        nextAttackTime = Time.time + AttackCooldown;
+                        TryUseSkill1();
+                        nextSkill1Time = Time.time + (skill1Cooldown * reductionMultiplier);
+                        skill1Consumed = true;
                     }
+                }
 
-                    // เช็ค Skills พร้อม consumed flag และ cooldown
-                    if (networkInputData.skill1 && !skill1Consumed)
+                if (networkInputData.skill2 && !skill2Consumed)
+                {
+                    if (Time.time >= nextSkill2Time)
                     {
-                        if (Time.time >= nextSkill1Time)
-                        {
-                            TryUseSkill1();
-                            nextSkill1Time = Time.time + skill1Cooldown;
-                            skill1Consumed = true;
-                            Debug.Log($"Skill1 used! Next available at: {nextSkill1Time:F2} (cooldown: {skill1Cooldown}s)");
-                        }
-                        else
-                        {
-                            float remainingCooldown = nextSkill1Time - Time.time;
-                            Debug.Log($"Skill1 on cooldown! {remainingCooldown:F1}s remaining");
-                        }
+                        TryUseSkill2();
+                        nextSkill2Time = Time.time + (skill2Cooldown * reductionMultiplier);
+                        skill2Consumed = true;
                     }
+                }
 
-                    if (networkInputData.skill2 && !skill2Consumed)
+                if (networkInputData.skill3 && !skill3Consumed)
+                {
+                    if (Time.time >= nextSkill3Time)
                     {
-                        if (Time.time >= nextSkill2Time)
-                        {
-                            TryUseSkill2();
-                            nextSkill2Time = Time.time + skill2Cooldown;
-                            skill2Consumed = true;
-                            Debug.Log($"Skill2 used! Next available at: {nextSkill2Time:F2} (cooldown: {skill2Cooldown}s)");
-                        }
-                        else
-                        {
-                            float remainingCooldown = nextSkill2Time - Time.time;
-                            Debug.Log($"Skill2 on cooldown! {remainingCooldown:F1}s remaining");
-                        }
+                        TryUseSkill3();
+                        nextSkill3Time = Time.time + (skill3Cooldown * reductionMultiplier);
+                        skill3Consumed = true;
                     }
+                }
 
-                    if (networkInputData.skill3 && !skill3Consumed)
+                if (networkInputData.skill4 && !skill4Consumed)
+                {
+                    if (Time.time >= nextSkill4Time)
                     {
-                        if (Time.time >= nextSkill3Time)
-                        {
-                            TryUseSkill3();
-                            nextSkill3Time = Time.time + skill3Cooldown;
-                            skill3Consumed = true;
-                            Debug.Log($"Skill3 used! Next available at: {nextSkill3Time:F2} (cooldown: {skill3Cooldown}s)");
-                        }
-                        else
-                        {
-                            float remainingCooldown = nextSkill3Time - Time.time;
-                            Debug.Log($"Skill3 on cooldown! {remainingCooldown:F1}s remaining");
-                        }
-                    }
-
-                    if (networkInputData.skill4 && !skill4Consumed)
-                    {
-                        if (Time.time >= nextSkill4Time)
-                        {
-                            TryUseSkill4();
-                            nextSkill4Time = Time.time + skill4Cooldown;
-                            skill4Consumed = true;
-                            Debug.Log($"Skill4 used! Next available at: {nextSkill4Time:F2} (cooldown: {skill4Cooldown}s)");
-                        }
-                        else
-                        {
-                            float remainingCooldown = nextSkill4Time - Time.time;
-                            Debug.Log($"Skill4 on cooldown! {remainingCooldown:F1}s remaining");
-                        }
+                        TryUseSkill4();
+                        nextSkill4Time = Time.time + (skill4Cooldown * reductionMultiplier);
+                        skill4Consumed = true;
                     }
                 }
             }
+        }
 
-            // *** เพิ่มการ sync health และ mana ทุก frame สำหรับทุก client ***
-            if (HasStateAuthority)
-            {
-                NetworkedCurrentHp = CurrentHp;
-                NetworkedCurrentMana = CurrentMana;
-                NetworkedMaxHp = MaxHp;
-                NetworkedMaxMana = MaxMana;
-            }
+        // Sync health และ mana
+        if (HasStateAuthority)
+        {
+            NetworkedCurrentHp = CurrentHp;
+            NetworkedCurrentMana = CurrentMana;
+            NetworkedMaxHp = MaxHp;
+            NetworkedMaxMana = MaxMana;
+        }
 
-            // *** เพิ่มการ sync สำหรับ client ที่มี InputAuthority ***
-            if (HasInputAuthority && !HasStateAuthority)
+        // *** เพิ่มการ sync สำหรับ client ที่มี InputAuthority ***
+        if (HasInputAuthority && !HasStateAuthority)
             {
                 // ส่งข้อมูล HP/Mana ไปยัง server หากมีการเปลี่ยนแปลง
                 if (NetworkedCurrentHp != CurrentHp || NetworkedCurrentMana != CurrentMana)
@@ -724,21 +700,15 @@
 
         protected virtual void TryUseSkill2()
         {
-            Debug.Log($"=== SKILL 2 EXECUTED at {Time.time:F2} ===");
-          Heal(30);
-          UseMana(15);
+         
         }
 
         protected virtual void TryUseSkill3()
         {
-            Debug.Log($"=== SKILL 3 EXECUTED at {Time.time:F2} ===");
-            UseMana(20);
         }
 
         protected virtual void TryUseSkill4()
         {
-            Debug.Log($"=== SKILL 4 EXECUTED at {Time.time:F2} ===");
-            UseMana(25);
         }
         public void UseMana(int amount)
         {
@@ -810,7 +780,7 @@
                 if (enemy != null)
                 {
                 // ใช้ TakeDamage ใหม่จาก Character base class
-                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+                enemy.TakeDamageFromAttacker(AttackDamage, MagicDamage, this, DamageType.Normal);
                 RPC_OnAttackHit(enemyObject);
                 }
                 else

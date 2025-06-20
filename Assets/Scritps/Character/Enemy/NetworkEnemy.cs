@@ -528,7 +528,7 @@ public class NetworkEnemy : Character
             Debug.Log($"Enemy {name} attempts to attack {targetHero.CharacterName}!");
 
             // 🎯 ใช้ TakeDamageFromAttacker() แทน TakeDamage() เพื่อให้มีการเช็ค Hit/Miss
-            targetHero.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+            targetHero.TakeDamageFromAttacker(AttackDamage, MagicDamage, this, DamageType.Normal);
 
             // 🎯 Status effects จะใส่เฉพาะเมื่อโจมตีโดนเท่านั้น (ย้ายไปใส่หลังจาก hit success)
             // ลบส่วนนี้ออกจากที่นี่ แล้วย้ายไปใส่ใน OnSuccessfulAttack
