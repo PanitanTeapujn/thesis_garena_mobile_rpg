@@ -278,12 +278,14 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.SetInt("PlayerMaxHp", currentCharacter.totalMaxHp);
         PlayerPrefs.SetInt("PlayerMaxMana", currentCharacter.totalMaxMana);
         PlayerPrefs.SetInt("PlayerAttackDamage", currentCharacter.totalAttackDamage);
+        PlayerPrefs.SetInt("PlayerMagicDamage", currentCharacter.totalMagicDamage);
         PlayerPrefs.SetInt("PlayerArmor", currentCharacter.totalArmor);
         PlayerPrefs.SetFloat("PlayerCritChance", currentCharacter.totalCriticalChance);
         PlayerPrefs.SetFloat("PlayerMoveSpeed", currentCharacter.totalMoveSpeed);
         PlayerPrefs.SetFloat("PlayerHitRate", currentCharacter.totalHitRate);
         PlayerPrefs.SetFloat("PlayerEvasionRate", currentCharacter.totalEvasionRate);
         PlayerPrefs.SetFloat("PlayerAttackSpeed", currentCharacter.totalAttackSpeed);
+        PlayerPrefs.SetFloat("PlayerReductionCoolDown", currentCharacter.totalReductionCoolDown);
         PlayerPrefs.Save();
     }
 
@@ -300,15 +302,15 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-        int attackDamage, int armor, float critChance, float moveSpeed,
-        float hitRate, float evasionRate, float attackSpeed)
+        int attackDamage,int magicDamage, int armor, float critChance, float moveSpeed,
+        float hitRate, float evasionRate, float attackSpeed,float reductionCoolDown)
     {
         if (multiCharacterData == null) return;
 
         multiCharacterData.UpdateCharacterStats(
             multiCharacterData.currentActiveCharacter,
-            level, exp, expToNext, maxHp, maxMana, attackDamage, armor,
-            critChance, moveSpeed, hitRate, evasionRate, attackSpeed);
+            level, exp, expToNext, maxHp, maxMana, attackDamage,magicDamage, armor,
+            critChance, moveSpeed, hitRate, evasionRate, attackSpeed,reductionCoolDown);
 
         SaveToPlayerPrefs();
         SavePlayerDataAsync();

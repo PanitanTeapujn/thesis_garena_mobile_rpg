@@ -348,6 +348,7 @@ public class CharacterSelectionManager : MonoBehaviour
         characterData.totalMaxHp = stats.maxHp;
         characterData.totalMaxMana = stats.maxMana;
         characterData.totalAttackDamage = stats.attackDamage;
+        characterData.totalMagicDamage = stats.magicDamage;
         characterData.totalArmor = stats.arrmor;
         characterData.totalCriticalChance = stats.criticalChance;
         characterData.totalCriticalMultiplier = stats.criticalMultiplier;
@@ -357,6 +358,7 @@ public class CharacterSelectionManager : MonoBehaviour
         characterData.totalHitRate = stats.hitRate;
         characterData.totalEvasionRate = stats.evasionRate;
         characterData.totalAttackSpeed = stats.attackSpeed;
+        characterData.totalReductionCoolDown = stats.reductionCoolDown;
     }
 
     // ========== UI Methods ==========

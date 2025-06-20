@@ -11,6 +11,7 @@ public class LevelUpStats
     public int hpBonusPerLevel = 10;
     public int manaBonusPerLevel = 5;
     public int attackDamageBonusPerLevel = 2;
+    public int magicDamageBonusPerLevel = 2;
     public int armorBonusPerLevel = 1;
     public float criticalChanceBonusPerLevel = 0.5f;
     public float moveSpeedBonusPerLevel = 0f;
@@ -107,12 +108,14 @@ public class LevelManager : NetworkBehaviour
             character.MaxMana = characterData.totalMaxMana;
             character.CurrentMana = characterData.totalMaxMana;
             character.AttackDamage = characterData.totalAttackDamage;
+            character.MagicDamage = characterData.totalMagicDamage;
             character.Armor = characterData.totalArmor;
             character.CriticalChance = characterData.totalCriticalChance;
             character.MoveSpeed = characterData.totalMoveSpeed;
             character.HitRate = characterData.totalHitRate;
             character.EvasionRate = characterData.totalEvasionRate;
             character.AttackSpeed = characterData.totalAttackSpeed;
+            character.ReductionCoolDown = characterData.totalReductionCoolDown;
 
             character.ForceUpdateNetworkState();
 
@@ -191,12 +194,14 @@ public class LevelManager : NetworkBehaviour
                 characterData.totalMaxHp,
                 characterData.totalMaxMana,
                 characterData.totalAttackDamage,
+                characterData.totalMagicDamage,
                 characterData.totalArmor,
                 characterData.totalCriticalChance,
                 characterData.totalMoveSpeed,
                 characterData.totalHitRate,
                 characterData.totalEvasionRate,
-                characterData.totalAttackSpeed
+                characterData.totalAttackSpeed,
+                characterData.totalReductionCoolDown
             );
 
             Debug.Log($"✅ Applied Firebase data for {activeCharacterType}: Level {characterData.currentLevel}");
@@ -214,8 +219,8 @@ public class LevelManager : NetworkBehaviour
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_ApplyFirebaseStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-     int attackDamage, int armor, float critChance, float moveSpeed,
-     float hitRate, float evasionRate, float attackSpeed)
+     int attackDamage,int magicDamage ,int armor, float critChance, float moveSpeed,
+     float hitRate, float evasionRate, float attackSpeed,float reductionCoolDown)
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -226,25 +231,27 @@ public class LevelManager : NetworkBehaviour
         character.MaxMana = maxMana;
         character.CurrentMana = maxMana;
         character.AttackDamage = attackDamage;
+        character.MagicDamage = magicDamage;
         character.Armor = armor;
         character.CriticalChance = critChance;
         character.MoveSpeed = moveSpeed;
         character.HitRate = hitRate;
         character.EvasionRate = evasionRate;
         character.AttackSpeed = attackSpeed;
+        character.ReductionCoolDown = reductionCoolDown;
 
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
         // Broadcast to all clients
-        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage, armor, critChance, moveSpeed,
-            hitRate, evasionRate, attackSpeed);
+        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage,magicDamage ,armor, critChance, moveSpeed,
+            hitRate, evasionRate, attackSpeed,reductionCoolDown);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_BroadcastStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-     int attackDamage, int armor, float critChance, float moveSpeed,
-     float hitRate, float evasionRate, float attackSpeed)
+     int attackDamage,int magicDamage ,int armor, float critChance, float moveSpeed,
+     float hitRate, float evasionRate, float attackSpeed,float reductionCoolDown)
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -255,12 +262,14 @@ public class LevelManager : NetworkBehaviour
         character.MaxMana = maxMana;
         character.CurrentMana = maxMana;
         character.AttackDamage = attackDamage;
+        character.MagicDamage = magicDamage;
         character.Armor = armor;
         character.CriticalChance = critChance;
         character.MoveSpeed = moveSpeed;
         character.HitRate = hitRate;
         character.EvasionRate = evasionRate;
         character.AttackSpeed = attackSpeed;
+        character.ReductionCoolDown = reductionCoolDown;
 
         IsInitialized = true;
     }
@@ -276,12 +285,14 @@ public class LevelManager : NetworkBehaviour
             character.MaxMana = character.characterStats.maxMana;
             character.CurrentMana = character.MaxMana;
             character.AttackDamage = character.characterStats.attackDamage;
+            character.MagicDamage = character.characterStats.magicDamage;
             character.Armor = character.characterStats.arrmor;
             character.CriticalChance = character.characterStats.criticalChance;
             character.MoveSpeed = character.characterStats.moveSpeed;
             character.HitRate = character.characterStats.hitRate;
             character.EvasionRate = character.characterStats.evasionRate;
             character.AttackSpeed = character.characterStats.attackSpeed;
+            character.ReductionCoolDown = character.characterStats.reductionCoolDown;
         }
 
         CurrentLevel = 1;
@@ -322,6 +333,7 @@ public class LevelManager : NetworkBehaviour
         character.MaxHp += levelUpStats.hpBonusPerLevel;
         character.MaxMana += levelUpStats.manaBonusPerLevel;
         character.AttackDamage += levelUpStats.attackDamageBonusPerLevel;
+        character.MagicDamage += levelUpStats.magicDamageBonusPerLevel;
         character.Armor += levelUpStats.armorBonusPerLevel;
         character.CriticalChance += levelUpStats.criticalChanceBonusPerLevel;
         character.MoveSpeed += levelUpStats.moveSpeedBonusPerLevel;
@@ -359,12 +371,14 @@ public class LevelManager : NetworkBehaviour
                 character.MaxHp,
                 character.MaxMana,
                 character.AttackDamage,
+                character.MagicDamage,
                 character.Armor,
                 character.CriticalChance,
                 character.MoveSpeed,
                 character.HitRate,
                 character.EvasionRate,
-                character.AttackSpeed
+                character.AttackSpeed,
+                character.ReductionCoolDown
             );
         }
 
@@ -389,12 +403,15 @@ public class LevelManager : NetworkBehaviour
             character.MaxMana = characterData.totalMaxMana;
             character.CurrentMana = characterData.totalMaxMana;
             character.AttackDamage = characterData.totalAttackDamage;
+            character.MagicDamage = characterData.totalMagicDamage;
             character.Armor = characterData.totalArmor;
             character.CriticalChance = characterData.totalCriticalChance;
             character.MoveSpeed = characterData.totalMoveSpeed;
             character.HitRate = characterData.totalHitRate;
             character.EvasionRate = characterData.totalEvasionRate;
             character.AttackSpeed = characterData.totalAttackSpeed;
+            character.ReductionCoolDown = characterData.totalReductionCoolDown;
+            
 
             IsInitialized = true;
             Debug.Log($"✅ Initialized LevelManager for {characterType} - Level {CurrentLevel}");

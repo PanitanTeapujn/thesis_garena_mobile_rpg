@@ -36,9 +36,11 @@ public class EquipmentStats
 {
     [Header("Combat Stats")]
     public int attackDamageBonus = 0;
+    public int magicDamageBonus = 0;
     public int armorBonus = 0;
     public float criticalChanceBonus = 0f;
     public float criticalMultiplierBonus = 0f;
+    public float reductionCoolDownBonus = 0f;
 
     [Header("Survival Stats")]
     public int maxHpBonus = 0;
@@ -78,6 +80,7 @@ public class EquipmentManager : NetworkBehaviour
 
     // ========== Network Properties สำหรับ Equipment Stats ==========
     [Networked] public int NetworkedAttackDamageBonus { get; set; }
+    [Networked] public int NetworkedMagicDamageBonus { get; set; }
     [Networked] public int NetworkedArmorBonus { get; set; }
     [Networked] public float NetworkedCriticalChanceBonus { get; set; }
     [Networked] public int NetworkedMaxHpBonus { get; set; }
@@ -88,6 +91,7 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedHitRateBonus { get; set; }
     [Networked] public float NetworkedEvasionRateBonus { get; set; }
     [Networked] public float NetworkedAttackSpeedBonus { get; set; }
+    [Networked] public float NetworkedReductionCoolDown { get; set; }
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
@@ -168,6 +172,7 @@ public class EquipmentManager : NetworkBehaviour
     private void ApplyEquipmentStats()
     {
         character.AttackDamage += currentEquipmentStats.attackDamageBonus;
+        character.MagicDamage += currentEquipmentStats.magicDamageBonus;
         character.Armor += currentEquipmentStats.armorBonus;
         character.CriticalChance += currentEquipmentStats.criticalChanceBonus;
         character.CriticalMultiplier += currentEquipmentStats.criticalMultiplierBonus;
@@ -178,6 +183,7 @@ public class EquipmentManager : NetworkBehaviour
         character.HitRate += currentEquipmentStats.hitRateBonus;
         character.EvasionRate += currentEquipmentStats.evasionRateBonus;
         character.AttackSpeed += currentEquipmentStats.attackSpeedBonus;
+        character.ReductionCoolDown += currentEquipmentStats.reductionCoolDownBonus;
 
         // Ensure current HP/Mana don't exceed new max values
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
@@ -189,6 +195,8 @@ public class EquipmentManager : NetworkBehaviour
     private void RemoveEquipmentStats()
     {
         character.AttackDamage -= currentEquipmentStats.attackDamageBonus;
+        character.MagicDamage -= currentEquipmentStats.magicDamageBonus;
+
         character.Armor -= currentEquipmentStats.armorBonus;
         character.CriticalChance -= currentEquipmentStats.criticalChanceBonus;
         character.CriticalMultiplier -= currentEquipmentStats.criticalMultiplierBonus;
@@ -199,15 +207,20 @@ public class EquipmentManager : NetworkBehaviour
         character.HitRate -= currentEquipmentStats.hitRateBonus;
         character.EvasionRate -= currentEquipmentStats.evasionRateBonus;
         character.AttackSpeed -= currentEquipmentStats.attackSpeedBonus;
+        character.ReductionCoolDown -= currentEquipmentStats.reductionCoolDownBonus;
+
         // Ensure stats don't go negative
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
+        character.MagicDamage = Mathf.Max(1, character.MagicDamage);
         character.Armor = Mathf.Max(0, character.Armor);
         character.MaxHp = Mathf.Max(1, character.MaxHp);
         character.MaxMana = Mathf.Max(0, character.MaxMana);
         character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
         character.HitRate = Mathf.Max(5f, character.HitRate);           // ต่ำสุด 5%
         character.EvasionRate = Mathf.Max(0f, character.EvasionRate);   // ต่ำสุด 0%
-        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed); // ต่ำสุด 0.1x
+        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+        character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+        // ต่ำสุด 0.1x
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
@@ -216,6 +229,7 @@ public class EquipmentManager : NetworkBehaviour
     private void ApplyRuneStats()
     {
         character.AttackDamage += currentRuneStats.attackDamageBonus;
+        character.MagicDamage += currentRuneStats.magicDamageBonus;
         character.Armor += currentRuneStats.armorBonus;
         character.CriticalChance += currentRuneStats.criticalChanceBonus;
         character.MaxHp += currentRuneStats.maxHpBonus;
@@ -224,12 +238,15 @@ public class EquipmentManager : NetworkBehaviour
         character.HitRate += currentRuneStats.hitRateBonus;
         character.EvasionRate += currentRuneStats.evasionRateBonus;
         character.AttackSpeed += currentRuneStats.attackSpeedBonus;
+        character.ReductionCoolDown += currentRuneStats.reductionCoolDownBonus;
         Debug.Log($"[Rune Applied] {character.CharacterName} - ATK: +{currentRuneStats.attackDamageBonus}");
     }
 
     private void RemoveRuneStats()
     {
         character.AttackDamage -= currentRuneStats.attackDamageBonus;
+        character.MagicDamage -= currentRuneStats.magicDamageBonus;
+
         character.Armor -= currentRuneStats.armorBonus;
         character.CriticalChance -= currentRuneStats.criticalChanceBonus;
         character.MaxHp -= currentRuneStats.maxHpBonus;
@@ -238,9 +255,12 @@ public class EquipmentManager : NetworkBehaviour
         character.HitRate -= currentRuneStats.hitRateBonus;
         character.EvasionRate -= currentRuneStats.evasionRateBonus;
         character.AttackSpeed -= currentRuneStats.attackSpeedBonus;
+        character.ReductionCoolDown -= currentRuneStats.reductionCoolDownBonus;
 
         // Ensure stats don't go negative
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
+        character.MagicDamage = Mathf.Max(1, character.MagicDamage);
+
         character.Armor = Mathf.Max(0, character.Armor);
         character.MaxHp = Mathf.Max(1, character.MaxHp);
         character.MaxMana = Mathf.Max(0, character.MaxMana);
@@ -248,6 +268,8 @@ public class EquipmentManager : NetworkBehaviour
         character.HitRate = Mathf.Max(5f, character.HitRate);
         character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+        character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+
 
     }
 
@@ -278,6 +300,7 @@ public class EquipmentManager : NetworkBehaviour
         {
             EquipmentStats totalStats = GetTotalStats();
             NetworkedAttackDamageBonus = totalStats.attackDamageBonus;
+            NetworkedMagicDamageBonus = totalStats.magicDamageBonus;
             NetworkedArmorBonus = totalStats.armorBonus;
             NetworkedCriticalChanceBonus = totalStats.criticalChanceBonus;
             NetworkedMaxHpBonus = totalStats.maxHpBonus;
@@ -288,6 +311,7 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedHitRateBonus = totalStats.hitRateBonus;
             NetworkedEvasionRateBonus = totalStats.evasionRateBonus;
             NetworkedAttackSpeedBonus = totalStats.attackSpeedBonus;
+            NetworkedReductionCoolDown = totalStats.reductionCoolDownBonus;
 
         }
     }
@@ -301,6 +325,10 @@ public class EquipmentManager : NetworkBehaviour
     public int GetAttackDamageBonus()
     {
         return currentEquipmentStats.attackDamageBonus + currentRuneStats.attackDamageBonus;
+    } 
+    public int GetMagicDamageBonus()
+    {
+        return currentEquipmentStats.magicDamageBonus + currentRuneStats.magicDamageBonus;
     }
 
     public float GetCriticalChanceBonus()
@@ -332,10 +360,15 @@ public class EquipmentManager : NetworkBehaviour
     {
         return currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
     }
+    public float GetReductionCoolDownBonus()
+    {
+        return currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
+    }
     public EquipmentStats GetTotalStats()
     {
         EquipmentStats total = new EquipmentStats();
         total.attackDamageBonus = currentEquipmentStats.attackDamageBonus + currentRuneStats.attackDamageBonus;
+        total.magicDamageBonus = currentEquipmentStats.magicDamageBonus + currentRuneStats.magicDamageBonus;
         total.armorBonus = currentEquipmentStats.armorBonus + currentRuneStats.armorBonus;
         total.criticalChanceBonus = currentEquipmentStats.criticalChanceBonus + currentRuneStats.criticalChanceBonus;
         total.maxHpBonus = currentEquipmentStats.maxHpBonus + currentRuneStats.maxHpBonus;
@@ -346,6 +379,7 @@ public class EquipmentManager : NetworkBehaviour
         total.hitRateBonus = currentEquipmentStats.hitRateBonus + currentRuneStats.hitRateBonus;
         total.evasionRateBonus = currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
         total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
+        total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
         return total;
     }
 
@@ -374,7 +408,7 @@ public class EquipmentManager : NetworkBehaviour
     [ContextMenu("Test Equipment/Equip Iron Sword")]
     private void TestEquipIronSword()
     {
-        EquipmentData ironSword = CreateTestWeapon("Iron Sword", 15, 0, 5f, 0f, 0f, 2f);
+        EquipmentData ironSword = CreateTestWeapon("Iron Sword", 15, 5,0, 5f, 0f, 0f, 2f,0f);
         EquipItem(ironSword);
         LogCurrentStats();
     }
@@ -382,7 +416,7 @@ public class EquipmentManager : NetworkBehaviour
     [ContextMenu("Test Equipment/Equip Steel Sword")]
     private void TestEquipSteelSword()
     {
-        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25, 0, 8f, 0f, 0f, 3f);
+        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25, 10,0, 8f, 0f, 0f, 3f,1f);
         EquipItem(steelSword);
         LogCurrentStats();
     }
@@ -390,7 +424,7 @@ public class EquipmentManager : NetworkBehaviour
     [ContextMenu("Test Equipment/Equip Legendary Blade")]
     private void TestEquipLegendaryBlade()
     {
-        EquipmentData legendaryBlade = CreateTestWeapon("Legendary Blade", 50, 0, 15f, 0.5f, 5f, 8f);
+        EquipmentData legendaryBlade = CreateTestWeapon("Legendary Blade", 50,30 ,0, 15f, 0.5f, 5f, 8f,3f);
         EquipItem(legendaryBlade);
         LogCurrentStats();
     }
@@ -398,7 +432,7 @@ public class EquipmentManager : NetworkBehaviour
     [ContextMenu("Test Equipment/Equip Leather Armor")]
     private void TestEquipLeatherArmor()
     {
-        EquipmentData leatherArmor = CreateTestArmor("Leather Armor", 0, 10, 0f, 50, 0, 0f);
+        EquipmentData leatherArmor = CreateTestArmor("Leather Armor", 0, 10,5 ,0f, 50, 0, 0f,0f);
         EquipItem(leatherArmor);
         LogCurrentStats();
     }
@@ -406,7 +440,7 @@ public class EquipmentManager : NetworkBehaviour
     [ContextMenu("Test Equipment/Equip Plate Armor")]
     private void TestEquipPlateArmor()
     {
-        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 25, 0f, 100, 0, -1f);
+        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 25, 15,0f, 100, 0, -1f,2f);
         EquipItem(plateArmor);
         LogCurrentStats();
     }
@@ -414,7 +448,7 @@ public class EquipmentManager : NetworkBehaviour
     [ContextMenu("Test Equipment/Equip Mage Robe")]
     private void TestEquipMageRobe()
     {
-        EquipmentData mageRobe = CreateTestArmor("Mage Robe", 0, 5, 0f, 0, 100, 2f);
+        EquipmentData mageRobe = CreateTestArmor("Mage Robe", 0,10 ,5, 0f, 0, 100, 2f,5f);
         EquipItem(mageRobe);
         LogCurrentStats();
     }
@@ -500,8 +534,8 @@ public class EquipmentManager : NetworkBehaviour
     }
 
     // Helper methods สำหรับสร้าง test equipment
-    private EquipmentData CreateTestWeapon(string name, int attackBonus, int armorBonus, float critChance,
-                                         float critMultiplier, float hitRate, float attackSpeed)
+    private EquipmentData CreateTestWeapon(string name, int attackBonus,int magicBonus ,int armorBonus, float critChance,
+                                         float critMultiplier, float hitRate, float attackSpeed,float reductionCoolDown)
     {
         EquipmentData weapon = new EquipmentData
         {
@@ -509,18 +543,20 @@ public class EquipmentManager : NetworkBehaviour
             stats = new EquipmentStats
             {
                 attackDamageBonus = attackBonus,
+                magicDamageBonus = magicBonus,
                 armorBonus = armorBonus,
                 criticalChanceBonus = critChance,
                 criticalMultiplierBonus = critMultiplier,
                 hitRateBonus = hitRate,
-                attackSpeedBonus = attackSpeed
+                attackSpeedBonus = attackSpeed,
+                reductionCoolDownBonus = reductionCoolDown
             }
         };
         return weapon;
     }
 
-    private EquipmentData CreateTestArmor(string name, int attackBonus, int armorBonus, float critChance,
-                                        int hpBonus, int manaBonus, float moveSpeed)
+    private EquipmentData CreateTestArmor(string name, int attackBonus,int magicBonus ,int armorBonus, float critChance,
+                                        int hpBonus, int manaBonus, float moveSpeed,float reductionCoolDown)
     {
         EquipmentData armor = new EquipmentData
         {
@@ -529,12 +565,14 @@ public class EquipmentManager : NetworkBehaviour
             {
                 attackDamageBonus = attackBonus,
                 armorBonus = armorBonus,
+                magicDamageBonus = magicBonus,
                 criticalChanceBonus = critChance,
                 maxHpBonus = hpBonus,
                 maxManaBonus = manaBonus,
                 moveSpeedBonus = moveSpeed,
                 physicalResistanceBonus = armorBonus > 15 ? 5f : 2f, // Plate armor ให้ resistance มากกว่า
-                magicalResistanceBonus = manaBonus > 0 ? 8f : 1f     // Mage robe ให้ magic resistance มากกว่า
+                magicalResistanceBonus = manaBonus > 0 ? 8f : 1f,                // Mage robe ให้ magic resistance มากกว่า
+                reductionCoolDownBonus = reductionCoolDown
             }
         };
         return armor;
@@ -568,7 +606,7 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log("=== Testing Full Warrior Equipment Set ===");
 
         // Equip Steel Sword
-        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25, 0, 8f, 0f, 5f, 3f);
+        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25,10 ,0, 8f, 0f, 5f, 3f,5f);
         EquipItem(steelSword);
 
         // Apply Attack Rune
@@ -591,7 +629,7 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log("=== Testing Full Tank Equipment Set ===");
 
         // Equip Plate Armor
-        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 30, 0f, 150, 0, -1f);
+        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 30,20, 0f, 150, 0, -1f,1f);
         EquipItem(plateArmor);
 
         // Apply Defense Rune

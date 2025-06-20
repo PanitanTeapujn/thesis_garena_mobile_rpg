@@ -5,6 +5,8 @@ using Fusion;
 
 public class Character : NetworkBehaviour
 {
+    #region Base Stats
+
     [Header("Base Stats")]
     public CharacterStats characterStats;
 
@@ -25,6 +27,9 @@ public class Character : NetworkBehaviour
 
     [SerializeField] private int attackDamage;
     public int AttackDamage { get { return attackDamage; } set { attackDamage = value; } }
+
+    [SerializeField] private int magicDamage;
+    public int MagicDamage { get { return magicDamage; } set { magicDamage = value; } }
 
     [SerializeField] private int armor;
     public int Armor { get { return armor; } set { armor = value; } }
@@ -53,6 +58,12 @@ public class Character : NetworkBehaviour
 
     [SerializeField] private float attackSpeed;
     public float AttackSpeed { get { return attackSpeed; } set { attackSpeed = value; } }
+
+    [SerializeField] private float reductionCoolDown;
+    public float ReductionCoolDown {get{ return reductionCoolDown; }set { reductionCoolDown = value; } }
+    #endregion
+
+
     [Header("Regeneration Settings")]
     [SerializeField] private float healthRegenPerSecond = 0.5f;
     [SerializeField] private float manaRegenPerSecond = 1f;
@@ -137,6 +148,7 @@ public class Character : NetworkBehaviour
             maxMana = characterStats.maxMana;
             currentMana = maxMana;
             attackDamage = characterStats.attackDamage;
+            magicDamage = characterStats.magicDamage;
             armor = characterStats.arrmor;
             moveSpeed = characterStats.moveSpeed;
             attackRange = characterStats.attackRange;
@@ -146,6 +158,7 @@ public class Character : NetworkBehaviour
             hitRate = characterStats.hitRate;
             evasionRate = characterStats.evasionRate;
             attackSpeed = characterStats.attackSpeed;
+            reductionCoolDown = characterStats.reductionCoolDown;
 
 
             Debug.Log($"✅ [Character] Initialized {characterName} with ScriptableObject stats: HP={maxHp}, ATK={attackDamage}");
