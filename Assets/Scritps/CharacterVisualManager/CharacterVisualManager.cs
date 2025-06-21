@@ -7,7 +7,7 @@ public class CharacterVisualManager : NetworkBehaviour
 {
     [Header("Visual Components")]
     public Renderer characterRenderer;
-    public Color originalColor;
+    public Color originalColor = Color.white;
 
     [Header("Status Effect Colors")]
     public Color poisonColor = new Color(0.5f, 1f, 0.5f);
@@ -39,6 +39,10 @@ public class CharacterVisualManager : NetworkBehaviour
     private StatusEffectManager statusEffectManager;
     private CombatManager combatManager;
 
+    // ========== Color System Support ==========
+    private bool isUsingVertexColors = false;
+    private SpriteRenderer spriteRenderer;
+
     // ========== Flash Control ==========
     private bool isTakingDamage = false;
     private bool isFlashingFromPoison = false;
@@ -53,10 +57,101 @@ public class CharacterVisualManager : NetworkBehaviour
         if (characterRenderer == null)
             characterRenderer = GetComponent<Renderer>();
 
+        InitializeColorSystem();
+    }
+
+    private void InitializeColorSystem()
+    {
         if (characterRenderer != null)
         {
-            originalColor = characterRenderer.material.color;
+            // เช็คว่า material มี _Color property หรือไม่
+            if (characterRenderer.material.HasProperty("_Color"))
+            {
+                // ใช้ material color
+                originalColor = characterRenderer.material.color;
+                isUsingVertexColors = false;
+                Debug.Log("Using Material Color system");
+            }
+            else
+            {
+                // ถ้าไม่มี _Color property ให้ใช้ SpriteRenderer
+                Debug.Log("Material doesn't have _Color property. Switching to SpriteRenderer.");
+
+                spriteRenderer = GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null)
+                {
+                    originalColor = spriteRenderer.color;
+                    isUsingVertexColors = true;
+                    Debug.Log("Using SpriteRenderer Color system");
+                }
+                else
+                {
+                    originalColor = Color.white;
+                    isUsingVertexColors = true;
+                    Debug.LogWarning("No color system found, using default white color");
+                }
+            }
         }
+        else
+        {
+            Debug.LogWarning("CharacterRenderer is null! Cannot initialize color system.");
+        }
+    }
+
+    private void SetCharacterColor(Color color)
+    {
+        if (characterRenderer == null) return;
+
+        if (isUsingVertexColors)
+        {
+            // ใช้ SpriteRenderer
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = color;
+            }
+        }
+        else
+        {
+            // ใช้ material color (เช็คอีกครั้งเพื่อความปลอดภัย)
+            if (characterRenderer.material.HasProperty("_Color"))
+            {
+                characterRenderer.material.color = color;
+            }
+            else
+            {
+                // Fallback ไปใช้ SpriteRenderer
+                if (spriteRenderer == null)
+                    spriteRenderer = GetComponent<SpriteRenderer>();
+
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.color = color;
+                    isUsingVertexColors = true;
+                }
+            }
+        }
+    }
+    private Color GetCharacterColor()
+    {
+        if (characterRenderer == null) return originalColor;
+
+        if (isUsingVertexColors)
+        {
+            if (spriteRenderer != null)
+            {
+                return spriteRenderer.color;
+            }
+        }
+        else
+        {
+            // เช็คว่ามี _Color property หรือไม่
+            if (characterRenderer.material.HasProperty("_Color"))
+            {
+                return characterRenderer.material.color;
+            }
+        }
+
+        return originalColor;
     }
 
     private void ShowBurnEffect(bool show)
@@ -70,11 +165,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = burnColor;
+                SetCharacterColor(burnColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -90,11 +185,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = bleedColor;
+                SetCharacterColor(bleedColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -110,11 +205,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = armorBreakColor;
+                SetCharacterColor(armorBreakColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -130,11 +225,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = blindColor;
+                SetCharacterColor(blindColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -150,11 +245,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = weaknessColor;
+                SetCharacterColor(weaknessColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -170,11 +265,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = stunColor;
+                SetCharacterColor(stunColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -190,11 +285,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = freezeColor;
+                SetCharacterColor(freezeColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -306,11 +401,11 @@ public class CharacterVisualManager : NetworkBehaviour
         {
             if (show)
             {
-                characterRenderer.material.color = poisonColor;
+                SetCharacterColor(poisonColor);
             }
             else
             {
-                characterRenderer.material.color = GetReturnColor();
+                SetCharacterColor(GetReturnColor());
             }
         }
     }
@@ -324,7 +419,7 @@ public class CharacterVisualManager : NetworkBehaviour
         Color flashColor = GetFlashColorByDamageType(damageType, isCritical);
 
         // Apply flash color
-        characterRenderer.material.color = flashColor;
+        SetCharacterColor(flashColor);
 
         // Flash duration
         float flashDuration = isCritical ? criticalFlashDuration : damageFlashDuration;
@@ -332,7 +427,7 @@ public class CharacterVisualManager : NetworkBehaviour
 
         // Return to appropriate color
         Color returnColor = GetReturnColor();
-        characterRenderer.material.color = returnColor;
+        SetCharacterColor(returnColor);
 
         isTakingDamage = false;
     }
@@ -344,17 +439,17 @@ public class CharacterVisualManager : NetworkBehaviour
         isFlashingFromPoison = true;
 
         // Flash to red briefly
-        characterRenderer.material.color = Color.red;
+        SetCharacterColor(Color.red);
         yield return new WaitForSeconds(statusFlashDuration);
 
         // Return to poison color or normal color
         if (statusEffectManager.IsPoisoned)
         {
-            characterRenderer.material.color = poisonColor;
+            SetCharacterColor(poisonColor);
         }
         else
         {
-            characterRenderer.material.color = GetReturnColor();
+            SetCharacterColor(GetReturnColor());
         }
 
         isFlashingFromPoison = false;
@@ -440,11 +535,12 @@ public class CharacterVisualManager : NetworkBehaviour
         if (characterRenderer != null && !isTakingDamage && !isFlashingFromPoison && !isFlashingFromStatus)
         {
             Color targetColor = GetReturnColor();
-            float colorDifference = Vector4.Distance(characterRenderer.material.color, targetColor);
+            Color currentColor = GetCharacterColor();
+            float colorDifference = Vector4.Distance(currentColor, targetColor);
 
             if (colorDifference > 0.1f)
             {
-                characterRenderer.material.color = targetColor;
+                SetCharacterColor(targetColor);
             }
         }
     }
@@ -454,7 +550,7 @@ public class CharacterVisualManager : NetworkBehaviour
     {
         if (characterRenderer != null && !isTakingDamage && !isFlashingFromPoison)
         {
-            characterRenderer.material.color = GetReturnColor();
+            SetCharacterColor(GetReturnColor());
         }
     }
 
@@ -468,17 +564,17 @@ public class CharacterVisualManager : NetworkBehaviour
             }
             else
             {
-                characterRenderer.material.color = color;
+                SetCharacterColor(color);
             }
         }
     }
 
     private IEnumerator TemporaryColorChange(Color color, float duration)
     {
-        Color originalColor = characterRenderer.material.color;
-        characterRenderer.material.color = color;
+        Color originalColor = GetCharacterColor();
+        SetCharacterColor(color);
         yield return new WaitForSeconds(duration);
-        characterRenderer.material.color = GetReturnColor();
+        SetCharacterColor(GetReturnColor());
     }
 
     // ========== Debug Methods ==========
