@@ -45,10 +45,17 @@ public class NetworkEnemy : Character
     [Header("🚶 Patrol Settings")]
     public float patrolRange = 8f;           // ระยะการ patrol จากจุดเริ่มต้น
     public float patrolSpeed = 0.5f;         // ความเร็วการ patrol (คูณกับ MoveSpeed)
-    public float patrolWaitTime = 2f;        // เวลาหยุดที่จุดหมาย
+    [Header("🎲 Random Wait Time Settings")]
+    public float minPatrolWaitTime = 1f;     // เวลาหยุดขั้นต่ำที่จุดหมาย
+    public float maxPatrolWaitTime = 4f;     // เวลาหยุดสูงสุดที่จุดหมาย
+    [Space]
     public float patrolTargetRadius = 1f;    // ระยะที่ถือว่าถึงจุดหมายแล้ว
     public bool returnToCenter = true;       // กลับไปจุดกลางหลังจาก patrol นานๆ
     public float maxPatrolTime = 30f;        // เวลาสูงสุดก่อนกลับจุดกลาง
+
+    [Header("🎯 Individual Enemy Settings")]
+    [Tooltip("เวลาหยุดที่สุ่มแล้วสำหรับตัวนี้ (Auto-generated)")]
+    public float individualPatrolWaitTime; // เวลาหยุดที่สุ่มแล้วสำหรับตัวนี้
 
     [Header("🎯 Improved Movement Settings")]
     public float minDistanceToPlayer = 1.0f; // ระยะห่างขั้นต่ำจากผู้เล่น
@@ -105,6 +112,7 @@ public class NetworkEnemy : Character
             Debug.Log($"circlingSpeed: {circlingSpeed}");
             Debug.Log($"patrolRange: {patrolRange}");
             Debug.Log($"patrolSpeed: {patrolSpeed}");
+            Debug.Log($"patrolWaitTime: {minPatrolWaitTime}-{maxPatrolWaitTime}s (random)");
             Debug.Log($"===============================");
         }
 
@@ -140,6 +148,9 @@ public class NetworkEnemy : Character
             PatrolCenter = transform.position;
             GenerateNewPatrolTarget();
 
+            // 🎲 สุ่ม patrol wait time สำหรับตัวนี้
+            individualPatrolWaitTime = Random.Range(minPatrolWaitTime, maxPatrolWaitTime);
+
             // กำหนดค่าเริ่มต้นของ position และ scale
             NetworkedPosition = transform.position;
             NetworkedScale = transform.localScale;
@@ -147,6 +158,7 @@ public class NetworkEnemy : Character
             if (showDebugInfo)
             {
                 Debug.Log($"{CharacterName}: Initialized patrol system at {PatrolCenter}");
+                Debug.Log($"{CharacterName}: Individual patrol wait time: {individualPatrolWaitTime:F1}s (range: {minPatrolWaitTime}-{maxPatrolWaitTime})");
             }
         }
     }
@@ -325,7 +337,8 @@ public class NetworkEnemy : Character
         {
             PatrolWaitTimer += Runner.DeltaTime;
 
-            if (PatrolWaitTimer >= patrolWaitTime)
+            // 🎲 ใช้ individualPatrolWaitTime ที่สุ่มแล้วแทน patrolWaitTime
+            if (PatrolWaitTimer >= individualPatrolWaitTime)
             {
                 // หยุดพอแล้ว สร้างจุดหมายใหม่
                 if (returnToCenter && totalPatrolTime >= maxPatrolTime)
@@ -341,7 +354,17 @@ public class NetworkEnemy : Character
                 else
                 {
                     GenerateNewPatrolTarget();
+                    // 🎲 สุ่ม wait time ใหม่สำหรับจุดหมายต่อไป
+                    individualPatrolWaitTime = Random.Range(minPatrolWaitTime, maxPatrolWaitTime);
+                    if (showDebugInfo)
+                    {
+                        Debug.Log($"{CharacterName}: New wait time: {individualPatrolWaitTime:F1}s");
+                    }
                 }
+            }
+            else if (showDebugInfo && PatrolWaitTimer % 1f < Runner.DeltaTime) // แสดงทุกวินาที
+            {
+                Debug.Log($"{CharacterName}: Waiting at patrol point... {PatrolWaitTimer:F1}/{individualPatrolWaitTime:F1}s");
             }
 
             return Vector3.zero; // หยุดเคลื่อนที่ขณะรอ

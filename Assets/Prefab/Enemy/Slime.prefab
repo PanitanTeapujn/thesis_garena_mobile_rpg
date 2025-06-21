@@ -218,12 +218,14 @@ MonoBehaviour:
   backOffTime: 1
   positionTime: 0.5
   rushSpeed: 3
-  patrolRange: 60
+  patrolRange: 40
   patrolSpeed: 1
-  patrolWaitTime: 2
+  minPatrolWaitTime: 0
+  maxPatrolWaitTime: 10
   patrolTargetRadius: 7
   returnToCenter: 0
   maxPatrolTime: 30
+  individualPatrolWaitTime: 0
   minDistanceToPlayer: 1
   enemySpacing: 2
   enemyLayer:
