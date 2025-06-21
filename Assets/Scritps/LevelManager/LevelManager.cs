@@ -111,6 +111,10 @@ public class LevelManager : NetworkBehaviour
             character.MagicDamage = characterData.totalMagicDamage;
             character.Armor = characterData.totalArmor;
             character.CriticalChance = characterData.totalCriticalChance;
+
+            // 🔧 ✅ แก้ไข: ใช้ค่าคงที่แทนการโหลดจาก Firebase
+            character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, true);
+
             character.MoveSpeed = characterData.totalMoveSpeed;
             character.HitRate = characterData.totalHitRate;
             character.EvasionRate = characterData.totalEvasionRate;
@@ -119,7 +123,7 @@ public class LevelManager : NetworkBehaviour
 
             character.ForceUpdateNetworkState();
 
-            Debug.Log($"✅ Refreshed character data for {activeCharacterType}");
+            Debug.Log($"✅ Refreshed character data for {activeCharacterType} with fixed Critical Multiplier");
         }
     }
 
@@ -197,12 +201,13 @@ public class LevelManager : NetworkBehaviour
                 characterData.totalMagicDamage,
                 characterData.totalArmor,
                 characterData.totalCriticalChance,
+                characterData.totalCriticalDamageBonus,
                 characterData.totalMoveSpeed,
                 characterData.totalHitRate,
                 characterData.totalEvasionRate,
                 characterData.totalAttackSpeed,
                 characterData.totalReductionCoolDown
-            );
+            );;
 
             Debug.Log($"✅ Applied Firebase data for {activeCharacterType}: Level {characterData.currentLevel}");
         }
@@ -217,10 +222,11 @@ public class LevelManager : NetworkBehaviour
         }
     }
 
+
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_ApplyFirebaseStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-     int attackDamage,int magicDamage ,int armor, float critChance, float moveSpeed,
-     float hitRate, float evasionRate, float attackSpeed,float reductionCoolDown)
+     int attackDamage, int magicDamage, int armor, float critChance,float critDamageBonus, float moveSpeed,
+     float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -234,6 +240,11 @@ public class LevelManager : NetworkBehaviour
         character.MagicDamage = magicDamage;
         character.Armor = armor;
         character.CriticalChance = critChance;
+
+        // 🔧 ✅ แก้ไข: ไม่ให้ override criticalMultiplier จาก Firebase
+        // ใช้ค่าคงที่ 0.1f แทน
+        character.UpdateCriticalDamageBonus(critDamageBonus, false);
+
         character.MoveSpeed = moveSpeed;
         character.HitRate = hitRate;
         character.EvasionRate = evasionRate;
@@ -243,15 +254,16 @@ public class LevelManager : NetworkBehaviour
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
-        // Broadcast to all clients
-        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage,magicDamage ,armor, critChance, moveSpeed,
-            hitRate, evasionRate, attackSpeed,reductionCoolDown);
-    }
+        Debug.Log($"🔧 Applied Firebase stats with fixed Critical Multiplier: 0.1f");
 
+        // Broadcast to all clients
+        RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage, magicDamage, armor, critChance, critDamageBonus, moveSpeed,
+            hitRate, evasionRate, attackSpeed, reductionCoolDown);
+    }
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_BroadcastStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-     int attackDamage,int magicDamage ,int armor, float critChance, float moveSpeed,
-     float hitRate, float evasionRate, float attackSpeed,float reductionCoolDown)
+   int attackDamage, int magicDamage, int armor, float critChance,float critDamageBonus, float moveSpeed,
+   float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -265,6 +277,10 @@ public class LevelManager : NetworkBehaviour
         character.MagicDamage = magicDamage;
         character.Armor = armor;
         character.CriticalChance = critChance;
+
+        // 🔧 ✅ แก้ไข: ตั้งค่า criticalMultiplier ที่ถูกต้อง
+        character.UpdateCriticalDamageBonus(critDamageBonus, false);
+
         character.MoveSpeed = moveSpeed;
         character.HitRate = hitRate;
         character.EvasionRate = evasionRate;
@@ -272,6 +288,8 @@ public class LevelManager : NetworkBehaviour
         character.ReductionCoolDown = reductionCoolDown;
 
         IsInitialized = true;
+
+        Debug.Log($"🔧 Broadcasted stats with fixed Critical Multiplier: 0.1f");
     }
     private void InitializeBasicLevelSystem()
     {
@@ -288,6 +306,7 @@ public class LevelManager : NetworkBehaviour
             character.MagicDamage = character.characterStats.magicDamage;
             character.Armor = character.characterStats.arrmor;
             character.CriticalChance = character.characterStats.criticalChance;
+            character.CriticalDamageBonus = character.characterStats.criticalDamageBonus;
             character.MoveSpeed = character.characterStats.moveSpeed;
             character.HitRate = character.characterStats.hitRate;
             character.EvasionRate = character.characterStats.evasionRate;
@@ -374,6 +393,7 @@ public class LevelManager : NetworkBehaviour
                 character.MagicDamage,
                 character.Armor,
                 character.CriticalChance,
+                character.CriticalDamageBonus,
                 character.MoveSpeed,
                 character.HitRate,
                 character.EvasionRate,
@@ -406,6 +426,7 @@ public class LevelManager : NetworkBehaviour
             character.MagicDamage = characterData.totalMagicDamage;
             character.Armor = characterData.totalArmor;
             character.CriticalChance = characterData.totalCriticalChance;
+            character.CriticalDamageBonus = characterData.totalCriticalDamageBonus;
             character.MoveSpeed = characterData.totalMoveSpeed;
             character.HitRate = characterData.totalHitRate;
             character.EvasionRate = characterData.totalEvasionRate;

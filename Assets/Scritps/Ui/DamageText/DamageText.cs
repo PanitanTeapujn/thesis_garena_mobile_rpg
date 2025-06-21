@@ -33,7 +33,7 @@ public class DamageText : MonoBehaviour
     [Header("Miss Text Settings")]
     public Color missColor = Color.gray;
     public string missText = "MISS";
-
+    private float baseFontSize = 40f;
     private void Awake()
     {
         // Setup components if not assigned
@@ -120,36 +120,48 @@ public class DamageText : MonoBehaviour
         // Determine text and color
         string text;
         Color textColor;
+        float fontSize;
 
         if (isHeal)
         {
             text = $"+{damage}";
             textColor = healColor;
+            fontSize = baseFontSize; // ขนาดปกติ
+            damageTextMesh.fontStyle = FontStyles.Normal;
         }
         else
         {
-            text = isCritical ? $"{damage}!" : damage.ToString();
+            if (isCritical)
+            {
+                text = $"CRIT {damage}";
+                fontSize = baseFontSize ; // Critical ใหญ่ที่สุด
+                damageTextMesh.fontStyle = FontStyles.Bold;
+            }
+            else
+            {
+                text = damage.ToString();
+                fontSize = baseFontSize; // ขนาดปกติ
+                damageTextMesh.fontStyle = FontStyles.Normal;
+            }
+
             textColor = GetDamageColor(damageType, isCritical);
         }
 
         // Apply text settings
         damageTextMesh.text = text;
         damageTextMesh.color = textColor;
-
-        // Scale up critical hits
-        if (isCritical && !isHeal)
-        {
-            transform.localScale = originalScale * 1.3f;
-            damageTextMesh.fontStyle = FontStyles.Bold;
-        }
-        else
-        {
-            damageTextMesh.fontStyle = FontStyles.Normal;
-        }
+        damageTextMesh.fontSize = fontSize; // ✅ ใช้ font size แทน scale
     }
 
     private Color GetDamageColor(DamageType damageType, bool isCritical)
     {
+        // ✅ ถ้าเป็น critical ให้ใช้สีแดงเสมอ
+        if (isCritical)
+        {
+            return criticalDamageColor; // ใช้สีแดงโดยตรง
+        }
+
+        // สำหรับ non-critical ใช้สีตาม damage type
         Color baseColor = damageType switch
         {
             DamageType.Critical => criticalDamageColor,
@@ -159,12 +171,6 @@ public class DamageText : MonoBehaviour
             DamageType.Bleed => bleedColor,
             _ => normalDamageColor
         };
-
-        // Make critical hits brighter
-        if (isCritical)
-        {
-            return Color.Lerp(baseColor, Color.white, 0.3f);
-        }
 
         return baseColor;
     }
@@ -230,9 +236,10 @@ public class DamageText : MonoBehaviour
         timer = 0f;
         isActive = true;
 
-        // Position setup
-        originalPosition = position + GetRandomOffset();
-        targetPosition = originalPosition + Vector3.up * (moveSpeed * 0.7f); // เคลื่อนที่ช้ากว่า damage text นิดหน่อย
+        // ✅ ใช้ offset พิเศษสำหรับ Miss
+        originalPosition = position + GetRandomOffsetForMiss();
+        targetPosition = originalPosition + Vector3.up * (moveSpeed * 0.4f);
+
         transform.position = originalPosition;
         transform.localScale = originalScale;
 
@@ -242,6 +249,16 @@ public class DamageText : MonoBehaviour
         // Start animation
         gameObject.SetActive(true);
         StartCoroutine(AnimateDamageText());
+    }
+
+    private Vector3 GetRandomOffsetForMiss()
+    {
+        // Miss offset ที่ต่ำกว่า damage ปกติ
+        return new Vector3(
+            Random.Range(-0.3f, 0.3f),    // แคบกว่า
+            Random.Range(0.1f, 0.4f),     // ต่ำกว่า (0.2f-0.8f -> 0.1f-0.4f)
+            Random.Range(-0.2f, 0.2f)     // แคบกว่า
+        );
     }
 
     // Overload สำหรับใช้ position ปัจจุบัน
@@ -257,10 +274,10 @@ public class DamageText : MonoBehaviour
         // Set miss text
         damageTextMesh.text = missText;
         damageTextMesh.color = missColor;
-        damageTextMesh.fontStyle = FontStyles.Italic; // ใช้ Italic เพื่อให้ดูแตกต่าง
+        damageTextMesh.fontStyle = FontStyles.Italic;
 
-        // ขนาดเล็กกว่า damage text นิดหน่อย
-        transform.localScale = originalScale * 0.9f;
+        // ✅ Miss ใช้ font size เล็ก
+        damageTextMesh.fontSize = baseFontSize * 0.6f; // เล็กมาก
     }
 
     // เพิ่ม method สำหรับ Initialize แบบเฉพาะ Miss (optional - สำหรับใช้จาก DamageTextManager)

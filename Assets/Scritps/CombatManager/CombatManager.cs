@@ -81,7 +81,7 @@ public class CombatManager : NetworkBehaviour
         float roll = UnityEngine.Random.Range(0f, 100f);
         bool isHit = roll < finalHitChance;
 
-        Debug.Log($"[Hit Check] {attacker.CharacterName} -> {target.CharacterName}: {roll:F1}% vs {finalHitChance:F1}% = {(isHit ? "HIT!" : "MISS!")}");
+      //  Debug.Log($"[Hit Check] {attacker.CharacterName} -> {target.CharacterName}: {roll:F1}% vs {finalHitChance:F1}% = {(isHit ? "HIT!" : "MISS!")}");
 
         return isHit;
     }
@@ -147,7 +147,7 @@ public class CombatManager : NetworkBehaviour
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
 
-        Debug.Log($"[TakeDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (Physical: {finalPhysicalDamage}, Magic: {finalMagicDamage})");
+       // Debug.Log($"[TakeDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (Physical: {finalPhysicalDamage}, Magic: {finalMagicDamage})");
 
         SyncHealthUpdate();
         OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
@@ -261,27 +261,32 @@ public class CombatManager : NetworkBehaviour
 
         int finalDamage = baseDamage;
 
-        // Damage Aura bonus
+        // 🔧 เพิ่ม Damage Aura bonus ก่อน Critical
         if (statusEffectManager != null)
         {
             float damageMultiplier = statusEffectManager.GetTotalDamageMultiplier();
             finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
+            Debug.Log($"[Damage Aura] Base: {baseDamage} -> With Aura: {finalDamage} (x{damageMultiplier:F2})");
         }
 
-        // ✅ แก้ไข: Critical damage เป็นแบบ additive percentage
+        // 🔧 ✅ ระบบ Critical ใหม่: ใช้ CriticalDamageBonus
         if (isCritical)
         {
-            float criticalBonus = character.GetEffectiveCriticalMultiplier();
-            int bonusDamage = Mathf.RoundToInt(finalDamage * criticalBonus);
-            finalDamage = finalDamage + bonusDamage;
+            // ดึงค่า Critical Damage Bonus ที่ถูกต้อง
+            float criticalDamageBonus = character.GetEffectiveCriticalDamageBonus();
 
-            Debug.Log($"[Critical Hit] Base: {finalDamage - bonusDamage} + Bonus: {bonusDamage} ({criticalBonus * 100:F0}%) = {finalDamage}");
+            // ✅ สูตรใหม่: Critical = Base + (Base × CriticalDamageBonus)
+            int criticalDamage = Mathf.RoundToInt(finalDamage * (1f + criticalDamageBonus));
 
-            // ✅ เปลี่ยน: Critical ยังคง ignore armor และ resistance
-            return finalDamage; // Critical ignores armor and resistance
+            Debug.Log($"[Critical Hit] Base: {finalDamage} × (1 + {criticalDamageBonus:F2}) = {criticalDamage}");
+            Debug.Log($"[Critical Stats] CriticalDamageBonus: {character.CriticalDamageBonus}, Equipment Bonus: {(equipmentManager?.GetCriticalMultiplierBonus() ?? 0f)}, Total: {criticalDamageBonus}");
+
+            // ✅ Critical ignores armor and resistance
+            return criticalDamage;
         }
 
-        // Apply resistance based on damage type (เฉพาะ non-critical)
+        // ✅ Non-critical damage: apply resistance และ armor (เหมือนเดิม)
+        // Apply resistance based on damage type
         float resistance = 0f;
         if (equipmentManager != null)
         {
@@ -296,26 +301,36 @@ public class CombatManager : NetworkBehaviour
         }
 
         // Convert resistance to damage reduction
-        float damageReduction = resistance / 100f;
-        finalDamage = Mathf.RoundToInt(finalDamage * (1f - damageReduction));
+        if (resistance > 0f)
+        {
+            float damageReduction = resistance / 100f;
+            finalDamage = Mathf.RoundToInt(finalDamage * (1f - damageReduction));
+            Debug.Log($"[Resistance] Reduced by {resistance:F1}%: {finalDamage}");
+        }
 
         // Protection aura
         if (statusEffectManager != null)
         {
             float protectionReduction = statusEffectManager.GetTotalDamageReduction();
-            finalDamage = Mathf.RoundToInt(finalDamage * (1f - protectionReduction));
+            if (protectionReduction > 0f)
+            {
+                finalDamage = Mathf.RoundToInt(finalDamage * (1f - protectionReduction));
+                Debug.Log($"[Protection Aura] Reduced by {protectionReduction * 100f:F1}%: {finalDamage}");
+            }
         }
 
-        // Apply armor (only for physical damage และ non-critical)
+        // Apply armor (only for physical damage)
         if (damageType != DamageType.Magic)
         {
             int currentArmor = GetCurrentArmor();
             finalDamage = finalDamage - currentArmor;
+            Debug.Log($"[Armor] Reduced by {currentArmor}: {finalDamage}");
         }
 
+        // ป้องกันดาเมจติดลบ
         finalDamage = Mathf.Max(1, finalDamage);
 
-        Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (type: {damageType}, resistance: {resistance:F1}%)");
+        Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (type: {damageType}, critical: {isCritical})");
         return finalDamage;
     }
     public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
@@ -400,7 +415,7 @@ public class CombatManager : NetworkBehaviour
 
         if (isCritical)
         {
-            Debug.Log($"[Critical Check] {critRoll:F1}% vs {attackerCritChance:F1}% = CRITICAL!");
+           // Debug.Log($"[Critical Check] {critRoll:F1}% vs {attackerCritChance:F1}% = CRITICAL!");
         }
 
         return isCritical;
@@ -516,5 +531,37 @@ public class CombatManager : NetworkBehaviour
         return (float)character.CurrentHp / character.MaxHp;
     }
 
-   
+    public void DebugCriticalStats()
+    {
+        if (character == null) return;
+
+        float baseCrit = character.CriticalDamageBonus;
+        float equipmentBonus = equipmentManager?.GetCriticalMultiplierBonus() ?? 0f;
+        float totalCrit = character.GetEffectiveCriticalDamageBonus();
+
+        Debug.Log($"=== {character.CharacterName} Critical Stats Debug (New System) ===");
+        Debug.Log($"Base Critical Damage Bonus: {baseCrit}");
+        Debug.Log($"Equipment Bonus: {equipmentBonus}");
+        Debug.Log($"Total Effective: {totalCrit}");
+        Debug.Log($"Expected Damage with Crit: Base × (1 + {totalCrit}) = Base × {1f + totalCrit:F2}");
+    }
+
+    // ========== เพิ่ม Method ทดสอบ Critical Calculation ==========
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void TestCriticalDamage(int testBaseDamage = 55)
+    {
+        Debug.Log($"=== Testing Critical Damage Calculation ===");
+        Debug.Log($"Test Base Damage: {testBaseDamage}");
+
+        // Test normal damage
+        int normalDamage = CalculateFinalDamage(testBaseDamage, false, DamageType.Normal);
+        Debug.Log($"Normal Damage Result: {normalDamage}");
+
+        // Test critical damage
+        int criticalDamage = CalculateFinalDamage(testBaseDamage, true, DamageType.Normal);
+        Debug.Log($"Critical Damage Result: {criticalDamage}");
+
+        // Show stats
+        DebugCriticalStats();
+    }
 }

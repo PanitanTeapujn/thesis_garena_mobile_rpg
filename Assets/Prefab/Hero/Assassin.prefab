@@ -203,8 +203,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7afed1c813fd4fc469b239c32599b14b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterStats: {fileID: 11400000, guid: a3c52e70d09d5db4c8f584f41fb6b4fa, type: 2}
-  characterName: 
+  characterStats: {fileID: 11400000, guid: d387e15f11a3cda40a627b130d0498de, type: 2}
+  characterName: Assasins
   currentHp: 0
   maxHp: 0
   currentMana: 0
@@ -215,8 +215,8 @@ MonoBehaviour:
   moveSpeed: 0
   attackRange: 0
   attackCooldown: 0
-  criticalChance: 5
-  criticalMultiplier: 2
+  criticalChance: 0
+  criticalDamageBonus: 0
   hitRate: 0
   evasionRate: 0
   attackSpeed: 0
@@ -410,6 +410,7 @@ MonoBehaviour:
   _NetworkedEvasionRateBonus: 0
   _NetworkedAttackSpeedBonus: 0
   _NetworkedReductionCoolDown: 0
+  _NetworkedCriticalMultiplierBonus: 0
 --- !u!114 &-3790733776071842223
 MonoBehaviour:
   m_ObjectHideFlags: 0

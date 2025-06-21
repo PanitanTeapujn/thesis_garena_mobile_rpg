@@ -92,6 +92,8 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedEvasionRateBonus { get; set; }
     [Networked] public float NetworkedAttackSpeedBonus { get; set; }
     [Networked] public float NetworkedReductionCoolDown { get; set; }
+    [Networked] public float NetworkedCriticalMultiplierBonus { get; set; }
+
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
@@ -137,6 +139,10 @@ public class EquipmentManager : NetworkBehaviour
 
         // Notify other systems
         OnEquipmentChanged?.Invoke(character, GetTotalStats());
+        if (character != null)
+        {
+            character.OnEquipmentStatsChanged(); // แจ้งให้ Inspector อัพเดท
+        }
     }
 
     public virtual void UnequipItem()
@@ -151,6 +157,10 @@ public class EquipmentManager : NetworkBehaviour
         SyncEquipmentStats();
 
         OnEquipmentChanged?.Invoke(character, GetTotalStats());
+        if (character != null)
+        {
+            character.OnEquipmentStatsChanged(); // แจ้งให้ Inspector อัพเดท
+        }
     }
 
     public virtual void ApplyRuneBonus(EquipmentStats runeStats)
@@ -166,6 +176,10 @@ public class EquipmentManager : NetworkBehaviour
         SyncEquipmentStats();
 
         OnEquipmentChanged?.Invoke(character, GetTotalStats());
+        if (character != null)
+        {
+            character.OnEquipmentStatsChanged(); // แจ้งให้ Inspector อัพเดท
+        }
     }
 
     // ========== Stats Application ==========
@@ -175,7 +189,9 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicDamage += currentEquipmentStats.magicDamageBonus;
         character.Armor += currentEquipmentStats.armorBonus;
         character.CriticalChance += currentEquipmentStats.criticalChanceBonus;
-        character.CriticalMultiplier += currentEquipmentStats.criticalMultiplierBonus;
+
+        // 🔧 สำหรับวิธีที่ 2: ไม่แตะ character.CriticalMultiplier
+        // ให้ GetEffectiveCriticalMultiplier() คำนวณเอง
 
         character.MaxHp += currentEquipmentStats.maxHpBonus;
         character.MaxMana += currentEquipmentStats.maxManaBonus;
@@ -190,16 +206,23 @@ public class EquipmentManager : NetworkBehaviour
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
         Debug.Log($"[Equipment Applied] {character.CharacterName} - ATK: +{currentEquipmentStats.attackDamageBonus}, ARM: +{currentEquipmentStats.armorBonus}");
+        Debug.Log($"Critical Multiplier Bonus: {currentEquipmentStats.criticalMultiplierBonus} (not applied to character, will be calculated in GetEffectiveCriticalMultiplier)");
     }
 
     private void RemoveEquipmentStats()
     {
         character.AttackDamage -= currentEquipmentStats.attackDamageBonus;
         character.MagicDamage -= currentEquipmentStats.magicDamageBonus;
-
         character.Armor -= currentEquipmentStats.armorBonus;
         character.CriticalChance -= currentEquipmentStats.criticalChanceBonus;
-        character.CriticalMultiplier -= currentEquipmentStats.criticalMultiplierBonus;
+
+        // 🔧 แก้ไข: ลบ critical multiplier bonus
+        float critMultBonus = currentEquipmentStats.criticalMultiplierBonus;
+        if (critMultBonus != 0f)
+        {
+            character.CriticalDamageBonus -= critMultBonus;
+            Debug.Log($"[Equipment Removed] {character.CharacterName}: Critical Multiplier -{critMultBonus} (new total: {character.CriticalDamageBonus})");
+        }
 
         character.MaxHp -= currentEquipmentStats.maxHpBonus;
         character.MaxMana -= currentEquipmentStats.maxManaBonus;
@@ -216,11 +239,14 @@ public class EquipmentManager : NetworkBehaviour
         character.MaxHp = Mathf.Max(1, character.MaxHp);
         character.MaxMana = Mathf.Max(0, character.MaxMana);
         character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
-        character.HitRate = Mathf.Max(5f, character.HitRate);           // ต่ำสุด 5%
-        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);   // ต่ำสุด 0%
+        character.HitRate = Mathf.Max(5f, character.HitRate);
+        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
         character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-        // ต่ำสุด 0.1x
+
+        // 🔧 เพิ่ม: ป้องกัน critical multiplier ติดลบ
+        character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
@@ -303,6 +329,10 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedMagicDamageBonus = totalStats.magicDamageBonus;
             NetworkedArmorBonus = totalStats.armorBonus;
             NetworkedCriticalChanceBonus = totalStats.criticalChanceBonus;
+
+            // 🔧 เพิ่ม: Sync Critical Multiplier Bonus
+            NetworkedCriticalMultiplierBonus = totalStats.criticalMultiplierBonus;
+
             NetworkedMaxHpBonus = totalStats.maxHpBonus;
             NetworkedMaxManaBonus = totalStats.maxManaBonus;
             NetworkedMoveSpeedBonus = totalStats.moveSpeedBonus;
@@ -313,6 +343,7 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedAttackSpeedBonus = totalStats.attackSpeedBonus;
             NetworkedReductionCoolDown = totalStats.reductionCoolDownBonus;
 
+            Debug.Log($"[Equipment Sync] {character.CharacterName}: Critical Multiplier Bonus = {totalStats.criticalMultiplierBonus}");
         }
     }
 
@@ -357,7 +388,17 @@ public class EquipmentManager : NetworkBehaviour
     }
     public float GetCriticalMultiplierBonus()
     {
-        return currentEquipmentStats.criticalMultiplierBonus + currentRuneStats.criticalMultiplierBonus;
+        float equipmentBonus = currentEquipmentStats.criticalMultiplierBonus;
+        float runeBonus = currentRuneStats.criticalMultiplierBonus;
+        float totalBonus = equipmentBonus + runeBonus;
+
+        // 🔧 Debug: แสดงรายละเอียดการคำนวณ
+        if (Application.isEditor && totalBonus > 0f)
+        {
+            Debug.Log($"[GetCriticalMultiplierBonus] {character.CharacterName}: Equipment={equipmentBonus}, Rune={runeBonus}, Total={totalBonus}");
+        }
+
+        return totalBonus;
     }
     public float GetAttackSpeedBonus()
     {
@@ -580,14 +621,23 @@ public class EquipmentManager : NetworkBehaviour
         };
         return armor;
     }
+    public float GetCriticalMultiplierBonusRaw()
+    {
+        float equipmentBonus = currentEquipmentStats.criticalMultiplierBonus;
+        float runeBonus = currentRuneStats.criticalMultiplierBonus;
+        float totalBonus = equipmentBonus + runeBonus;
 
+        Debug.Log($"[GetCriticalMultiplierBonusRaw] {character.CharacterName}: Equipment={equipmentBonus}, Rune={runeBonus}, Total={totalBonus}");
+
+        return totalBonus;
+    }
     private void LogBaseCharacterStats()
     {
         Debug.Log($"=== {character.CharacterName} Base Character Stats ===");
         Debug.Log($"⚔️ Current Attack Damage: {character.AttackDamage}");
         Debug.Log($"🛡️ Current Armor: {character.Armor}");
         Debug.Log($"💥 Current Critical Chance: {character.CriticalChance:F1}%");
-        Debug.Log($"🔥 Current Critical Multiplier: {character.CriticalMultiplier:F1}x");
+        Debug.Log($"🔥 Current Critical Multiplier: {character.CriticalDamageBonus:F1}x");
         Debug.Log($"❤️ Current Max HP: {character.MaxHp} (Current: {character.CurrentHp})");
         Debug.Log($"💙 Current Max Mana: {character.MaxMana} (Current: {character.CurrentMana})");
         Debug.Log($"🏃 Current Move Speed: {character.MoveSpeed:F1}");
@@ -647,6 +697,77 @@ public class EquipmentManager : NetworkBehaviour
 
         LogCurrentStats();
         LogBaseCharacterStats();
+    }
+#endif
+
+#if UNITY_EDITOR
+    [ContextMenu("Test Equipment/Test Critical Multiplier Equipment")]
+    private void TestCriticalMultiplierEquipment()
+    {
+        EquipmentData testWeapon = new EquipmentData
+        {
+            itemName = "Critical Test Weapon",
+            stats = new EquipmentStats
+            {
+                attackDamageBonus = 20,
+                criticalChanceBonus = 15f,
+                criticalMultiplierBonus = 2.0f, // ทดสอบด้วย 2.0
+                hitRateBonus = 10f
+            }
+        };
+
+        Debug.Log($"=== Testing Critical Multiplier Equipment ===");
+        Debug.Log($"Before Equip - Critical Multiplier: {character.CriticalDamageBonus}");
+        Debug.Log($"Equipment Critical Bonus: {testWeapon.stats.criticalMultiplierBonus}");
+
+        EquipItem(testWeapon);
+
+        Debug.Log($"After Equip - Critical Multiplier: {character.CriticalDamageBonus}");
+        Debug.Log($"Expected: {character.characterStats.criticalDamageBonus + testWeapon.stats.criticalMultiplierBonus}");
+
+        // ทดสอบการคำนวณ
+       
+
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Test Equipment/Test Critical Rune")]
+    private void TestCriticalRune()
+    {
+        EquipmentStats testRune = new EquipmentStats
+        {
+            criticalChanceBonus = 20f,
+            criticalMultiplierBonus = 1.5f, // ทดสอบด้วย 1.5
+            attackDamageBonus = 25
+        };
+
+        Debug.Log($"=== Testing Critical Multiplier Rune ===");
+        Debug.Log($"Before Rune - Critical Multiplier: {character.CriticalDamageBonus}");
+        Debug.Log($"Rune Critical Bonus: {testRune.criticalMultiplierBonus}");
+
+        ApplyRuneBonus(testRune);
+
+        Debug.Log($"After Rune - Critical Multiplier: {character.CriticalDamageBonus}");
+
+        LogCurrentStats();
+    }
+
+    [ContextMenu("Debug/Show Critical Multiplier Debug Info")]
+    private void ShowCriticalMultiplierDebug()
+    {
+        Debug.Log($"=== Critical Multiplier Debug Info ===");
+        Debug.Log($"Character Base: {character.characterStats?.criticalDamageBonus ?? 0f}");
+        Debug.Log($"Character Current: {character.CriticalDamageBonus}");
+        Debug.Log($"Equipment Bonus: {currentEquipmentStats.criticalMultiplierBonus}");
+        Debug.Log($"Rune Bonus: {currentRuneStats.criticalMultiplierBonus}");
+        Debug.Log($"GetCriticalMultiplierBonus(): {GetCriticalMultiplierBonus()}");
+        Debug.Log($"GetEffectiveCriticalMultiplier(): {character.GetEffectiveCriticalDamageBonus()}");
+
+        // ตรวจสอบ network sync
+        if (HasStateAuthority)
+        {
+            Debug.Log($"Network Synced Bonus: {NetworkedCriticalMultiplierBonus}");
+        }
     }
 #endif
 }

@@ -281,6 +281,8 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.SetInt("PlayerMagicDamage", currentCharacter.totalMagicDamage);
         PlayerPrefs.SetInt("PlayerArmor", currentCharacter.totalArmor);
         PlayerPrefs.SetFloat("PlayerCritChance", currentCharacter.totalCriticalChance);
+        PlayerPrefs.SetFloat("PlayerCriticalDamageBonus", currentCharacter.totalCriticalDamageBonus);
+
         PlayerPrefs.SetFloat("PlayerMoveSpeed", currentCharacter.totalMoveSpeed);
         PlayerPrefs.SetFloat("PlayerHitRate", currentCharacter.totalHitRate);
         PlayerPrefs.SetFloat("PlayerEvasionRate", currentCharacter.totalEvasionRate);
@@ -302,15 +304,15 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-        int attackDamage,int magicDamage, int armor, float critChance, float moveSpeed,
-        float hitRate, float evasionRate, float attackSpeed,float reductionCoolDown)
+     int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus, float moveSpeed,
+     float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
         if (multiCharacterData == null) return;
 
         multiCharacterData.UpdateCharacterStats(
             multiCharacterData.currentActiveCharacter,
-            level, exp, expToNext, maxHp, maxMana, attackDamage,magicDamage, armor,
-            critChance, moveSpeed, hitRate, evasionRate, attackSpeed,reductionCoolDown);
+            level, exp, expToNext, maxHp, maxMana, attackDamage, magicDamage, armor,
+            critChance, critDamageBonus, moveSpeed, hitRate, evasionRate, attackSpeed, reductionCoolDown);
 
         SaveToPlayerPrefs();
         SavePlayerDataAsync();
@@ -460,6 +462,10 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
+    internal void UpdateLevelAndStats(int currentLevel, int currentExp, int expToNextLevel, int maxHp, int maxMana, int attackDamage, int magicDamage, int armor, float criticalChance, float criticalmulti , float criticalMultiplier, float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
+    {
+        throw new System.NotImplementedException();
+    }
 
     public void RegisterPlayerInDirectory()
     {

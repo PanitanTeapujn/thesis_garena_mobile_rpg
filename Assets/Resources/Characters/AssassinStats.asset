@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d8e0e943aedcb94ca90cdc7a5c7420a, type: 3}
   m_Name: AssassinStats
   m_EditorClassIdentifier: 
-  characterName: Assassin
-  moveSpeed: 6.5
+  characterName: Assasins
+  moveSpeed: 6
   maxHp: 250
-  maxMana: 40
+  maxMana: 80
   attackDamage: 35
   magicDamage: 20
-  arrmor: 2
+  arrmor: 3
   attackCoolDown: 1
   attackRange: 1
   criticalChance: 10
-  criticalMultiplier: 0.1
+  criticalDamageBonus: 1
   hitRate: 80
   evasionRate: 5
   attackSpeed: 1

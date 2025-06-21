@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
+using System;
+
 public enum AttackType
 {
     Physical,    // โจมตีด้วย AttackDamage อย่างเดียว
@@ -49,11 +51,11 @@ public class Character : NetworkBehaviour
     public float AttackCooldown { get { return attackCooldown; } set { attackCooldown = value; } }
 
     [Header("Critical Stats")]
-    [SerializeField] private float criticalChance = 5f;
+    [SerializeField] private float criticalChance;
     public float CriticalChance { get { return criticalChance; } set { criticalChance = value; } }
-
-    [SerializeField] private float criticalMultiplier = 2f;
-    public float CriticalMultiplier { get { return criticalMultiplier; } set { criticalMultiplier = value; } }
+    [SerializeField]
+    private float criticalDamageBonus;
+    public float CriticalDamageBonus { get { return criticalDamageBonus; } set { criticalDamageBonus = value; } }
 
     [SerializeField] private float hitRate;
     public float HitRate { get { return hitRate; } set { hitRate = value; } }
@@ -107,9 +109,10 @@ public class Character : NetworkBehaviour
     protected virtual void Start()
     {
         InitializeStats();
-      
+
+
     }
-  
+
     private void InitializeComponents()
     {
         // Get or add components
@@ -152,7 +155,7 @@ public class Character : NetworkBehaviour
     {
         if (characterStats != null)
         {
-            // ✅ ใช้ ScriptableObject เป็นหลักสำหรับทุกตัวละคร รวมทั้ง Assassin
+            // ✅ ใช้ ScriptableObject เป็นหลักสำหรับทุกตัวละคร
             characterName = characterStats.characterName;
             maxHp = characterStats.maxHp;
             currentHp = maxHp;
@@ -165,18 +168,16 @@ public class Character : NetworkBehaviour
             attackRange = characterStats.attackRange;
             attackCooldown = characterStats.attackCoolDown;
             criticalChance = characterStats.criticalChance;
-            criticalMultiplier = characterStats.criticalMultiplier;
+            criticalDamageBonus = characterStats.criticalDamageBonus;
             hitRate = characterStats.hitRate;
             evasionRate = characterStats.evasionRate;
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
             attackType = characterStats.attackType;
 
-            Debug.Log($"✅ [Character] Initialized {characterName} with ScriptableObject stats: HP={maxHp}, ATK={attackDamage}");
         }
         else
         {
-            Debug.LogWarning($"[Character] No CharacterStats ScriptableObject found for {gameObject.name}!");
         }
     }
     // ========== Fusion Network Methods ==========
@@ -447,7 +448,6 @@ public class Character : NetworkBehaviour
         if (currentHp > oldHp)
         {
             NetworkedCurrentHp = currentHp;
-           // Debug.Log($"[Health Regen] {CharacterName}: {oldHp} -> {currentHp} (+{regenAmount})");
         }
     }
 
@@ -470,7 +470,6 @@ public class Character : NetworkBehaviour
         if (currentMana > oldMana)
         {
             NetworkedCurrentMana = currentMana;
-            //Debug.Log($"[Mana Regen] {CharacterName}: {oldMana} -> {currentMana} (+{regenAmount}) [Base: {manaRegenPerSecond}, Total: {totalManaRegen}]");
         }
     }
     // ========== Query Methods ==========
@@ -582,7 +581,6 @@ public class Character : NetworkBehaviour
 
             if (moveSpeedMultiplier > 1f)
             {
-                Debug.Log($"[Move Speed Aura] {CharacterName} speed boosted by {(moveSpeedMultiplier - 1f) * 100:F0}%");
             }
         }
 
@@ -621,7 +619,6 @@ public class Character : NetworkBehaviour
 
             if (attackSpeedMultiplier > 1f)
             {
-                Debug.Log($"[Attack Speed Aura] {CharacterName} attack speed boosted by {(attackSpeedMultiplier - 1f) * 100:F0}%");
             }
         }
 
@@ -641,18 +638,51 @@ public class Character : NetworkBehaviour
         return NetworkedCurrentHp <= 0;
     }
     /// ดู level ปัจจุบัน
-    public float GetEffectiveCriticalMultiplier()
+    public float GetEffectiveCriticalDamageBonus()
     {
-        float baseCritMultiplier = criticalMultiplier;
+        float baseCritBonus = criticalDamageBonus;
+        float equipmentBonus = 0f;
 
-        // เพิ่ม bonus จาก equipment
         if (equipmentManager != null)
         {
-            baseCritMultiplier += equipmentManager.GetCriticalMultiplierBonus();
+            equipmentBonus = equipmentManager.GetCriticalMultiplierBonus();
         }
 
-        return baseCritMultiplier;
+        float totalBonus = baseCritBonus + equipmentBonus;
+
+        Debug.Log($"🔍 Critical: Base={baseCritBonus}, Equipment={equipmentBonus}, Total={totalBonus}");
+
+        return totalBonus;
     }
+
+    public void UpdateCriticalDamageBonus(float newValue, bool forceNetworkSync = false)
+    {
+        // ❌ ลบเงื่อนไข authorization ที่เข้มงวด
+        // if (!HasInputAuthority && !HasStateAuthority) return;
+
+        float oldValue = criticalDamageBonus;
+        criticalDamageBonus = newValue;
+
+        Debug.Log($"[Critical Damage Bonus Updated] {CharacterName}: {oldValue} -> {newValue}");
+
+        // Force network sync ถ้าจำเป็น (เฉพาะตอนที่มี authority)
+        if (forceNetworkSync && HasStateAuthority)
+        {
+            ForceUpdateNetworkState();
+        }
+
+        // ✅ Trigger event เพื่อแจ้ง UI และระบบอื่นๆ
+        OnStatsChanged?.Invoke();
+    }
+    public void OnEquipmentStatsChanged()
+    {
+        // แจ้งให้ระบบอื่นๆ รู้ว่า stats เปลี่ยน (รวม Inspector)
+        OnStatsChanged?.Invoke();
+
+        Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
+    }
+    public static event Action OnStatsChanged;
+
     public int GetCurrentLevel()
     {
         if (levelManager == null) return 1;
@@ -682,6 +712,9 @@ public class Character : NetworkBehaviour
         return levelManager.IsMaxLevel();
     }
     // ========== Debug Methods ==========
-  
 
+    // 🔧 เพิ่ม: Context Menu สำหรับทดสอบ critical multiplier ใน Editor
+
+
+  
 }

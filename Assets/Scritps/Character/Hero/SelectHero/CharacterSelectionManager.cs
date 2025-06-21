@@ -351,7 +351,7 @@ public class CharacterSelectionManager : MonoBehaviour
         characterData.totalMagicDamage = stats.magicDamage;
         characterData.totalArmor = stats.arrmor;
         characterData.totalCriticalChance = stats.criticalChance;
-        characterData.totalCriticalMultiplier = stats.criticalMultiplier;
+        characterData.totalCriticalDamageBonus = stats.criticalDamageBonus;
         characterData.totalMoveSpeed = stats.moveSpeed;
         characterData.totalAttackRange = stats.attackRange;
         characterData.totalAttackCooldown = stats.attackCoolDown;

@@ -49,7 +49,10 @@ public class MultiCharacterPlayerData
             defaultAssassin.totalMagicDamage = assassinStats.magicDamage;
             defaultAssassin.totalArmor = assassinStats.arrmor;
             defaultAssassin.totalCriticalChance = assassinStats.criticalChance;
-            defaultAssassin.totalCriticalMultiplier = assassinStats.criticalMultiplier;
+
+            // 🔧 ✅ แก้ไข: ใช้ค่าคงที่แทนค่าจาก ScriptableObject
+            defaultAssassin.totalCriticalDamageBonus = assassinStats.criticalDamageBonus;
+
             defaultAssassin.totalMoveSpeed = assassinStats.moveSpeed;
             defaultAssassin.totalAttackRange = assassinStats.attackRange;
             defaultAssassin.totalAttackCooldown = assassinStats.attackCoolDown;
@@ -57,8 +60,9 @@ public class MultiCharacterPlayerData
             defaultAssassin.totalEvasionRate = assassinStats.evasionRate;
             defaultAssassin.totalAttackSpeed = assassinStats.attackSpeed;
             defaultAssassin.totalReductionCoolDown = assassinStats.reductionCoolDown;
+
+            Debug.Log($"✅ Default Assassin created with Critical Multiplier: {defaultAssassin.totalCriticalDamageBonus}");
         }
-        
 
         characters.Add(defaultAssassin);
     }
@@ -124,7 +128,10 @@ public class MultiCharacterPlayerData
             newCharacter.totalMagicDamage = characterStats.magicDamage;
             newCharacter.totalArmor = characterStats.arrmor;
             newCharacter.totalCriticalChance = characterStats.criticalChance;
-            newCharacter.totalCriticalMultiplier = characterStats.criticalMultiplier;
+
+            // 🔧 ✅ แก้ไข: ใช้ค่าคงที่สำหรับทุกตัวละคร
+            newCharacter.totalCriticalDamageBonus = characterStats.criticalDamageBonus; // ค่าที่ต้องการ
+
             newCharacter.totalMoveSpeed = characterStats.moveSpeed;
             newCharacter.totalAttackRange = characterStats.attackRange;
             newCharacter.totalAttackCooldown = characterStats.attackCoolDown;
@@ -132,13 +139,14 @@ public class MultiCharacterPlayerData
             newCharacter.totalEvasionRate = characterStats.evasionRate;
             newCharacter.totalAttackSpeed = characterStats.attackSpeed;
             newCharacter.totalReductionCoolDown = characterStats.reductionCoolDown;
-            Debug.Log($"✅ Used ScriptableObject stats for {characterType}");
+
+            Debug.Log($"✅ Created {characterType} with Critical Multiplier: {newCharacter.totalCriticalDamageBonus}");
         }
         return newCharacter;
     }
 
     public void UpdateCharacterStats(string characterType, int level, int exp, int expToNext,
-        int maxHp, int maxMana, int attackDamage,int magicDamage ,int armor, float critChance, float moveSpeed,
+        int maxHp, int maxMana, int attackDamage,int magicDamage ,int armor, float critChance,float critDamageBonus, float moveSpeed,
         float hitRate, float evasion, float attackSpeed,float reductionCoolDown)
     {
         CharacterProgressData character = GetOrCreateCharacterData(characterType);
@@ -151,6 +159,7 @@ public class MultiCharacterPlayerData
         character.totalMagicDamage = magicDamage;
         character.totalArmor = armor;
         character.totalCriticalChance = critChance;
+        character.totalCriticalDamageBonus = critDamageBonus;
         character.totalMoveSpeed = moveSpeed;
         character.totalHitRate = hitRate;
         character.totalEvasionRate = evasion;
@@ -195,7 +204,7 @@ public class CharacterProgressData
     public int totalArmor;
     public int totalMagicDamage;
     public float totalCriticalChance;
-    public float totalCriticalMultiplier;
+    public float totalCriticalDamageBonus;
     public float totalMoveSpeed;
     public float totalAttackRange;
     public float totalAttackCooldown;

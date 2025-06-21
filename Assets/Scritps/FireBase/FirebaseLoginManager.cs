@@ -232,16 +232,21 @@ public class FirebaseLoginManager : MonoBehaviour
             PlayerPrefs.SetInt("PlayerMaxHp", assassinStats.maxHp);
             PlayerPrefs.SetInt("PlayerMaxMana", assassinStats.maxMana);
             PlayerPrefs.SetInt("PlayerAttackDamage", assassinStats.attackDamage);
+            PlayerPrefs.SetInt("PlayerMagicDamage", assassinStats.magicDamage);
             PlayerPrefs.SetInt("PlayerArmor", assassinStats.arrmor);
             PlayerPrefs.SetFloat("PlayerCritChance", assassinStats.criticalChance);
+
+            // 🔧 ✅ แก้ไข: ใช้ค่าคงที่ Critical Multiplier
+            PlayerPrefs.SetFloat("PlayerCriticalMultiplier", assassinStats.criticalDamageBonus); // ค่าที่ต้องการ
+
             PlayerPrefs.SetFloat("PlayerMoveSpeed", assassinStats.moveSpeed);
             PlayerPrefs.SetFloat("PlayerHitRate", assassinStats.hitRate);
             PlayerPrefs.SetFloat("PlayerEvasionRate", assassinStats.evasionRate);
             PlayerPrefs.SetFloat("PlayerAttackSpeed", assassinStats.attackSpeed);
+            PlayerPrefs.SetFloat("PlayerReductionCoolDown", assassinStats.reductionCoolDown);
 
-            Debug.Log($"✅ New player setup with ScriptableObject Assassin stats: HP={assassinStats.maxHp}, ATK={assassinStats.attackDamage}");
+            Debug.Log($"✅ New player setup with fixed Critical Multiplier: 0.1f (was {assassinStats.criticalDamageBonus})");
         }
-        
 
         PlayerPrefs.Save();
         Debug.Log($"✅ New player setup completed for {playerName}");
@@ -281,7 +286,7 @@ public class FirebaseLoginManager : MonoBehaviour
         CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
         if (assassinData != null)
         {
-            Debug.Log($"✅ Assassin data created: Level {assassinData.currentLevel}, HP {assassinData.totalMaxHp}, ATK {assassinData.totalAttackDamage}");
+            Debug.Log($"✅ Assassin data created: Level {assassinData.currentLevel}, HP {assassinData.totalMaxHp}, ATK {assassinData.totalAttackDamage},CriDamage{assassinData.totalCriticalDamageBonus}");
         }
         else
         {
