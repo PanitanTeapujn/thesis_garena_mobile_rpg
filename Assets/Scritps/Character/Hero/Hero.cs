@@ -576,18 +576,19 @@
             }
         }
 
-        #region Combat
+    #region Combat
 
-        protected virtual void ProcessClassSpecificAbilities()
-        {
+    protected virtual void ProcessClassSpecificAbilities()
+    {
+        // ✅ เช็คเฉพาะ HasInputAuthority
         if (HasInputAuthority)
         {
             if (GetInput(out networkInputData))
             {
                 // คำนวณ cooldown reduction
                 float effectiveReduction = GetEffectiveReductionCoolDown();
-                float reductionMultiplier = 1f - (effectiveReduction / 100f); // แปลงเป็นเปอร์เซ็น
-                reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f); // จำกัดไม่ให้ต่ำกว่า 10%
+                float reductionMultiplier = 1f - (effectiveReduction / 100f);
+                reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
 
                 // Reset consumed flags เมื่อ input เป็น false
                 if (!networkInputData.skill1) skill1Consumed = false;
@@ -604,7 +605,7 @@
                     nextAttackTime = Time.time + attackCooldown;
                 }
 
-                // เช็ค Skills พร้อม cooldown reduction
+                // ✅ Skills - ลบการเช็ค authority เพิ่มเติม
                 if (networkInputData.skill1 && !skill1Consumed)
                 {
                     if (Time.time >= nextSkill1Time)
@@ -647,7 +648,7 @@
             }
         }
 
-        // Sync health และ mana
+        // ✅ Network sync - ทำทั้ง StateAuthority และ InputAuthority
         if (HasStateAuthority)
         {
             NetworkedCurrentHp = CurrentHp;
@@ -656,17 +657,16 @@
             NetworkedMaxMana = MaxMana;
         }
 
-        // *** เพิ่มการ sync สำหรับ client ที่มี InputAuthority ***
+        // ✅ Client sync to server
         if (HasInputAuthority && !HasStateAuthority)
+        {
+            if (NetworkedCurrentHp != CurrentHp || NetworkedCurrentMana != CurrentMana)
             {
-                // ส่งข้อมูล HP/Mana ไปยัง server หากมีการเปลี่ยนแปลง
-                if (NetworkedCurrentHp != CurrentHp || NetworkedCurrentMana != CurrentMana)
-                {
-                    RPC_SyncHealthMana(CurrentHp, CurrentMana);
-                }
+                RPC_SyncHealthMana(CurrentHp, CurrentMana);
             }
         }
-        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    }
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_SyncHealthMana(int newHp, int newMana)
         {
             CurrentHp = newHp;
@@ -710,18 +710,32 @@
         protected virtual void TryUseSkill4()
         {
         }
-        public void UseMana(int amount)
+    public  void UseMana(int amount)
+    {
+        // ✅ แก้ไข: ให้ client ส่ง RPC ไป server แทน
+        if (HasInputAuthority)
         {
-            if (!HasInputAuthority) return;
-
-            CurrentMana -= amount;
-            CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
-
-            // Send mana info to server
-            RPC_UpdateMana(CurrentMana);
+            RPC_UseMana(amount);
         }
+    }
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_UseMana(int amount)
+    {
+        CurrentMana -= amount;
+        CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+        NetworkedCurrentMana = CurrentMana;
 
-        [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+        // Sync กลับไปยัง client
+        RPC_SyncMana(CurrentMana);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SyncMana(int newMana)
+    {
+        CurrentMana = newMana;
+        NetworkedCurrentMana = newMana;
+    }
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
         private void RPC_UpdateMana(int newMana)
         {
             CurrentMana = newMana;

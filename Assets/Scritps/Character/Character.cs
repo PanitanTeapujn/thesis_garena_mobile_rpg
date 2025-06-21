@@ -437,7 +437,6 @@ public class Character : NetworkBehaviour
             }
         }
     }
-
     private void RegenerateHealth()
     {
         int regenAmount = Mathf.RoundToInt(healthRegenPerSecond);
@@ -448,29 +447,46 @@ public class Character : NetworkBehaviour
         if (currentHp > oldHp)
         {
             NetworkedCurrentHp = currentHp;
+
+            // ✅ Sync to all clients if this is StateAuthority
+            if (HasStateAuthority)
+            {
+                RPC_SyncHealthRegen(currentHp);
+            }
         }
     }
 
     private void RegenerateMana()
     {
         int regenAmount = 1;
-        // 🔧 รวม equipment bonus
-        float totalManaRegen = manaRegenPerSecond;
-
-        // เพิ่ม bonus จาก equipment (ถ้ามี)
-        if (equipmentManager != null)
-        {
-            // totalManaRegen += equipmentManager.GetManaRegenBonus();
-        }
-
-
         int oldMana = currentMana;
+
         currentMana = Mathf.Min(currentMana + regenAmount, maxMana);
 
         if (currentMana > oldMana)
         {
             NetworkedCurrentMana = currentMana;
+
+            // ✅ Sync to all clients if this is StateAuthority
+            if (HasStateAuthority)
+            {
+                RPC_SyncManaRegen(currentMana);
+            }
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SyncHealthRegen(int newHp)
+    {
+        currentHp = newHp;
+        NetworkedCurrentHp = newHp;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SyncManaRegen(int newMana)
+    {
+        currentMana = newMana;
+        NetworkedCurrentMana = newMana;
     }
     // ========== Query Methods ==========
 

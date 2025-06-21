@@ -357,11 +357,26 @@ public class LevelManager : NetworkBehaviour
         character.CriticalChance += levelUpStats.criticalChanceBonusPerLevel;
         character.MoveSpeed += levelUpStats.moveSpeedBonusPerLevel;
 
-        // Full restore on level up
+        // ✅ Full restore on level up
         character.CurrentHp = character.MaxHp;
         character.CurrentMana = character.MaxMana;
 
-        character.ForceUpdateNetworkState();
+        // ✅ แก้ไข: Force sync network state หลัง level up
+        if (HasStateAuthority)
+        {
+            character.NetworkedMaxHp = character.MaxHp;
+            character.NetworkedCurrentHp = character.CurrentHp;
+            character.NetworkedMaxMana = character.MaxMana;
+            character.NetworkedCurrentMana = character.CurrentMana;
+
+            // Broadcast level up to all clients
+            RPC_BroadcastLevelUp(CurrentLevel, character.MaxHp, character.MaxMana);
+        }
+        else if (HasInputAuthority)
+        {
+            // Client ส่ง request ไป server
+            RPC_RequestLevelUp();
+        }
 
         Debug.Log($"🎉 {character.CharacterName} reached Level {CurrentLevel}!");
 
@@ -371,6 +386,33 @@ public class LevelManager : NetworkBehaviour
 
         // Quick save
         QuickSave();
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_BroadcastLevelUp(int newLevel, int newMaxHp, int newMaxMana)
+    {
+        CurrentLevel = newLevel;
+        character.MaxHp = newMaxHp;
+        character.MaxMana = newMaxMana;
+        character.CurrentHp = newMaxHp; // ✅ รี HP/Mana เต็ม
+        character.CurrentMana = newMaxMana;
+
+        character.NetworkedMaxHp = newMaxHp;
+        character.NetworkedCurrentHp = newMaxHp;
+        character.NetworkedMaxMana = newMaxMana;
+        character.NetworkedCurrentMana = newMaxMana;
+
+        Debug.Log($"✅ Level up synced: Level {newLevel}, HP: {newMaxHp}, Mana: {newMaxMana}");
+    }
+
+    // ✅ เพิ่ม RPC methods สำหรับ Level Up sync
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestLevelUp()
+    {
+        // Server ตรวจสอบและ level up
+        if (CurrentExp >= ExpToNextLevel && CurrentLevel < expSettings.maxLevel)
+        {
+            LevelUp();
+        }
     }
 
     // ========== Quick Save (Non-blocking) ==========

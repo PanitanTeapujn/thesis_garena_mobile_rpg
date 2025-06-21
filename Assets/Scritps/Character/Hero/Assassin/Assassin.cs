@@ -26,6 +26,9 @@ public class Assassin : Hero
     [Networked] public int PoisonInfusionStacks { get; set; }
     [Networked] public bool IsInPlagueCloud { get; set; }
     [Networked] public float PlagueCloudEndTime { get; set; }
+    [Networked] public bool IsDashing { get; set; }
+    [Networked] public bool IsAssassinating { get; set; }
+    [Networked] public bool IsInvisible { get; set; }
 
     // Passive tracking
     private bool hasVenomMastery = true; // Passive เปิดตลอด
@@ -69,7 +72,7 @@ public class Assassin : Hero
         RPC_ShowSkillEffect("PoisonInfusion");
     }
 
-    // ========== 🌫️ Skill 2: Toxic Dash ==========
+    // ========== 🌫️ Skill 2: Toxic Dash - FIXED ==========
     protected override void TryUseSkill2()
     {
         if (!CanUseSkill(skill2ManaCost)) return;
@@ -87,50 +90,84 @@ public class Assassin : Hero
         // หาทิศทางการ dash (ตามกล้อง)
         Vector3 dashDirection = GetDashDirection();
 
-        RPC_PerformToxicDash(dashDirection);
+        // ✅ FIX: ส่ง RPC ไปทุกคนเพื่อ sync visual และ damage
+        RPC_PerformToxicDashAll(dashDirection, transform.position);
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_PerformToxicDash(Vector3 direction)
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    private void RPC_PerformToxicDashAll(Vector3 direction, Vector3 startPosition)
     {
-        StartCoroutine(ExecuteToxicDash(direction));
+        StartCoroutine(ExecuteToxicDashFixed(direction, startPosition));
     }
 
-    private IEnumerator ExecuteToxicDash(Vector3 direction)
+    private IEnumerator ExecuteToxicDashFixed(Vector3 direction, Vector3 startPosition)
     {
-        Vector3 startPos = transform.position;
+        Vector3 startPos = startPosition;
         Vector3 endPos = startPos + direction * dashDistance;
 
         float dashTime = dashDistance / dashSpeed;
         float elapsed = 0f;
 
         List<Character> hitEnemies = new List<Character>();
+        IsDashing = true;
 
         while (elapsed < dashTime)
         {
-            elapsed += Time.fixedDeltaTime;
+            elapsed += Time.deltaTime; // ✅ ใช้ Time.deltaTime แทน Time.fixedDeltaTime
             float progress = elapsed / dashTime;
 
-            // เคลื่อนที่
+            // ✅ FIX: ใช้ Rigidbody สำหรับ InputAuthority, ใช้ transform สำหรับ visual
             Vector3 currentPos = Vector3.Lerp(startPos, endPos, progress);
-            transform.position = currentPos;
 
-            // เช็คศัตรูที่ผ่าน
-            Collider[] enemies = Physics.OverlapSphere(currentPos, 2f, LayerMask.GetMask("Enemy"));
-            foreach (Collider col in enemies)
+            if (HasInputAuthority)
             {
-                Character enemy = col.GetComponent<Character>();
-                if (enemy != null && !hitEnemies.Contains(enemy))
+                // ใช้ Rigidbody สำหรับการเคลื่อนที่จริง
+                if (rb != null)
                 {
-                    hitEnemies.Add(enemy);
-                    ApplyToxicDashEffects(enemy);
+                    rb.MovePosition(currentPos);
+                }
+                // ✅ อัพเดท NetworkedPosition
+                NetworkedPosition = currentPos;
+            }
+            else
+            {
+                // Visual only สำหรับ remote clients
+                transform.position = currentPos;
+            }
+
+            // ✅ เช็คศัตรูเฉพาะ StateAuthority เพื่อคำนวณ damage
+            if (HasStateAuthority)
+            {
+                Collider[] enemies = Physics.OverlapSphere(currentPos, 2f, LayerMask.GetMask("Enemy"));
+                foreach (Collider col in enemies)
+                {
+                    Character enemy = col.GetComponent<Character>();
+                    if (enemy != null && !hitEnemies.Contains(enemy))
+                    {
+                        hitEnemies.Add(enemy);
+                        ApplyToxicDashEffects(enemy);
+                    }
                 }
             }
 
-            yield return new WaitForFixedUpdate();
+            yield return null;
         }
 
-        transform.position = endPos;
+        // ✅ FIX: ตั้งตำแหน่งสุดท้าย
+        if (HasInputAuthority)
+        {
+            if (rb != null)
+            {
+                rb.MovePosition(endPos);
+            }
+            NetworkedPosition = endPos;
+        }
+        else
+        {
+            transform.position = endPos;
+        }
+
+        IsDashing = false;
         Debug.Log($"🌫️ [Toxic Dash] {CharacterName} dashed through {hitEnemies.Count} enemies!");
     }
 
@@ -157,7 +194,7 @@ public class Assassin : Hero
         Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName}! Direct: {directDamage}, Poison: {poisonDamage}/s");
     }
 
-    // ========== 💣 Skill 3: Toxic Bomb ==========
+    // ========== 💣 Skill 3: Shadow Assassination - FIXED ==========
     protected override void TryUseSkill3()
     {
         if (!CanUseSkill(skill3ManaCost)) return;
@@ -195,55 +232,72 @@ public class Assassin : Hero
             Debug.Log($"✅ Applied Critical Aura (+40% for 12s)");
         }
 
-        // ✅ เปลี่ยนจาก GameObject เป็น NetworkObject
+        // ✅ FIX: ส่ง RPC ไปทุกคนพร้อมกับ sync position
+        Vector3 originalPos = transform.position;
         NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
         if (targetNetworkObject != null)
         {
-            RPC_PerformShadowAssassination(targetEnemy.transform.position, targetNetworkObject);
+            RPC_PerformShadowAssassinationAll(targetEnemy.transform.position, targetNetworkObject, originalPos);
         }
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_PerformShadowAssassination(Vector3 targetPosition, NetworkObject targetObject)
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    private void RPC_PerformShadowAssassinationAll(Vector3 targetPosition, NetworkObject targetObject, Vector3 originalPosition)
     {
-        StartCoroutine(ExecuteShadowAssassination(targetPosition, targetObject));
+        StartCoroutine(ExecuteShadowAssassinationFixed(targetPosition, targetObject, originalPosition));
     }
 
-    // ✅ แก้ไข parameter type
-    private IEnumerator ExecuteShadowAssassination(Vector3 targetPosition, NetworkObject targetObject)
+    private IEnumerator ExecuteShadowAssassinationFixed(Vector3 targetPosition, NetworkObject targetObject, Vector3 originalPosition)
     {
-        Vector3 originalPosition = transform.position;
+        IsAssassinating = true;
 
         // คำนวณตำแหน่งหลังเป้าหมาย
-        Vector3 backPosition = targetPosition + (targetPosition - transform.position).normalized * -2f;
+        Vector3 backPosition = targetPosition + (targetPosition - originalPosition).normalized * -2f;
         backPosition.y = targetPosition.y;
 
         // Phase 1: เทเลพอร์ตไปหลังเป้าหมาย
         Debug.Log($"🗡️ [Shadow Assassination] {CharacterName} teleporting behind target!");
 
-        // ซ่อนตัว
-        GetComponent<Renderer>().enabled = false;
+        // ✅ FIX: ซ่อนตัวและ sync กับทุกคน
+        SetVisibility(false);
         yield return new WaitForSeconds(0.2f);
 
-        // ปรากฏที่ตำแหน่งใหม่
-        transform.position = backPosition;
-        GetComponent<Renderer>().enabled = true;
-
-        // หันหน้าไปหาเป้าหมาย
-        Vector3 lookDirection = (targetPosition - transform.position).normalized;
-        transform.rotation = Quaternion.LookRotation(lookDirection);
-
-        yield return new WaitForSeconds(0.1f);
-
-        // ✅ Phase 2: โจมตี Execution
-        Character targetCharacter = targetObject?.GetComponent<Character>();
-        if (targetCharacter != null)
+        // ✅ FIX: เทเลพอร์ตและ sync position
+        if (HasInputAuthority)
         {
-            PerformExecutionAttack(targetCharacter);
+            if (rb != null)
+            {
+                rb.MovePosition(backPosition);
+            }
+            NetworkedPosition = backPosition;
+        }
+        else
+        {
+            transform.position = backPosition;
         }
 
+        // หันหน้าไปหาเป้าหมาย
+        Vector3 lookDirection = (targetPosition - backPosition).normalized;
+        transform.rotation = Quaternion.LookRotation(lookDirection);
+
+        // ปรากฏตัว
+        SetVisibility(true);
+        yield return new WaitForSeconds(0.1f);
+
+        // ✅ Phase 2: โจมตี Execution (เฉพาะ StateAuthority)
+        if (HasStateAuthority)
+        {
+            Character targetCharacter = targetObject?.GetComponent<Character>();
+            if (targetCharacter != null)
+            {
+                PerformExecutionAttack(targetCharacter);
+            }
+        }
+
+        IsAssassinating = false;
         Debug.Log($"🗡️ [Shadow Assassination] {CharacterName} completed assassination!");
     }
+
     private int CalculateExecutionDamage()
     {
         // ✅ Base damage formula: (MagicDamage × 0.7) + (AttackDamage × 0.3) + (Level × 10)
@@ -257,6 +311,7 @@ public class Assassin : Hero
 
         return totalDamage;
     }
+
     private void PerformExecutionAttack(Character target)
     {
         // คำนวณ base damage
@@ -302,6 +357,7 @@ public class Assassin : Hero
 
         Debug.Log($"🗡️ Shadow Assassination dealt {baseDamage} damage to {target.CharacterName} (Execution: {isExecutionRange})");
     }
+
     // ========== ☠️ Skill 4: Plague Outbreak (Ultimate) ==========
     protected override void TryUseSkill4()
     {
@@ -313,7 +369,6 @@ public class Assassin : Hero
 
         RPC_CreatePlagueOutbreak(cloudPosition);
     }
-
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_CreatePlagueOutbreak(Vector3 position)
@@ -407,6 +462,7 @@ public class Assassin : Hero
 
         Debug.Log($"☠️ [Plague Outbreak] Effect ended");
     }
+
     // ========== 🐍 Passive: Venom Mastery ==========
     private void SpreadPoisonToNearby(Character sourceEnemy, float range)
     {
@@ -535,6 +591,7 @@ public class Assassin : Hero
             }
         }
     }
+
     // ========== 🎨 Visual Range Indicator System ==========
     private void CreateRangeIndicator()
     {
@@ -634,9 +691,20 @@ public class Assassin : Hero
         rangeCircle.endColor = originalColor;
     }
 
-    // ========== Helper Methods ==========
+    // ========== Helper Methods - FIXED ==========
+    private void SetVisibility(bool visible)
+    {
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        foreach (Renderer renderer in renderers)
+        {
+            renderer.enabled = visible;
+        }
+        IsInvisible = !visible;
+    }
+
     private bool CanUseSkill(int manaCost)
     {
+        // ✅ ลบการเช็ค authority - ให้ทุกคนเช็คได้
         if (CurrentMana < manaCost)
         {
             Debug.Log($"❌ Not enough mana! Need {manaCost}, have {CurrentMana}");
@@ -666,6 +734,7 @@ public class Assassin : Hero
 
         return Mathf.Max(1, finalDamage);
     }
+
     private int GetScaledSkillDamage(float multiplier)
     {
         int magicPortion = Mathf.RoundToInt(MagicDamage * 0.7f);
@@ -692,6 +761,7 @@ public class Assassin : Hero
         return transform.forward;
     }
 
+    // ========== RPC Methods ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowRangeIndicatorAll(Vector3 center, float radius)
     {
@@ -711,6 +781,40 @@ public class Assassin : Hero
         // TODO: Add visual effects here
     }
 
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_SyncPosition(Vector3 newPosition)
+    {
+        NetworkedPosition = newPosition;
+        transform.position = newPosition;
+    }
+
+    // ========== Network Update Override ==========
+    public override void FixedUpdateNetwork()
+    {
+        base.FixedUpdateNetwork();
+
+        // ✅ Sync position เมื่อมีการเปลี่ยนแปลง
+        if (HasInputAuthority && !HasStateAuthority)
+        {
+            if (Vector3.Distance(transform.position, NetworkedPosition) > 0.1f)
+            {
+                RPC_SyncPosition(transform.position);
+            }
+        }
+
+        // Update status
+        if (IsInPlagueCloud && Time.time > PlagueCloudEndTime)
+        {
+            IsInPlagueCloud = false;
+        }
+
+        // ✅ Sync visibility
+        if (!HasInputAuthority)
+        {
+            SetVisibility(!IsInvisible);
+        }
+    }
+
     // ========== Event Handlers ==========
     protected override void OnDestroy()
     {
@@ -721,20 +825,5 @@ public class Assassin : Hero
         {
             Destroy(plagueRangeIndicator);
         }
-
-        // Subscribe to enemy death events for poison spreading
     }
-
-    public override void FixedUpdateNetwork()
-    {
-        base.FixedUpdateNetwork();
-
-        // Update plague cloud status
-        if (IsInPlagueCloud && Time.time > PlagueCloudEndTime)
-        {
-            IsInPlagueCloud = false;
-        }
-    }
-
-   
 }
