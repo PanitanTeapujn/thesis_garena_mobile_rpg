@@ -21,7 +21,7 @@ public class CombatManager : NetworkBehaviour
 {
     public static event Action<Character, int, DamageType, bool> OnDamageTaken;
     public static event Action<Character> OnCharacterDeath;
-    public static event Action<Character, int> OnCharacterHealed; // เพิ่ม event สำหรับ heal
+    public static event Action<Character, int> OnCharacterHealed;
 
     // ========== Component References ==========
     private Character character;
@@ -37,21 +37,56 @@ public class CombatManager : NetworkBehaviour
 
     protected virtual void Start()
     {
-        // Subscribe to status effect damage events
         StatusEffectManager.OnStatusDamage += HandleStatusDamage;
     }
 
     protected virtual void OnDestroy()
     {
-        // Unsubscribe events
         StatusEffectManager.OnStatusDamage -= HandleStatusDamage;
     }
+
+    // ========== Network RPC Methods for Damage Text ==========
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowDamageText(Vector3 position, int damage, DamageType damageType, bool isCritical, bool isHeal = false, bool isMiss = false)
+    {
+        if (isMiss)
+        {
+            DamageTextManager.ShowMissText(position);
+            return;
+        }
+
+        if (character is Hero)
+        {
+            if (isHeal)
+                DamageTextManager.ShowHealing(position, damage);
+            else
+                DamageTextManager.ShowHeroDamage(position, damage, damageType, isCritical);
+        }
+        else if (character is NetworkEnemy)
+        {
+            if (isHeal)
+                DamageTextManager.ShowHealing(position, damage);
+            else
+                DamageTextManager.ShowEnemyDamage(position, damage, damageType, isCritical);
+        }
+        else
+        {
+            DamageTextManager.Instance?.ShowDamageText(position, damage, damageType, isCritical, isHeal);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowStatusDamageText(Vector3 position, int damage, StatusEffectType effectType)
+    {
+        DamageTextManager.ShowStatusDamage(position, damage, effectType);
+    }
+
+    // ========== Hit Calculation ==========
     private bool CalculateHitSuccess(Character attacker, Character target)
     {
         float attackerHitRate = attacker.HitRate;
         float targetEvasion = target.EvasionRate;
 
-        // เพิ่ม bonus จาก equipment
         if (attacker.GetComponent<EquipmentManager>() != null)
         {
             attackerHitRate += attacker.GetComponent<EquipmentManager>().GetHitRateBonus();
@@ -62,7 +97,6 @@ public class CombatManager : NetworkBehaviour
             targetEvasion += target.GetComponent<EquipmentManager>().GetEvasionRateBonus();
         }
 
-        // ลด hit rate ถ้าโดน Blind
         if (attacker.GetComponent<StatusEffectManager>() != null)
         {
             StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
@@ -74,29 +108,25 @@ public class CombatManager : NetworkBehaviour
             }
         }
 
-        // คำนวณโอกาสโดน
         float finalHitChance = attackerHitRate - targetEvasion;
-        finalHitChance = Mathf.Clamp(finalHitChance, 5f, 95f); // จำกัดระหว่าง 5-95%
+        finalHitChance = Mathf.Clamp(finalHitChance, 5f, 95f);
 
         float roll = UnityEngine.Random.Range(0f, 100f);
         bool isHit = roll < finalHitChance;
 
-      //  Debug.Log($"[Hit Check] {attacker.CharacterName} -> {target.CharacterName}: {roll:F1}% vs {finalHitChance:F1}% = {(isHit ? "HIT!" : "MISS!")}");
-
         return isHit;
     }
+
     private float CalculateAttackCooldownWithSpeed(Character attacker)
     {
         float baseAttackCooldown = attacker.AttackCooldown;
         float attackSpeedMultiplier = attacker.AttackSpeed;
 
-        // เพิ่ม bonus จาก equipment
         if (attacker.GetComponent<EquipmentManager>() != null)
         {
             attackSpeedMultiplier += attacker.GetComponent<EquipmentManager>().GetAttackSpeedBonus();
         }
 
-        // ✅ 🌟 เพิ่ม: ใช้ Attack Speed Aura จาก StatusEffectManager
         if (attacker.GetComponent<StatusEffectManager>() != null)
         {
             StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
@@ -109,26 +139,28 @@ public class CombatManager : NetworkBehaviour
             }
         }
 
-        // คำนวณ cooldown ใหม่ (ยิ่ง attackSpeed สูง ยิ่ง cooldown น้อย)
         float finalCooldown = baseAttackCooldown / Mathf.Max(0.1f, attackSpeedMultiplier);
-
         return finalCooldown;
     }
+
     // ========== Main Damage System ==========
     public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
 
-        // เช็ค Hit/Miss
+        // เช็ค Hit/Miss ก่อน
         if (!CalculateHitSuccess(attacker, character))
         {
-            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-            DamageTextManager.ShowMissText(textPosition);
+            if (HasStateAuthority)
+            {
+                Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+                RPC_ShowDamageText(textPosition, 0, DamageType.Normal, false, false, true);
+            }
             Debug.Log($"[MISS] {attacker.CharacterName} missed {character.CharacterName}!");
             return;
         }
 
-        // คำนวณ critical
+        // คำนวณ critical และ apply status effects
         bool isCritical = false;
         if (attacker != null)
         {
@@ -139,25 +171,34 @@ public class CombatManager : NetworkBehaviour
         // คำนวณ damage แยกตาม type
         int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal);
         int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic);
-
         int totalDamage = finalPhysicalDamage + finalMagicDamage;
 
-        // apply damage
+        // Apply damage
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
 
-       // Debug.Log($"[TakeDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (Physical: {finalPhysicalDamage}, Magic: {finalMagicDamage})");
-
+        // Sync network state
         SyncHealthUpdate();
-        OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
 
+        // ✅ แสดง Damage Text ผ่าน RPC
+        if (HasStateAuthority)
+        {
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+            RPC_ShowDamageText(textPosition, totalDamage, damageType, isCritical, false, false);
+        }
+
+        // ✅ แก้ไข: ไม่ fire OnDamageTaken event เพื่อป้องกัน duplicate damage text
+        // OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
+
+        // Check death
         if (character.CurrentHp <= 0)
         {
             HandleDeath();
         }
     }
 
+    // ========== แก้ไข TakeDamage ==========
 
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
@@ -169,13 +210,18 @@ public class CombatManager : NetworkBehaviour
         character.CurrentHp -= finalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
 
-        Debug.Log($"[TakeDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (damage: {finalDamage}, type: {damageType}, critical: {isCritical})");
-
         // Sync network state
         SyncHealthUpdate();
 
-        // 🎯 แจ้ง damage event (DamageTextManager จะแสดง damage text อัตโนมัติ)
-        OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
+        // ✅ แสดง Damage Text ผ่าน RPC
+        if (HasStateAuthority)
+        {
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+            RPC_ShowDamageText(textPosition, finalDamage, damageType, isCritical, false, false);
+        }
+
+        // ✅ แก้ไข: ไม่ fire OnDamageTaken event เพื่อป้องกัน duplicate damage text
+        // OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)
@@ -184,24 +230,46 @@ public class CombatManager : NetworkBehaviour
         }
     }
 
+
+
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    {
+        var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
+        TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
+    }
+
     // ========== Status Effect Damage Handler ==========
     private void HandleStatusDamage(Character targetCharacter, int damage, DamageType damageType)
     {
-        // เช็คว่าเป็น character ของเราหรือไม่
         if (targetCharacter == character)
         {
-            // ใช้ TakeDamage แต่แสดง damage text แบบ status effect
             int oldHp = character.CurrentHp;
             character.CurrentHp -= damage;
             character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
 
-            Debug.Log($"[StatusDamage] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (damage: {damage}, type: {damageType})");
-
             // Sync network state
             SyncHealthUpdate();
 
-            // 🎯 แสดง status damage text โดยตรง (เพราะไม่ผ่าน event system)
-            ShowStatusDamageText(damage, damageType);
+            // ✅ แสดง Status Damage Text ผ่าน RPC
+            if (HasStateAuthority)
+            {
+                Vector3 textPosition = character.transform.position + Vector3.up * 2.5f;
+                StatusEffectType effectType = damageType switch
+                {
+                    DamageType.Poison => StatusEffectType.Poison,
+                    DamageType.Burn => StatusEffectType.Burn,
+                    DamageType.Bleed => StatusEffectType.Bleed,
+                    _ => StatusEffectType.None
+                };
+
+                if (effectType != StatusEffectType.None)
+                {
+                    RPC_ShowStatusDamageText(textPosition, damage, effectType);
+                }
+            }
+
+            // ✅ แก้ไข: ไม่ fire event เพื่อป้องกัน duplicate damage text 
+            // (Status damage ไม่ควรแสดงผ่าน normal damage text system อยู่แล้ว)
 
             // Check death
             if (character.CurrentHp <= 0)
@@ -211,57 +279,14 @@ public class CombatManager : NetworkBehaviour
         }
     }
 
-    // ========== Damage Text Display Methods ==========
-    private void ShowDamageText(int damage, DamageType damageType, bool isCritical)
-    {
-        // แสดง damage text บนหัวตัวละคร
-        Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-
-        // เรียกใช้ DamageTextManager
-        if (character is Hero)
-        {
-            DamageTextManager.ShowHeroDamage(textPosition, damage, damageType, isCritical);
-        }
-        else if (character is NetworkEnemy)
-        {
-            DamageTextManager.ShowEnemyDamage(textPosition, damage, damageType, isCritical);
-        }
-        else
-        {
-            // สำหรับ character ทั่วไป
-            DamageTextManager.Instance?.ShowDamageText(textPosition, damage, damageType, isCritical, false);
-        }
-    }
-
-    private void ShowStatusDamageText(int damage, DamageType damageType)
-    {
-        // แสดง status effect damage text
-        Vector3 textPosition = character.transform.position + Vector3.up * 2.5f; // สูงกว่า normal damage เล็กน้อย
-
-        // แปลง DamageType เป็น StatusEffectType
-        StatusEffectType effectType = damageType switch
-        {
-            DamageType.Poison => StatusEffectType.Poison,
-            DamageType.Burn => StatusEffectType.Burn,
-            DamageType.Bleed => StatusEffectType.Bleed,
-            _ => StatusEffectType.None
-        };
-
-        if (effectType != StatusEffectType.None)
-        {
-            DamageTextManager.ShowStatusDamage(textPosition, damage, effectType);
-        }
-    }
-
     // ========== Damage Calculations ==========
-    // ✅ แก้ไข: Critical damage calculation
     private int CalculateFinalDamage(int baseDamage, bool isCritical, DamageType damageType)
     {
         if (baseDamage <= 0) return 0;
 
         int finalDamage = baseDamage;
 
-        // 🔧 เพิ่ม Damage Aura bonus ก่อน Critical
+        // Apply Damage Aura bonus
         if (statusEffectManager != null)
         {
             float damageMultiplier = statusEffectManager.GetTotalDamageMultiplier();
@@ -269,23 +294,18 @@ public class CombatManager : NetworkBehaviour
             Debug.Log($"[Damage Aura] Base: {baseDamage} -> With Aura: {finalDamage} (x{damageMultiplier:F2})");
         }
 
-        // 🔧 ✅ ระบบ Critical ใหม่: ใช้ CriticalDamageBonus
+        // Critical damage calculation
         if (isCritical)
         {
-            // ดึงค่า Critical Damage Bonus ที่ถูกต้อง
             float criticalDamageBonus = character.GetEffectiveCriticalDamageBonus();
-
-            // ✅ สูตรใหม่: Critical = Base + (Base × CriticalDamageBonus)
             int criticalDamage = Mathf.RoundToInt(finalDamage * (1f + criticalDamageBonus));
 
             Debug.Log($"[Critical Hit] Base: {finalDamage} × (1 + {criticalDamageBonus:F2}) = {criticalDamage}");
             Debug.Log($"[Critical Stats] CriticalDamageBonus: {character.CriticalDamageBonus}, Equipment Bonus: {(equipmentManager?.GetCriticalMultiplierBonus() ?? 0f)}, Total: {criticalDamageBonus}");
 
-            // ✅ Critical ignores armor and resistance
             return criticalDamage;
         }
 
-        // ✅ Non-critical damage: apply resistance และ armor (เหมือนเดิม)
         // Apply resistance based on damage type
         float resistance = 0f;
         if (equipmentManager != null)
@@ -308,7 +328,7 @@ public class CombatManager : NetworkBehaviour
             Debug.Log($"[Resistance] Reduced by {resistance:F1}%: {finalDamage}");
         }
 
-        // Protection aura
+        // Apply protection aura
         if (statusEffectManager != null)
         {
             float protectionReduction = statusEffectManager.GetTotalDamageReduction();
@@ -327,31 +347,24 @@ public class CombatManager : NetworkBehaviour
             Debug.Log($"[Armor] Reduced by {currentArmor}: {finalDamage}");
         }
 
-        // ป้องกันดาเมจติดลบ
+        // Prevent negative damage
         finalDamage = Mathf.Max(1, finalDamage);
 
         Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (type: {damageType}, critical: {isCritical})");
         return finalDamage;
-    }
-    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
-    {
-        // แยก damage เป็น physical กับ magic ตาม ratio
-        var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
-
-        TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
     }
 
     private int GetCurrentArmor()
     {
         int baseArmor = character.Armor;
 
-        // เพิ่ม armor จาก equipment
+        // Add armor from equipment
         if (equipmentManager != null)
         {
             baseArmor += equipmentManager.GetArmorBonus();
         }
 
-        // ✅ 🌟 เพิ่ม: ใช้ Armor Aura จาก StatusEffectManager
+        // Apply Armor Aura
         if (statusEffectManager != null)
         {
             float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
@@ -363,7 +376,7 @@ public class CombatManager : NetworkBehaviour
             }
         }
 
-        // ตรวจสอบ Armor Break effect
+        // Apply Armor Break effect
         if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
         {
             float reduction = statusEffectManager.ArmorBreakAmount;
@@ -374,24 +387,23 @@ public class CombatManager : NetworkBehaviour
         return baseArmor;
     }
 
-
     private bool CalculateCriticalHit(Character attacker)
     {
         float critRoll = UnityEngine.Random.Range(0f, 100f);
         float attackerCritChance = attacker.CriticalChance;
 
-        // เพิ่ม critical chance จาก equipment
+        // Add critical chance from equipment
         if (attacker.GetComponent<EquipmentManager>() != null)
         {
             attackerCritChance += attacker.GetComponent<EquipmentManager>().GetCriticalChanceBonus();
         }
 
-        // ✅ 🌟 เพิ่ม: ใช้ Critical Aura จาก StatusEffectManager
+        // Apply Critical Aura
         if (attacker.GetComponent<StatusEffectManager>() != null)
         {
             StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
             float criticalBonus = attackerStatus.GetTotalCriticalBonus();
-            attackerCritChance += criticalBonus * 100f; // แปลง 0.15 เป็น 15%
+            attackerCritChance += criticalBonus * 100f;
 
             if (criticalBonus > 0f)
             {
@@ -399,7 +411,7 @@ public class CombatManager : NetworkBehaviour
             }
         }
 
-        // ลด critical chance ถ้าโดน Blind
+        // Apply Blind effect
         if (attacker.GetComponent<StatusEffectManager>() != null)
         {
             StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
@@ -412,19 +424,14 @@ public class CombatManager : NetworkBehaviour
         }
 
         bool isCritical = critRoll < attackerCritChance;
-
-        if (isCritical)
-        {
-           // Debug.Log($"[Critical Check] {critRoll:F1}% vs {attackerCritChance:F1}% = CRITICAL!");
-        }
-
         return isCritical;
     }
+
     private int ApplyAttackerStatusEffects(int damage, Character attacker)
     {
         int modifiedDamage = damage;
 
-        // ตรวจสอบ Weakness effect ของ attacker
+        // Apply Weakness effect
         if (attacker.GetComponent<StatusEffectManager>() != null)
         {
             StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
@@ -513,19 +520,21 @@ public class CombatManager : NetworkBehaviour
 
         Debug.Log($"[Heal] {character.CharacterName}: {oldHp} -> {character.CurrentHp} (+{actualHeal})");
 
-        // 🎯 แสดง heal text
-        if (actualHeal > 0)
+        // ✅ แสดง Heal Text ผ่าน RPC
+        if (actualHeal > 0 && HasStateAuthority)
         {
             Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-            DamageTextManager.ShowHealing(textPosition, actualHeal);
+            RPC_ShowDamageText(textPosition, actualHeal, DamageType.Normal, false, true, false);
 
-            // Fire heal event
             OnCharacterHealed?.Invoke(character, actualHeal);
         }
 
         SyncHealthUpdate();
     }
-
+    public void FireDamageEvent(int damage, DamageType damageType, bool isCritical)
+    {
+        OnDamageTaken?.Invoke(character, damage, damageType, isCritical);
+    }
     public float GetHealthPercentage()
     {
         return (float)character.CurrentHp / character.MaxHp;
@@ -546,7 +555,6 @@ public class CombatManager : NetworkBehaviour
         Debug.Log($"Expected Damage with Crit: Base × (1 + {totalCrit}) = Base × {1f + totalCrit:F2}");
     }
 
-    // ========== เพิ่ม Method ทดสอบ Critical Calculation ==========
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
     public void TestCriticalDamage(int testBaseDamage = 55)
     {
