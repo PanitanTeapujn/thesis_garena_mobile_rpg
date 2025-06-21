@@ -2,13 +2,16 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
+
 public enum EnemyState
 {
+    Patrolling,    // 🆕 เพิ่ม state การสุ่มเดิน
     Chasing,
     BackingOff,
     Attacking,
     Positioning
 }
+
 public class NetworkEnemy : Character
 {
     // ========== Network Properties ==========
@@ -19,6 +22,11 @@ public class NetworkEnemy : Character
     [Networked] public Vector3 NetworkedPosition { get; set; }
     [Networked] public Vector3 NetworkedVelocity { get; set; }
     [Networked] public Vector3 NetworkedScale { get; set; } // ใช้สำหรับ flip เท่านั้น
+
+    // 🆕 Network Properties สำหรับ Patrol System
+    [Networked] public Vector3 PatrolCenter { get; set; }
+    [Networked] public Vector3 PatrolTarget { get; set; }
+    [Networked] public float PatrolWaitTimer { get; set; }
 
     // ========== Enemy Properties ==========
     [Header("Enemy Settings")]
@@ -34,6 +42,14 @@ public class NetworkEnemy : Character
     public float positionTime = 0.5f;       // เวลาหยุดก่อนเข้าโจมตี
     public float rushSpeed = 3f;          // ความเร็วตอนเข้าโจมตี
 
+    [Header("🚶 Patrol Settings")]
+    public float patrolRange = 8f;           // ระยะการ patrol จากจุดเริ่มต้น
+    public float patrolSpeed = 0.5f;         // ความเร็วการ patrol (คูณกับ MoveSpeed)
+    public float patrolWaitTime = 2f;        // เวลาหยุดที่จุดหมาย
+    public float patrolTargetRadius = 1f;    // ระยะที่ถือว่าถึงจุดหมายแล้ว
+    public bool returnToCenter = true;       // กลับไปจุดกลางหลังจาก patrol นานๆ
+    public float maxPatrolTime = 30f;        // เวลาสูงสุดก่อนกลับจุดกลาง
+
     [Header("🎯 Improved Movement Settings")]
     public float minDistanceToPlayer = 1.0f; // ระยะห่างขั้นต่ำจากผู้เล่น
     public float enemySpacing = 2.0f;        // ระยะห่างระหว่างศัตรูด้วยกัน
@@ -41,8 +57,10 @@ public class NetworkEnemy : Character
     public bool useCircling = true;          // เปิดใช้การเคลื่อนที่แบบวนรอบผู้เล่น
     public float circlingSpeed = 0.5f;
     public bool isCollidingWithPlayer;
+
     [Header("🔧 Debug Settings")]
     public bool showDebugInfo = false;
+    public bool showPatrolGizmos = true;     // 🆕 แสดง patrol area ใน Scene view
 
     [Header("💥 Proximity Damage")]
     public float collisionDamageCooldown = 2.0f;
@@ -52,7 +70,7 @@ public class NetworkEnemy : Character
     private float nextTargetCheckTime = 0f;
     protected Transform targetTransform;
     protected float nextAttackTime = 0f;
-
+    private float totalPatrolTime = 0f;      // 🆕 เวลา patrol รวม
 
     // Check if properly spawned
     public bool IsSpawned => Object != null && Object.IsValid;
@@ -63,15 +81,11 @@ public class NetworkEnemy : Character
         base.Start();
         Debug.Log($"Enemy Start - HasStateAuthority: {HasStateAuthority}");
 
-
         // ตั้งค่า enemy layer
         if (enemyLayer == 0)
         {
             enemyLayer = LayerMask.GetMask("Enemy");
         }
-
-        
-        // ========== Debug ==========
 
         // ตั้งค่า physics สำหรับ 2D movement
         if (rb != null)
@@ -89,8 +103,11 @@ public class NetworkEnemy : Character
             Debug.Log($"enemySpacing: {enemySpacing}");
             Debug.Log($"useCircling: {useCircling}");
             Debug.Log($"circlingSpeed: {circlingSpeed}");
+            Debug.Log($"patrolRange: {patrolRange}");
+            Debug.Log($"patrolSpeed: {patrolSpeed}");
             Debug.Log($"===============================");
         }
+
         LevelManager enemyLevel = GetComponent<LevelManager>();
         if (enemyLevel != null && HasStateAuthority)
         {
@@ -115,12 +132,22 @@ public class NetworkEnemy : Character
             NetworkedMaxHp = MaxHp;
             NetworkedCurrentHp = CurrentHp;
             IsDead = false;
-            CurrentState = EnemyState.Chasing; // เริ่มต้นด้วยการไล่ตาม
+            CurrentState = EnemyState.Patrolling; // 🆕 เริ่มต้นด้วย Patrolling แทน Chasing
             StateTimer = 0f;
+            totalPatrolTime = 0f;
+
+            // 🆕 ตั้งค่า patrol center และ target
+            PatrolCenter = transform.position;
+            GenerateNewPatrolTarget();
 
             // กำหนดค่าเริ่มต้นของ position และ scale
             NetworkedPosition = transform.position;
             NetworkedScale = transform.localScale;
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"{CharacterName}: Initialized patrol system at {PatrolCenter}");
+            }
         }
     }
 
@@ -166,116 +193,107 @@ public class NetworkEnemy : Character
         }
     }
 
+    // ========== 🆕 Patrol System ==========
+    private void GenerateNewPatrolTarget()
+    {
+        // สุ่มจุดใหม่ในรัศมี patrol
+        Vector2 randomDirection = Random.insideUnitCircle.normalized;
+        float randomDistance = Random.Range(patrolRange * 0.3f, patrolRange);
+
+        Vector3 targetPosition = PatrolCenter + new Vector3(randomDirection.x, 0, randomDirection.y) * randomDistance;
+
+        // ตรวจสอบว่าจุดหมายอยู่ในพื้นที่ที่เดินได้
+        PatrolTarget = ValidatePatrolTarget(targetPosition);
+        PatrolWaitTimer = 0f;
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"{CharacterName}: New patrol target: {PatrolTarget} (distance: {Vector3.Distance(PatrolCenter, PatrolTarget):F1})");
+        }
+    }
+
+    private Vector3 ValidatePatrolTarget(Vector3 target)
+    {
+        // ตรวจสอบว่าจุดหมายไม่ติดสิ่งกีดขวาง
+        RaycastHit hit;
+        Vector3 directionToTarget = (target - transform.position).normalized;
+        float distanceToTarget = Vector3.Distance(transform.position, target);
+
+        if (Physics.Raycast(transform.position, directionToTarget, out hit, distanceToTarget, LayerMask.GetMask("Wall", "Obstacle")))
+        {
+            // ถ้าติดสิ่งกีดขวาง ให้เลือกจุดใกล้ๆ patrol center
+            Vector2 safeDirection = Random.insideUnitCircle.normalized;
+            return PatrolCenter + new Vector3(safeDirection.x, 0, safeDirection.y) * (patrolRange * 0.5f);
+        }
+
+        return target;
+    }
+
     // ========== 🎯 Improved Movement System ==========
     protected virtual void ImprovedMoveTowardsTarget()
     {
-        if (targetTransform == null || rb == null) return;
-
-        Vector3 directionToPlayer = (targetTransform.position - transform.position).normalized;
-        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
-        Vector3 moveDirection = Vector3.zero;
-
         // อัพเดท State Timer
         StateTimer += Runner.DeltaTime;
 
+        // 🆕 ตรวจสอบว่าควรเปลี่ยนจาก Patrolling เป็น Chasing หรือไม่
+        if (CurrentState == EnemyState.Patrolling && targetTransform != null)
+        {
+            float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+            if (distanceToPlayer <= detectRange)
+            {
+                CurrentState = EnemyState.Chasing;
+                StateTimer = 0f;
+                if (showDebugInfo)
+                {
+                    Debug.Log($"{CharacterName}: Player detected! Switching to Chasing. Distance: {distanceToPlayer:F1}");
+                }
+            }
+        }
+
+        // 🆕 ตรวจสอบว่าควรกลับไป Patrolling หรือไม่
+        if (CurrentState != EnemyState.Patrolling && targetTransform == null)
+        {
+            CurrentState = EnemyState.Patrolling;
+            StateTimer = 0f;
+            totalPatrolTime = 0f;
+            GenerateNewPatrolTarget();
+            if (showDebugInfo)
+            {
+                Debug.Log($"{CharacterName}: No target found, returning to Patrol");
+            }
+        }
+
+        Vector3 moveDirection = Vector3.zero;
+
         switch (CurrentState)
         {
+            case EnemyState.Patrolling:
+                moveDirection = HandlePatrolling();
+                break;
+
             case EnemyState.Chasing:
-                // ไล่ตามผู้เล่นปกติ
-                if (distanceToPlayer <= AttackRange && distanceToPlayer > minDistanceToPlayer * 0.7f)
-                {
-                    // อยู่ในระยะโจมตีที่เหมาะสม เปลี่ยนเป็น Attacking
-                    CurrentState = EnemyState.Attacking;
-                    StateTimer = 0f;
-                    moveDirection = Vector3.zero; // หยุดเคลื่อนที่
-                    if (showDebugInfo)
-                        Debug.Log($"{CharacterName}: Entering attack range! Distance: {distanceToPlayer:F2}");
-                }
-                else if (distanceToPlayer <= minDistanceToPlayer * 0.7f)
-                {
-                    // เข้าใกล้เกินไป เปลี่ยนเป็น BackingOff
-                    CurrentState = EnemyState.BackingOff;
-                    StateTimer = 0f;
-                    if (showDebugInfo)
-                        Debug.Log($"{CharacterName}: Too close! Backing off... Distance: {distanceToPlayer:F2}");
-                }
-                else
-                {
-                    // ไล่ตามผู้เล่นปกติ
-                    moveDirection = directionToPlayer;
-                }
+                moveDirection = HandleChasing();
                 break;
 
             case EnemyState.BackingOff:
-                // ถอยออกจากผู้เล่น
-                moveDirection = -directionToPlayer * 1.2f; // ถอยเร็วหน่อย
-
-                if (StateTimer >= backOffTime || distanceToPlayer >= backOffDistance)
-                {
-                    // ถอยพอแล้ว เปลี่ยนเป็น Positioning
-                    CurrentState = EnemyState.Positioning;
-                    StateTimer = 0f;
-                    if (showDebugInfo)
-                        Debug.Log($"{CharacterName}: Finished backing off, positioning... Distance: {distanceToPlayer:F2}");
-                }
+                moveDirection = HandleBackingOff();
                 break;
 
             case EnemyState.Positioning:
-                // หยุดชั่วคราวก่อนเข้าโจมตี
-                moveDirection = Vector3.zero;
-
-                if (StateTimer >= positionTime)
-                {
-                    // พร้อมเข้าโจมตี
-                    CurrentState = EnemyState.Chasing;
-                    StateTimer = 0f;
-                    if (showDebugInfo)
-                        Debug.Log($"{CharacterName}: Ready to chase again! Distance: {distanceToPlayer:F2}");
-                }
+                moveDirection = HandlePositioning();
                 break;
 
             case EnemyState.Attacking:
-                // อยู่ในระยะโจมตี - ให้โจมตีได้เต็มที่
-                if (distanceToPlayer > AttackRange * 1.3f)
-                {
-                    // ผู้เล่นออกไปไกลเกินไป กลับไปไล่ตาม
-                    CurrentState = EnemyState.Chasing;
-                    StateTimer = 0f;
-                    if (showDebugInfo)
-                        Debug.Log($"{CharacterName}: Player too far, chasing... Distance: {distanceToPlayer:F2}");
-                }
-                else if (distanceToPlayer < minDistanceToPlayer * 0.5f)
-                {
-                    // ใกล้เกินไปมาก ถอยออกมา
-                    CurrentState = EnemyState.BackingOff;
-                    StateTimer = 0f;
-                    if (showDebugInfo)
-                        Debug.Log($"{CharacterName}: Player very close, backing off... Distance: {distanceToPlayer:F2}");
-                }
-                else
-                {
-                    // อยู่ในระยะที่ดี - โจมตีได้! เคลื่อนที่เล็กน้อยหรือหยุด
-                    if (useCircling && distanceToPlayer > minDistanceToPlayer)
-                    {
-                        Vector3 circleDirection = new Vector3(-directionToPlayer.z, 0, directionToPlayer.x);
-                        moveDirection = circleDirection * circlingSpeed * 0.3f;
-                    }
-                    else
-                    {
-                        moveDirection = Vector3.zero;
-                    }
-
-                    if (showDebugInfo && StateTimer > 1f) // แสดงทุก 1 วินาที
-                    {
-                        Debug.Log($"{CharacterName}: In attack state, ready to strike! Distance: {distanceToPlayer:F2}");
-                    }
-                }
+                moveDirection = HandleAttacking();
                 break;
         }
 
-        // หลีกเลี่ยงศัตรูตัวอื่น
-        Vector3 avoidanceForce = CalculateAvoidanceForce();
-        moveDirection += avoidanceForce;
+        // หลีกเลี่ยงศัตรูตัวอื่น (ยกเว้นตอน patrol)
+        if (CurrentState != EnemyState.Patrolling)
+        {
+            Vector3 avoidanceForce = CalculateAvoidanceForce();
+            moveDirection += avoidanceForce;
+        }
 
         // ทำให้เป็นทิศทางที่ถูกต้อง
         moveDirection.y = 0;
@@ -285,15 +303,173 @@ public class NetworkEnemy : Character
         }
 
         // เคลื่อนที่
+        ApplyMovement(moveDirection);
+
+        // Debug info
+        if (showDebugInfo)
+        {
+            string targetInfo = targetTransform != null ? $"Target: {targetTransform.name}" : "No Target";
+            Debug.Log($"{CharacterName}: State={CurrentState}, Timer={StateTimer:F1}, {targetInfo}");
+        }
+    }
+
+    // 🆕 Handler สำหรับ Patrolling State
+    private Vector3 HandlePatrolling()
+    {
+        totalPatrolTime += Runner.DeltaTime;
+
+        float distanceToTarget = Vector3.Distance(transform.position, PatrolTarget);
+
+        // ถ้าถึงจุดหมายแล้ว
+        if (distanceToTarget <= patrolTargetRadius)
+        {
+            PatrolWaitTimer += Runner.DeltaTime;
+
+            if (PatrolWaitTimer >= patrolWaitTime)
+            {
+                // หยุดพอแล้ว สร้างจุดหมายใหม่
+                if (returnToCenter && totalPatrolTime >= maxPatrolTime)
+                {
+                    // กลับไปจุดกลางถ้า patrol นานเกินไป
+                    PatrolTarget = PatrolCenter;
+                    totalPatrolTime = 0f;
+                    if (showDebugInfo)
+                    {
+                        Debug.Log($"{CharacterName}: Returning to patrol center");
+                    }
+                }
+                else
+                {
+                    GenerateNewPatrolTarget();
+                }
+            }
+
+            return Vector3.zero; // หยุดเคลื่อนที่ขณะรอ
+        }
+
+        // เดินไปหาจุดหมาย
+        Vector3 directionToTarget = (PatrolTarget - transform.position).normalized;
+        return directionToTarget;
+    }
+
+    // Handler สำหรับ Chasing State
+    private Vector3 HandleChasing()
+    {
+        if (targetTransform == null) return Vector3.zero;
+
+        Vector3 directionToPlayer = (targetTransform.position - transform.position).normalized;
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+
+        if (distanceToPlayer <= AttackRange && distanceToPlayer > minDistanceToPlayer * 0.7f)
+        {
+            // อยู่ในระยะโจมตีที่เหมาะสม เปลี่ยนเป็น Attacking
+            CurrentState = EnemyState.Attacking;
+            StateTimer = 0f;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Entering attack range! Distance: {distanceToPlayer:F2}");
+            return Vector3.zero;
+        }
+        else if (distanceToPlayer <= minDistanceToPlayer * 0.7f)
+        {
+            // เข้าใกล้เกินไป เปลี่ยนเป็น BackingOff
+            CurrentState = EnemyState.BackingOff;
+            StateTimer = 0f;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Too close! Backing off... Distance: {distanceToPlayer:F2}");
+        }
+
+        return directionToPlayer;
+    }
+
+    // Handler สำหรับ BackingOff State
+    private Vector3 HandleBackingOff()
+    {
+        if (targetTransform == null) return Vector3.zero;
+
+        Vector3 directionToPlayer = (targetTransform.position - transform.position).normalized;
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+        Vector3 moveDirection = -directionToPlayer * 1.2f; // ถอยเร็วหน่อย
+
+        if (StateTimer >= backOffTime || distanceToPlayer >= backOffDistance)
+        {
+            // ถอยพอแล้ว เปลี่ยนเป็น Positioning
+            CurrentState = EnemyState.Positioning;
+            StateTimer = 0f;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Finished backing off, positioning... Distance: {distanceToPlayer:F2}");
+        }
+
+        return moveDirection;
+    }
+
+    // Handler สำหรับ Positioning State
+    private Vector3 HandlePositioning()
+    {
+        if (StateTimer >= positionTime)
+        {
+            // พร้อมเข้าโจมตี
+            CurrentState = EnemyState.Chasing;
+            StateTimer = 0f;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Ready to chase again!");
+        }
+
+        return Vector3.zero; // หยุดชั่วคราว
+    }
+
+    // Handler สำหรับ Attacking State
+    private Vector3 HandleAttacking()
+    {
+        if (targetTransform == null) return Vector3.zero;
+
+        Vector3 directionToPlayer = (targetTransform.position - transform.position).normalized;
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+
+        if (distanceToPlayer > AttackRange * 1.3f)
+        {
+            // ผู้เล่นออกไปไกลเกินไป กลับไปไล่ตาม
+            CurrentState = EnemyState.Chasing;
+            StateTimer = 0f;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Player too far, chasing... Distance: {distanceToPlayer:F2}");
+        }
+        else if (distanceToPlayer < minDistanceToPlayer * 0.5f)
+        {
+            // ใกล้เกินไปมาก ถอยออกมา
+            CurrentState = EnemyState.BackingOff;
+            StateTimer = 0f;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Player very close, backing off... Distance: {distanceToPlayer:F2}");
+        }
+        else
+        {
+            // อยู่ในระยะที่ดี - โจมตีได้! เคลื่อนที่เล็กน้อยหรือหยุด
+            if (useCircling && distanceToPlayer > minDistanceToPlayer)
+            {
+                Vector3 circleDirection = new Vector3(-directionToPlayer.z, 0, directionToPlayer.x);
+                return circleDirection * circlingSpeed * 0.3f;
+            }
+        }
+
+        return Vector3.zero;
+    }
+
+    // ปรับปรุง ApplyMovement เพื่อรองรับ patrol speed
+    private void ApplyMovement(Vector3 moveDirection)
+    {
         if (moveDirection.magnitude > 0.1f)
         {
-            // ✅ 🌟 เปลี่ยน: ใช้ GetEffectiveMoveSpeed() แทน MoveSpeed
             float currentMoveSpeed = GetEffectiveMoveSpeed();
 
-            // เพิ่มความเร็วถ้าอยู่ในสถานะ BackingOff
-            if (CurrentState == EnemyState.BackingOff)
+            // ปรับความเร็วตาม state
+            switch (CurrentState)
             {
-                currentMoveSpeed *= 1.3f; // ถอยเร็วขึ้น
+                case EnemyState.Patrolling:
+                    currentMoveSpeed *= patrolSpeed; // ช้าลงเวลา patrol
+                    break;
+                case EnemyState.BackingOff:
+                    currentMoveSpeed *= 1.3f; // ถอยเร็วขึ้น
+                    break;
             }
 
             Vector3 newPosition = transform.position + moveDirection * currentMoveSpeed * Runner.DeltaTime;
@@ -307,15 +483,9 @@ public class NetworkEnemy : Character
             // หยุดการเคลื่อนที่
             rb.velocity = new Vector3(0, rb.velocity.y, 0);
         }
-
-        // Debug info
-        if (showDebugInfo)
-        {
-            Debug.Log($"{CharacterName}: State={CurrentState}, Timer={StateTimer:F1}, Distance={distanceToPlayer:F1}, CanAttack={CurrentState == EnemyState.Attacking}");
-        }
     }
 
-    // 🔧 ระบบหลีกเลี่ยงศัตรูตัวอื่น
+    // ========== 🔧 ระบบหลีกเลี่ยงศัตรูตัวอื่น ==========
     protected Vector3 CalculateAvoidanceForce()
     {
         Vector3 avoidanceForce = Vector3.zero;
@@ -442,7 +612,16 @@ public class NetworkEnemy : Character
             if (hero == null || !hero.IsSpawned) continue;
 
             float distance = Vector3.Distance(transform.position, hero.transform.position);
-            if (distance < detectRange && distance < nearestDistance)
+
+            // 🆕 ปรับการตรวจจับ: ใช้ detectRange สำหรับ patrol, แต่ยังติดตามต่อถ้าเคย detect แล้ว
+            float effectiveDetectRange = detectRange;
+            if (CurrentState != EnemyState.Patrolling)
+            {
+                // ถ้าไม่ได้อยู่ใน patrol state ให้ติดตามในระยะไกลขึ้น
+                effectiveDetectRange = detectRange * 1.5f;
+            }
+
+            if (distance < effectiveDetectRange && distance < nearestDistance)
             {
                 nearestDistance = distance;
                 nearestHero = hero;
@@ -504,7 +683,38 @@ public class NetworkEnemy : Character
         }
     }
 
+    // ========== 🎨 Debug Visualization ==========
+    private void OnDrawGizmosSelected()
+    {
+        if (!showPatrolGizmos) return;
 
+        // วาดพื้นที่ patrol
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(HasStateAuthority ? PatrolCenter : transform.position, patrolRange);
+
+        // วาดจุดกลาง patrol
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(HasStateAuthority ? PatrolCenter : transform.position, 0.5f);
+
+        // วาดจุดหมาย patrol ปัจจุบัน
+        if (HasStateAuthority && CurrentState == EnemyState.Patrolling)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(PatrolTarget, patrolTargetRadius);
+
+            // วาดเส้นไปยังจุดหมาย
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(transform.position, PatrolTarget);
+        }
+
+        // วาดระยะ detect
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, detectRange);
+
+        // วาดระยะโจมตี
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, AttackRange);
+    }
 
     #region // ========== Combat RPCs ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -677,6 +887,7 @@ public class NetworkEnemy : Character
     }
 
     #endregion
+
     // ========== 💥 Collision Damage System ==========
     public virtual void OnCollisionEnter(Collision collision)
     {
@@ -702,15 +913,15 @@ public class NetworkEnemy : Character
         }
     }
 
-   public virtual void OnCollisionExit(Collision collision)
-{
-    if (collision.gameObject.layer == LayerMask.NameToLayer("Player"))
+    public virtual void OnCollisionExit(Collision collision)
     {
-        isCollidingWithPlayer = false;
-        if (showDebugInfo)
-            Debug.Log($"{CharacterName}: Stopped colliding with player");
+        if (collision.gameObject.layer == LayerMask.NameToLayer("Player"))
+        {
+            isCollidingWithPlayer = false;
+            if (showDebugInfo)
+                Debug.Log($"{CharacterName}: Stopped colliding with player");
+        }
     }
-}
 
     private void TryDealCollisionDamage(GameObject playerObject)
     {
@@ -751,8 +962,4 @@ public class NetworkEnemy : Character
             }
         }
     }
-    
-
-    // ========== Context Menu Debug ==========
-    
 }

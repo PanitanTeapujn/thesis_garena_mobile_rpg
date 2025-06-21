@@ -207,6 +207,9 @@ MonoBehaviour:
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedScale: {x: 0, y: 0, z: 0}
+  _PatrolCenter: {x: 0, y: 0, z: 0}
+  _PatrolTarget: {x: 0, y: 0, z: 0}
+  _PatrolWaitTimer: 0
   detectRange: 10
   attackCheckInterval: 0.5
   _CurrentState: 0
@@ -215,6 +218,12 @@ MonoBehaviour:
   backOffTime: 1
   positionTime: 0.5
   rushSpeed: 3
+  patrolRange: 500
+  patrolSpeed: 1.5
+  patrolWaitTime: 2
+  patrolTargetRadius: 1
+  returnToCenter: 1
+  maxPatrolTime: 30
   minDistanceToPlayer: 1
   enemySpacing: 2
   enemyLayer:
@@ -224,6 +233,7 @@ MonoBehaviour:
   circlingSpeed: 0.5
   isCollidingWithPlayer: 0
   showDebugInfo: 0
+  showPatrolGizmos: 1
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
 --- !u!114 &-7581183126895598035
