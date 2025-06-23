@@ -4,22 +4,27 @@ using UnityEngine;
 using Fusion;
 using System;
 
+#region Data Classes
 [System.Serializable]
 public class StatusResistance
 {
+    #region  Base Resistance
     [Header("Physical Resistance (Stun, Armor Break, Blind, Weakness)")]
     [Range(0f, 80f)] public float physicalResistance = 5f;
 
     [Header("Magical Resistance (Poison, Burn, Bleed, Freeze)")]
     [Range(0f, 80f)] public float magicalResistance = 5f;
+    #endregion Base Resistance, Equipment & Rune Bonuses, และ Calculation Methods
 
+    #region Equipment & Rune Bonuses
     [Header("Equipment & Rune Bonuses")]
     public float equipmentPhysicalBonus = 0f;
     public float equipmentMagicalBonus = 0f;
     public float runePhysicalBonus = 0f;
     public float runeMagicalBonus = 0f;
+    #endregion
 
-    // คำนวณค่า resistance รวม
+    #region Calculation Methods
     public float GetTotalPhysicalResistance()
     {
         return Mathf.Clamp(physicalResistance + equipmentPhysicalBonus + runePhysicalBonus, 0f, 80f);
@@ -29,11 +34,13 @@ public class StatusResistance
     {
         return Mathf.Clamp(magicalResistance + equipmentMagicalBonus + runeMagicalBonus, 0f, 80f);
     }
+    #endregion
 }
 
 [System.Serializable]
 public class EquipmentStats
 {
+    #region Combat Stats
     [Header("Combat Stats")]
     public int attackDamageBonus = 0;
     public int magicDamageBonus = 0;
@@ -41,7 +48,9 @@ public class EquipmentStats
     public float criticalChanceBonus = 0f;
     public float criticalMultiplierBonus = 0f;
     public float reductionCoolDownBonus = 0f;
+    #endregion
 
+    #region Survival Stats
     [Header("Survival Stats")]
     public int maxHpBonus = 0;
     public int maxManaBonus = 0;
@@ -49,36 +58,48 @@ public class EquipmentStats
     public float attackSpeedBonus = 0f;
     public float hitRateBonus = 0f;
     public float evasionRateBonus = 0f;
+    #endregion
+
+    #region Status Resistance
     [Header("Status Resistance")]
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
+    #endregion
 }
 
 [System.Serializable]
 public class EquipmentData
 {
+    #region Equipment Properties
     public string itemName;
     public EquipmentStats stats;
     public Sprite itemIcon;
     // เพิ่ม properties อื่นๆ ตามต้องการ เช่น rarity, level requirement
+    #endregion
 }
+#endregion
 
 public class EquipmentManager : NetworkBehaviour
 {
+    #region - Event system สำหรับแจ้งเตือนการเปลี่ยนแปลง equipment และ resistance
+    public static event Action<Character, EquipmentStats> OnEquipmentChanged;
+    public static event Action<Character, StatusResistance> OnResistanceChanged;
+    #endregion Event system สำหรับแจ้งเตือนการเปลี่ยนแปลง equipment และ resistance
+
+    #region  การตั้งค่า base resistance และ current stats
     [Header("Equipment Settings")]
     public StatusResistance baseResistance = new StatusResistance();
 
     [Header("Current Equipment Stats")]
     public EquipmentStats currentEquipmentStats = new EquipmentStats();
     public EquipmentStats currentRuneStats = new EquipmentStats();
+    #endregion
 
-    public static event Action<Character, EquipmentStats> OnEquipmentChanged;
-    public static event Action<Character, StatusResistance> OnResistanceChanged;
-
-    // ========== Component References ==========
+    #region  อ้างอิงถึง Character component
     private Character character;
+    #endregion
 
-    // ========== Network Properties สำหรับ Equipment Stats ==========
+    #region Networked properties ทั้งหมดสำหรับ Fusion networking
     [Networked] public int NetworkedAttackDamageBonus { get; set; }
     [Networked] public int NetworkedMagicDamageBonus { get; set; }
     [Networked] public int NetworkedArmorBonus { get; set; }
@@ -93,7 +114,9 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedAttackSpeedBonus { get; set; }
     [Networked] public float NetworkedReductionCoolDown { get; set; }
     [Networked] public float NetworkedCriticalMultiplierBonus { get; set; }
+    #endregion
 
+    #region Unity Lifecycle & Initialization  Awake, Start, Spawned และการเริ่มต้นระบบ
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
@@ -116,8 +139,9 @@ public class EquipmentManager : NetworkBehaviour
             SyncEquipmentStats();
         }
     }
+    #endregion
 
-    // ========== Equipment Methods ==========
+    #region Equipment Management การใส่/ถอด equipment และการใช้ runes
     public virtual void EquipItem(EquipmentData equipment)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
@@ -181,8 +205,9 @@ public class EquipmentManager : NetworkBehaviour
             character.OnEquipmentStatsChanged(); // แจ้งให้ Inspector อัพเดท
         }
     }
+    #endregion
 
-    // ========== Stats Application ==========
+    #region Stats Application Methods การใช้ stats, การลบ stats, และการอัปเดต stats
     private void ApplyEquipmentStats()
     {
         character.AttackDamage += currentEquipmentStats.attackDamageBonus;
@@ -272,7 +297,6 @@ public class EquipmentManager : NetworkBehaviour
     {
         character.AttackDamage -= currentRuneStats.attackDamageBonus;
         character.MagicDamage -= currentRuneStats.magicDamageBonus;
-
         character.Armor -= currentRuneStats.armorBonus;
         character.CriticalChance -= currentRuneStats.criticalChanceBonus;
         character.MaxHp -= currentRuneStats.maxHpBonus;
@@ -286,7 +310,6 @@ public class EquipmentManager : NetworkBehaviour
         // Ensure stats don't go negative
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
         character.MagicDamage = Mathf.Max(1, character.MagicDamage);
-
         character.Armor = Mathf.Max(0, character.Armor);
         character.MaxHp = Mathf.Max(1, character.MaxHp);
         character.MaxMana = Mathf.Max(0, character.MaxMana);
@@ -295,8 +318,6 @@ public class EquipmentManager : NetworkBehaviour
         character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
         character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-
-
     }
 
     private void UpdateAllStats()
@@ -305,8 +326,9 @@ public class EquipmentManager : NetworkBehaviour
         ApplyRuneStats();
         UpdateResistanceBonuses();
     }
+    #endregion
 
-    // ========== Resistance Management ==========
+    #region Resistance Management การจัดการ status resistance และการคำนวณ
     private void UpdateResistanceBonuses()
     {
         baseResistance.equipmentPhysicalBonus = currentEquipmentStats.physicalResistanceBonus;
@@ -319,7 +341,18 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log($"[Resistance Updated] Physical: {GetTotalPhysicalResistance():F1}%, Magical: {GetTotalMagicalResistance():F1}%");
     }
 
-    // ========== Network Synchronization ==========
+    public float GetTotalPhysicalResistance()
+    {
+        return baseResistance.GetTotalPhysicalResistance();
+    }
+
+    public float GetTotalMagicalResistance()
+    {
+        return baseResistance.GetTotalMagicalResistance();
+    }
+    #endregion
+
+    #region Network Synchronization  การ sync equipment stats ผ่าน network
     private void SyncEquipmentStats()
     {
         if (HasStateAuthority)
@@ -346,8 +379,9 @@ public class EquipmentManager : NetworkBehaviour
             Debug.Log($"[Equipment Sync] {character.CharacterName}: Critical Multiplier Bonus = {totalStats.criticalMultiplierBonus}");
         }
     }
+    #endregion
 
-    // ========== Public Query Methods ==========
+    #region Public Query Methods  methods สำหรับดูข้อมูล stats ต่างๆ
     public int GetArmorBonus()
     {
         return currentEquipmentStats.armorBonus + currentRuneStats.armorBonus;
@@ -356,7 +390,8 @@ public class EquipmentManager : NetworkBehaviour
     public int GetAttackDamageBonus()
     {
         return currentEquipmentStats.attackDamageBonus + currentRuneStats.attackDamageBonus;
-    } 
+    }
+
     public int GetMagicDamageBonus()
     {
         return currentEquipmentStats.magicDamageBonus + currentRuneStats.magicDamageBonus;
@@ -365,16 +400,6 @@ public class EquipmentManager : NetworkBehaviour
     public float GetCriticalChanceBonus()
     {
         return currentEquipmentStats.criticalChanceBonus + currentRuneStats.criticalChanceBonus;
-    }
-
-    public float GetTotalPhysicalResistance()
-    {
-        return baseResistance.GetTotalPhysicalResistance();
-    }
-
-    public float GetTotalMagicalResistance()
-    {
-        return baseResistance.GetTotalMagicalResistance();
     }
 
     public float GetHitRateBonus()
@@ -386,6 +411,7 @@ public class EquipmentManager : NetworkBehaviour
     {
         return currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
     }
+
     public float GetCriticalMultiplierBonus()
     {
         float equipmentBonus = currentEquipmentStats.criticalMultiplierBonus;
@@ -400,14 +426,17 @@ public class EquipmentManager : NetworkBehaviour
 
         return totalBonus;
     }
+
     public float GetAttackSpeedBonus()
     {
         return currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
     }
+
     public float GetReductionCoolDownBonus()
     {
         return currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
     }
+
     public EquipmentStats GetTotalStats()
     {
         EquipmentStats total = new EquipmentStats();
@@ -415,6 +444,7 @@ public class EquipmentManager : NetworkBehaviour
         total.magicDamageBonus = currentEquipmentStats.magicDamageBonus + currentRuneStats.magicDamageBonus;
         total.armorBonus = currentEquipmentStats.armorBonus + currentRuneStats.armorBonus;
         total.criticalChanceBonus = currentEquipmentStats.criticalChanceBonus + currentRuneStats.criticalChanceBonus;
+        total.criticalMultiplierBonus = currentEquipmentStats.criticalMultiplierBonus + currentRuneStats.criticalMultiplierBonus;
         total.maxHpBonus = currentEquipmentStats.maxHpBonus + currentRuneStats.maxHpBonus;
         total.maxManaBonus = currentEquipmentStats.maxManaBonus + currentRuneStats.maxManaBonus;
         total.moveSpeedBonus = currentEquipmentStats.moveSpeedBonus + currentRuneStats.moveSpeedBonus;
@@ -426,201 +456,10 @@ public class EquipmentManager : NetworkBehaviour
         total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
         return total;
     }
-
-    // ========== Debug Methods ==========
-    public void LogCurrentStats()
-    {
-        EquipmentStats total = GetTotalStats();
-        Debug.Log($"=== {character.CharacterName} Equipment Stats ===");
-        Debug.Log($"⚔️ Attack Damage: +{total.attackDamageBonus}");
-        Debug.Log($"🛡️ Armor: +{total.armorBonus}");
-        Debug.Log($"💥 Critical Chance: +{total.criticalChanceBonus:F1}%");
-        Debug.Log($"❤️ Max HP: +{total.maxHpBonus}");
-        Debug.Log($"💙 Max Mana: +{total.maxManaBonus}");
-        Debug.Log($"🏃 Move Speed: +{total.moveSpeedBonus:F1}");
-        Debug.Log($"🛡️ Physical Resistance: {GetTotalPhysicalResistance():F1}%");
-        Debug.Log($"🔮 Magical Resistance: {GetTotalMagicalResistance():F1}%");
-        Debug.Log($"🎯 Hit Rate: +{total.hitRateBonus:F1}%");
-        Debug.Log($"💨 Evasion Rate: +{total.evasionRateBonus:F1}%");
-        Debug.Log($"⚡ Attack Speed: +{total.attackSpeedBonus:F1}x");
-
-    }
+    #endregion
 
 #if UNITY_EDITOR
-    // ========== Context Menu for Testing ==========
-
-    [ContextMenu("Test Equipment/Equip Iron Sword")]
-    private void TestEquipIronSword()
-    {
-        EquipmentData ironSword = CreateTestWeapon("Iron Sword", 15, 5,0, 5f, 0f, 0f, 2f,0f);
-        EquipItem(ironSword);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Equip Steel Sword")]
-    private void TestEquipSteelSword()
-    {
-        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25, 10,0, 8f, 0f, 0f, 3f,1f);
-        EquipItem(steelSword);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Equip Legendary Blade")]
-    private void TestEquipLegendaryBlade()
-    {
-        EquipmentData legendaryBlade = CreateTestWeapon("Legendary Blade", 50,30 ,0, 15f, 0.5f, 5f, 8f,3f);
-        EquipItem(legendaryBlade);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Equip Leather Armor")]
-    private void TestEquipLeatherArmor()
-    {
-        EquipmentData leatherArmor = CreateTestArmor("Leather Armor", 0, 10,5 ,0f, 50, 0, 0f,0f);
-        EquipItem(leatherArmor);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Equip Plate Armor")]
-    private void TestEquipPlateArmor()
-    {
-        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 25, 15,0f, 100, 0, -1f,2f);
-        EquipItem(plateArmor);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Equip Mage Robe")]
-    private void TestEquipMageRobe()
-    {
-        EquipmentData mageRobe = CreateTestArmor("Mage Robe", 0,10 ,5, 0f, 0, 100, 2f,5f);
-        EquipItem(mageRobe);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Apply Attack Rune")]
-    private void TestApplyAttackRune()
-    {
-        EquipmentStats attackRune = new EquipmentStats
-        {
-            attackDamageBonus = 20,
-            criticalChanceBonus = 10f,
-            hitRateBonus = 5f
-        };
-        ApplyRuneBonus(attackRune);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Apply Defense Rune")]
-    private void TestApplyDefenseRune()
-    {
-        EquipmentStats defenseRune = new EquipmentStats
-        {
-            armorBonus = 15,
-            maxHpBonus = 200,
-            physicalResistanceBonus = 10f,
-            magicalResistanceBonus = 10f
-        };
-        ApplyRuneBonus(defenseRune);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Apply Speed Rune")]
-    private void TestApplySpeedRune()
-    {
-        EquipmentStats speedRune = new EquipmentStats
-        {
-            moveSpeedBonus = 3f,
-            attackSpeedBonus = 0.5f,
-            evasionRateBonus = 8f
-        };
-        ApplyRuneBonus(speedRune);
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Unequip All")]
-    private void TestUnequipAll()
-    {
-        UnequipItem();
-        // Clear rune stats
-        currentRuneStats = new EquipmentStats();
-        RemoveRuneStats();
-        Debug.Log("=== All Equipment Removed ===");
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Show Current Stats")]
-    private void TestShowCurrentStats()
-    {
-        LogCurrentStats();
-        LogBaseCharacterStats();
-    }
-
-    [ContextMenu("Test Equipment/Show Network Stats")]
-    private void TestShowNetworkStats()
-    {
-        if (HasStateAuthority)
-        {
-            Debug.Log("=== Networked Equipment Stats ===");
-            Debug.Log($"⚔️ Networked Attack Damage Bonus: {NetworkedAttackDamageBonus}");
-            Debug.Log($"🛡️ Networked Armor Bonus: {NetworkedArmorBonus}");
-            Debug.Log($"💥 Networked Critical Chance Bonus: {NetworkedCriticalChanceBonus:F1}%");
-            Debug.Log($"❤️ Networked Max HP Bonus: {NetworkedMaxHpBonus}");
-            Debug.Log($"💙 Networked Max Mana Bonus: {NetworkedMaxManaBonus}");
-            Debug.Log($"🏃 Networked Move Speed Bonus: {NetworkedMoveSpeedBonus:F1}");
-            Debug.Log($"🎯 Networked Hit Rate Bonus: {NetworkedHitRateBonus:F1}%");
-            Debug.Log($"💨 Networked Evasion Rate Bonus: {NetworkedEvasionRateBonus:F1}%");
-            Debug.Log($"⚡ Networked Attack Speed Bonus: {NetworkedAttackSpeedBonus:F1}x");
-        }
-        else
-        {
-            Debug.Log("This client doesn't have StateAuthority - cannot show networked stats");
-        }
-    }
-
-    // Helper methods สำหรับสร้าง test equipment
-    private EquipmentData CreateTestWeapon(string name, int attackBonus,int magicBonus ,int armorBonus, float critChance,
-                                         float critMultiplier, float hitRate, float attackSpeed,float reductionCoolDown)
-    {
-        EquipmentData weapon = new EquipmentData
-        {
-            itemName = name,
-            stats = new EquipmentStats
-            {
-                attackDamageBonus = attackBonus,
-                magicDamageBonus = magicBonus,
-                armorBonus = armorBonus,
-                criticalChanceBonus = critChance,
-                criticalMultiplierBonus = critMultiplier,
-                hitRateBonus = hitRate,
-                attackSpeedBonus = attackSpeed,
-                reductionCoolDownBonus = reductionCoolDown
-            }
-        };
-        return weapon;
-    }
-
-    private EquipmentData CreateTestArmor(string name, int attackBonus,int magicBonus ,int armorBonus, float critChance,
-                                        int hpBonus, int manaBonus, float moveSpeed,float reductionCoolDown)
-    {
-        EquipmentData armor = new EquipmentData
-        {
-            itemName = name,
-            stats = new EquipmentStats
-            {
-                attackDamageBonus = attackBonus,
-                armorBonus = armorBonus,
-                magicDamageBonus = magicBonus,
-                criticalChanceBonus = critChance,
-                maxHpBonus = hpBonus,
-                maxManaBonus = manaBonus,
-                moveSpeedBonus = moveSpeed,
-                physicalResistanceBonus = armorBonus > 15 ? 5f : 2f, // Plate armor ให้ resistance มากกว่า
-                magicalResistanceBonus = manaBonus > 0 ? 8f : 1f,                // Mage robe ให้ magic resistance มากกว่า
-                reductionCoolDownBonus = reductionCoolDown
-            }
-        };
-        return armor;
-    }
+    #region Debug Methods (Editor Only)  debug methods สำหรับใช้ใน editor เท่านั้น
     public float GetCriticalMultiplierBonusRaw()
     {
         float equipmentBonus = currentEquipmentStats.criticalMultiplierBonus;
@@ -631,143 +470,6 @@ public class EquipmentManager : NetworkBehaviour
 
         return totalBonus;
     }
-    private void LogBaseCharacterStats()
-    {
-        Debug.Log($"=== {character.CharacterName} Base Character Stats ===");
-        Debug.Log($"⚔️ Current Attack Damage: {character.AttackDamage}");
-        Debug.Log($"🛡️ Current Armor: {character.Armor}");
-        Debug.Log($"💥 Current Critical Chance: {character.CriticalChance:F1}%");
-        Debug.Log($"🔥 Current Critical Multiplier: {character.CriticalDamageBonus:F1}x");
-        Debug.Log($"❤️ Current Max HP: {character.MaxHp} (Current: {character.CurrentHp})");
-        Debug.Log($"💙 Current Max Mana: {character.MaxMana} (Current: {character.CurrentMana})");
-        Debug.Log($"🏃 Current Move Speed: {character.MoveSpeed:F1}");
-        Debug.Log($"🎯 Current Hit Rate: {character.HitRate:F1}%");
-        Debug.Log($"💨 Current Evasion Rate: {character.EvasionRate:F1}%");
-        Debug.Log($"⚡ Current Attack Speed: {character.AttackSpeed:F1}x");
-
-        // แสดง effective speeds ด้วย
-        if (character is Hero hero)
-        {
-            Debug.Log($"🌟 Effective Move Speed: {hero.GetEffectiveMoveSpeed():F1}");
-            Debug.Log($"🌟 Effective Attack Speed: {hero.GetEffectiveAttackSpeed():F1}");
-        }
-    }
-
-    [ContextMenu("Test Equipment/Test Full Warrior Set")]
-    private void TestFullWarriorSet()
-    {
-        Debug.Log("=== Testing Full Warrior Equipment Set ===");
-
-        // Equip Steel Sword
-        EquipmentData steelSword = CreateTestWeapon("Steel Sword", 25,10 ,0, 8f, 0f, 5f, 3f,5f);
-        EquipItem(steelSword);
-
-        // Apply Attack Rune
-        EquipmentStats attackRune = new EquipmentStats
-        {
-            attackDamageBonus = 20,
-            criticalChanceBonus = 10f,
-            hitRateBonus = 5f,
-            attackSpeedBonus = 0.3f
-        };
-        ApplyRuneBonus(attackRune);
-
-        LogCurrentStats();
-        LogBaseCharacterStats();
-    }
-
-    [ContextMenu("Test Equipment/Test Full Tank Set")]
-    private void TestFullTankSet()
-    {
-        Debug.Log("=== Testing Full Tank Equipment Set ===");
-
-        // Equip Plate Armor
-        EquipmentData plateArmor = CreateTestArmor("Plate Armor", 0, 30,20, 0f, 150, 0, -1f,1f);
-        EquipItem(plateArmor);
-
-        // Apply Defense Rune
-        EquipmentStats defenseRune = new EquipmentStats
-        {
-            armorBonus = 20,
-            maxHpBonus = 250,
-            physicalResistanceBonus = 15f,
-            magicalResistanceBonus = 10f
-        };
-        ApplyRuneBonus(defenseRune);
-
-        LogCurrentStats();
-        LogBaseCharacterStats();
-    }
-#endif
-
-#if UNITY_EDITOR
-    [ContextMenu("Test Equipment/Test Critical Multiplier Equipment")]
-    private void TestCriticalMultiplierEquipment()
-    {
-        EquipmentData testWeapon = new EquipmentData
-        {
-            itemName = "Critical Test Weapon",
-            stats = new EquipmentStats
-            {
-                attackDamageBonus = 20,
-                criticalChanceBonus = 15f,
-                criticalMultiplierBonus = 2.0f, // ทดสอบด้วย 2.0
-                hitRateBonus = 10f
-            }
-        };
-
-        Debug.Log($"=== Testing Critical Multiplier Equipment ===");
-        Debug.Log($"Before Equip - Critical Multiplier: {character.CriticalDamageBonus}");
-        Debug.Log($"Equipment Critical Bonus: {testWeapon.stats.criticalMultiplierBonus}");
-
-        EquipItem(testWeapon);
-
-        Debug.Log($"After Equip - Critical Multiplier: {character.CriticalDamageBonus}");
-        Debug.Log($"Expected: {character.characterStats.criticalDamageBonus + testWeapon.stats.criticalMultiplierBonus}");
-
-        // ทดสอบการคำนวณ
-       
-
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Test Equipment/Test Critical Rune")]
-    private void TestCriticalRune()
-    {
-        EquipmentStats testRune = new EquipmentStats
-        {
-            criticalChanceBonus = 20f,
-            criticalMultiplierBonus = 1.5f, // ทดสอบด้วย 1.5
-            attackDamageBonus = 25
-        };
-
-        Debug.Log($"=== Testing Critical Multiplier Rune ===");
-        Debug.Log($"Before Rune - Critical Multiplier: {character.CriticalDamageBonus}");
-        Debug.Log($"Rune Critical Bonus: {testRune.criticalMultiplierBonus}");
-
-        ApplyRuneBonus(testRune);
-
-        Debug.Log($"After Rune - Critical Multiplier: {character.CriticalDamageBonus}");
-
-        LogCurrentStats();
-    }
-
-    [ContextMenu("Debug/Show Critical Multiplier Debug Info")]
-    private void ShowCriticalMultiplierDebug()
-    {
-        Debug.Log($"=== Critical Multiplier Debug Info ===");
-        Debug.Log($"Character Base: {character.characterStats?.criticalDamageBonus ?? 0f}");
-        Debug.Log($"Character Current: {character.CriticalDamageBonus}");
-        Debug.Log($"Equipment Bonus: {currentEquipmentStats.criticalMultiplierBonus}");
-        Debug.Log($"Rune Bonus: {currentRuneStats.criticalMultiplierBonus}");
-        Debug.Log($"GetCriticalMultiplierBonus(): {GetCriticalMultiplierBonus()}");
-        Debug.Log($"GetEffectiveCriticalMultiplier(): {character.GetEffectiveCriticalDamageBonus()}");
-
-        // ตรวจสอบ network sync
-        if (HasStateAuthority)
-        {
-            Debug.Log($"Network Synced Bonus: {NetworkedCriticalMultiplierBonus}");
-        }
-    }
+    #endregion
 #endif
 }

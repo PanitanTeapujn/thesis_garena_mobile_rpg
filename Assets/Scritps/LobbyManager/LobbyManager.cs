@@ -7,6 +7,7 @@ using System.Collections.Generic;
 
 public class LobbyManager : MonoBehaviour
 {
+    #region UI Components - ส่วนประกอบ UI ทั้งหมดของ Lobby
     [Header("UI Elements")]
     public TextMeshProUGUI playerNameText;
     public TextMeshProUGUI characterTypeText;
@@ -27,6 +28,11 @@ public class LobbyManager : MonoBehaviour
     public Button settingsButton;
     public Button logoutButton;
 
+    [Header("Character Selection")]
+    public Button characterSelectionButton;
+    #endregion
+
+    #region Party Management UI - ส่วน UI สำหรับจัดการปาร์ตี้และการเข้าร่วมห้อง
     [Header("Party Management")]
     public GameObject partyOptionsPanel;
     public Button createRoomButton;
@@ -38,15 +44,9 @@ public class LobbyManager : MonoBehaviour
     public TMP_InputField roomCodeInput;
     public Button joinButton;
     public Button backToPartyButton;
+    #endregion
 
-    [Header("References")]
-    public StageSelectionManager stageSelectionManager;
-    public InventoryManager inventoryManager;
-
-    [Header("Character Selection")]
-    public Button characterSelectionButton;
-   
-
+    #region Friends System UI - ระบบเพื่อนและการจัดการ Social Features
     [Header("Friends System")]
     public Button friendsButton;
     public GameObject friendsPanel;
@@ -55,27 +55,35 @@ public class LobbyManager : MonoBehaviour
     public Transform friendRequestsList;
     public Transform friendsList;
     public Button backFromFriendsButton;
+
     [Header("Friends Auto Refresh")]
     public Button refreshFriendsButton;
     public TextMeshProUGUI lastRefreshTimeText;
     public GameObject friendsLoadingIndicator;
 
+    // Prefabs สำหรับ Friends UI
+    public GameObject friendRequestItemPrefab;
+    public GameObject friendItemPrefab;
+    #endregion
 
-   
+    #region External References - การอ้างอิงถึง Manager และ Component อื่นๆ
+    [Header("References")]
+    public StageSelectionManager stageSelectionManager;
+    public InventoryManager inventoryManager;
+    #endregion
 
-
-    private Coroutine autoRefreshCoroutine;
-    private bool isRefreshing = false;
-    private System.DateTime lastRefreshTime;
-    // Prefabs สำหรับ UI
-    public GameObject friendRequestItemPrefab;  // ต้องสร้าง prefab สำหรับ friend request
-    public GameObject friendItemPrefab;         // ต้องสร้าง prefab สำหรับ friend list
-
-
+    #region Private Variables - ตัวแปรภายในสำหรับจัดการข้อมูลและสถานะ
     // Player data
     private CharacterProgressData currentCharacterData;
     private bool isPlayerDataLoaded = false;
 
+    // Friends auto refresh system
+    private Coroutine autoRefreshCoroutine;
+    private bool isRefreshing = false;
+    private System.DateTime lastRefreshTime;
+    #endregion
+
+    #region Unity Lifecycle & Initialization - การเริ่มต้นระบบเมื่อ Lobby เริ่มทำงาน
     void Start()
     {
         SetupEvents();
@@ -96,6 +104,23 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
+    void OnDestroy()
+    {
+        StageSelectionManager.OnSoloGameSelected -= HandleSoloGameSelected;
+        StageSelectionManager.OnPartyGameSelected -= HandlePartyGameSelected;
+        StageSelectionManager.OnBackToLobby -= HandleBackToLobby;
+    }
+
+    void OnApplicationFocus(bool hasFocus)
+    {
+        if (hasFocus)
+        {
+            StartCoroutine(DelayedRefresh());
+        }
+    }
+    #endregion
+
+    #region Event Setup - การตั้งค่า Events และ Button Listeners
     void SetupEvents()
     {
         StageSelectionManager.OnSoloGameSelected += HandleSoloGameSelected;
@@ -105,65 +130,38 @@ public class LobbyManager : MonoBehaviour
 
     void SetupButtons()
     {
+        // Main lobby buttons
         playButton.onClick.AddListener(ShowStageSelection);
         logoutButton.onClick.AddListener(Logout);
 
+        // Party management buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
         backToLobbyFromPartyButton.onClick.AddListener(BackToMainLobby);
 
+        // Join room panel buttons
         joinButton.onClick.AddListener(JoinRoom);
         backToPartyButton.onClick.AddListener(ShowPartyOptions);
 
+        // Feature buttons
         if (inventoryButton != null)
             inventoryButton.onClick.AddListener(ShowInventory);
+        if (characterSelectionButton != null)
+            characterSelectionButton.onClick.AddListener(OpenCharacterSelection);
 
+        // Friends system buttons
         if (friendsButton != null)
             friendsButton.onClick.AddListener(ShowFriendsPanel);
         if (searchFriendButton != null)
             searchFriendButton.onClick.AddListener(SearchFriend);
         if (backFromFriendsButton != null)
             backFromFriendsButton.onClick.AddListener(BackToMainLobby);
-        if (characterSelectionButton != null)
-            characterSelectionButton.onClick.AddListener(OpenCharacterSelection);
         if (refreshFriendsButton != null)
             refreshFriendsButton.onClick.AddListener(ManualRefreshFriends);
-        // In-lobby character selection buttons
-       
     }
+    #endregion
 
-    private void OpenCharacterSelection()
-    {
-        PlayerPrefs.SetString("LastScene", "Lobby");
-        SceneManager.LoadScene("CharacterSelection");
-    }
-
-    private void ShowCharacterSelectionPanel()
-    {
-        HideAllPanels();
-        
-    }
-
-    private void SwitchCharacter(string characterType)
-    {
-        Debug.Log($"[LobbyManager] Switching to character: {characterType}");
-
-        PersistentPlayerData.Instance.SwitchCharacter(characterType);
-        RefreshPlayerStats();
-
-        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var characterEnum))
-        {
-            PlayerSelectionData.SaveCharacterSelection(characterEnum);
-        }
-
-      
-
-        Debug.Log($"✅ [LobbyManager] Successfully switched to {characterType}");
-    }
-
-    
-
-    // ========== Stage Selection Events ==========
+    #region Stage Selection Event Handlers - จัดการเหตุการณ์จากการเลือก Stage
     void HandleSoloGameSelected(string sceneToLoad)
     {
         PlayerPrefs.SetString("GameMode", "Solo");
@@ -179,8 +177,9 @@ public class LobbyManager : MonoBehaviour
     {
         BackToMainLobby();
     }
+    #endregion
 
-    // ========== UI Navigation ==========
+    #region UI Navigation - การจัดการการนำทางและการแสดงผล Panel ต่างๆ
     void ShowStageSelection()
     {
         HideAllPanels();
@@ -202,21 +201,6 @@ public class LobbyManager : MonoBehaviour
         joinRoomPanel.SetActive(true);
     }
 
-    void BackToMainLobby()
-    {
-        HideAllPanels();
-    }
-
-    void HideAllPanels()
-    {
-        partyOptionsPanel.SetActive(false);
-        joinRoomPanel.SetActive(false);
-        if (friendsPanel != null)
-            friendsPanel.SetActive(false);
-        if (inventoryManager != null)
-            inventoryManager.HideInventory();
-
-    }
     void ShowInventory()
     {
         Debug.Log("📦 ShowInventory() called");
@@ -233,7 +217,52 @@ public class LobbyManager : MonoBehaviour
             Debug.LogError("❌ InventoryManager is NULL!");
         }
     }
-    // ========== Party Management ==========
+
+    void BackToMainLobby()
+    {
+        HideAllPanels();
+    }
+
+    void HideAllPanels()
+    {
+        partyOptionsPanel.SetActive(false);
+        joinRoomPanel.SetActive(false);
+        if (friendsPanel != null)
+            friendsPanel.SetActive(false);
+        if (inventoryManager != null)
+            inventoryManager.HideInventory();
+    }
+    #endregion
+
+    #region Character Management - การจัดการตัวละครและการเปลี่ยนตัวละคร
+    private void OpenCharacterSelection()
+    {
+        PlayerPrefs.SetString("LastScene", "Lobby");
+        SceneManager.LoadScene("CharacterSelection");
+    }
+
+    private void ShowCharacterSelectionPanel()
+    {
+        HideAllPanels();
+    }
+
+    private void SwitchCharacter(string characterType)
+    {
+        Debug.Log($"[LobbyManager] Switching to character: {characterType}");
+
+        PersistentPlayerData.Instance.SwitchCharacter(characterType);
+        RefreshPlayerStats();
+
+        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var characterEnum))
+        {
+            PlayerSelectionData.SaveCharacterSelection(characterEnum);
+        }
+
+        Debug.Log($"✅ [LobbyManager] Successfully switched to {characterType}");
+    }
+    #endregion
+
+    #region Party & Room Management - การจัดการห้องเกมและระบบปาร์ตี้
     void CreateRoom()
     {
         PlayerPrefs.SetString("GameMode", "Party");
@@ -262,8 +291,9 @@ public class LobbyManager : MonoBehaviour
     {
         SceneManager.LoadScene("CharacterSelection");
     }
+    #endregion
 
-    // ========== Player Data Management ==========
+    #region Player Data Management - การจัดการข้อมูลผู้เล่นและการแสดงผล Stats
     private void ShowBasicPlayerInfo()
     {
         string playerName = PlayerPrefs.GetString("PlayerName", "Unknown");
@@ -407,24 +437,15 @@ public class LobbyManager : MonoBehaviour
         }
     }
 
-    void OnApplicationFocus(bool hasFocus)
-    {
-        if (hasFocus)
-        {
-            StartCoroutine(DelayedRefresh());
-        }
-    }
-
     private IEnumerator DelayedRefresh()
     {
         yield return new WaitForSeconds(0.5f);
         RefreshPlayerStats();
         Debug.Log("[LobbyManager] Refreshed stats after returning to lobby");
     }
+    #endregion
 
-    #region Friends
-
-
+    #region Friends System - ระบบเพื่อนและการจัดการ Social Features
     void ShowFriendsPanel()
     {
         Debug.Log("👥 ShowFriendsPanel() called");
@@ -444,6 +465,7 @@ public class LobbyManager : MonoBehaviour
             Debug.LogError("❌ friendsPanel is NULL!");
         }
     }
+
     private IEnumerator RefreshWhenPanelOpened()
     {
         yield return new WaitForEndOfFrame();
@@ -482,7 +504,6 @@ public class LobbyManager : MonoBehaviour
         PersistentPlayerData.Instance.SendFriendRequest(friendName);
         searchFriendInput.text = "";
     }
-
 
     void RefreshFriendsList()
     {
@@ -620,7 +641,9 @@ public class LobbyManager : MonoBehaviour
         PersistentPlayerData.Instance.RemoveFriend(friendName);
         RefreshFriendsList();
     }
+    #endregion
 
+    #region Friends Auto Refresh System - ระบบ Auto Refresh สำหรับข้อมูลเพื่อน
     private IEnumerator DelayedLoadFriendRequests()
     {
         // รอให้ PersistentPlayerData โหลดเสร็จก่อน
@@ -749,16 +772,5 @@ public class LobbyManager : MonoBehaviour
             lastRefreshTimeText.text = $"Last updated: {lastRefreshTime:HH:mm:ss}";
         }
     }
-
     #endregion
-    // ========== Debug Methods ==========
-
-
-    void OnDestroy()
-    {
-        StageSelectionManager.OnSoloGameSelected -= HandleSoloGameSelected;
-        StageSelectionManager.OnPartyGameSelected -= HandlePartyGameSelected;
-        StageSelectionManager.OnBackToLobby -= HandleBackToLobby;
-    }
-   
 }

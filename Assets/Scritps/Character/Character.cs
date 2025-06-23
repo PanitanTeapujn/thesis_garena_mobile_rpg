@@ -10,10 +10,14 @@ public enum AttackType
     Magic,       // โจมตีด้วย MagicDamage อย่างเดียว
     Mixed        // โจมตีทั้งสองแบบ (ระบบเดิม)
 }
+
 public class Character : NetworkBehaviour
 {
-    #region Base Stats
+    #region Event system สำหรับแจ้งเตือนการเปลี่ยนแปลง stats
+    public static event Action OnStatsChanged;
+    #endregion
 
+    #region สถานะพื้นฐานทั้งหมด (HP, Mana, Attack, Critical, etc.)
     [Header("Base Stats")]
     public CharacterStats characterStats;
 
@@ -53,8 +57,8 @@ public class Character : NetworkBehaviour
     [Header("Critical Stats")]
     [SerializeField] private float criticalChance;
     public float CriticalChance { get { return criticalChance; } set { criticalChance = value; } }
-    [SerializeField]
-    private float criticalDamageBonus;
+
+    [SerializeField] private float criticalDamageBonus;
     public float CriticalDamageBonus { get { return criticalDamageBonus; } set { criticalDamageBonus = value; } }
 
     [SerializeField] private float hitRate;
@@ -67,39 +71,42 @@ public class Character : NetworkBehaviour
     public float AttackSpeed { get { return attackSpeed; } set { attackSpeed = value; } }
 
     [SerializeField] private float reductionCoolDown;
-    public float ReductionCoolDown {get{ return reductionCoolDown; }set { reductionCoolDown = value; } }
+    public float ReductionCoolDown { get { return reductionCoolDown; } set { reductionCoolDown = value; } }
 
     [Header("Attack Settings")]
     [SerializeField] private AttackType attackType = AttackType.Physical; // Default เป็น Physical
     public AttackType AttackType { get { return attackType; } set { attackType = value; } }
-
-
     #endregion
 
-
-    [Header("Regeneration Settings")]
-    [SerializeField] private float healthRegenPerSecond = 0.5f;
-    [SerializeField] private float manaRegenPerSecond = 1f;
-    private float healthRegenTimer = 0f;
-    private float manaRegenTimer = 0f;
-    private float regenTickInterval = 3f; // regen ทุก 1 วินาที
-    // ========== Network Properties ==========
+    #region Network Properties  สำหรับ Fusion networking
     [Networked] public int NetworkedCurrentHp { get; set; }
     [Networked] public int NetworkedMaxHp { get; set; }
     [Networked] public int NetworkedCurrentMana { get; set; }
     [Networked] public int NetworkedMaxMana { get; set; }
     [Networked] public bool IsNetworkStateReady { get; set; }
+    #endregion
 
+    #region Regeneration Settings การตั้งค่าการฟื้นฟู HP/Mana
+    [Header("Regeneration Settings")]
+    [SerializeField] private float healthRegenPerSecond = 0.5f;
+    [SerializeField] private float manaRegenPerSecond = 1f;
+    private float healthRegenTimer = 0f;
+    private float manaRegenTimer = 0f;
+    private float regenTickInterval = 3f; // regen ทุก 3 วินาที
+    #endregion
+
+    #region Component References การอ้างอิงถึง managers และ components อื่นๆ
     [Header("Physics")]
     public Rigidbody rb;
 
-    // ========== Component References ==========
     protected StatusEffectManager statusEffectManager;
     protected CombatManager combatManager;
     protected EquipmentManager equipmentManager;
     protected CharacterVisualManager visualManager;
     protected LevelManager levelManager;
+    #endregion
 
+    #region Unity Lifecycle & Initialization Awake, Start และการเริ่มต้นระบบต่างๆ
     protected virtual void Awake()
     {
         InitializeComponents();
@@ -109,8 +116,6 @@ public class Character : NetworkBehaviour
     protected virtual void Start()
     {
         InitializeStats();
-
-
     }
 
     private void InitializeComponents()
@@ -131,6 +136,7 @@ public class Character : NetworkBehaviour
         visualManager = GetComponent<CharacterVisualManager>();
         if (visualManager == null)
             visualManager = gameObject.AddComponent<CharacterVisualManager>();
+
         levelManager = GetComponent<LevelManager>();
         if (levelManager == null)
             levelManager = gameObject.AddComponent<LevelManager>();
@@ -174,13 +180,11 @@ public class Character : NetworkBehaviour
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
             attackType = characterStats.attackType;
-
-        }
-        else
-        {
         }
     }
-    // ========== Fusion Network Methods ==========
+    #endregion
+
+    #region Fusion Network Methods RPC, Spawned, FixedUpdateNetwork
     public override void Spawned()
     {
         base.Spawned();
@@ -205,9 +209,54 @@ public class Character : NetworkBehaviour
             NetworkedMaxHp = maxHp;
             NetworkedMaxMana = maxMana;
             ProcessRegeneration();
-
         }
     }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    protected virtual void RPC_RequestDeath()
+    {
+        // StateAuthority ตรวจสอบและตัดสินใจ
+        if (CanDie()) // เพิ่ม validation
+        {
+            RPC_OnDeath();
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    protected virtual void RPC_OnDeath()
+    {
+        Debug.Log($"{CharacterName} died!");
+        // Handle death logic here
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SyncHealthRegen(int newHp)
+    {
+        currentHp = newHp;
+        NetworkedCurrentHp = newHp;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SyncManaRegen(int newMana)
+    {
+        currentMana = newMana;
+        NetworkedCurrentMana = newMana;
+    }
+
+    public void ForceUpdateNetworkState()
+    {
+        if (HasStateAuthority)
+        {
+            NetworkedMaxHp = maxHp;
+            NetworkedCurrentHp = currentHp;
+            NetworkedMaxMana = maxMana;
+            NetworkedCurrentMana = currentMana;
+            IsNetworkStateReady = true;
+        }
+    }
+    #endregion
+
+    #region Damage Calculation Methods  การคำนวณดาเมจสำหรับ Attack Types ต่างๆ
     public virtual (int physicalDamage, int magicDamage) GetAttackDamages()
     {
         switch (attackType)
@@ -266,7 +315,6 @@ public class Character : NetworkBehaviour
         }
     }
 
-    // ✅ Method สำหรับ skill ที่ผสม ratio + flat
     public virtual (int physicalDamage, int magicDamage) GetAdvancedSkillDamages(
         float physicalRatio = 0f, float magicRatio = 0f,
         int flatPhysical = 0, int flatMagic = 0)
@@ -276,7 +324,9 @@ public class Character : NetworkBehaviour
 
         return (physDamage, magDamage);
     }
+    #endregion
 
+    #region Skill and Combat Methods Skills, การโจมตี, การรับดาเมจ, การรักษา
     public virtual void UseSkillOnTarget(Character target, AttackType skillType, float physicalRatio = 1f, float magicRatio = 1f, DamageType damageType = DamageType.Normal)
     {
         if (combatManager == null) return;
@@ -288,9 +338,6 @@ public class Character : NetworkBehaviour
         combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
     }
 
-    /// <summary>
-    /// ใช้สำหรับ Skills ที่ใช้ flat damage
-    /// </summary>
     public virtual void UseSkillOnTarget(Character target, AttackType skillType, int flatPhysical, int flatMagic, DamageType damageType = DamageType.Normal)
     {
         if (combatManager == null) return;
@@ -302,9 +349,6 @@ public class Character : NetworkBehaviour
         target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
     }
 
-    /// <summary>
-    /// ใช้สำหรับ Skills ขั้นสูงที่ผสม ratio + flat
-    /// </summary>
     public virtual void UseAdvancedSkillOnTarget(Character target,
         float physicalRatio = 0f, float magicRatio = 0f,
         int flatPhysical = 0, int flatMagic = 0,
@@ -318,11 +362,33 @@ public class Character : NetworkBehaviour
 
         target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
     }
-    // ========== Public Interface Methods ==========
 
-    /// <summary>
-    /// ใช้ status effect ผ่าน StatusEffectManager
-    /// </summary>
+    public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
+    {
+        if (combatManager == null) return;
+        combatManager.TakeDamage(damage, damageType, isCritical);
+    }
+
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    {
+        if (combatManager == null) return;
+        combatManager.TakeDamageFromAttacker(damage, attacker, damageType);
+    }
+
+    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
+    {
+        if (combatManager == null) return;
+        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
+    }
+
+    public void Heal(int amount)
+    {
+        if (combatManager == null) return;
+        combatManager.Heal(amount);
+    }
+    #endregion
+
+    #region Status Effect Methods การใช้และตรวจสอบ status effects
     public void ApplyStatusEffect(StatusEffectType effectType, int damage = 0, float duration = 0f, float amount = 0f)
     {
         if (statusEffectManager == null) return;
@@ -359,140 +425,6 @@ public class Character : NetworkBehaviour
         }
     }
 
-    /// <summary>
-    /// รับดาเมจผ่าน CombatManager
-    /// </summary>
-    public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
-    {
-        if (combatManager == null) return;
-        combatManager.TakeDamage(damage, damageType, isCritical);
-    }
-
-    /// <summary>
-    /// รับดาเมจจากผู้โจมตี ผ่าน CombatManager
-    /// </summary>
-    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
-    {
-        if (combatManager == null) return;
-        combatManager.TakeDamageFromAttacker(damage, attacker, damageType);
-    }
-
-    /// <summary>
-    /// ใส่ของผ่าน EquipmentManager
-    /// </summary>
-    public void EquipItem(EquipmentData equipment)
-    {
-        if (equipmentManager == null) return;
-        equipmentManager.EquipItem(equipment);
-    }
-
-    /// <summary>
-    /// ถอดของผ่าน EquipmentManager
-    /// </summary>
-    public void UnequipItem()
-    {
-        if (equipmentManager == null) return;
-        equipmentManager.UnequipItem();
-    }
-
-
-    /// <summary>
-    /// ใส่ rune ผ่าน EquipmentManager
-    /// </summary>
-    public void ApplyRune(EquipmentStats runeStats)
-    {
-        if (equipmentManager == null) return;
-        equipmentManager.ApplyRuneBonus(runeStats);
-    }
-
-    /// <summary>
-    /// รักษาผ่าน CombatManager
-    /// </summary>
-    public void Heal(int amount)
-    {
-        if (combatManager == null) return;
-        combatManager.Heal(amount);
-    }
-    private void ProcessRegeneration()
-    {
-        // Health Regeneration
-        if (currentHp < maxHp)
-        {
-            healthRegenTimer += Runner.DeltaTime;
-            if (healthRegenTimer >= regenTickInterval)
-            {
-                RegenerateHealth();
-                healthRegenTimer = 0f;
-            }
-        }
-
-        // Mana Regeneration
-        if (currentMana < maxMana)
-        {
-            manaRegenTimer += Runner.DeltaTime;
-            if (manaRegenTimer >= regenTickInterval)
-            {
-                RegenerateMana();
-                manaRegenTimer = 0f;
-            }
-        }
-    }
-    private void RegenerateHealth()
-    {
-        int regenAmount = Mathf.RoundToInt(healthRegenPerSecond);
-        int oldHp = currentHp;
-
-        currentHp = Mathf.Min(currentHp + regenAmount, maxHp);
-
-        if (currentHp > oldHp)
-        {
-            NetworkedCurrentHp = currentHp;
-
-            // ✅ Sync to all clients if this is StateAuthority
-            if (HasStateAuthority)
-            {
-                RPC_SyncHealthRegen(currentHp);
-            }
-        }
-    }
-
-    private void RegenerateMana()
-    {
-        int regenAmount = 1;
-        int oldMana = currentMana;
-
-        currentMana = Mathf.Min(currentMana + regenAmount, maxMana);
-
-        if (currentMana > oldMana)
-        {
-            NetworkedCurrentMana = currentMana;
-
-            // ✅ Sync to all clients if this is StateAuthority
-            if (HasStateAuthority)
-            {
-                RPC_SyncManaRegen(currentMana);
-            }
-        }
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_SyncHealthRegen(int newHp)
-    {
-        currentHp = newHp;
-        NetworkedCurrentHp = newHp;
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_SyncManaRegen(int newMana)
-    {
-        currentMana = newMana;
-        NetworkedCurrentMana = newMana;
-    }
-    // ========== Query Methods ==========
-
-    /// <summary>
-    /// เช็คว่ามี status effect หรือไม่
-    /// </summary>
     public bool HasStatusEffect(StatusEffectType effectType)
     {
         if (statusEffectManager == null) return false;
@@ -536,55 +468,108 @@ public class Character : NetworkBehaviour
                 return false;
         }
     }
+    #endregion
 
-    /// <summary>
-    /// ดู stats รวมจาก equipment
-    /// </summary>
+    #region Equipment Methods การจัดการอุปกรณ์และ runes
+    public void EquipItem(EquipmentData equipment)
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.EquipItem(equipment);
+    }
+
+    public void UnequipItem()
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.UnequipItem();
+    }
+
+    public void ApplyRune(EquipmentStats runeStats)
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.ApplyRuneBonus(runeStats);
+    }
+
     public EquipmentStats GetTotalEquipmentStats()
     {
         if (equipmentManager == null) return new EquipmentStats();
         return equipmentManager.GetTotalStats();
     }
 
-    /// <summary>
-    /// ดูเปอร์เซ็นต์เลือด
-    /// </summary>
-    public float GetHealthPercentage()
+    public void OnEquipmentStatsChanged()
     {
-        if (combatManager == null) return (float)currentHp / maxHp;
-        return combatManager.GetHealthPercentage();
+        // แจ้งให้ระบบอื่นๆ รู้ว่า stats เปลี่ยน (รวม Inspector)
+        OnStatsChanged?.Invoke();
+
+        Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
+    }
+    #endregion
+
+    #region Regeneration System ระบบการฟื้นฟู HP/Mana อัตโนมัติ
+    private void ProcessRegeneration()
+    {
+        // Health Regeneration
+        if (currentHp < maxHp)
+        {
+            healthRegenTimer += Runner.DeltaTime;
+            if (healthRegenTimer >= regenTickInterval)
+            {
+                RegenerateHealth();
+                healthRegenTimer = 0f;
+            }
+        }
+
+        // Mana Regeneration
+        if (currentMana < maxMana)
+        {
+            manaRegenTimer += Runner.DeltaTime;
+            if (manaRegenTimer >= regenTickInterval)
+            {
+                RegenerateMana();
+                manaRegenTimer = 0f;
+            }
+        }
     }
 
-    // ========== Utility Methods ==========
-    public bool IsSpawned => Object != null && Object.IsValid;
-
-    public void ForceUpdateNetworkState()
+    private void RegenerateHealth()
     {
-        if (HasStateAuthority)
+        int regenAmount = Mathf.RoundToInt(healthRegenPerSecond);
+        int oldHp = currentHp;
+
+        currentHp = Mathf.Min(currentHp + regenAmount, maxHp);
+
+        if (currentHp > oldHp)
         {
-            NetworkedMaxHp = maxHp;
             NetworkedCurrentHp = currentHp;
-            NetworkedMaxMana = maxMana;
-            NetworkedCurrentMana = currentMana;
-            IsNetworkStateReady = true;
-        }
-    }
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    protected virtual void RPC_RequestDeath()
-    {
-        // StateAuthority ตรวจสอบและตัดสินใจ
-        if (CanDie()) // เพิ่ม validation
-        {
-            RPC_OnDeath();
+
+            // ✅ Sync to all clients if this is StateAuthority
+            if (HasStateAuthority)
+            {
+                RPC_SyncHealthRegen(currentHp);
+            }
         }
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    protected virtual void RPC_OnDeath()
+    private void RegenerateMana()
     {
-        Debug.Log($"{CharacterName} died!");
-        // Handle death logic here
+        int regenAmount = 1;
+        int oldMana = currentMana;
+
+        currentMana = Mathf.Min(currentMana + regenAmount, maxMana);
+
+        if (currentMana > oldMana)
+        {
+            NetworkedCurrentMana = currentMana;
+
+            // ✅ Sync to all clients if this is StateAuthority
+            if (HasStateAuthority)
+            {
+                RPC_SyncManaRegen(currentMana);
+            }
+        }
     }
+    #endregion
+
+    #region Effective Stats Methods การคำนวณ stats ที่รวม buffs/debuffs
     public float GetEffectiveMoveSpeed()
     {
         float baseMoveSpeed = moveSpeed;
@@ -594,10 +579,6 @@ public class Character : NetworkBehaviour
         {
             float moveSpeedMultiplier = statusEffectManager.GetTotalMoveSpeedMultiplier();
             baseMoveSpeed *= moveSpeedMultiplier;
-
-            if (moveSpeedMultiplier > 1f)
-            {
-            }
         }
 
         // ✅ รวม Freeze effect (ใช้ระบบเดิม)
@@ -609,7 +590,7 @@ public class Character : NetworkBehaviour
         return baseMoveSpeed;
     }
 
-  public float GetEffectiveReductionCoolDown()
+    public float GetEffectiveReductionCoolDown()
     {
         float baseReductionCoolDown = reductionCoolDown;
         if (equipmentManager != null)
@@ -620,9 +601,6 @@ public class Character : NetworkBehaviour
         return baseReductionCoolDown;
     }
 
-    /// <summary>
-    /// ✅ 🌟 เพิ่ม: ดู Attack Speed รวม Aura
-    /// </summary>
     public float GetEffectiveAttackSpeed()
     {
         float baseAttackSpeed = attackSpeed;
@@ -632,28 +610,11 @@ public class Character : NetworkBehaviour
         {
             float attackSpeedMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
             baseAttackSpeed *= attackSpeedMultiplier;
-
-            if (attackSpeedMultiplier > 1f)
-            {
-            }
         }
 
         return baseAttackSpeed;
     }
 
-    /// <summary>
-    /// รับดาเมจจากผู้โจมตี แยก Physical และ Magic damage
-    /// </summary>
-    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
-    {
-        if (combatManager == null) return;
-        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
-    }
-    protected virtual bool CanDie()
-    {
-        return NetworkedCurrentHp <= 0;
-    }
-    /// ดู level ปัจจุบัน
     public float GetEffectiveCriticalDamageBonus()
     {
         float baseCritBonus = criticalDamageBonus;
@@ -673,9 +634,6 @@ public class Character : NetworkBehaviour
 
     public void UpdateCriticalDamageBonus(float newValue, bool forceNetworkSync = false)
     {
-        // ❌ ลบเงื่อนไข authorization ที่เข้มงวด
-        // if (!HasInputAuthority && !HasStateAuthority) return;
-
         float oldValue = criticalDamageBonus;
         criticalDamageBonus = newValue;
 
@@ -690,47 +648,52 @@ public class Character : NetworkBehaviour
         // ✅ Trigger event เพื่อแจ้ง UI และระบบอื่นๆ
         OnStatsChanged?.Invoke();
     }
-    public void OnEquipmentStatsChanged()
-    {
-        // แจ้งให้ระบบอื่นๆ รู้ว่า stats เปลี่ยน (รวม Inspector)
-        OnStatsChanged?.Invoke();
+    #endregion
 
-        Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
-    }
-    public static event Action OnStatsChanged;
-
+    #region Level and Experience Methods ระบบเลเวลและประสบการณ์
     public int GetCurrentLevel()
     {
         if (levelManager == null) return 1;
         return levelManager.CurrentLevel;
     }
-    /// ดู exp ปัจจุบัน
+
     public int GetCurrentExp()
     {
         if (levelManager == null) return 0;
         return levelManager.CurrentExp;
     }
+
     public float GetExpProgress()
     {
         if (levelManager == null) return 0f;
         return levelManager.GetExpProgress();
     }
+
     public void GainExp(int expAmount)
     {
         if (levelManager == null) return;
         levelManager.GainExp(expAmount);
     }
-    /// เช็คว่าถึง max level แล้วหรือยัง
 
     public bool IsMaxLevel()
     {
         if (levelManager == null) return false;
         return levelManager.IsMaxLevel();
     }
-    // ========== Debug Methods ==========
+    #endregion
 
-    // 🔧 เพิ่ม: Context Menu สำหรับทดสอบ critical multiplier ใน Editor
+    #region Query and Utility Methods ฟังก์ชันยูทิลิตี้และการค้นหาข้อมูล
+    public float GetHealthPercentage()
+    {
+        if (combatManager == null) return (float)currentHp / maxHp;
+        return combatManager.GetHealthPercentage();
+    }
 
+    protected virtual bool CanDie()
+    {
+        return NetworkedCurrentHp <= 0;
+    }
 
-  
+    public bool IsSpawned => Object != null && Object.IsValid;
+    #endregion
 }

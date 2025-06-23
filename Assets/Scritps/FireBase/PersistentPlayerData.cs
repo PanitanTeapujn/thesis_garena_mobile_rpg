@@ -6,6 +6,7 @@ using System.Collections.Generic;
 
 public class PersistentPlayerData : MonoBehaviour
 {
+    #region Variables and Properties  ตัวแปร, Singleton pattern และ Properties
     [Header("Multi-Character Data")]
     public MultiCharacterPlayerData multiCharacterData;
     public bool isDataLoaded = false;
@@ -32,7 +33,9 @@ public class PersistentPlayerData : MonoBehaviour
 
     public FirebaseAuth auth;
     private DatabaseReference databaseReference;
+    #endregion
 
+    #region Unity Lifecycle & Initialization Awake, Firebase initialization
     private void Awake()
     {
         if (_instance == null)
@@ -53,7 +56,26 @@ public class PersistentPlayerData : MonoBehaviour
         databaseReference = FirebaseDatabase.DefaultInstance.RootReference;
     }
 
-    // ========== Helper Methods ==========
+    private bool IsFirebaseReady()
+    {
+        if (auth == null)
+        {
+            Debug.LogError("❌ Firebase Auth is null");
+            return false;
+        }
+
+        if (databaseReference == null)
+        {
+            Debug.LogError("❌ Firebase Database Reference is null");
+            return false;
+        }
+
+        Debug.Log("✅ Firebase is ready");
+        return true;
+    }
+    #endregion
+
+    #region Helper Methods & Getters ฟังก์ชันช่วยต่างๆ สำหรับดึงข้อมูล
     public CharacterProgressData GetCurrentCharacterData()
     {
         if (multiCharacterData == null) return null;
@@ -95,7 +117,16 @@ public class PersistentPlayerData : MonoBehaviour
         return multiCharacterData.characters;
     }
 
-    // ========== Load/Save Methods ==========
+    public bool HasValidData()
+    {
+        return isDataLoaded &&
+               multiCharacterData != null &&
+               !string.IsNullOrEmpty(multiCharacterData.playerName) &&
+               GetCurrentCharacterData() != null;
+    }
+    #endregion
+
+    #region Data Loading & Saving การโหลดและบันทึกข้อมูล
     public void LoadPlayerDataAsync()
     {
         if (isDataLoaded) return;
@@ -157,62 +188,7 @@ public class PersistentPlayerData : MonoBehaviour
 
         RegisterPlayerInDirectory();
     }
-    private IEnumerator SendFriendRequestByUserIdCoroutine(string targetUserId)
-    {
-        Debug.Log($"🔍 Sending friend request to UserId: {targetUserId}");
 
-        // ตรวจสอบว่า userId นี้มีอยู่จริงหรือไม่
-        var checkTask = databaseReference.Child("players").Child(targetUserId).Child("playerName").GetValueAsync();
-        yield return new WaitUntil(() => checkTask.IsCompleted);
-
-        if (checkTask.Exception != null)
-        {
-            Debug.LogError($"❌ Error checking user: {checkTask.Exception.Message}");
-            yield break;
-        }
-
-        if (!checkTask.Result.Exists)
-        {
-            Debug.Log($"❌ User ID '{targetUserId}' not found!");
-            yield break;
-        }
-
-        string targetPlayerName = checkTask.Result.Value?.ToString();
-        Debug.Log($"✅ Found player: {targetPlayerName}");
-
-        // ตรวจสอบว่าเป็นตัวเองหรือไม่
-        if (targetUserId == auth.CurrentUser.UserId)
-        {
-            Debug.Log("❌ Cannot send friend request to yourself!");
-            yield break;
-        }
-
-        Debug.Log($"📤 Sending friend request to {targetPlayerName} (UserId: {targetUserId})");
-
-        // ส่ง friend request
-        var requestTask = databaseReference
-            .Child("players")
-            .Child(targetUserId)
-            .Child("pendingFriendRequests")
-            .Child(auth.CurrentUser.UserId)
-            .SetValueAsync(multiCharacterData.playerName);
-
-        yield return new WaitUntil(() => requestTask.IsCompleted);
-
-        if (requestTask.Exception == null)
-        {
-            Debug.Log($"✅ Friend request sent to {targetPlayerName}");
-        }
-        else
-        {
-            Debug.LogError($"❌ Failed to send friend request: {requestTask.Exception.Message}");
-        }
-    }
-    public void SendFriendRequestByUserId(string targetUserId)
-    {
-        if (!IsFirebaseReady()) return;
-        StartCoroutine(SendFriendRequestByUserIdCoroutine(targetUserId));
-    }
     private void CreateDefaultMultiCharacterData()
     {
         multiCharacterData = new MultiCharacterPlayerData();
@@ -282,7 +258,6 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.SetInt("PlayerArmor", currentCharacter.totalArmor);
         PlayerPrefs.SetFloat("PlayerCritChance", currentCharacter.totalCriticalChance);
         PlayerPrefs.SetFloat("PlayerCriticalDamageBonus", currentCharacter.totalCriticalDamageBonus);
-
         PlayerPrefs.SetFloat("PlayerMoveSpeed", currentCharacter.totalMoveSpeed);
         PlayerPrefs.SetFloat("PlayerHitRate", currentCharacter.totalHitRate);
         PlayerPrefs.SetFloat("PlayerEvasionRate", currentCharacter.totalEvasionRate);
@@ -291,7 +266,10 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.Save();
     }
 
-    // ========== Character Management ==========
+    public void ForceSave() => SavePlayerDataAsync();
+    #endregion
+
+    #region Character Management การจัดการตัวละคร
     public void SwitchCharacter(string characterType)
     {
         if (multiCharacterData == null) return;
@@ -318,17 +296,45 @@ public class PersistentPlayerData : MonoBehaviour
         SavePlayerDataAsync();
     }
 
-    // ========== Public Methods ==========
-    public bool HasValidData()
+    // Note: This method appears to be a duplicate with different parameters - consider removing or renaming
+    internal void UpdateLevelAndStats(int currentLevel, int currentExp, int expToNextLevel, int maxHp, int maxMana,
+        int attackDamage, int magicDamage, int armor, float criticalChance, float criticalmulti, float criticalMultiplier,
+        float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
-        return isDataLoaded &&
-               multiCharacterData != null &&
-               !string.IsNullOrEmpty(multiCharacterData.playerName) &&
-               GetCurrentCharacterData() != null;
+        throw new System.NotImplementedException();
+    }
+    #endregion
+
+    #region Player Directory & Registration การลงทะเบียนผู้เล่น
+    public void RegisterPlayerInDirectory()
+    {
+        if (auth?.CurrentUser == null || multiCharacterData == null) return;
+        StartCoroutine(RegisterPlayerInDirectoryCoroutine());
     }
 
+    private IEnumerator RegisterPlayerInDirectoryCoroutine()
+    {
+        Debug.Log($"📝 Registering {multiCharacterData.playerName} in player directory...");
 
-    #region Friends
+        var task = databaseReference
+            .Child("playerDirectory")
+            .Child(multiCharacterData.playerName)
+            .SetValueAsync(auth.CurrentUser.UserId);
+
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception == null)
+        {
+            Debug.Log($"✅ Player registered in directory successfully");
+        }
+        else
+        {
+            Debug.LogError($"❌ Failed to register in directory: {task.Exception.Message}");
+        }
+    }
+    #endregion
+
+    #region Friends System ระบบเพื่อนทั้งหมด
     public void SendFriendRequest(string targetPlayerName)
     {
         // ตรวจสอบการเชื่อมต่อ Firebase ก่อน
@@ -351,24 +357,6 @@ public class PersistentPlayerData : MonoBehaviour
         }
 
         StartCoroutine(SendFriendRequestCoroutine(targetPlayerName));
-    }
-
-    private bool IsFirebaseReady()
-    {
-        if (auth == null)
-        {
-            Debug.LogError("❌ Firebase Auth is null");
-            return false;
-        }
-
-        if (databaseReference == null)
-        {
-            Debug.LogError("❌ Firebase Database Reference is null");
-            return false;
-        }
-
-        Debug.Log("✅ Firebase is ready");
-        return true;
     }
 
     private IEnumerator SendFriendRequestCoroutine(string targetPlayerName)
@@ -462,37 +450,64 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
-    internal void UpdateLevelAndStats(int currentLevel, int currentExp, int expToNextLevel, int maxHp, int maxMana, int attackDamage, int magicDamage, int armor, float criticalChance, float criticalmulti , float criticalMultiplier, float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
+    public void SendFriendRequestByUserId(string targetUserId)
     {
-        throw new System.NotImplementedException();
+        if (!IsFirebaseReady()) return;
+        StartCoroutine(SendFriendRequestByUserIdCoroutine(targetUserId));
     }
 
-    public void RegisterPlayerInDirectory()
+    private IEnumerator SendFriendRequestByUserIdCoroutine(string targetUserId)
     {
-        if (auth?.CurrentUser == null || multiCharacterData == null) return;
-        StartCoroutine(RegisterPlayerInDirectoryCoroutine());
-    }
+        Debug.Log($"🔍 Sending friend request to UserId: {targetUserId}");
 
-    private IEnumerator RegisterPlayerInDirectoryCoroutine()
-    {
-        Debug.Log($"📝 Registering {multiCharacterData.playerName} in player directory...");
+        // ตรวจสอบว่า userId นี้มีอยู่จริงหรือไม่
+        var checkTask = databaseReference.Child("players").Child(targetUserId).Child("playerName").GetValueAsync();
+        yield return new WaitUntil(() => checkTask.IsCompleted);
 
-        var task = databaseReference
-            .Child("playerDirectory")
-            .Child(multiCharacterData.playerName)
-            .SetValueAsync(auth.CurrentUser.UserId);
-
-        yield return new WaitUntil(() => task.IsCompleted);
-
-        if (task.Exception == null)
+        if (checkTask.Exception != null)
         {
-            Debug.Log($"✅ Player registered in directory successfully");
+            Debug.LogError($"❌ Error checking user: {checkTask.Exception.Message}");
+            yield break;
+        }
+
+        if (!checkTask.Result.Exists)
+        {
+            Debug.Log($"❌ User ID '{targetUserId}' not found!");
+            yield break;
+        }
+
+        string targetPlayerName = checkTask.Result.Value?.ToString();
+        Debug.Log($"✅ Found player: {targetPlayerName}");
+
+        // ตรวจสอบว่าเป็นตัวเองหรือไม่
+        if (targetUserId == auth.CurrentUser.UserId)
+        {
+            Debug.Log("❌ Cannot send friend request to yourself!");
+            yield break;
+        }
+
+        Debug.Log($"📤 Sending friend request to {targetPlayerName} (UserId: {targetUserId})");
+
+        // ส่ง friend request
+        var requestTask = databaseReference
+            .Child("players")
+            .Child(targetUserId)
+            .Child("pendingFriendRequests")
+            .Child(auth.CurrentUser.UserId)
+            .SetValueAsync(multiCharacterData.playerName);
+
+        yield return new WaitUntil(() => requestTask.IsCompleted);
+
+        if (requestTask.Exception == null)
+        {
+            Debug.Log($"✅ Friend request sent to {targetPlayerName}");
         }
         else
         {
-            Debug.LogError($"❌ Failed to register in directory: {task.Exception.Message}");
+            Debug.LogError($"❌ Failed to send friend request: {requestTask.Exception.Message}");
         }
     }
+
     public void AcceptFriendRequest(string requesterName)
     {
         if (auth?.CurrentUser == null || multiCharacterData == null) return;
@@ -586,6 +601,7 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"❌ Exception while checking accept friend results: {e.Message}");
         }
     }
+
     public void RejectFriendRequest(string requesterName)
     {
         if (multiCharacterData == null) return;
@@ -616,7 +632,6 @@ public class PersistentPlayerData : MonoBehaviour
         return multiCharacterData?.pendingFriendRequests ?? new List<string>();
     }
 
-    // ========== Load Friend Requests from Firebase ==========
     public void LoadFriendRequestsFromFirebase()
     {
         if (auth?.CurrentUser == null) return;
@@ -674,65 +689,6 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.LogError($"❌ Exception while loading friend requests: {e.Message}");
         }
-    }
-    #endregion
-    public void ForceSave() => SavePlayerDataAsync();
-
-    // ========== Debug Methods ==========
-
-    [ContextMenu("Debug All Players")]
-    public void DebugAllPlayers()
-    {
-        StartCoroutine(DebugAllPlayersCoroutine());
-    }
-
-    private IEnumerator DebugAllPlayersCoroutine()
-    {
-        Debug.Log("🔍 Fetching all players from Firebase...");
-
-        var task = databaseReference.Child("players").GetValueAsync();
-        yield return new WaitUntil(() => task.IsCompleted);
-
-        if (task.Exception != null)
-        {
-            Debug.LogError($"❌ Error: {task.Exception.Message}");
-            yield break;
-        }
-
-        if (!task.Result.Exists)
-        {
-            Debug.Log("❌ No players found!");
-            yield break;
-        }
-
-        Debug.Log($"📊 Found {task.Result.ChildrenCount} players:");
-
-        foreach (var player in task.Result.Children)
-        {
-            var playerData = player;
-            string userId = player.Key;
-
-            // แสดงข้อมูลแบบละเอียด
-            Debug.Log($"\n👤 Player: {userId}");
-
-            if (playerData.HasChild("playerName"))
-            {
-                string playerName = playerData.Child("playerName").Value?.ToString();
-                Debug.Log($"   📝 Name: '{playerName}'");
-            }
-            else
-            {
-                Debug.Log($"   ❌ No playerName field");
-            }
-
-            // แสดง JSON structure
-            string json = playerData.GetRawJsonValue();
-            if (!string.IsNullOrEmpty(json) && json.Length < 500)
-            {
-                Debug.Log($"   📄 Data: {json}");
-            }
-        }
-
     }
 
     public IEnumerator RefreshFriendRequestsCoroutine()
@@ -821,9 +777,67 @@ public class PersistentPlayerData : MonoBehaviour
         int newCount = multiCharacterData.friends.Count;
         Debug.Log($"👥 Friends: {oldCount} → {newCount}");
     }
+    #endregion
 
+    #region Debug Methods ฟังก์ชันสำหรับ debug
+    [ContextMenu("Debug All Players")]
+    public void DebugAllPlayers()
+    {
+        StartCoroutine(DebugAllPlayersCoroutine());
+    }
+
+    private IEnumerator DebugAllPlayersCoroutine()
+    {
+        Debug.Log("🔍 Fetching all players from Firebase...");
+
+        var task = databaseReference.Child("players").GetValueAsync();
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"❌ Error: {task.Exception.Message}");
+            yield break;
+        }
+
+        if (!task.Result.Exists)
+        {
+            Debug.Log("❌ No players found!");
+            yield break;
+        }
+
+        Debug.Log($"📊 Found {task.Result.ChildrenCount} players:");
+
+        foreach (var player in task.Result.Children)
+        {
+            var playerData = player;
+            string userId = player.Key;
+
+            // แสดงข้อมูลแบบละเอียด
+            Debug.Log($"\n👤 Player: {userId}");
+
+            if (playerData.HasChild("playerName"))
+            {
+                string playerName = playerData.Child("playerName").Value?.ToString();
+                Debug.Log($"   📝 Name: '{playerName}'");
+            }
+            else
+            {
+                Debug.Log($"   ❌ No playerName field");
+            }
+
+            // แสดง JSON structure
+            string json = playerData.GetRawJsonValue();
+            if (!string.IsNullOrEmpty(json) && json.Length < 500)
+            {
+                Debug.Log($"   📄 Data: {json}");
+            }
+        }
+    }
+
+    // Note: This method is not implemented - consider implementing or removing
     internal void CheckFirebaseStatus()
     {
         throw new System.NotImplementedException();
     }
+    #endregion
 }

@@ -5,6 +5,7 @@ using Fusion;
 using System;
 using UnityEngine.SceneManagement;
 
+#region Enums & Events - การกำหนดประเภทดาเมจและ Event System สำหรับแจ้งเตือนเหตุการณ์ต่างๆ
 public enum DamageType
 {
     Normal,
@@ -19,15 +20,19 @@ public enum DamageType
 
 public class CombatManager : NetworkBehaviour
 {
+    // Combat Events
     public static event Action<Character, int, DamageType, bool> OnDamageTaken;
     public static event Action<Character> OnCharacterDeath;
     public static event Action<Character, int> OnCharacterHealed;
+    #endregion
 
-    // ========== Component References ==========
+    #region Component References - การอ้างอิงถึง Component และ Manager อื่นๆ ที่จำเป็นสำหรับระบบต่อสู้
     private Character character;
     private StatusEffectManager statusEffectManager;
     private EquipmentManager equipmentManager;
+    #endregion
 
+    #region Unity Lifecycle & Initialization - การเริ่มต้นและจัดการ Component เมื่อระบบทำงาน
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
@@ -44,8 +49,9 @@ public class CombatManager : NetworkBehaviour
     {
         StatusEffectManager.OnStatusDamage -= HandleStatusDamage;
     }
+    #endregion
 
-    // ========== Network RPC Methods for Damage Text ==========
+    #region Network RPC Methods - การส่งข้อมูลผ่าน Network สำหรับแสดง Damage Text และ Effect
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowDamageText(Vector3 position, int damage, DamageType damageType, bool isCritical, bool isHeal = false, bool isMiss = false)
     {
@@ -80,8 +86,9 @@ public class CombatManager : NetworkBehaviour
     {
         DamageTextManager.ShowStatusDamage(position, damage, effectType);
     }
+    #endregion
 
-    // ========== Hit Calculation ==========
+    #region Hit Calculation & Combat Mechanics - การคำนวณความแม่นยำในการโจมตีและ Attack Speed
     private bool CalculateHitSuccess(Character attacker, Character target)
     {
         float attackerHitRate = attacker.HitRate;
@@ -142,8 +149,9 @@ public class CombatManager : NetworkBehaviour
         float finalCooldown = baseAttackCooldown / Mathf.Max(0.1f, attackSpeedMultiplier);
         return finalCooldown;
     }
+    #endregion
 
-    // ========== Main Damage System ==========
+    #region Main Damage System - ระบบรับดาเมจหลักที่รองรับทั้ง Physical และ Magic Damage
     public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
@@ -188,17 +196,12 @@ public class CombatManager : NetworkBehaviour
             RPC_ShowDamageText(textPosition, totalDamage, damageType, isCritical, false, false);
         }
 
-        // ✅ แก้ไข: ไม่ fire OnDamageTaken event เพื่อป้องกัน duplicate damage text
-        // OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
-
         // Check death
         if (character.CurrentHp <= 0)
         {
             HandleDeath();
         }
     }
-
-    // ========== แก้ไข TakeDamage ==========
 
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
@@ -220,9 +223,6 @@ public class CombatManager : NetworkBehaviour
             RPC_ShowDamageText(textPosition, finalDamage, damageType, isCritical, false, false);
         }
 
-        // ✅ แก้ไข: ไม่ fire OnDamageTaken event เพื่อป้องกัน duplicate damage text
-        // OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
-
         // Check death
         if (character.CurrentHp <= 0)
         {
@@ -230,15 +230,14 @@ public class CombatManager : NetworkBehaviour
         }
     }
 
-
-
     public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
         TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
     }
+    #endregion
 
-    // ========== Status Effect Damage Handler ==========
+    #region Status Effect Damage Handler - การจัดการดาเมจจาก Status Effects เช่น Poison, Burn, Bleed
     private void HandleStatusDamage(Character targetCharacter, int damage, DamageType damageType)
     {
         if (targetCharacter == character)
@@ -268,9 +267,6 @@ public class CombatManager : NetworkBehaviour
                 }
             }
 
-            // ✅ แก้ไข: ไม่ fire event เพื่อป้องกัน duplicate damage text 
-            // (Status damage ไม่ควรแสดงผ่าน normal damage text system อยู่แล้ว)
-
             // Check death
             if (character.CurrentHp <= 0)
             {
@@ -278,8 +274,9 @@ public class CombatManager : NetworkBehaviour
             }
         }
     }
+    #endregion
 
-    // ========== Damage Calculations ==========
+    #region Damage Calculations - การคำนวณดาเมจสุดท้าย รวม Critical, Armor, Resistance และ Auras
     private int CalculateFinalDamage(int baseDamage, bool isCritical, DamageType damageType)
     {
         if (baseDamage <= 0) return 0;
@@ -445,8 +442,9 @@ public class CombatManager : NetworkBehaviour
 
         return modifiedDamage;
     }
+    #endregion
 
-    // ========== Network Synchronization ==========
+    #region Network Synchronization - การ Sync ข้อมูล Health ผ่าน Network สำหรับ Multiplayer
     private void SyncHealthUpdate()
     {
         if (HasStateAuthority)
@@ -473,8 +471,9 @@ public class CombatManager : NetworkBehaviour
     {
         character.NetworkedCurrentHp = newHp;
     }
+    #endregion
 
-    // ========== Death System ==========
+    #region Death System - ระบบการตายและการจัดการเมื่อตัวละครมี HP เหลือ 0
     private void HandleDeath()
     {
         if (HasStateAuthority)
@@ -508,8 +507,9 @@ public class CombatManager : NetworkBehaviour
     {
         return character.NetworkedCurrentHp <= 0;
     }
+    #endregion
 
-    // ========== Public Methods ==========
+    #region Healing System - ระบบการรักษาและการฟื้นฟู HP
     public void Heal(int amount)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
@@ -531,15 +531,21 @@ public class CombatManager : NetworkBehaviour
 
         SyncHealthUpdate();
     }
+    #endregion
+
+    #region Public Query Methods - Methods สำหรับดูข้อมูลและสถานะต่างๆ ของตัวละคร
     public void FireDamageEvent(int damage, DamageType damageType, bool isCritical)
     {
         OnDamageTaken?.Invoke(character, damage, damageType, isCritical);
     }
+
     public float GetHealthPercentage()
     {
         return (float)character.CurrentHp / character.MaxHp;
     }
+    #endregion
 
+    #region Debug Methods - Methods สำหรับ Debug และทดสอบระบบ Combat
     public void DebugCriticalStats()
     {
         if (character == null) return;
@@ -572,4 +578,5 @@ public class CombatManager : NetworkBehaviour
         // Show stats
         DebugCriticalStats();
     }
+    #endregion
 }

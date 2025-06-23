@@ -5,6 +5,7 @@ using System;
 [System.Serializable]
 public class MultiCharacterPlayerData
 {
+    #region Variables and Properties  ตัวแปรทั้งหมดรวมถึงข้อมูลผู้เล่น, ตัวละคร, และระบบเพื่อน
     [Header("Player Info")]
     public string playerName;
     public string password;
@@ -17,9 +18,14 @@ public class MultiCharacterPlayerData
 
     [Header("Stage Progress")]
     public StageProgressData stageProgress = new StageProgressData();
+
     [Header("Friends System")]
     public List<string> friends = new List<string>();
     public List<string> pendingFriendRequests = new List<string>();
+    #endregion
+
+    #region Constructor and Initialization Constructor และฟังก์ชันสร้างตัวละครเริ่มต้น
+
     public MultiCharacterPlayerData()
     {
         playerName = "";
@@ -65,33 +71,6 @@ public class MultiCharacterPlayerData
         }
 
         characters.Add(defaultAssassin);
-    }
-
-    public CharacterProgressData GetCharacterData(string characterType)
-    {
-        return characters.Find(c => c.characterType == characterType);
-    }
-
-    public CharacterProgressData GetOrCreateCharacterData(string characterType)
-    {
-        CharacterProgressData existing = GetCharacterData(characterType);
-        if (existing != null)
-            return existing;
-
-        CharacterProgressData newCharacter = CreateDefaultCharacterData(characterType);
-        characters.Add(newCharacter);
-        return newCharacter;
-    }
-
-    public CharacterProgressData GetActiveCharacterData()
-    {
-        return GetOrCreateCharacterData(currentActiveCharacter);
-    }
-
-    public void SwitchActiveCharacter(string characterType)
-    {
-        currentActiveCharacter = characterType;
-        GetOrCreateCharacterData(characterType);
     }
 
     public CharacterProgressData CreateDefaultCharacterData(string characterType)
@@ -144,10 +123,40 @@ public class MultiCharacterPlayerData
         }
         return newCharacter;
     }
+    #endregion
+
+    #region Character Management การจัดการตัวละคร (ดึงข้อมูล, สร้าง, เปลี่ยน, อัปเดต)
+    public CharacterProgressData GetCharacterData(string characterType)
+    {
+        return characters.Find(c => c.characterType == characterType);
+    }
+
+    public CharacterProgressData GetOrCreateCharacterData(string characterType)
+    {
+        CharacterProgressData existing = GetCharacterData(characterType);
+        if (existing != null)
+            return existing;
+
+        CharacterProgressData newCharacter = CreateDefaultCharacterData(characterType);
+        characters.Add(newCharacter);
+        return newCharacter;
+    }
+
+    public CharacterProgressData GetActiveCharacterData()
+    {
+        return GetOrCreateCharacterData(currentActiveCharacter);
+    }
+
+    public void SwitchActiveCharacter(string characterType)
+    {
+        currentActiveCharacter = characterType;
+        GetOrCreateCharacterData(characterType);
+    }
 
     public void UpdateCharacterStats(string characterType, int level, int exp, int expToNext,
-        int maxHp, int maxMana, int attackDamage,int magicDamage ,int armor, float critChance,float critDamageBonus, float moveSpeed,
-        float hitRate, float evasion, float attackSpeed,float reductionCoolDown)
+        int maxHp, int maxMana, int attackDamage, int magicDamage, int armor, float critChance,
+        float critDamageBonus, float moveSpeed, float hitRate, float evasion, float attackSpeed,
+        float reductionCoolDown)
     {
         CharacterProgressData character = GetOrCreateCharacterData(characterType);
         character.currentLevel = level;
@@ -166,14 +175,18 @@ public class MultiCharacterPlayerData
         character.totalAttackSpeed = attackSpeed;
         character.totalReductionCoolDown = reductionCoolDown;
     }
+    #endregion
 
+    #region Data Validation and Utility  ฟังก์ชันตรวจสอบความถูกต้องของข้อมูล
     public bool IsValid()
     {
         return !string.IsNullOrEmpty(playerName) &&
                !string.IsNullOrEmpty(currentActiveCharacter) &&
                characters.Count > 0;
     }
+    #endregion
 
+    #region Debug Methods ฟังก์ชันสำหรับ debug และแสดงข้อมูล
     public void LogAllCharacters()
     {
         Debug.Log($"=== {playerName}'s Characters ===");
@@ -185,31 +198,54 @@ public class MultiCharacterPlayerData
                      $"(HP: {character.totalMaxHp}, ATK: {character.totalAttackDamage})");
         }
     }
+    #endregion
 }
 
 [System.Serializable]
 public class CharacterProgressData
 {
+    #region Character Identity
     public string characterType;
+    #endregion ชื่อประเภทตัวละคร
 
+    #region Level and Experience เลเวลและประสบการณ์
     [Header("Level Progress")]
     public int currentLevel = 1;
     public int currentExp = 0;
     public int expToNextLevel = 100;
+    #endregion
 
-    [Header("Character Stats")]
+    #region Basic Combat Stats สถานะพื้นฐาน (HP, Mana, Attack, Magic, Armor)
+    [Header("Basic Stats")]
     public int totalMaxHp;
     public int totalMaxMana;
     public int totalAttackDamage;
-    public int totalArmor;
     public int totalMagicDamage;
+    public int totalArmor;
+    #endregion
+
+    #region Critical Strike Stats สถานะ Critical Strike
+    [Header("Critical Strike")]
     public float totalCriticalChance;
     public float totalCriticalDamageBonus;
+    #endregion
+
+    #region Movement and Attack Stats ความเร็ว, ระยะโจมตี, คูลดาวน์
+    [Header("Movement & Attack")]
     public float totalMoveSpeed;
     public float totalAttackRange;
     public float totalAttackCooldown;
+    public float totalAttackSpeed;
+    #endregion
+
+    #region Accuracy and Defense Stats  Hit Rate และ Evasion Rate
+    [Header("Accuracy & Defense")]
     public float totalHitRate;
     public float totalEvasionRate;
-    public float totalAttackSpeed;
+    #endregion
+
+    #region Special Stats สถานะพิเศษอื่นๆ
+    [Header("Special Stats")]
     public float totalReductionCoolDown;
+    #endregion
 }

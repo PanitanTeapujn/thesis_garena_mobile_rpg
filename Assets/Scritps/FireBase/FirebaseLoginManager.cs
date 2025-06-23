@@ -11,19 +11,7 @@ using System.Collections.Generic;
 
 public class FirebaseLoginManager : MonoBehaviour
 {
-    [Header("Firebase")]
-    public FirebaseAuth auth;
-    public FirebaseUser user;
-    private DatabaseReference databaseReference;
-
-    [Header("Login UI")]
-    public TMP_InputField nameInput;
-    public TMP_InputField passwordInput;
-    public Button loginButton;
-    public Button registerButton;
-    public TextMeshProUGUI errorText;
-    public GameObject loadingPanel;
-
+    #region Data Classes - โครงสร้างข้อมูลสำหรับจัดเก็บข้อมูลผู้เล่นแบบง่าย
     [System.Serializable]
     public class SimplePlayerData
     {
@@ -33,7 +21,26 @@ public class FirebaseLoginManager : MonoBehaviour
         public string registrationDate;
         public string lastLoginDate;
     }
+    #endregion
 
+    #region Firebase Components - ตัวแปรสำหรับเชื่อมต่อและจัดการ Firebase Authentication และ Database
+    [Header("Firebase")]
+    public FirebaseAuth auth;
+    public FirebaseUser user;
+    private DatabaseReference databaseReference;
+    #endregion
+
+    #region UI Components - ส่วนประกอบ UI สำหรับหน้า Login และ Register
+    [Header("Login UI")]
+    public TMP_InputField nameInput;
+    public TMP_InputField passwordInput;
+    public Button loginButton;
+    public Button registerButton;
+    public TextMeshProUGUI errorText;
+    public GameObject loadingPanel;
+    #endregion
+
+    #region Unity Lifecycle & Initialization - การเริ่มต้นระบบเมื่อเกมเริ่มทำงาน
     void Start()
     {
         InitializeFirebase();
@@ -67,29 +74,9 @@ public class FirebaseLoginManager : MonoBehaviour
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
     }
+    #endregion
 
-    void OnLoginButtonClicked()
-    {
-        string email = nameInput.text.Trim() + "@game.com";
-        string password = passwordInput.text;
-
-        if (ValidateInput())
-        {
-            StartCoroutine(LoginUser(email, password));
-        }
-    }
-
-    void OnRegisterButtonClicked()
-    {
-        string email = nameInput.text.Trim() + "@game.com";
-        string password = passwordInput.text;
-
-        if (ValidateInput())
-        {
-            StartCoroutine(RegisterUser(email, password));
-        }
-    }
-
+    #region Input Validation - ตรวจสอบความถูกต้องของข้อมูลที่ผู้ใช้ป้อน
     bool ValidateInput()
     {
         string username = nameInput.text.Trim();
@@ -121,7 +108,33 @@ public class FirebaseLoginManager : MonoBehaviour
 
         return true;
     }
+    #endregion
 
+    #region Button Event Handlers - จัดการเหตุการณ์เมื่อผู้ใช้กดปุ่ม Login หรือ Register
+    void OnLoginButtonClicked()
+    {
+        string email = nameInput.text.Trim() + "@game.com";
+        string password = passwordInput.text;
+
+        if (ValidateInput())
+        {
+            StartCoroutine(LoginUser(email, password));
+        }
+    }
+
+    void OnRegisterButtonClicked()
+    {
+        string email = nameInput.text.Trim() + "@game.com";
+        string password = passwordInput.text;
+
+        if (ValidateInput())
+        {
+            StartCoroutine(RegisterUser(email, password));
+        }
+    }
+    #endregion
+
+    #region Authentication Methods - ระบบ Login และ Register ผ่าน Firebase Authentication
     IEnumerator LoginUser(string email, string password)
     {
         ShowLoading(true);
@@ -208,8 +221,9 @@ public class FirebaseLoginManager : MonoBehaviour
             SceneManager.LoadScene("Lobby");
         }
     }
+    #endregion
 
-    // ✅ แก้ไข SetupNewPlayerWithDefaultAssassin ให้ครบถ้วน
+    #region Player Data Setup - การตั้งค่าข้อมูลผู้เล่นเริ่มต้นและการโหลดข้อมูลด่วน
     private void SetupNewPlayerWithDefaultAssassin()
     {
         string playerName = nameInput.text.Trim();
@@ -252,7 +266,6 @@ public class FirebaseLoginManager : MonoBehaviour
         Debug.Log($"✅ New player setup completed for {playerName}");
     }
 
-    // ========== Quick Setup Methods (No Blocking) ==========
     private void SetupPlayerDataQuick()
     {
         // Setup basic PlayerPrefs immediately
@@ -269,8 +282,9 @@ public class FirebaseLoginManager : MonoBehaviour
 
         Debug.Log($"✅ Quick setup completed for {playerName} with character {savedCharacter}");
     }
+    #endregion
 
-    // ========== Background Firebase Operations ==========
+    #region Firebase Database Operations - การจัดการข้อมูลใน Firebase Database แบบ Background
     private IEnumerator CreateFirebaseDataAsync()
     {
         Debug.Log("🔄 Creating new player data in Firebase...");
@@ -286,7 +300,7 @@ public class FirebaseLoginManager : MonoBehaviour
         CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
         if (assassinData != null)
         {
-            Debug.Log($"✅ Assassin data created: Level {assassinData.currentLevel}, HP {assassinData.totalMaxHp}, ATK {assassinData.totalAttackDamage},CriDamage{assassinData.totalCriticalDamageBonus}");
+            Debug.Log($"✅ Assassin data created: Level {assassinData.currentLevel}, HP {assassinData.totalMaxHp}, ATK {assassinData.totalAttackDamage}, CriDamage{assassinData.totalCriticalDamageBonus}");
         }
         else
         {
@@ -304,35 +318,35 @@ public class FirebaseLoginManager : MonoBehaviour
 
         // สร้าง Dictionary สำหรับ Firebase
         var playerDataDict = new Dictionary<string, object>
-    {
-        {"playerName", newPlayerData.playerName},
-        {"currentActiveCharacter", newPlayerData.currentActiveCharacter},
-        {"registrationDate", newPlayerData.registrationDate},
-        {"lastLoginDate", newPlayerData.lastLoginDate},
-        {"friends", new List<string>()},
-        {"pendingFriendRequests", new Dictionary<string, string>()}
-    };
+        {
+            {"playerName", newPlayerData.playerName},
+            {"currentActiveCharacter", newPlayerData.currentActiveCharacter},
+            {"registrationDate", newPlayerData.registrationDate},
+            {"lastLoginDate", newPlayerData.lastLoginDate},
+            {"friends", new List<string>()},
+            {"pendingFriendRequests", new Dictionary<string, string>()}
+        };
 
         // Save character data
         var charactersDict = new Dictionary<string, object>();
         foreach (var character in newPlayerData.characters)
         {
             var charDict = new Dictionary<string, object>
-        {
-            {"characterType", character.characterType},
-            {"currentLevel", character.currentLevel},
-            {"currentExp", character.currentExp},
-            {"expToNextLevel", character.expToNextLevel},
-            {"totalMaxHp", character.totalMaxHp},
-            {"totalMaxMana", character.totalMaxMana},
-            {"totalAttackDamage", character.totalAttackDamage},
-            {"totalArmor", character.totalArmor},
-            {"totalCriticalChance", character.totalCriticalChance},
-            {"totalMoveSpeed", character.totalMoveSpeed},
-            {"totalHitRate", character.totalHitRate},
-            {"totalEvasionRate", character.totalEvasionRate},
-            {"totalAttackSpeed", character.totalAttackSpeed}
-        };
+            {
+                {"characterType", character.characterType},
+                {"currentLevel", character.currentLevel},
+                {"currentExp", character.currentExp},
+                {"expToNextLevel", character.expToNextLevel},
+                {"totalMaxHp", character.totalMaxHp},
+                {"totalMaxMana", character.totalMaxMana},
+                {"totalAttackDamage", character.totalAttackDamage},
+                {"totalArmor", character.totalArmor},
+                {"totalCriticalChance", character.totalCriticalChance},
+                {"totalMoveSpeed", character.totalMoveSpeed},
+                {"totalHitRate", character.totalHitRate},
+                {"totalEvasionRate", character.totalEvasionRate},
+                {"totalAttackSpeed", character.totalAttackSpeed}
+            };
             charactersDict[character.characterType] = charDict;
         }
         playerDataDict["characters"] = charactersDict;
@@ -368,6 +382,7 @@ public class FirebaseLoginManager : MonoBehaviour
             StartCoroutine(VerifyDataSaved(user.UserId, newPlayerData.playerName));
         }
     }
+
     private IEnumerator VerifyDataSaved(string userId, string playerName)
     {
         yield return new WaitForSeconds(1f); // รอให้ Firebase sync
@@ -385,14 +400,6 @@ public class FirebaseLoginManager : MonoBehaviour
                 string savedName = playerData.Child("playerName").Value?.ToString();
                 Debug.Log($"✅ Verification success: Found player '{savedName}' in Firebase");
             }
-            else
-            {
-                Debug.LogError("❌ Verification failed: playerName field not found");
-            }
-        }
-        else
-        {
-            Debug.LogError("❌ Verification failed: Could not read data back from Firebase");
         }
     }
 
@@ -407,8 +414,9 @@ public class FirebaseLoginManager : MonoBehaviour
 
         databaseReference.Child("players").Child(user.UserId).UpdateChildrenAsync(updates);
     }
+    #endregion
 
-    // ========== UI Methods ==========
+    #region UI Management - จัดการการแสดงผล UI, ข้อความแจ้งเตือน และ Loading
     void ShowError(string message)
     {
         if (errorText != null)
@@ -435,7 +443,5 @@ public class FirebaseLoginManager : MonoBehaviour
         nameInput.interactable = !show;
         passwordInput.interactable = !show;
     }
-
-    // ========== Debug Methods ==========
-   
+    #endregion
 }
