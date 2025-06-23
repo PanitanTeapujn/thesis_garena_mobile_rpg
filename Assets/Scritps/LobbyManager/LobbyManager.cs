@@ -41,15 +41,11 @@ public class LobbyManager : MonoBehaviour
 
     [Header("References")]
     public StageSelectionManager stageSelectionManager;
+    public InventoryManager inventoryManager;
 
     [Header("Character Selection")]
     public Button characterSelectionButton;
-    public GameObject characterSelectionPanel;
-    public Button bloodKnightSelectButton;
-    public Button archerSelectButton;
-    public Button assassinSelectButton;
-    public Button ironJuggernautSelectButton;
-    public TextMeshProUGUI availableCharactersText;
+   
 
     [Header("Friends System")]
     public Button friendsButton;
@@ -63,6 +59,10 @@ public class LobbyManager : MonoBehaviour
     public Button refreshFriendsButton;
     public TextMeshProUGUI lastRefreshTimeText;
     public GameObject friendsLoadingIndicator;
+
+
+   
+
 
     private Coroutine autoRefreshCoroutine;
     private bool isRefreshing = false;
@@ -114,6 +114,10 @@ public class LobbyManager : MonoBehaviour
 
         joinButton.onClick.AddListener(JoinRoom);
         backToPartyButton.onClick.AddListener(ShowPartyOptions);
+
+        if (inventoryButton != null)
+            inventoryButton.onClick.AddListener(ShowInventory);
+
         if (friendsButton != null)
             friendsButton.onClick.AddListener(ShowFriendsPanel);
         if (searchFriendButton != null)
@@ -125,14 +129,7 @@ public class LobbyManager : MonoBehaviour
         if (refreshFriendsButton != null)
             refreshFriendsButton.onClick.AddListener(ManualRefreshFriends);
         // In-lobby character selection buttons
-        if (bloodKnightSelectButton != null)
-            bloodKnightSelectButton.onClick.AddListener(() => SwitchCharacter("BloodKnight"));
-        if (archerSelectButton != null)
-            archerSelectButton.onClick.AddListener(() => SwitchCharacter("Archer"));
-        if (assassinSelectButton != null)
-            assassinSelectButton.onClick.AddListener(() => SwitchCharacter("Assassin"));
-        if (ironJuggernautSelectButton != null)
-            ironJuggernautSelectButton.onClick.AddListener(() => SwitchCharacter("IronJuggernaut"));
+       
     }
 
     private void OpenCharacterSelection()
@@ -144,11 +141,7 @@ public class LobbyManager : MonoBehaviour
     private void ShowCharacterSelectionPanel()
     {
         HideAllPanels();
-        if (characterSelectionPanel != null)
-        {
-            characterSelectionPanel.SetActive(true);
-            UpdateAvailableCharactersList();
-        }
+        
     }
 
     private void SwitchCharacter(string characterType)
@@ -163,42 +156,12 @@ public class LobbyManager : MonoBehaviour
             PlayerSelectionData.SaveCharacterSelection(characterEnum);
         }
 
-        if (characterSelectionPanel != null)
-            characterSelectionPanel.SetActive(false);
+      
 
         Debug.Log($"✅ [LobbyManager] Successfully switched to {characterType}");
     }
 
-    private void UpdateAvailableCharactersList()
-    {
-        if (availableCharactersText == null) return;
-
-        List<CharacterProgressData> allCharacters = PersistentPlayerData.Instance.GetAllCharacterData();
-        string currentActive = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-
-        string charactersList = $"<color=yellow>Current Active: {currentActive}</color>\n\n";
-        charactersList += "<color=white>Available Characters:</color>\n";
-
-        string[] allCharacterTypes = { "BloodKnight", "Archer", "Assassin", "IronJuggernaut" };
-
-        foreach (string characterType in allCharacterTypes)
-        {
-            CharacterProgressData characterData = allCharacters.Find(c => c.characterType == characterType);
-
-            if (characterData != null)
-            {
-                string color = (characterType == currentActive) ? "yellow" : "white";
-                charactersList += $"<color={color}>• {characterType} - Level {characterData.currentLevel}</color>\n";
-                charactersList += $"   HP: {characterData.totalMaxHp}, ATK: {characterData.totalAttackDamage}\n";
-            }
-            else
-            {
-                charactersList += $"<color=gray>• {characterType} - New Character</color>\n";
-            }
-        }
-
-        availableCharactersText.text = charactersList;
-    }
+    
 
     // ========== Stage Selection Events ==========
     void HandleSoloGameSelected(string sceneToLoad)
@@ -250,10 +213,26 @@ public class LobbyManager : MonoBehaviour
         joinRoomPanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
-        if (characterSelectionPanel != null)
-            characterSelectionPanel.SetActive(false);
-    }
+        if (inventoryManager != null)
+            inventoryManager.HideInventory();
 
+    }
+    void ShowInventory()
+    {
+        Debug.Log("📦 ShowInventory() called");
+
+        HideAllPanels();
+
+        if (inventoryManager != null)
+        {
+            inventoryManager.ShowInventory();
+            Debug.Log("✅ Inventory panel activated");
+        }
+        else
+        {
+            Debug.LogError("❌ InventoryManager is NULL!");
+        }
+    }
     // ========== Party Management ==========
     void CreateRoom()
     {
@@ -408,6 +387,12 @@ public class LobbyManager : MonoBehaviour
                 }
 
                 UpdatePlayerStatsUI();
+
+                // ✅ เพิ่มบรรทัดนี้ - Refresh inventory ด้วยถ้าเปิดอยู่
+                if (inventoryManager != null && inventoryManager.IsInventoryOpen())
+                {
+                    inventoryManager.RefreshCharacterInfo();
+                }
 
                 Debug.Log($"✅ [LobbyManager] Refreshed stats for {activeCharacter} - Level {activeCharacterData.currentLevel}");
             }
@@ -775,65 +760,5 @@ public class LobbyManager : MonoBehaviour
         StageSelectionManager.OnPartyGameSelected -= HandlePartyGameSelected;
         StageSelectionManager.OnBackToLobby -= HandleBackToLobby;
     }
-    [ContextMenu("Show My User ID")]
-    public void ShowMyUserId()
-    {
-        if (PersistentPlayerData.Instance.auth?.CurrentUser != null)
-        {
-            string userId = PersistentPlayerData.Instance.auth.CurrentUser.UserId;
-            Debug.Log($"📋 Your User ID: {userId}");
-            Debug.Log($"📋 Your Player Name: {PersistentPlayerData.Instance.GetPlayerName()}");
-            Debug.Log($"💡 Share your User ID with friends to add each other!");
-        }
-        else
-        {
-            Debug.Log("❌ Not authenticated");
-        }
-    }
-
-    [ContextMenu("Test Friend System")]
-    public void TestFriendSystem()
-    {
-        Debug.Log("=== Testing Friend System ===");
-
-        // 1. ตรวจสอบสถานะ
-        PersistentPlayerData.Instance.CheckFirebaseStatus();
-
-        // 2. ดูข้อมูลทั้งหมด
-        PersistentPlayerData.Instance.DebugAllPlayers();
-    }
-
-    [ContextMenu("Fix Existing Items Size")]
-    public void FixExistingItemsSize()
-    {
-        if (friendRequestsList == null) return;
-
-        Debug.Log("🔧 Fixing existing items size...");
-
-        for (int i = 0; i < friendRequestsList.childCount; i++)
-        {
-            Transform child = friendRequestsList.GetChild(i);
-
-            // แก้ไขขนาด
-            RectTransform rectTransform = child.GetComponent<RectTransform>();
-            if (rectTransform != null)
-            {
-                rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x, 80f);
-            }
-
-            // เพิ่ม Layout Element ถ้าไม่มี
-            LayoutElement layoutElement = child.GetComponent<LayoutElement>();
-            if (layoutElement == null)
-            {
-                layoutElement = child.gameObject.AddComponent<LayoutElement>();
-            }
-            layoutElement.preferredHeight = 80f;
-            layoutElement.flexibleWidth = 1f;
-        }
-
-        // Force rebuild layout
-        LayoutRebuilder.ForceRebuildLayoutImmediate(friendRequestsList.GetComponent<RectTransform>());
-
-        Debug.Log($"✅ Fixed {friendRequestsList.childCount} items");
-    }
+   
 }
