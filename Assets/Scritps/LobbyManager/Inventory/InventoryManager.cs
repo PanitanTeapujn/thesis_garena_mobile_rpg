@@ -43,7 +43,8 @@ public class InventoryManager : MonoBehaviour
 
     [Header("Inventory Grid")]
     public InventoryGridManager inventoryGrid;
-
+    [Header("Item Database")]
+    public ItemDatabase itemDatabase;
     private CharacterProgressData currentCharacterData;
     private bool isInventoryOpen = false;
     private GameObject currentCharacterPreview;
@@ -52,6 +53,8 @@ public class InventoryManager : MonoBehaviour
     {
         SetupButtons();
         HideInventory();
+        if (itemDatabase == null)
+            itemDatabase = ItemDatabase.Instance;
     }
 
     void SetupButtons()
@@ -294,5 +297,14 @@ public class InventoryManager : MonoBehaviour
     void OnDestroy()
     {
       
+    }
+
+    [ContextMenu("Test - Add Random Items to Inventory")]
+    public void TestAddRandomItems()
+    {
+        if (inventoryGrid != null && itemDatabase != null)
+        {
+            inventoryGrid.TestFillRandomItems();
+        }
     }
 }

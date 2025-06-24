@@ -7,6 +7,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
 {
     #region Events
     public static event Action<InventorySlot> OnSlotSelected;
+    public static event Action<InventorySlot, ItemData> OnItemChanged; // เพิ่มสำหรับ Step 2
     #endregion
 
     #region UI Components
@@ -14,6 +15,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     public Image backgroundImage;      // พื้นหลัง slot
     public Image itemIconImage;        // รูป item
     public Image highlightImage;       // highlight เมื่อ selected
+    public Image tierBorderImage;      // border สำหรับแสดง tier สี
     public Button slotButton;          // button สำหรับ touch
     #endregion
 
@@ -30,8 +32,8 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     public bool isEmpty = true;         // ว่างหรือไม่
     public bool isSelected = false;     // ถูกเลือกหรือไม่
 
-    // TODO: Step 2 จะเพิ่ม ItemData ตรงนี้
-    // public ItemData currentItem;
+    [Header("Item Data")] // ✅ Step 2: เพิ่ม ItemData
+    public ItemData currentItem;        // Item ที่อยู่ใน slot นี้
     #endregion
 
     #region Unity Lifecycle
@@ -60,6 +62,9 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         if (highlightImage == null)
             highlightImage = transform.Find("Highlight")?.GetComponent<Image>();
 
+        if (tierBorderImage == null)
+            tierBorderImage = transform.Find("TierBorder")?.GetComponent<Image>();
+
         if (slotButton == null)
             slotButton = GetComponent<Button>();
 
@@ -84,8 +89,30 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
             RectTransform iconRect = itemIconImage.GetComponent<RectTransform>();
             iconRect.anchorMin = Vector2.zero;
             iconRect.anchorMax = Vector2.one;
-            iconRect.offsetMin = Vector2.one * 5f;  // padding 5px
-            iconRect.offsetMax = Vector2.one * -5f;
+            iconRect.offsetMin = Vector2.one * 8f;  // padding 8px
+            iconRect.offsetMax = Vector2.one * -8f;
+        }
+
+        // สร้าง TierBorder child object ถ้าไม่มี (สำหรับแสดงสี tier)
+        if (tierBorderImage == null)
+        {
+            GameObject tierBorderObj = new GameObject("TierBorder");
+            tierBorderObj.transform.SetParent(transform);
+            tierBorderObj.transform.localPosition = Vector3.zero;
+            tierBorderObj.transform.localScale = Vector3.one;
+
+            tierBorderImage = tierBorderObj.AddComponent<Image>();
+            tierBorderImage.raycastTarget = false;
+
+            // ตั้งขนาดให้เต็ม slot (border)
+            RectTransform borderRect = tierBorderImage.GetComponent<RectTransform>();
+            borderRect.anchorMin = Vector2.zero;
+            borderRect.anchorMax = Vector2.one;
+            borderRect.offsetMin = Vector2.zero;
+            borderRect.offsetMax = Vector2.zero;
+
+            // ใช้ border sprite ถ้ามี หรือใช้สีแบบธรรมดา
+            tierBorderImage.type = Image.Type.Sliced;
         }
 
         // สร้าง Highlight child object ถ้าไม่มี
@@ -133,6 +160,12 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         {
             itemIconImage.gameObject.SetActive(false);
         }
+
+        // ซ่อน tier border ตอนเริ่มต้น
+        if (tierBorderImage != null)
+        {
+            tierBorderImage.gameObject.SetActive(false);
+        }
     }
     #endregion
 
@@ -147,7 +180,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         // แจ้งให้ InventoryGridManager รู้ว่า slot นี้ถูกเลือก
         OnSlotSelected?.Invoke(this);
 
-        Debug.Log($"🎯 Slot {slotIndex} selected (isEmpty: {isEmpty})");
+        Debug.Log($"🎯 Slot {slotIndex} selected (isEmpty: {isEmpty}, item: {currentItem?.ItemName ?? "None"})");
     }
     #endregion
 
@@ -156,6 +189,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     {
         isEmpty = true;
         isSelected = false;
+        currentItem = null;
 
         // ตั้งสีพื้นหลังเป็นสีเทา
         if (backgroundImage != null)
@@ -165,29 +199,73 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         if (itemIconImage != null)
             itemIconImage.gameObject.SetActive(false);
 
+        // ซ่อน tier border
+        if (tierBorderImage != null)
+            tierBorderImage.gameObject.SetActive(false);
+
         // ซ่อน highlight
         if (highlightImage != null)
             highlightImage.gameObject.SetActive(false);
 
+        // แจ้งให้ระบบอื่นรู้ว่า item เปลี่ยน
+        OnItemChanged?.Invoke(this, null);
+
         Debug.Log($"📦 Slot {slotIndex} set to empty state");
     }
 
-    public void SetFilledState(Sprite itemIcon)
+    public void SetFilledState(ItemData item)
     {
+        if (item == null)
+        {
+            SetEmptyState();
+            return;
+        }
+
         isEmpty = false;
+        currentItem = item;
 
         // ตั้งสีพื้นหลังเป็นสีเขียว
         if (backgroundImage != null)
             backgroundImage.color = filledColor;
 
         // แสดง item icon
+        if (itemIconImage != null && item.ItemIcon != null)
+        {
+            itemIconImage.sprite = item.ItemIcon;
+            itemIconImage.gameObject.SetActive(true);
+        }
+
+        // แสดง tier border ด้วยสีของ tier
+        if (tierBorderImage != null)
+        {
+            tierBorderImage.color = item.GetTierColor();
+            tierBorderImage.gameObject.SetActive(true);
+        }
+
+        // แจ้งให้ระบบอื่นรู้ว่า item เปลี่ยน
+        OnItemChanged?.Invoke(this, item);
+
+        Debug.Log($"📦 Slot {slotIndex} set to filled state with {item.ItemName} ({item.GetTierText()})");
+    }
+
+    // Backward compatibility สำหรับ Step 1
+    public void SetFilledState(Sprite itemIcon)
+    {
+        isEmpty = false;
+
+        if (backgroundImage != null)
+            backgroundImage.color = filledColor;
+
         if (itemIconImage != null && itemIcon != null)
         {
             itemIconImage.sprite = itemIcon;
             itemIconImage.gameObject.SetActive(true);
         }
 
-        Debug.Log($"📦 Slot {slotIndex} set to filled state");
+        if (tierBorderImage != null)
+            tierBorderImage.gameObject.SetActive(false); // ไม่มี tier สำหรับ test sprite
+
+        Debug.Log($"📦 Slot {slotIndex} set to filled state (legacy mode)");
     }
 
     public void SetSelectedState(bool selected)
@@ -213,16 +291,66 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     }
     #endregion
 
-    #region Public Methods for Future Steps
-    // TODO: Step 2 จะเพิ่ม methods สำหรับ ItemData
-    // public void SetItem(ItemData item) { }
-    // public ItemData GetItem() { return currentItem; }
-    // public void ClearItem() { }
+    #region Item Management Methods (Step 2)
+    public void SetItem(ItemData item)
+    {
+        if (item == null)
+        {
+            SetEmptyState();
+        }
+        else
+        {
+            SetFilledState(item);
+        }
+    }
 
-    // สำหรับการทดสอบใน Step 1
+    public ItemData GetItem()
+    {
+        return currentItem;
+    }
+
+    public void ClearItem()
+    {
+        SetEmptyState();
+    }
+
+    public bool HasItem()
+    {
+        return currentItem != null && !isEmpty;
+    }
+
+    public bool CanAcceptItem(ItemData item)
+    {
+        // สำหรับ inventory slots ธรรมดา สามารถใส่ item อะไรก็ได้
+        // (Equipment slots จะมีการจำกัดประเภท)
+        return item != null;
+    }
+
+    public string GetItemId()
+    {
+        return currentItem?.ItemId ?? "";
+    }
+
+    public string GetItemName()
+    {
+        return currentItem?.ItemName ?? "";
+    }
+
+    public ItemType GetItemType()
+    {
+        return currentItem?.ItemType ?? ItemType.Weapon;
+    }
+
+    public ItemTier GetItemTier()
+    {
+        return currentItem?.Tier ?? ItemTier.Common;
+    }
+    #endregion
+
+    #region Test Methods (Step 1 & Step 2)
     public void SetTestItem()
     {
-        // สร้าง test sprite แบบง่ายๆ สำหรับทดสอบ
+        // สำหรับ Step 1 - ใช้ test sprite
         Texture2D testTexture = new Texture2D(64, 64);
         Color[] pixels = new Color[64 * 64];
         for (int i = 0; i < pixels.Length; i++)
@@ -234,6 +362,23 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
 
         Sprite testSprite = Sprite.Create(testTexture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
         SetFilledState(testSprite);
+    }
+
+    public void SetRandomTestItem()
+    {
+        // สำหรับ Step 2 - ใช้ item จาก database
+        if (ItemDatabase.Instance != null)
+        {
+            ItemData randomItem = ItemDatabase.Instance.GetRandomItem();
+            if (randomItem != null)
+            {
+                SetItem(randomItem);
+                return;
+            }
+        }
+
+        // Fallback เป็น test sprite ถ้าไม่มี database
+        SetTestItem();
     }
     #endregion
 
@@ -247,13 +392,28 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     [ContextMenu("Test - Set Filled")]
     public void TestSetFilled()
     {
-        SetTestItem();
+        SetRandomTestItem();
     }
 
     [ContextMenu("Test - Toggle Selected")]
     public void TestToggleSelected()
     {
         SetSelectedState(!isSelected);
+    }
+
+    [ContextMenu("Debug Item Info")]
+    public void DebugItemInfo()
+    {
+        if (currentItem != null)
+        {
+            Debug.Log($"📦 Slot {slotIndex}: {currentItem.ItemName}");
+            Debug.Log($"   Type: {currentItem.ItemType}, Tier: {currentItem.GetTierText()}");
+            Debug.Log($"   Stats: {currentItem.Stats.GetStatsDescription()}");
+        }
+        else
+        {
+            Debug.Log($"📦 Slot {slotIndex}: Empty");
+        }
     }
     #endregion
 }

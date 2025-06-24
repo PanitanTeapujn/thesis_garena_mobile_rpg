@@ -29,7 +29,10 @@ public class InventoryGridManager : MonoBehaviour
     public InventorySlot currentSelectedSlot = null;
     public int selectedSlotIndex = -1;
     #endregion
-
+    #region Reference
+    [Header("Item Database")]
+    public ItemDatabase itemDatabase;
+    #endregion
     #region Events
     public static event Action<InventorySlot> OnSlotSelectionChanged;
     #endregion
@@ -45,6 +48,8 @@ public class InventoryGridManager : MonoBehaviour
     {
         CreateInventoryGrid();
         SubscribeToEvents();
+        LoadItemDatabase();
+
     }
 
     void OnDestroy()
@@ -347,4 +352,50 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log("✅ Auto-setup complete! Inventory grid created in scene.");
     }
     #endregion
+
+    #region ItemdataBase
+    void LoadItemDatabase()
+    {
+        if (itemDatabase == null)
+        {
+            itemDatabase = ItemDatabase.Instance;
+        }
+
+        if (itemDatabase != null)
+        {
+            Debug.Log($"✅ ItemDatabase loaded with {itemDatabase.GetAllItems().Count} items");
+        }
+    }
+    #endregion
+
+    [ContextMenu("Test - Fill Random Items")]
+    public void TestFillRandomItems()
+    {
+        if (itemDatabase == null)
+        {
+            Debug.LogError("❌ ItemDatabase not found!");
+            return;
+        }
+
+        // เติม items สุ่มใน 10 slots
+        var allItems = itemDatabase.GetAllItems();
+        if (allItems.Count == 0)
+        {
+            Debug.LogError("❌ No items in database!");
+            return;
+        }
+
+        for (int i = 0; i < 10; i++)
+        {
+            int randomSlotIndex = UnityEngine.Random.Range(0, totalSlots);
+            int randomItemIndex = UnityEngine.Random.Range(0, allItems.Count);
+
+            if (allSlots[randomSlotIndex].isEmpty)
+            {
+                allSlots[randomSlotIndex].SetItem(allItems[randomItemIndex]);
+            }
+        }
+
+        Debug.Log("🎲 Filled random slots with ItemData");
+    }
 }
