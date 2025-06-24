@@ -220,7 +220,7 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         // แจ้งให้ระบบอื่นรู้ว่า item เปลี่ยน
         OnItemChanged?.Invoke(this, null);
 
-        Debug.Log($"📦 Slot {slotIndex} set to empty state");
+       // Debug.Log($"📦 Slot {slotIndex} set to empty state");
     }
 
     public void SetFilledState(ItemData item)

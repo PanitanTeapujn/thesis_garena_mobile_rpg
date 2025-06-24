@@ -116,20 +116,82 @@ public class ItemDetailPanel : MonoBehaviour
 
     void OnEquipButtonClicked()
     {
-        if (currentItem != null)
+        Debug.Log($"🎽 OnEquipButtonClicked called. CurrentItem: {currentItem?.ItemName ?? "NULL"}");
+
+        // ✅ เพิ่ม comprehensive null checks
+        if (currentItem == null)
         {
-            OnEquipRequested?.Invoke(currentItem, currentSlotIndex);
-            Debug.Log($"🎽 Equip requested: {currentItem.ItemName}");
+            Debug.LogError("❌ Cannot equip: currentItem is null!");
+            return;
+        }
+
+        if (OnEquipRequested == null)
+        {
+            Debug.LogError("❌ Cannot equip: OnEquipRequested event has no subscribers!");
+
+            // ✅ ลองหา subscribers ใหม่
+            var inventoryManager = FindObjectOfType<InventoryManager>();
+            if (inventoryManager != null)
+            {
+                Debug.Log("🔧 Found InventoryManager, but event not connected properly");
+            }
+            return;
+        }
+
+        // ✅ เพิ่มการป้องกัน double-click
+        if (equipButton != null)
+        {
+            equipButton.interactable = false;
+            StartCoroutine(EnableButtonAfterDelay());
+        }
+
+        try
+        {
+            OnEquipRequested.Invoke(currentItem, currentSlotIndex);
+            Debug.Log($"✅ Equip requested: {currentItem.ItemName}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error invoking OnEquipRequested: {e.Message}");
+
+            // ✅ Re-enable button ถ้าเกิด error
+            if (equipButton != null)
+            {
+                equipButton.interactable = true;
+            }
+        }
+    }
+
+    // ✅ เพิ่ม Coroutine สำหรับป้องกัน double-click
+    private System.Collections.IEnumerator EnableButtonAfterDelay()
+    {
+        yield return new WaitForSeconds(0.5f); // รอ 0.5 วินาที
+
+        if (equipButton != null)
+        {
+            equipButton.interactable = true;
         }
     }
 
     void OnUnequipButtonClicked()
     {
-        if (currentItem != null)
+        // ✅ เพิ่ม null checks
+        Debug.Log($"🔧 OnUnequipButtonClicked called. CurrentItem: {currentItem?.ItemName ?? "NULL"}");
+
+        if (currentItem == null)
         {
-            OnUnequipRequested?.Invoke(currentItem, currentSlotIndex);
-            Debug.Log($"🎽 Unequip requested: {currentItem.ItemName}");
+            Debug.LogError("❌ Cannot unequip: currentItem is null!");
+            return;
         }
+
+        if (OnUnequipRequested == null)
+        {
+            Debug.LogError("❌ Cannot unequip: OnUnequipRequested event has no subscribers!");
+            return;
+        }
+
+        OnUnequipRequested.Invoke(currentItem, currentSlotIndex);
+        Debug.Log($"✅ Unequip requested: {currentItem.ItemName}");
     }
     #endregion
 
@@ -278,15 +340,50 @@ public class ItemDetailPanel : MonoBehaviour
         // ตรวจสอบว่า item นี้ equipped อยู่ไหม
         bool isEquipped = IsItemCurrentlyEquipped(currentItem);
 
+        // ตรวจสอบว่าสามารถ equip ได้ไหม (ถ้ายังไม่ equipped)
+        bool canEquip = !isEquipped && CanEquipItem(currentItem);
+
         if (equipButton != null)
         {
             equipButton.gameObject.SetActive(!isEquipped);
+            equipButton.interactable = canEquip;
+
+            // เปลี่ยนสีปุ่มถ้า equip ไม่ได้
+            var buttonColors = equipButton.colors;
+            buttonColors.normalColor = canEquip ? Color.green : Color.gray;
+            equipButton.colors = buttonColors;
         }
 
         if (unequipButton != null)
         {
             unequipButton.gameObject.SetActive(isEquipped);
         }
+
+        Debug.Log($"🔘 Buttons updated: isEquipped={isEquipped}, canEquip={canEquip}");
+    }
+
+    bool CanEquipItem(ItemData item)
+    {
+        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
+        if (slotsManager != null)
+        {
+            var targetSlot = slotsManager.GetSlotForItemType(item.ItemType);
+            if (targetSlot == null)
+            {
+                Debug.LogWarning($"❌ No slot available for {item.ItemType}");
+                return false;
+            }
+
+            if (!targetSlot.isEmpty)
+            {
+                Debug.LogWarning($"❌ {targetSlot.slotName} slot is occupied by {targetSlot.GetEquippedItem()?.ItemName}");
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     string GetItemTypeDisplayName(ItemType itemType)
@@ -303,10 +400,17 @@ public class ItemDetailPanel : MonoBehaviour
         }
     }
 
-    // TODO: Step 6 จะ implement methods เหล่านี้
     bool IsItemCurrentlyEquipped(ItemData item)
     {
-        // ตรงนี้จะเชื่อมต่อกับ EquipmentManager ใน Step 6
+        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
+        if (slotsManager != null)
+        {
+            bool isEquipped = slotsManager.IsItemEquipped(item);
+            Debug.Log($"🔍 IsItemCurrentlyEquipped: {item.ItemName} = {isEquipped}");
+            return isEquipped;
+        }
+
+        Debug.LogWarning("⚠️ EquipmentSlotsManager not found!");
         return false;
     }
     #endregion
@@ -328,6 +432,7 @@ public class ItemDetailPanel : MonoBehaviour
     }
     #endregion
 
+    #region Debug Methods
     [ContextMenu("Debug Panel State")]
     public void DebugPanelState()
     {
@@ -337,5 +442,46 @@ public class ItemDetailPanel : MonoBehaviour
         Debug.Log($"   currentItem: {currentItem?.ItemName ?? "NULL"}");
         Debug.Log($"   currentSlotIndex: {currentSlotIndex}");
         Debug.Log($"   Panel Active: {(detailPanel != null ? detailPanel.activeSelf.ToString() : "N/A")}");
+
+        // ✅ เพิ่ม: Debug event subscribers
+        Debug.Log($"   OnEquipRequested subscribers: {(OnEquipRequested?.GetInvocationList()?.Length ?? 0)}");
+        Debug.Log($"   OnUnequipRequested subscribers: {(OnUnequipRequested?.GetInvocationList()?.Length ?? 0)}");
     }
+
+    [ContextMenu("Test - Check Event Subscribers")]
+    public void TestCheckEventSubscribers()
+    {
+        Debug.Log("🔍 === EVENT SUBSCRIBERS CHECK ===");
+
+        if (OnEquipRequested != null)
+        {
+            var subscribers = OnEquipRequested.GetInvocationList();
+            Debug.Log($"✅ OnEquipRequested has {subscribers.Length} subscriber(s):");
+            foreach (var subscriber in subscribers)
+            {
+                Debug.Log($"   - {subscriber.Target?.GetType().Name}.{subscriber.Method.Name}");
+            }
+        }
+        else
+        {
+            Debug.Log("❌ OnEquipRequested has NO subscribers!");
+        }
+
+        if (OnUnequipRequested != null)
+        {
+            var subscribers = OnUnequipRequested.GetInvocationList();
+            Debug.Log($"✅ OnUnequipRequested has {subscribers.Length} subscriber(s):");
+            foreach (var subscriber in subscribers)
+            {
+                Debug.Log($"   - {subscriber.Target?.GetType().Name}.{subscriber.Method.Name}");
+            }
+        }
+        else
+        {
+            Debug.Log("❌ OnUnequipRequested has NO subscribers!");
+        }
+
+        Debug.Log("🔍 === END EVENT SUBSCRIBERS CHECK ===");
+    }
+    #endregion
 }

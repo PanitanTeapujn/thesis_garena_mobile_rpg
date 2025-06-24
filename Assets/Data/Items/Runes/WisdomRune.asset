@@ -30,6 +30,6 @@ MonoBehaviour:
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0
-    reductionCoolDownBonus: 1
+    reductionCoolDownBonus: 0.1
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
