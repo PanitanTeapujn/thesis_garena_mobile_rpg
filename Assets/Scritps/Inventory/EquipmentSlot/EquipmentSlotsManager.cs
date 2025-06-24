@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System;
+using System.Collections;
 
 public class EquipmentSlotsManager : MonoBehaviour
 {
@@ -11,9 +12,9 @@ public class EquipmentSlotsManager : MonoBehaviour
     public static event Action OnEquipmentChanged;
     #endregion
 
-    #region UI References (เหมือน ItemDetailPanel)
+    #region UI References
     [Header("Equipment Slots Panel")]
-    public GameObject equipmentSlotsPanel;  // Panel หลักที่ใส่ slots ทั้งหมด
+    public GameObject equipmentSlotsPanel;
 
     [Header("Equipment Slots")]
     public EquipmentSlot weaponSlot;
@@ -22,8 +23,6 @@ public class EquipmentSlotsManager : MonoBehaviour
     public EquipmentSlot pantsSlot;
     public EquipmentSlot shoesSlot;
     public EquipmentSlot[] runeSlots = new EquipmentSlot[3]; // 3 rune slots
-    private bool isProcessingEquip = false;
-
     #endregion
 
     #region System References
@@ -37,9 +36,13 @@ public class EquipmentSlotsManager : MonoBehaviour
     public List<EquipmentSlot> allSlots = new List<EquipmentSlot>();
     public EquipmentSlot currentSelectedSlot;
     public bool isVisible = false;
+
+    // ✅ เพิ่ม: Sequential processing flags
+    private bool isProcessingEquipment = false;
+    private Dictionary<ItemData, EquipmentSlot> itemToSlotMap = new Dictionary<ItemData, EquipmentSlot>();
     #endregion
 
-    #region Unity Lifecycle (เรียบง่ายเหมือน ItemDetailPanel)
+    #region Unity Lifecycle
     void Awake()
     {
         InitializeSlotsList();
@@ -49,7 +52,7 @@ public class EquipmentSlotsManager : MonoBehaviour
     void Start()
     {
         SubscribeToEvents();
-        HideEquipmentSlots(); // เริ่มต้นด้วยการซ่อน
+        HideEquipmentSlots();
     }
 
     void OnDestroy()
@@ -58,7 +61,7 @@ public class EquipmentSlotsManager : MonoBehaviour
     }
     #endregion
 
-    #region Show/Hide Methods (เหมือน ItemDetailPanel)
+    #region Show/Hide Methods
     public void ShowEquipmentSlots()
     {
         Debug.Log("🎽 ShowEquipmentSlots called");
@@ -91,7 +94,7 @@ public class EquipmentSlotsManager : MonoBehaviour
     }
     #endregion
 
-    #region Initialization (เรียบง่าย ไม่มี complex loops)
+    #region Initialization
     void InitializeSlotsList()
     {
         allSlots.Clear();
@@ -114,7 +117,7 @@ public class EquipmentSlotsManager : MonoBehaviour
 
     void SetupSlots()
     {
-        // ตั้งค่า slot types เฉยๆ ไม่ยุ่งกับ GameObject
+        // ตั้งค่า slot types
         if (weaponSlot != null)
         {
             weaponSlot.slotType = ItemType.Weapon;
@@ -162,14 +165,11 @@ public class EquipmentSlotsManager : MonoBehaviour
     }
     #endregion
 
-    #region Event Management (เหมือน ItemDetailPanel)
+    #region Event Management
     void SubscribeToEvents()
     {
-        // Subscribe to slot events
         EquipmentSlot.OnEquipmentSlotSelected += HandleSlotSelected;
         EquipmentSlot.OnEquipmentChanged += HandleEquipmentChanged;
-
-        // Subscribe to item detail panel events
         ItemDetailPanel.OnEquipRequested += HandleEquipRequest;
 
         Debug.Log("✅ Equipment slots events subscribed");
@@ -184,17 +184,14 @@ public class EquipmentSlotsManager : MonoBehaviour
 
     void HandleSlotSelected(EquipmentSlot slot)
     {
-        // ยกเลิกการเลือก slot เก่า
         if (currentSelectedSlot != null)
             currentSelectedSlot.SetSelectedState(false);
 
-        // เลือก slot ใหม่
         currentSelectedSlot = slot;
         currentSelectedSlot.SetSelectedState(true);
 
         Debug.Log($"🎯 Equipment slot selected: {slot.slotName}");
 
-        // ถ้า slot มี item แสดง detail panel
         if (slot.HasEquippedItem())
         {
             ShowEquippedItemDetail(slot);
@@ -205,151 +202,232 @@ public class EquipmentSlotsManager : MonoBehaviour
     {
         Debug.Log($"🔄 Equipment changed in {slot.slotName}: {item?.ItemName ?? "Empty"}");
 
-        // ✅ เพิ่ม: แจ้งให้ระบบอื่นรู้ทันที
         OnEquipmentChanged?.Invoke();
 
-        // ✅ เพิ่ม: Force refresh panel ให้แน่ใจว่า slot ยังคงแสดงอยู่
         if (equipmentSlotsPanel != null && !equipmentSlotsPanel.activeSelf)
         {
             equipmentSlotsPanel.SetActive(true);
             Debug.Log("🔄 Re-activated equipment slots panel after change");
         }
 
-        // อัปเดต character stats
         UpdateCharacterStats();
     }
     #endregion
 
-    #region Equipment Operations
+    #region Equipment Operations - ✅ ปรับปรุงเพื่อป้องกัน rune duplication
     void HandleEquipRequest(ItemData item, int inventorySlotIndex)
     {
         if (item == null) return;
 
-        // ✅ ป้องกัน double processing
-        if (isProcessingEquip)
+        // ✅ ป้องกัน concurrent processing
+        if (isProcessingEquipment)
         {
-            Debug.LogWarning($"⚠️ Already processing equip request, ignoring duplicate for {item.ItemName}");
+            Debug.LogWarning($"⚠️ Equipment system busy, queuing {item.ItemName}...");
+            StartCoroutine(WaitAndRetryEquip(item, inventorySlotIndex));
             return;
         }
 
-        isProcessingEquip = true;
-
-        Debug.Log($"🎽 HandleEquipRequest: {item.ItemName} ({item.ItemType}) from slot {inventorySlotIndex}");
-
-        try
-        {
-            // หา slot ที่เหมาะสมสำหรับ item นี้
-            EquipmentSlot targetSlot = GetSlotForItemType(item.ItemType);
-
-            if (targetSlot == null)
-            {
-                Debug.LogError($"❌ No slot found for item type: {item.ItemType}");
-                return;
-            }
-
-            // ✅ Double check ว่า slot ยังว่างอยู่
-            if (!targetSlot.isEmpty || targetSlot.HasEquippedItem())
-            {
-                Debug.LogWarning($"❌ Cannot equip {item.ItemName}: {targetSlot.slotName} slot is already occupied by {targetSlot.GetEquippedItem()?.ItemName}");
-                return;
-            }
-
-            // Equip item
-            bool equipped = EquipItem(item, targetSlot);
-            if (equipped)
-            {
-                // ลบ item จาก inventory
-                RemoveItemFromInventory(inventorySlotIndex);
-
-                // แจ้งให้ระบบรู้
-                OnItemEquipped?.Invoke(item, item.ItemType);
-
-                Debug.Log($"✅ Successfully equipped {item.ItemName} in {targetSlot.slotName}");
-            }
-            else
-            {
-                Debug.LogError($"❌ Failed to equip {item.ItemName}");
-            }
-        }
-        finally
-        {
-            // ✅ Reset flag ไม่ว่าจะสำเร็จหรือไม่
-            isProcessingEquip = false;
-        }
+        StartCoroutine(ProcessEquipRequest(item, inventorySlotIndex));
     }
 
-    void HandleUnequipRequest(ItemData item, int slotIndex)
+    private IEnumerator WaitAndRetryEquip(ItemData item, int inventorySlotIndex)
     {
-        if (item == null) return;
-
-        Debug.Log($"🔧 HandleUnequipRequest: {item.ItemName}");
-
-        // ✅ ลองหา slot ด้วยวิธีอื่นก่อน
-        EquipmentSlot equipSlot = null;
-
-        // วิธีที่ 1: ใช้ FindSlotWithItem
-        equipSlot = FindSlotWithItem(item);
-
-        // วิธีที่ 2: ถ้าไม่เจอ ลองดูทุก slot ที่มี item
-        if (equipSlot == null)
+        // รอให้ระบบว่าง
+        while (isProcessingEquipment)
         {
-            Debug.Log("🔍 Method 1 failed, trying method 2...");
-            foreach (var slot in allSlots)
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        // ลองอีกครั้ง
+        HandleEquipRequest(item, inventorySlotIndex);
+    }
+
+    private IEnumerator ProcessEquipRequest(ItemData item, int inventorySlotIndex)
+    {
+        isProcessingEquipment = true;
+
+        Debug.Log($"🎽 Processing equip request: {item.ItemName} ({item.ItemType}) from slot {inventorySlotIndex}");
+
+        // ✅ สำหรับ rune: เช็ค duplication ก่อน
+        if (item.ItemType == ItemType.Rune)
+        {
+            if (IsRuneIdAlreadyEquipped(item.ItemId))
             {
-                if (slot != null && slot.HasEquippedItem())
+                Debug.LogError($"❌ Cannot equip: Rune {item.ItemName} (ID: {item.ItemId}) is already equipped!");
+                isProcessingEquipment = false;
+                yield break;
+            }
+        }
+
+        // หา target slot
+        EquipmentSlot targetSlot = null;
+
+        if (item.ItemType == ItemType.Rune)
+        {
+            targetSlot = GetNextAvailableRuneSlot(); // ✅ ใช้ sequential method ใหม่
+        }
+        else
+        {
+            targetSlot = GetSlotForItemType(item.ItemType);
+        }
+
+        if (targetSlot == null)
+        {
+            Debug.LogError($"❌ No available slot for {item.ItemType}");
+            isProcessingEquipment = false;
+            yield break;
+        }
+
+        // ✅ Validate slot availability อีกครั้ง
+        if (!IsSlotTrulyEmpty(targetSlot))
+        {
+            Debug.LogWarning($"❌ Target slot {targetSlot.slotName} is not empty!");
+            isProcessingEquipment = false;
+            yield break;
+        }
+
+        // รอ frame เดียวเพื่อให้ UI update
+        yield return null;
+
+        // ลอง equip
+        bool success = AtomicEquipItem(item, targetSlot);
+
+        if (success)
+        {
+            // ลบจาก inventory
+            RemoveItemFromInventory(inventorySlotIndex);
+
+            // แจ้งให้ระบบรู้
+            OnItemEquipped?.Invoke(item, item.ItemType);
+
+            Debug.Log($"✅ Successfully equipped {item.ItemName} in {targetSlot.slotName}");
+        }
+        else
+        {
+            Debug.LogError($"❌ Failed to equip {item.ItemName}");
+        }
+
+        // ✅ รออีก frame ก่อนปลดล็อก
+        yield return null;
+        isProcessingEquipment = false;
+    }
+
+    // ✅ ใหม่: Method สำหรับเช็ค rune ID duplication
+    public bool IsRuneIdAlreadyEquipped(string runeId)
+    {
+        Debug.Log($"🔍 Checking rune ID '{runeId}' duplication...");
+
+        for (int i = 0; i < runeSlots.Length; i++)
+        {
+            var runeSlot = runeSlots[i];
+            if (runeSlot != null && runeSlot.HasEquippedItem())
+            {
+                var equippedRune = runeSlot.GetEquippedItem();
+                if (equippedRune != null && equippedRune.ItemId == runeId)
                 {
-                    var equippedItem = slot.GetEquippedItem();
-                    if (equippedItem != null && equippedItem.ItemName == item.ItemName)
-                    {
-                        equipSlot = slot;
-                        Debug.Log($"✅ Found {item.ItemName} in {slot.slotName} using method 2");
-                        break;
-                    }
+                    Debug.Log($"❌ Found duplicate: Rune ID '{runeId}' in {runeSlot.slotName}");
+                    return true;
                 }
             }
         }
 
-        // วิธีที่ 3: ถ้ายังไม่เจอ ลองหาจาก ItemType
-        if (equipSlot == null)
+        Debug.Log($"✅ No duplicate found for rune ID '{runeId}'");
+        return false;
+    }
+
+    // ✅ ใหม่: Sequential rune slot assignment
+    private EquipmentSlot GetNextAvailableRuneSlot()
+    {
+        Debug.Log("🔍 Finding next available rune slot sequentially...");
+
+        // ใช้ sequential assignment: Rune1 → Rune2 → Rune3
+        for (int i = 0; i < runeSlots.Length; i++)
         {
-            Debug.Log("🔍 Method 2 failed, trying method 3...");
-            equipSlot = GetSlotForItemType(item.ItemType);
-            if (equipSlot != null && equipSlot.HasEquippedItem())
+            var slot = runeSlots[i];
+            if (slot != null && IsSlotTrulyEmpty(slot))
             {
-                Debug.Log($"✅ Found slot by ItemType: {equipSlot.slotName}");
+                Debug.Log($"✅ Found available rune slot: {slot.slotName}");
+                return slot;
             }
-            else
+            else if (slot != null)
             {
-                equipSlot = null;
+                Debug.Log($"   {slot.slotName}: occupied by {slot.GetEquippedItem()?.ItemName ?? "Unknown"}");
             }
         }
 
-        if (equipSlot == null)
+        Debug.LogWarning("❌ No available rune slots found!");
+        return null;
+    }
+
+    // ✅ ใหม่: Comprehensive slot validation
+    private bool IsSlotTrulyEmpty(EquipmentSlot slot)
+    {
+        if (slot == null) return false;
+
+        bool isEmpty = slot.isEmpty;
+        bool hasItem = slot.HasEquippedItem();
+        var equippedItem = slot.GetEquippedItem();
+
+        // ทุกเงื่อนไขต้องเป็น "ว่าง"
+        bool isReallyEmpty = isEmpty && !hasItem && equippedItem == null;
+
+        if (!isReallyEmpty)
         {
-            Debug.LogError($"❌ Cannot find {item.ItemName} in any equipment slot");
-            DebugAllEquippedItems(); // Debug ทุก slot
-            return;
+            Debug.Log($"🔍 {slot.slotName} not empty: isEmpty={isEmpty}, hasItem={hasItem}, item={equippedItem?.ItemName ?? "null"}");
         }
 
-        // Unequip item
-        bool unequipped = UnequipItem(equipSlot);
-        if (unequipped)
+        return isReallyEmpty;
+    }
+
+    // ✅ ใหม่: Atomic equip operation
+    private bool AtomicEquipItem(ItemData item, EquipmentSlot targetSlot)
+    {
+        // Double-check before atomic operation
+        if (!IsSlotTrulyEmpty(targetSlot))
         {
-            // เพิ่ม item กลับไป inventory
-            AddItemToInventory(item);
-
-            // แจ้งให้ระบบรู้
-            OnItemUnequipped?.Invoke(item, item.ItemType);
-
-            Debug.Log($"✅ Successfully unequipped {item.ItemName}");
+            Debug.LogError($"❌ Atomic equip failed: {targetSlot.slotName} not empty");
+            return false;
         }
+
+        // ✅ สำหรับ rune: เช็ค duplication อีกครั้งก่อน equip
+        if (item.ItemType == ItemType.Rune && IsRuneIdAlreadyEquipped(item.ItemId))
+        {
+            Debug.LogError($"❌ Atomic equip failed: Rune ID '{item.ItemId}' duplicate detected");
+            return false;
+        }
+
+        // Perform atomic equip
+        bool success = targetSlot.TryEquipItem(item);
+
+        if (success)
+        {
+            // Update mapping
+            itemToSlotMap[item] = targetSlot;
+
+            // Update equipment manager
+            UpdateEquipmentManager(item, true);
+
+            Debug.Log($"✅ Atomic equip successful: {item.ItemName} → {targetSlot.slotName}");
+        }
+        else
+        {
+            Debug.LogError($"❌ Atomic equip failed: {item.ItemName} → {targetSlot.slotName}");
+        }
+
+        return success;
     }
 
     public bool EquipItem(ItemData item, EquipmentSlot targetSlot = null)
     {
         if (item == null) return false;
 
-        // หา slot ถ้าไม่ได้ระบุ
+        // ✅ เช็ค rune duplication
+        if (item.ItemType == ItemType.Rune && IsRuneIdAlreadyEquipped(item.ItemId))
+        {
+            Debug.LogError($"❌ Cannot equip: Rune ID '{item.ItemId}' already equipped");
+            return false;
+        }
+
         if (targetSlot == null)
         {
             targetSlot = GetSlotForItemType(item.ItemType);
@@ -361,28 +439,7 @@ public class EquipmentSlotsManager : MonoBehaviour
             return false;
         }
 
-        // ✅ Final check ก่อน equip
-        if (!targetSlot.isEmpty || targetSlot.HasEquippedItem())
-        {
-            Debug.LogError($"❌ Target slot {targetSlot.slotName} is not empty! Contains: {targetSlot.GetEquippedItem()?.ItemName}");
-            return false;
-        }
-
-        // ลอง equip
-        bool success = targetSlot.TryEquipItem(item);
-
-        if (success)
-        {
-            // อัปเดต EquipmentManager เดิม
-            UpdateEquipmentManager(item, true);
-            Debug.Log($"✅ Successfully equipped {item.ItemName} in {targetSlot.slotName}");
-        }
-        else
-        {
-            Debug.LogError($"❌ TryEquipItem failed for {item.ItemName} in {targetSlot.slotName}");
-        }
-
-        return success;
+        return AtomicEquipItem(item, targetSlot);
     }
 
     public bool UnequipItem(EquipmentSlot slot)
@@ -394,12 +451,43 @@ public class EquipmentSlotsManager : MonoBehaviour
 
         if (unequippedItem != null)
         {
+            // ลบออกจาก mapping
+            if (itemToSlotMap.ContainsKey(unequippedItem))
+            {
+                itemToSlotMap.Remove(unequippedItem);
+                Debug.Log($"🔄 Removed {unequippedItem.ItemName} from slot mapping");
+            }
+
             // อัปเดต EquipmentManager เดิม
             UpdateEquipmentManager(unequippedItem, false);
             return true;
         }
 
         return false;
+    }
+
+    void HandleUnequipRequest(ItemData item, int slotIndex)
+    {
+        if (item == null) return;
+
+        Debug.Log($"🔧 HandleUnequipRequest: {item.ItemName}");
+
+        EquipmentSlot equipSlot = FindSlotWithItem(item);
+
+        if (equipSlot == null)
+        {
+            Debug.LogError($"❌ Cannot find {item.ItemName} in any equipment slot");
+            DebugAllEquippedItems();
+            return;
+        }
+
+        bool unequipped = UnequipItem(equipSlot);
+        if (unequipped)
+        {
+            AddItemToInventory(item);
+            OnItemUnequipped?.Invoke(item, item.ItemType);
+            Debug.Log($"✅ Successfully unequipped {item.ItemName}");
+        }
     }
     #endregion
 
@@ -413,44 +501,12 @@ public class EquipmentSlotsManager : MonoBehaviour
             case ItemType.Armor: return armorSlot;
             case ItemType.Pants: return pantsSlot;
             case ItemType.Shoes: return shoesSlot;
-            case ItemType.Rune: return GetAvailableRuneSlot();
+            case ItemType.Rune: return GetNextAvailableRuneSlot(); // ✅ ใช้ sequential method
             default: return null;
         }
     }
 
-    public EquipmentSlot GetAvailableRuneSlot()
-    {
-        Debug.Log("🔍 Looking for available rune slot...");
-
-        // หา rune slot ว่างแรก
-        for (int i = 0; i < runeSlots.Length; i++)
-        {
-            var runeSlot = runeSlots[i];
-            if (runeSlot != null)
-            {
-                bool isEmpty = runeSlot.isEmpty;
-                bool hasItem = runeSlot.HasEquippedItem();
-
-                Debug.Log($"   Rune{i + 1}: isEmpty={isEmpty}, hasItem={hasItem}, item={runeSlot.GetEquippedItem()?.ItemName ?? "None"}");
-
-                // ✅ ตรวจสอบทั้ง isEmpty และ HasEquippedItem
-                if (isEmpty && !hasItem)
-                {
-                    Debug.Log($"✅ Found available rune slot: Rune{i + 1}");
-                    return runeSlot;
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ Rune slot {i} is null!");
-            }
-        }
-
-        Debug.LogWarning("❌ No available rune slots found!");
-        return null; // ไม่มี slot ว่าง
-    }
-
-
+    // ✅ ปรับปรุง: FindSlotWithItem ให้รองรับ rune โดยใช้ ItemId
     public EquipmentSlot FindSlotWithItem(ItemData item)
     {
         Debug.Log($"🔍 FindSlotWithItem: Looking for {item.ItemName} (ID: {item.ItemId})");
@@ -460,21 +516,39 @@ public class EquipmentSlotsManager : MonoBehaviour
             if (slot != null && slot.HasEquippedItem())
             {
                 var equippedItem = slot.GetEquippedItem();
-                Debug.Log($"   Checking slot {slot.slotName}: {equippedItem?.ItemName} (ID: {equippedItem?.ItemId})");
 
-                // ✅ เปรียบเทียบทั้ง ItemId และ ItemName เผื่อ ItemId ไม่ตรง
-                if (equippedItem != null &&
-                    (equippedItem.ItemId == item.ItemId || equippedItem.ItemName == item.ItemName))
+                if (equippedItem != null)
                 {
-                    Debug.Log($"✅ Found {item.ItemName} in {slot.slotName}");
-                    return slot;
+                    // ✅ สำหรับ rune: ใช้ ReferenceEquals เท่านั้น (เพราะเราต้องการหา instance เดียวกันพอดี)
+                    // สำหรับ equipment อื่น: ใช้ ItemId เป็นหลัก
+                    bool isMatch = false;
+
+                    if (item.ItemType == ItemType.Rune)
+                    {
+                        // สำหรับ rune: ใช้ ReferenceEquals เพื่อหา instance เดียวกันที่ต้องการ unequip
+                        isMatch = ReferenceEquals(equippedItem, item);
+                        Debug.Log($"   {slot.slotName}: Rune reference check = {isMatch}");
+                    }
+                    else
+                    {
+                        // สำหรับ equipment อื่น: ใช้ ItemId
+                        isMatch = equippedItem.ItemId == item.ItemId;
+                        Debug.Log($"   {slot.slotName}: ID match = {isMatch}");
+                    }
+
+                    if (isMatch)
+                    {
+                        Debug.Log($"✅ Found {item.ItemName} in {slot.slotName}");
+                        return slot;
+                    }
                 }
             }
         }
 
-        Debug.LogError($"❌ Item {item.ItemName} not found in any slot!");
+        Debug.Log($"❌ {item.ItemName} not found in any slot");
         return null;
     }
+
     public bool IsItemEquipped(ItemData item)
     {
         return FindSlotWithItem(item) != null;
@@ -485,6 +559,29 @@ public class EquipmentSlotsManager : MonoBehaviour
         EquipmentSlot slot = GetSlotForItemType(itemType);
         return slot?.GetEquippedItem();
     }
+
+    // ✅ ใหม่: Method สำหรับหา rune ที่มี ID เดียวกัน
+    public EquipmentSlot FindSlotWithRuneId(string runeId)
+    {
+        Debug.Log($"🔍 FindSlotWithRuneId: Looking for rune ID '{runeId}'");
+
+        for (int i = 0; i < runeSlots.Length; i++)
+        {
+            var slot = runeSlots[i];
+            if (slot != null && slot.HasEquippedItem())
+            {
+                var equippedRune = slot.GetEquippedItem();
+                if (equippedRune != null && equippedRune.ItemId == runeId)
+                {
+                    Debug.Log($"✅ Found rune ID '{runeId}' in {slot.slotName}");
+                    return slot;
+                }
+            }
+        }
+
+        Debug.Log($"❌ Rune ID '{runeId}' not found");
+        return null;
+    }
     #endregion
 
     #region Integration Methods
@@ -492,7 +589,6 @@ public class EquipmentSlotsManager : MonoBehaviour
     {
         if (equipmentManager == null) return;
 
-        // สร้าง EquipmentData จาก ItemData
         EquipmentData equipmentData = new EquipmentData
         {
             itemName = item.ItemName,
@@ -538,14 +634,12 @@ public class EquipmentSlotsManager : MonoBehaviour
             else
             {
                 Debug.LogWarning($"⚠️ Inventory full! Cannot return {item.ItemName} to inventory");
-                // TODO: Handle inventory full case - maybe drop on ground or show message
             }
         }
         else
         {
             Debug.LogError("❌ InventoryGrid is null! Cannot return item to inventory");
 
-            // ✅ เพิ่ม: หา InventoryGrid ใหม่ถ้าหายไป
             inventoryGrid = FindObjectOfType<InventoryGridManager>();
             if (inventoryGrid != null)
             {
@@ -561,16 +655,15 @@ public class EquipmentSlotsManager : MonoBehaviour
 
     void ShowEquippedItemDetail(EquipmentSlot slot)
     {
-        // แสดง item detail panel สำหรับ equipped item
         var inventoryManager = FindObjectOfType<InventoryManager>();
         if (inventoryManager != null && slot.HasEquippedItem())
         {
-            inventoryManager.ShowItemDetail(slot.GetEquippedItem(), -1); // -1 = equipped item
+            inventoryManager.ShowItemDetail(slot.GetEquippedItem(), -1);
         }
     }
     #endregion
 
-    #region Debug Methods (เหมือน ItemDetailPanel)
+    #region Debug Methods
     [ContextMenu("Debug Equipment Slots")]
     public void DebugEquipmentSlots()
     {
@@ -578,75 +671,53 @@ public class EquipmentSlotsManager : MonoBehaviour
         Debug.Log($"   equipmentSlotsPanel: {(equipmentSlotsPanel != null ? "✅ Assigned" : "❌ NULL")}");
         Debug.Log($"   isVisible: {isVisible}");
         Debug.Log($"   Total Slots: {allSlots.Count}");
+        Debug.Log($"   Processing: {isProcessingEquipment}");
 
-        if (equipmentSlotsPanel != null)
-            Debug.Log($"   Panel Active: {equipmentSlotsPanel.activeSelf}");
-
-        // Debug แต่ละ slot
         foreach (var slot in allSlots)
         {
             if (slot != null)
             {
-                string itemInfo = slot.HasEquippedItem() ? slot.GetEquippedItem().ItemName : "Empty";
+                string itemInfo = slot.HasEquippedItem() ? $"{slot.GetEquippedItem().ItemName} (ID: {slot.GetEquippedItem().ItemId})" : "Empty";
                 Debug.Log($"   - {slot.slotName}: {itemInfo}");
             }
         }
     }
 
-    [ContextMenu("Test - Show Equipment Slots")]
-    public void TestShowEquipmentSlots()
+    [ContextMenu("Debug Rune Slots")]
+    public void DebugRuneSlots()
     {
-        ShowEquipmentSlots();
-    }
+        Debug.Log("🔍 === RUNE SLOTS DEBUG ===");
 
-    [ContextMenu("Test - Hide Equipment Slots")]
-    public void TestHideEquipmentSlots()
-    {
-        HideEquipmentSlots();
-    }
-
-    [ContextMenu("Test - Equip Random Items")]
-    public void TestEquipRandomItems()
-    {
-        if (ItemDatabase.Instance == null) return;
-
-        foreach (var slot in allSlots)
+        for (int i = 0; i < runeSlots.Length; i++)
         {
-            if (slot != null && slot.isEmpty)
-            {
-                var itemsOfType = ItemDatabase.Instance.GetItemsByType(slot.slotType);
-                if (itemsOfType.Count > 0)
-                {
-                    ItemData randomItem = itemsOfType[UnityEngine.Random.Range(0, itemsOfType.Count)];
-                    slot.TryEquipItem(randomItem);
-                }
-            }
-        }
-
-        Debug.Log("🎲 Equipped random items to all empty slots");
-    }
-    #endregion
-    [ContextMenu("Test - Debug Unequip Issue")]
-    public void TestDebugUnequipIssue()
-    {
-        Debug.Log("🔍 === UNEQUIP DEBUG ===");
-        Debug.Log($"Equipment Slots Panel: {(equipmentSlotsPanel != null ? equipmentSlotsPanel.activeSelf.ToString() : "NULL")}");
-        Debug.Log($"Inventory Grid: {(inventoryGrid != null ? "Found" : "NULL")}");
-
-        if (inventoryGrid != null)
-        {
-            Debug.Log($"Inventory Empty Slots: {inventoryGrid.GetEmptySlotCount()}");
-            Debug.Log($"Inventory Filled Slots: {inventoryGrid.GetFilledSlotCount()}");
-        }
-
-        foreach (var slot in allSlots)
-        {
+            var slot = runeSlots[i];
             if (slot != null)
             {
-                Debug.Log($"Slot {slot.slotName}: Active={slot.gameObject.activeSelf}, HasItem={slot.HasEquippedItem()}");
+                var item = slot.GetEquippedItem();
+                bool isEmpty = slot.isEmpty;
+                bool hasItem = slot.HasEquippedItem();
+
+                Debug.Log($"Rune{i + 1}: isEmpty={isEmpty}, hasItem={hasItem}, item={item?.ItemName ?? "None"}");
+                if (item != null)
+                {
+                    Debug.Log($"   Item ID: {item.ItemId}");
+                }
+                Debug.Log($"   GameObject active: {slot.gameObject.activeSelf}");
+                Debug.Log($"   Is truly empty: {IsSlotTrulyEmpty(slot)}");
+            }
+            else
+            {
+                Debug.Log($"Rune{i + 1}: NULL SLOT!");
             }
         }
-        Debug.Log("🔍 === END UNEQUIP DEBUG ===");
+
+        Debug.Log($"Item-to-Slot mappings: {itemToSlotMap.Count}");
+        foreach (var mapping in itemToSlotMap)
+        {
+            Debug.Log($"   {mapping.Key?.ItemName} (ID: {mapping.Key?.ItemId}) → {mapping.Value?.slotName}");
+        }
+
+        Debug.Log("🔍 === END RUNE SLOTS DEBUG ===");
     }
 
     [ContextMenu("Debug All Equipped Items")]
@@ -674,4 +745,145 @@ public class EquipmentSlotsManager : MonoBehaviour
         }
         Debug.Log("🔍 === END EQUIPPED ITEMS ===");
     }
+
+    // ✅ ใหม่: Debug method สำหรับ check rune duplication
+    [ContextMenu("Debug - Check Rune Duplicates")]
+    public void DebugCheckRuneDuplicates()
+    {
+        Debug.Log("🔍 === CHECKING RUNE DUPLICATES ===");
+
+        var runeIds = new Dictionary<string, List<string>>();
+
+        for (int i = 0; i < runeSlots.Length; i++)
+        {
+            var slot = runeSlots[i];
+            if (slot != null && slot.HasEquippedItem())
+            {
+                var rune = slot.GetEquippedItem();
+                if (rune != null)
+                {
+                    string runeId = rune.ItemId;
+                    if (!runeIds.ContainsKey(runeId))
+                    {
+                        runeIds[runeId] = new List<string>();
+                    }
+                    runeIds[runeId].Add(slot.slotName);
+                }
+            }
+        }
+
+        Debug.Log("Rune ID Summary:");
+        foreach (var kvp in runeIds)
+        {
+            string status = kvp.Value.Count > 1 ? "❌ DUPLICATE" : "✅ Unique";
+            Debug.Log($"   ID '{kvp.Key}': {string.Join(", ", kvp.Value)} - {status}");
+        }
+
+        Debug.Log("🔍 === END DUPLICATE CHECK ===");
+    }
+
+    // ✅ Recovery methods
+    [ContextMenu("Recovery - Clear All Rune Slots")]
+    public void RecoveryClearAllRuneSlots()
+    {
+        Debug.Log("🔧 === RECOVERY: CLEARING ALL RUNE SLOTS ===");
+
+        isProcessingEquipment = true;
+
+        try
+        {
+            foreach (var runeSlot in runeSlots)
+            {
+                if (runeSlot != null)
+                {
+                    var item = runeSlot.GetEquippedItem();
+                    if (item != null)
+                    {
+                        Debug.Log($"Returning {item.ItemName} to inventory...");
+                        AddItemToInventory(item);
+                    }
+
+                    runeSlot.ForceSetEmptyState();
+                }
+            }
+
+            // Clear mapping
+            var itemsToRemove = new List<ItemData>();
+            foreach (var mapping in itemToSlotMap)
+            {
+                if (mapping.Value != null && mapping.Value.slotType == ItemType.Rune)
+                {
+                    itemsToRemove.Add(mapping.Key);
+                }
+            }
+
+            foreach (var item in itemsToRemove)
+            {
+                itemToSlotMap.Remove(item);
+            }
+
+            Debug.Log("✅ All rune slots cleared and items returned to inventory");
+        }
+        finally
+        {
+            isProcessingEquipment = false;
+        }
+    }
+
+    [ContextMenu("Recovery - Fix All States")]
+    public void RecoveryFixAllStates()
+    {
+        Debug.Log("🔧 === RECOVERY: FIXING ALL STATES ===");
+
+        foreach (var slot in allSlots)
+        {
+            if (slot != null)
+            {
+                slot.ValidateAndFixState();
+            }
+        }
+
+        Debug.Log("✅ All slot states fixed");
+        DebugEquipmentSlots();
+    }
+
+    [ContextMenu("Recovery - Remove Duplicate Runes")]
+    public void RecoveryRemoveDuplicateRunes()
+    {
+        Debug.Log("🔧 === RECOVERY: REMOVING DUPLICATE RUNES ===");
+
+        var seenRuneIds = new HashSet<string>();
+
+        for (int i = 0; i < runeSlots.Length; i++)
+        {
+            var slot = runeSlots[i];
+            if (slot != null && slot.HasEquippedItem())
+            {
+                var rune = slot.GetEquippedItem();
+                if (rune != null)
+                {
+                    if (seenRuneIds.Contains(rune.ItemId))
+                    {
+                        Debug.Log($"🔧 Removing duplicate rune: {rune.ItemName} (ID: {rune.ItemId}) from {slot.slotName}");
+                        AddItemToInventory(rune);
+                        slot.ForceSetEmptyState();
+
+                        if (itemToSlotMap.ContainsKey(rune))
+                        {
+                            itemToSlotMap.Remove(rune);
+                        }
+                    }
+                    else
+                    {
+                        seenRuneIds.Add(rune.ItemId);
+                        Debug.Log($"✅ Keeping unique rune: {rune.ItemName} (ID: {rune.ItemId}) in {slot.slotName}");
+                    }
+                }
+            }
+        }
+
+        Debug.Log("✅ Duplicate rune removal completed");
+        DebugRuneSlots();
+    }
+    #endregion
 }
