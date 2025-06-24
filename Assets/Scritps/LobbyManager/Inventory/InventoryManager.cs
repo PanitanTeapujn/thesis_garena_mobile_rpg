@@ -57,13 +57,36 @@ public class InventoryManager : MonoBehaviour
     private bool isInventoryOpen = false;
     private GameObject currentCharacterPreview;
 
+    // ✅ เพิ่ม: Event setup tracking
+    private bool eventsSetupComplete = false;
+
     void Start()
     {
         SetupButtons();
         HideInventory();
         LoadItemSystem();
-        SetupItemDetailPanel();
+
+        // ✅ Setup systems ตามลำดับ
+        StartCoroutine(SetupSystemsSequentially());
+    }
+
+    // ✅ ใหม่: Sequential system setup
+    private IEnumerator SetupSystemsSequentially()
+    {
+        // รอให้ทุกอย่าง load เสร็จก่อน
+        yield return new WaitForSeconds(0.1f);
+
         SetupEquipmentSystem();
+        yield return new WaitForSeconds(0.1f);
+
+        SetupItemDetailPanel();
+        yield return new WaitForSeconds(0.1f);
+
+        // ✅ Verify setup
+        VerifyAllSystems();
+
+        eventsSetupComplete = true;
+        Debug.Log("✅ All systems setup completed");
     }
 
     void SetupButtons()
@@ -74,12 +97,16 @@ public class InventoryManager : MonoBehaviour
 
     void SetupEquipmentSystem()
     {
-        // หา EquipmentSlotsManager ถ้าไม่ได้ assign
         if (equipmentSlots == null)
             equipmentSlots = FindObjectOfType<EquipmentSlotsManager>();
 
         if (equipmentSlots != null)
         {
+            // ✅ Unsubscribe first เพื่อป้องกัน duplicates
+            EquipmentSlotsManager.OnItemEquipped -= HandleItemEquipped;
+            EquipmentSlotsManager.OnItemUnequipped -= HandleItemUnequipped;
+            EquipmentSlotsManager.OnEquipmentChanged -= HandleEquipmentChanged;
+
             // Subscribe to equipment events
             EquipmentSlotsManager.OnItemEquipped += HandleItemEquipped;
             EquipmentSlotsManager.OnItemUnequipped += HandleItemUnequipped;
@@ -96,7 +123,10 @@ public class InventoryManager : MonoBehaviour
     void HandleItemEquipped(ItemData item, ItemType slotType)
     {
         Debug.Log($"🎽 Item equipped: {item.ItemName} in {slotType} slot");
-        RefreshCharacterInfo();
+
+        // ✅ Delayed refresh เพื่อให้ระบบ update เสร็จก่อน
+        StartCoroutine(DelayedUIRefresh($"item equipped: {item.ItemName}"));
+
         HideItemDetail();
         RefreshInventoryVisuals();
     }
@@ -105,32 +135,54 @@ public class InventoryManager : MonoBehaviour
     {
         Debug.Log($"🔧 Item unequipped: {item.ItemName} from {slotType} slot");
 
-        // ✅ เพิ่ม: ตรวจสอบว่า item กลับเข้า inventory แล้วหรือยัง
-        RefreshCharacterInfo();
+        // ✅ Delayed refresh เพื่อให้ระบบ update เสร็จก่อน
+        StartCoroutine(DelayedUIRefresh($"item unequipped: {item.ItemName}"));
+
         HideItemDetail();
         RefreshInventoryVisuals();
 
-        // ✅ เพิ่ม: Force refresh inventory เพื่อแสดง item ที่เพิ่งกลับมา
         if (inventoryGrid != null)
         {
             inventoryGrid.RefreshAllSlots();
             Debug.Log("🔄 Forced inventory refresh after unequip");
         }
 
-        // ✅ เพิ่ม: ตรวจสอบให้แน่ใจว่า equipment slots ยังแสดงอยู่
         if (equipmentSlots != null && !equipmentSlots.IsVisible())
         {
             equipmentSlots.ShowEquipmentSlots();
             Debug.Log("🔄 Re-showed equipment slots after unequip");
         }
     }
+
     void HandleEquipmentChanged()
     {
         Debug.Log("🔄 Equipment changed - refreshing UI");
         if (isInventoryOpen)
         {
-            RefreshCharacterInfo();
+            // ✅ Delayed refresh เพื่อให้ระบบ update เสร็จก่อน
+            StartCoroutine(DelayedUIRefresh("equipment changed"));
         }
+    }
+
+    // ✅ ใหม่: Delayed UI refresh coroutine
+    private IEnumerator DelayedUIRefresh(string reason)
+    {
+        Debug.Log($"🔄 Starting delayed UI refresh for: {reason}");
+
+        // รอ 2 frames เพื่อให้ระบบ update เสร็จ
+        yield return null;
+        yield return null;
+
+        RefreshCharacterInfo();
+
+        // ✅ ถ้า ItemDetailPanel เปิดอยู่ ให้ force refresh buttons
+        if (itemDetailPanel != null && itemDetailPanel.IsVisible())
+        {
+            itemDetailPanel.RefreshButtonState();
+            Debug.Log("🔄 Refreshed ItemDetailPanel buttons");
+        }
+
+        Debug.Log($"✅ Delayed UI refresh completed for: {reason}");
     }
 
     public void ShowInventory()
@@ -143,7 +195,6 @@ public class InventoryManager : MonoBehaviour
             isInventoryOpen = true;
             RefreshCharacterInfo();
 
-            // ✅ แสดง inventory grid
             if (inventoryGrid != null)
             {
                 inventoryGrid.gameObject.SetActive(true);
@@ -155,7 +206,6 @@ public class InventoryManager : MonoBehaviour
                 Debug.LogError("❌ InventoryGrid is null!");
             }
 
-            // ✅ เพิ่ม: แสดง equipment slots (แบบ ItemDetailPanel)
             if (equipmentSlots != null)
             {
                 equipmentSlots.ShowEquipmentSlots();
@@ -166,7 +216,6 @@ public class InventoryManager : MonoBehaviour
                 Debug.LogWarning("⚠️ EquipmentSlotsManager not found!");
             }
 
-            // ตรวจสอบ ItemDetailPanel
             if (itemDetailPanel != null)
             {
                 Debug.Log("✅ ItemDetailPanel ready for events");
@@ -191,14 +240,11 @@ public class InventoryManager : MonoBehaviour
             inventoryPanel.SetActive(false);
             isInventoryOpen = false;
 
-            // เพิ่ม: ซ่อน item detail panel
             HideItemDetail();
 
-            // ✅ ซ่อน inventory grid
             if (inventoryGrid != null)
                 inventoryGrid.gameObject.SetActive(false);
 
-            // ✅ ซ่อน equipment slots (แบบ ItemDetailPanel)
             if (equipmentSlots != null)
             {
                 equipmentSlots.HideEquipmentSlots();
@@ -242,7 +288,6 @@ public class InventoryManager : MonoBehaviour
 
     private void LoadFromPlayerPrefs()
     {
-        // Fallback to PlayerPrefs if PersistentPlayerData is not available
         currentCharacterData = new CharacterProgressData();
         currentCharacterData.characterType = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
         currentCharacterData.currentLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
@@ -271,22 +316,18 @@ public class InventoryManager : MonoBehaviour
     {
         if (currentCharacterData == null) return;
 
-        // Character name and type
         if (characterNameText != null)
         {
             string displayName = GetCharacterDisplayName(currentCharacterData.characterType);
             characterNameText.text = displayName;
         }
 
-        // Level
         if (characterLevelText != null)
             characterLevelText.text = $"Level {currentCharacterData.currentLevel}";
 
-        // Experience
         if (characterExpText != null)
             characterExpText.text = $"EXP: {currentCharacterData.currentExp}/{currentCharacterData.expToNextLevel}";
 
-        // Experience progress bar
         if (expProgressSlider != null)
         {
             float progress = currentCharacterData.expToNextLevel > 0 ?
@@ -299,7 +340,6 @@ public class InventoryManager : MonoBehaviour
     {
         if (currentCharacterData == null) return;
 
-        // Basic Stats
         if (hpStatText != null)
             hpStatText.text = $"Hp:{currentCharacterData.totalMaxHp.ToString() }";
 
@@ -315,7 +355,6 @@ public class InventoryManager : MonoBehaviour
         if (armorStatText != null)
             armorStatText.text = $"Armor:{currentCharacterData.totalArmor.ToString()}";
 
-        // Percentage Stats
         if (critChanceStatText != null)
             critChanceStatText.text = $"Critacal:{currentCharacterData.totalCriticalChance.ToString()}%";
 
@@ -328,7 +367,6 @@ public class InventoryManager : MonoBehaviour
         if (evasionRateStatText != null)
             evasionRateStatText.text = $"Dodge:{(currentCharacterData.totalEvasionRate)}%";
 
-        // Speed Stats
         if (moveSpeedStatText != null)
             moveSpeedStatText.text = $"MoveSpeed:{ currentCharacterData.totalMoveSpeed.ToString()}";
 
@@ -356,7 +394,6 @@ public class InventoryManager : MonoBehaviour
         return isInventoryOpen;
     }
 
-    // Called when application regains focus to refresh data
     void OnApplicationFocus(bool hasFocus)
     {
         if (hasFocus && isInventoryOpen)
@@ -375,7 +412,6 @@ public class InventoryManager : MonoBehaviour
     {
         if (currentCharacterData == null) return;
 
-        // แสดงรูป Character
         Sprite characterSprite = GetSpriteForCharacter(currentCharacterData.characterType);
         if (characterSprite != null && characterDisplayImage != null)
         {
@@ -405,20 +441,18 @@ public class InventoryManager : MonoBehaviour
                 return ironJuggernautImage;
             default:
                 Debug.LogWarning($"[InventoryManager] Unknown character type: {characterType}");
-                return assassinImage; // Fallback to Assassin
+                return assassinImage;
         }
     }
 
     void OnDestroy()
     {
-        // Unsubscribe from item detail panel events
         if (itemDetailPanel != null)
         {
             ItemDetailPanel.OnEquipRequested -= HandleEquipRequest;
             ItemDetailPanel.OnUnequipRequested -= HandleUnequipRequest;
         }
 
-        // Unsubscribe from equipment events
         if (equipmentSlots != null)
         {
             EquipmentSlotsManager.OnItemEquipped -= HandleItemEquipped;
@@ -429,11 +463,9 @@ public class InventoryManager : MonoBehaviour
 
     void LoadItemSystem()
     {
-        // โหลด ItemDatabase
         if (itemDatabase == null)
             itemDatabase = ItemDatabase.Instance;
 
-        // ตรวจสอบว่า InventoryGrid มี ItemDatabase
         if (inventoryGrid != null)
         {
             inventoryGrid.itemDatabase = itemDatabase;
@@ -455,7 +487,6 @@ public class InventoryManager : MonoBehaviour
             {
                 Debug.Log($"✅ Added {item.ItemName} to inventory");
 
-                // Refresh character info หลังจากเพิ่ม item
                 if (isInventoryOpen)
                 {
                     RefreshCharacterInfo();
@@ -484,12 +515,11 @@ public class InventoryManager : MonoBehaviour
         }
     }
 
-    #region Item Detail Panel
+    #region Item Detail Panel - ✅ ปรับปรุงแล้ว
     void SetupItemDetailPanel()
     {
         Debug.Log("🔧 Setting up ItemDetailPanel...");
 
-        // หา ItemDetailPanel ถ้าไม่ได้ assign
         if (itemDetailPanel == null)
         {
             itemDetailPanel = FindObjectOfType<ItemDetailPanel>();
@@ -498,26 +528,110 @@ public class InventoryManager : MonoBehaviour
 
         if (itemDetailPanel != null)
         {
-            // ✅ Unsubscribe ก่อนเผื่อมี duplicate
-            ItemDetailPanel.OnEquipRequested -= HandleEquipRequest;
-            ItemDetailPanel.OnUnequipRequested -= HandleUnequipRequest;
-
-            // Subscribe to events
-            ItemDetailPanel.OnEquipRequested += HandleEquipRequest;
-            ItemDetailPanel.OnUnequipRequested += HandleUnequipRequest;
-
-            // เรียก debug method เพื่อตรวจสอบสถานะ
-            itemDetailPanel.DebugPanelState();
+            // ✅ Robust event cleanup and setup
+            CleanupItemDetailEvents();
+            SetupItemDetailEvents();
 
             Debug.Log("✅ Item detail panel connected");
-
-            // ✅ เพิ่ม: Debug subscribers หลัง subscribe
-            itemDetailPanel.TestCheckEventSubscribers();
+            VerifyEventSubscription();
         }
         else
         {
             Debug.LogError("❌ ItemDetailPanel not found! Make sure it exists in the scene.");
         }
+    }
+
+    // ✅ ใหม่: Robust event cleanup
+    private void CleanupItemDetailEvents()
+    {
+        try
+        {
+            if (ItemDetailPanel.OnEquipRequested != null)
+            {
+                var delegates = ItemDetailPanel.OnEquipRequested.GetInvocationList();
+                foreach (var del in delegates)
+                {
+                    ItemDetailPanel.OnEquipRequested -= (System.Action<ItemData, int>)del;
+                }
+                Debug.Log($"🧹 Cleaned up {delegates.Length} OnEquipRequested subscribers");
+            }
+
+            if (ItemDetailPanel.OnUnequipRequested != null)
+            {
+                var delegates = ItemDetailPanel.OnUnequipRequested.GetInvocationList();
+                foreach (var del in delegates)
+                {
+                    ItemDetailPanel.OnUnequipRequested -= (System.Action<ItemData, int>)del;
+                }
+                Debug.Log($"🧹 Cleaned up {delegates.Length} OnUnequipRequested subscribers");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"⚠️ Event cleanup warning: {e.Message}");
+        }
+    }
+
+    // ✅ ใหม่: Robust event setup
+    private void SetupItemDetailEvents()
+    {
+        try
+        {
+            ItemDetailPanel.OnEquipRequested += HandleEquipRequest;
+            ItemDetailPanel.OnUnequipRequested += HandleUnequipRequest;
+            Debug.Log("✅ Item detail events subscribed");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Event setup failed: {e.Message}");
+        }
+    }
+
+    void VerifyEventSubscription()
+    {
+        Debug.Log("🔍 === VERIFYING EVENT SUBSCRIPTION ===");
+
+        if (ItemDetailPanel.OnEquipRequested != null)
+        {
+            var subscribers = ItemDetailPanel.OnEquipRequested.GetInvocationList();
+            Debug.Log($"✅ OnEquipRequested has {subscribers.Length} subscriber(s):");
+            foreach (var subscriber in subscribers)
+            {
+                Debug.Log($"   - {subscriber.Target?.GetType().Name}.{subscriber.Method.Name}");
+            }
+        }
+        else
+        {
+            Debug.LogError("❌ OnEquipRequested is NULL after subscription!");
+        }
+
+        if (ItemDetailPanel.OnUnequipRequested != null)
+        {
+            var subscribers = ItemDetailPanel.OnUnequipRequested.GetInvocationList();
+            Debug.Log($"✅ OnUnequipRequested has {subscribers.Length} subscriber(s):");
+            foreach (var subscriber in subscribers)
+            {
+                Debug.Log($"   - {subscriber.Target?.GetType().Name}.{subscriber.Method.Name}");
+            }
+        }
+        else
+        {
+            Debug.LogError("❌ OnUnequipRequested is NULL after subscription!");
+        }
+
+        Debug.Log("🔍 === END VERIFICATION ===");
+    }
+
+    // ✅ เพิ่ม method สำหรับ re-setup events
+    [ContextMenu("Debug - Re-setup Events")]
+    public void DebugResetupEvents()
+    {
+        Debug.Log("🔧 Re-setting up all events...");
+
+        SetupEquipmentSystem();
+        SetupItemDetailPanel();
+
+        Debug.Log("✅ Event re-setup completed");
     }
 
     void HandleEquipRequest(ItemData item, int slotIndex)
@@ -526,9 +640,19 @@ public class InventoryManager : MonoBehaviour
 
         Debug.Log($"🎽 Equip request: {item.ItemName} from slot {slotIndex}");
 
-        // ใช้ Equipment System แทน
         if (equipmentSlots != null)
         {
+            // ✅ สำหรับ rune: เช็ค duplication ก่อน
+            if (item.ItemType == ItemType.Rune)
+            {
+                if (equipmentSlots.IsRuneIdAlreadyEquipped(item.ItemId))
+                {
+                    Debug.LogError($"❌ Cannot equip: Rune {item.ItemName} (ID: {item.ItemId}) is already equipped!");
+                    ShowEquipErrorMessage($"Rune '{item.ItemName}' is already equipped!");
+                    return;
+                }
+            }
+
             var targetSlot = equipmentSlots.GetSlotForItemType(item.ItemType);
             if (targetSlot == null)
             {
@@ -536,19 +660,27 @@ public class InventoryManager : MonoBehaviour
                 return;
             }
 
-            if (!targetSlot.isEmpty)
+            // ✅ สำหรับ non-rune items: เช็คว่าช่องว่างหรือไม่
+            if (item.ItemType != ItemType.Rune)
             {
-                Debug.LogWarning($"❌ {targetSlot.slotName} slot is occupied");
-                return;
+                bool slotEmpty = targetSlot.isEmpty && !targetSlot.HasEquippedItem() && targetSlot.GetEquippedItem() == null;
+
+                if (!slotEmpty)
+                {
+                    Debug.LogWarning($"❌ {targetSlot.slotName} slot is occupied");
+                    return;
+                }
             }
 
             // Equip item ผ่าน Equipment System
             bool success = equipmentSlots.EquipItem(item, targetSlot);
             if (success)
             {
-                // ลบจาก inventory
                 RemoveItemFromInventory(slotIndex);
                 Debug.Log($"✅ Successfully equipped {item.ItemName}");
+
+                // ✅ เพิ่ม: Force update ItemDetailPanel ทันที
+                StartCoroutine(ForceUpdateItemDetailPanelAfterEquip(item));
             }
             else
             {
@@ -559,6 +691,35 @@ public class InventoryManager : MonoBehaviour
         {
             Debug.LogError("❌ Equipment system not available!");
         }
+    }
+
+    // ✅ ใหม่: Force update ItemDetailPanel หลัง equip
+    private IEnumerator ForceUpdateItemDetailPanelAfterEquip(ItemData equippedItem)
+    {
+        // รอให้ระบบ update เสร็จ
+        yield return null;
+        yield return null;
+
+        if (itemDetailPanel != null && itemDetailPanel.IsVisible())
+        {
+            var currentItem = itemDetailPanel.GetCurrentItem();
+
+            // ถ้าเป็น item เดียวกันที่เพิ่ง equip
+            if (currentItem != null &&
+                currentItem.ItemId == equippedItem.ItemId &&
+                currentItem.ItemName == equippedItem.ItemName)
+            {
+                Debug.Log($"🔄 Force hiding ItemDetailPanel after equipping {equippedItem.ItemName}");
+                itemDetailPanel.HidePanel();
+            }
+        }
+    }
+
+    // ✅ ใหม่: แสดง error message
+    private void ShowEquipErrorMessage(string message)
+    {
+        Debug.LogWarning($"⚠️ {message}");
+        // TODO: แสดง UI notification หรือ popup ถ้าต้องการ
     }
 
     void HandleUnequipRequest(ItemData item, int slotIndex)
@@ -577,6 +738,9 @@ public class InventoryManager : MonoBehaviour
                 {
                     AddItemToInventory(item);
                     Debug.Log($"✅ Successfully unequipped {item.ItemName}");
+
+                    // ✅ เพิ่ม: Force update ItemDetailPanel ทันที
+                    StartCoroutine(ForceUpdateItemDetailPanelAfterUnequip(item));
                 }
                 else
                 {
@@ -594,11 +758,36 @@ public class InventoryManager : MonoBehaviour
         }
     }
 
+    // ✅ ใหม่: Force update ItemDetailPanel หลัง unequip
+    private IEnumerator ForceUpdateItemDetailPanelAfterUnequip(ItemData unequippedItem)
+    {
+        // รอให้ระบบ update เสร็จ
+        yield return null;
+        yield return null;
+
+        if (itemDetailPanel != null && itemDetailPanel.IsVisible())
+        {
+            var currentItem = itemDetailPanel.GetCurrentItem();
+
+            // ถ้าเป็น item เดียวกันที่เพิ่ง unequip
+            if (currentItem != null &&
+                currentItem.ItemId == unequippedItem.ItemId &&
+                currentItem.ItemName == unequippedItem.ItemName)
+            {
+                Debug.Log($"🔄 Force refreshing ItemDetailPanel buttons after unequipping {unequippedItem.ItemName}");
+                itemDetailPanel.RefreshButtonState();
+            }
+        }
+    }
+
     public void ShowItemDetail(ItemData item, int slotIndex)
     {
         if (itemDetailPanel != null && item != null)
         {
+            // ✅ เพิ่ม: บอก ItemDetailPanel ว่า item มาจาก inventory (slotIndex >= 0) หรือ equipment (slotIndex = -1)
             itemDetailPanel.ShowItemDetail(item, slotIndex);
+
+            Debug.Log($"📋 Showing item detail: {item.ItemName} from {(slotIndex >= 0 ? $"inventory slot {slotIndex}" : "equipment")}");
         }
     }
 
@@ -642,7 +831,7 @@ public class InventoryManager : MonoBehaviour
     }
     #endregion
 
-    #region Debug Methods
+    #region Debug Methods - ✅ ปรับปรุงแล้ว
     [ContextMenu("Test - Add Random Items")]
     public void TestAddRandomItems()
     {
@@ -661,37 +850,143 @@ public class InventoryManager : MonoBehaviour
         }
     }
 
-    // ✅ เพิ่ม: Debug method สำหรับตรวจสอบ equipment slots
-    [ContextMenu("Test - Debug Equipment Slots")]
-    public void TestDebugEquipmentSlots()
+    [ContextMenu("Debug - Full System Check")]
+    public void DebugFullSystemCheck()
     {
-        Debug.Log("🔍 === EQUIPMENT SLOTS DEBUG ===");
+        Debug.Log("🔍 === FULL SYSTEM CHECK ===");
 
-        Debug.Log($"EquipmentSlotsManager: {(equipmentSlots != null ? "✅ Found" : "❌ Not Found")}");
-
-        if (equipmentSlots != null)
+        // 1. Check ItemDetailPanel events
+        Debug.Log("1. ItemDetailPanel Events:");
+        if (ItemDetailPanel.OnEquipRequested != null)
         {
-            Debug.Log($"Equipment Slots IsVisible: {equipmentSlots.IsVisible()}");
-            equipmentSlots.DebugEquipmentSlots();
-        }
-
-        Debug.Log("🔍 === END EQUIPMENT SLOTS DEBUG ===");
-    }
-
-    [ContextMenu("Test - Force Show Equipment Slots")]
-    public void TestForceShowEquipmentSlots()
-    {
-        Debug.Log("🔧 Force showing equipment slots...");
-
-        if (equipmentSlots != null)
-        {
-            equipmentSlots.ShowEquipmentSlots();
-            Debug.Log("✅ Equipment slots shown");
+            Debug.Log($"   OnEquipRequested: {ItemDetailPanel.OnEquipRequested.GetInvocationList().Length} subscribers");
         }
         else
         {
-            Debug.LogError("❌ No equipment slots manager found!");
+            Debug.LogError("   OnEquipRequested: NULL!");
         }
+
+        // 2. Check EquipmentSlotsManager
+        Debug.Log("2. EquipmentSlotsManager:");
+        if (equipmentSlots != null)
+        {
+            Debug.Log($"   Found: {equipmentSlots.name}");
+            Debug.Log($"   Is Visible: {equipmentSlots.IsVisible()}");
+        }
+        else
+        {
+            Debug.LogError("   EquipmentSlotsManager: NULL!");
+        }
+
+        // 3. Check InventoryGrid
+        Debug.Log("3. InventoryGrid:");
+        if (inventoryGrid != null)
+        {
+            Debug.Log($"   Empty slots: {inventoryGrid.GetEmptySlotCount()}");
+            Debug.Log($"   Filled slots: {inventoryGrid.GetFilledSlotCount()}");
+        }
+        else
+        {
+            Debug.LogError("   InventoryGrid: NULL!");
+        }
+
+        // 4. Check setup status
+        Debug.Log($"4. Setup Status:");
+        Debug.Log($"   Events setup complete: {eventsSetupComplete}");
+        Debug.Log($"   Inventory open: {isInventoryOpen}");
+
+        Debug.Log("🔍 === END FULL SYSTEM CHECK ===");
+    }
+
+    // ✅ ใหม่: System verification
+    private void VerifyAllSystems()
+    {
+        Debug.Log("🔍 Verifying all systems...");
+
+        bool allGood = true;
+
+        if (itemDetailPanel == null)
+        {
+            Debug.LogError("❌ ItemDetailPanel missing!");
+            allGood = false;
+        }
+
+        if (equipmentSlots == null)
+        {
+            Debug.LogError("❌ EquipmentSlotsManager missing!");
+            allGood = false;
+        }
+
+        if (inventoryGrid == null)
+        {
+            Debug.LogError("❌ InventoryGrid missing!");
+            allGood = false;
+        }
+
+        if (ItemDetailPanel.OnEquipRequested == null)
+        {
+            Debug.LogError("❌ OnEquipRequested not subscribed!");
+            allGood = false;
+        }
+
+        if (allGood)
+        {
+            Debug.Log("✅ All systems verified successfully");
+        }
+        else
+        {
+            Debug.LogError("❌ System verification failed - some components missing");
+        }
+    }
+
+    [ContextMenu("Recovery - Force System Reconnect")]
+    public void RecoveryForceSystemReconnect()
+    {
+        Debug.Log("🔧 === RECOVERY: FORCE SYSTEM RECONNECT ===");
+
+        try
+        {
+            // Re-find all components
+            if (itemDetailPanel == null)
+                itemDetailPanel = FindObjectOfType<ItemDetailPanel>();
+
+            if (equipmentSlots == null)
+                equipmentSlots = FindObjectOfType<EquipmentSlotsManager>();
+
+            if (inventoryGrid == null)
+                inventoryGrid = FindObjectOfType<InventoryGridManager>();
+
+            // Re-setup all systems
+            SetupEquipmentSystem();
+            SetupItemDetailPanel();
+
+            // Verify
+            VerifyAllSystems();
+
+            Debug.Log("✅ System reconnect completed");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Recovery failed: {e.Message}");
+        }
+    }
+
+    [ContextMenu("Test - Check Rune System")]
+    public void TestCheckRuneSystem()
+    {
+        Debug.Log("🔍 === TESTING RUNE SYSTEM ===");
+
+        if (equipmentSlots != null)
+        {
+            equipmentSlots.DebugRuneSlots();
+            equipmentSlots.DebugCheckRuneDuplicates();
+        }
+        else
+        {
+            Debug.LogError("❌ EquipmentSlotsManager not found!");
+        }
+
+        Debug.Log("🔍 === END RUNE SYSTEM TEST ===");
     }
     #endregion
 }

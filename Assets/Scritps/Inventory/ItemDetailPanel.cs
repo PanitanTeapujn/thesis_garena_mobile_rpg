@@ -2,26 +2,27 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
+using System.Collections;
 
 public class ItemDetailPanel : MonoBehaviour
 {
     #region UI References
     [Header("Panel References")]
-    public GameObject detailPanel;           // Panel หลัก
-    public Button closeButton;               // ปุ่มปิด (ถ้ามี)
-    public Button equipButton;               // ปุ่ม Equip (สีเขียว)
-    public Button unequipButton;             // ปุ่ม Unequip (สีแดง/ส้ม)
+    public GameObject detailPanel;
+    public Button closeButton;
+    public Button equipButton;
+    public Button unequipButton;
 
     [Header("Item Display")]
-    public Image itemIconImage;              // รูป item ใหญ่
-    public Image itemTierBorder;             // border สี tier รอบรูป
+    public Image itemIconImage;
+    public Image itemTierBorder;
 
     [Header("Item Info Text")]
-    public TextMeshProUGUI nameText;         // "Name" + ชื่อ item
-    public TextMeshProUGUI tierText;         // "Tier" + tier level  
-    public TextMeshProUGUI typeText;         // "Type" + ประเภท item
-    public TextMeshProUGUI statText;         // "Stat" + รายการ stats
-    public TextMeshProUGUI descriptionsText; // "Descriptions" + คำอธิบาย
+    public TextMeshProUGUI nameText;
+    public TextMeshProUGUI tierText;
+    public TextMeshProUGUI typeText;
+    public TextMeshProUGUI statText;
+    public TextMeshProUGUI descriptionsText;
     #endregion
 
     #region Current State
@@ -29,6 +30,9 @@ public class ItemDetailPanel : MonoBehaviour
     public ItemData currentItem;
     public int currentSlotIndex = -1;
     public bool isVisible = false;
+
+    // ✅ เพิ่ม: Button interaction protection
+    private bool isProcessingButton = false;
     #endregion
 
     #region Events
@@ -62,8 +66,7 @@ public class ItemDetailPanel : MonoBehaviour
     #region Initialization
     void InitializeComponents()
     {
-        // ไม่ต้องสร้าง prefabs เพราะใช้ text เดียว
-        Debug.Log("✅ Simple ItemDetailPanel initialized");
+        Debug.Log("✅ ItemDetailPanel initialized");
     }
 
     void SetupButtons()
@@ -78,13 +81,25 @@ public class ItemDetailPanel : MonoBehaviour
             unequipButton.onClick.AddListener(OnUnequipButtonClicked);
     }
 
+    void OnEquipmentSystemChanged()
+    {
+        // ถ้า panel เปิดอยู่และมี item ให้ refresh buttons
+        if (isVisible && currentItem != null)
+        {
+            Debug.Log($"🔄 Equipment system changed, refreshing buttons for {currentItem.ItemName}");
+            ForceUpdateButtons(); // ✅ เปลี่ยนเป็น ForceUpdateButtons
+        }
+    }
+
     void SubscribeToEvents()
     {
         // Unsubscribe ก่อนเผื่อมี duplicate
         InventorySlot.OnSlotSelected -= OnInventorySlotSelected;
+        EquipmentSlotsManager.OnEquipmentChanged -= OnEquipmentSystemChanged;
 
         // Subscribe ใหม่
         InventorySlot.OnSlotSelected += OnInventorySlotSelected;
+        EquipmentSlotsManager.OnEquipmentChanged += OnEquipmentSystemChanged;
 
         Debug.Log("✅ ItemDetailPanel subscribed to slot events");
     }
@@ -92,11 +107,13 @@ public class ItemDetailPanel : MonoBehaviour
     void UnsubscribeFromEvents()
     {
         InventorySlot.OnSlotSelected -= OnInventorySlotSelected;
+        EquipmentSlotsManager.OnEquipmentChanged -= OnEquipmentSystemChanged;
+
         Debug.Log("📝 ItemDetailPanel unsubscribed from slot events");
     }
     #endregion
 
-    #region Event Handlers
+    #region Event Handlers - ✅ ปรับปรุงแล้ว
     void OnInventorySlotSelected(InventorySlot slot)
     {
         Debug.Log($"🎯 ItemDetailPanel received slot selection: {slot?.slotIndex}");
@@ -105,7 +122,9 @@ public class ItemDetailPanel : MonoBehaviour
         {
             ItemData item = slot.GetItem();
             Debug.Log($"📦 Slot has item: {item?.ItemName}");
-            ShowItemDetail(item, slot.slotIndex);
+
+            // ✅ เปลี่ยน: Force refresh panel ทั้งหมดแทนการ update incremental
+            RefreshItemDetailPanel(item, slot.slotIndex);
         }
         else
         {
@@ -114,91 +133,203 @@ public class ItemDetailPanel : MonoBehaviour
         }
     }
 
+    private void RefreshItemDetailPanel(ItemData item, int slotIndex)
+    {
+        Debug.Log($"🔄 Force refreshing ItemDetailPanel for {item.ItemName}");
+
+        // Clear current state ก่อน
+        currentItem = null;
+        currentSlotIndex = -1;
+
+        // รอ 1 frame เพื่อให้ system clear state
+        StartCoroutine(DelayedShowItemDetail(item, slotIndex));
+    }
+
+    private System.Collections.IEnumerator DelayedShowItemDetail(ItemData item, int slotIndex)
+    {
+        // รอ 1 frame เพื่อให้ state clear
+        yield return null;
+
+        // แสดง item detail ใหม่
+        ShowItemDetail(item, slotIndex);
+
+        Debug.Log($"✅ Refreshed ItemDetailPanel for {item.ItemName}");
+    }
+
     void OnEquipButtonClicked()
     {
-        Debug.Log($"🎽 OnEquipButtonClicked called. CurrentItem: {currentItem?.ItemName ?? "NULL"}");
-
-        // ✅ เพิ่ม comprehensive null checks
-        if (currentItem == null)
+        // ✅ Prevent rapid clicking
+        if (isProcessingButton)
         {
-            Debug.LogError("❌ Cannot equip: currentItem is null!");
+            Debug.LogWarning("⚠️ Button already processing, ignoring click");
             return;
         }
 
-        if (OnEquipRequested == null)
-        {
-            Debug.LogError("❌ Cannot equip: OnEquipRequested event has no subscribers!");
+        StartCoroutine(ProcessEquipButtonClick());
+    }
 
-            // ✅ ลองหา subscribers ใหม่
-            var inventoryManager = FindObjectOfType<InventoryManager>();
-            if (inventoryManager != null)
-            {
-                Debug.Log("🔧 Found InventoryManager, but event not connected properly");
-            }
-            return;
-        }
-
-        // ✅ เพิ่มการป้องกัน double-click
-        if (equipButton != null)
-        {
-            equipButton.interactable = false;
-            StartCoroutine(EnableButtonAfterDelay());
-        }
+    private IEnumerator ProcessEquipButtonClick()
+    {
+        isProcessingButton = true;
 
         try
         {
-            OnEquipRequested.Invoke(currentItem, currentSlotIndex);
-            Debug.Log($"✅ Equip requested: {currentItem.ItemName}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ Error invoking OnEquipRequested: {e.Message}");
+            Debug.Log($"🎽 OnEquipButtonClicked: {currentItem?.ItemName ?? "NULL"}");
 
-            // ✅ Re-enable button ถ้าเกิด error
+            // ✅ Comprehensive validation
+            if (currentItem == null)
+            {
+                Debug.LogError("❌ Cannot equip: currentItem is null!");
+                yield break;
+            }
+
+            // ✅ สำหรับ rune: เช็คว่ามี ID เดียวกันใน equipment แล้วหรือยัง
+            if (currentItem.ItemType == ItemType.Rune)
+            {
+                if (IsRuneIdAlreadyEquipped(currentItem.ItemId))
+                {
+                    Debug.LogWarning($"❌ Rune {currentItem.ItemName} (ID: {currentItem.ItemId}) is already equipped!");
+                    ShowEquipError("This rune is already equipped!");
+                    yield break;
+                }
+            }
+
+            // ✅ Check event subscribers
+            if (OnEquipRequested == null)
+            {
+                Debug.LogError("❌ OnEquipRequested has no subscribers!");
+
+                // ✅ Try to reconnect
+                var inventoryManager = FindObjectOfType<InventoryManager>();
+                if (inventoryManager != null)
+                {
+                    Debug.Log("🔧 Found InventoryManager, trying to reconnect...");
+                    inventoryManager.DebugResetupEvents();
+
+                    // Wait a frame for reconnection
+                    yield return null;
+
+                    // Check again
+                    if (OnEquipRequested == null)
+                    {
+                        Debug.LogError("❌ Failed to reconnect events!");
+                        yield break;
+                    }
+                }
+                else
+                {
+                    Debug.LogError("❌ InventoryManager not found!");
+                    yield break;
+                }
+            }
+
+            // ✅ Disable button temporarily
+            if (equipButton != null)
+            {
+                equipButton.interactable = false;
+            }
+
+            // ✅ Invoke event with error handling
+            try
+            {
+                OnEquipRequested.Invoke(currentItem, currentSlotIndex);
+                Debug.Log($"✅ Equip event fired: {currentItem.ItemName}");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error invoking OnEquipRequested: {e.Message}\n{e.StackTrace}");
+            }
+
+            // ✅ Wait before re-enabling button
+            yield return new WaitForSeconds(0.5f);
+
+            // ✅ Force refresh buttons after equip attempt
+            yield return new WaitForSeconds(0.1f);
+            ForceUpdateButtons();
+        }
+        finally
+        {
+            // ✅ Re-enable button
             if (equipButton != null)
             {
                 equipButton.interactable = true;
             }
-        }
-    }
 
-    // ✅ เพิ่ม Coroutine สำหรับป้องกัน double-click
-    private System.Collections.IEnumerator EnableButtonAfterDelay()
-    {
-        yield return new WaitForSeconds(0.5f); // รอ 0.5 วินาที
-
-        if (equipButton != null)
-        {
-            equipButton.interactable = true;
+            isProcessingButton = false;
         }
     }
 
     void OnUnequipButtonClicked()
     {
-        // ✅ เพิ่ม null checks
-        Debug.Log($"🔧 OnUnequipButtonClicked called. CurrentItem: {currentItem?.ItemName ?? "NULL"}");
-
-        if (currentItem == null)
+        // ✅ Prevent rapid clicking
+        if (isProcessingButton)
         {
-            Debug.LogError("❌ Cannot unequip: currentItem is null!");
+            Debug.LogWarning("⚠️ Button already processing, ignoring click");
             return;
         }
 
-        if (OnUnequipRequested == null)
-        {
-            Debug.LogError("❌ Cannot unequip: OnUnequipRequested event has no subscribers!");
-            return;
-        }
+        StartCoroutine(ProcessUnequipButtonClick());
+    }
 
-        OnUnequipRequested.Invoke(currentItem, currentSlotIndex);
-        Debug.Log($"✅ Unequip requested: {currentItem.ItemName}");
+    private IEnumerator ProcessUnequipButtonClick()
+    {
+        isProcessingButton = true;
+
+        try
+        {
+            Debug.Log($"🔧 OnUnequipButtonClicked: {currentItem?.ItemName ?? "NULL"}");
+
+            if (currentItem == null)
+            {
+                Debug.LogError("❌ Cannot unequip: currentItem is null!");
+                yield break;
+            }
+
+            if (OnUnequipRequested == null)
+            {
+                Debug.LogError("❌ OnUnequipRequested has no subscribers!");
+                yield break;
+            }
+
+            // ✅ Disable button temporarily
+            if (unequipButton != null)
+            {
+                unequipButton.interactable = false;
+            }
+
+            try
+            {
+                OnUnequipRequested.Invoke(currentItem, currentSlotIndex);
+                Debug.Log($"✅ Unequip event fired: {currentItem.ItemName}");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ Error invoking OnUnequipRequested: {e.Message}\n{e.StackTrace}");
+            }
+
+            yield return new WaitForSeconds(0.5f);
+
+            // ✅ Force refresh buttons after unequip attempt
+            yield return new WaitForSeconds(0.1f);
+            ForceUpdateButtons();
+        }
+        finally
+        {
+            // ✅ Re-enable button
+            if (unequipButton != null)
+            {
+                unequipButton.interactable = false;
+            }
+
+            isProcessingButton = false;
+        }
     }
     #endregion
 
     #region Panel Control
     public void ShowItemDetail(ItemData item, int slotIndex)
     {
-        Debug.Log($"📋 ShowItemDetail called: item={item?.ItemName}, slot={slotIndex}");
+        Debug.Log($"📋 ShowItemDetail: {item?.ItemName}, slot={slotIndex}");
 
         if (item == null)
         {
@@ -207,13 +338,23 @@ public class ItemDetailPanel : MonoBehaviour
             return;
         }
 
+        // ✅ เพิ่ม: Force clear previous state ถ้าเป็น item เดียวกัน
+        if (currentItem != null && currentItem.ItemName == item.ItemName)
+        {
+            Debug.Log($"🔄 Same item {item.ItemName}, force refreshing...");
+            currentItem = null;
+            currentSlotIndex = -1;
+        }
+
         currentItem = item;
         currentSlotIndex = slotIndex;
         isVisible = true;
 
         UpdateItemDisplay();
         UpdateItemInfo();
-        UpdateButtons();
+
+        // ✅ เพิ่ม: Force re-evaluate buttons แทนการใช้ cached state
+        ForceUpdateButtons();
 
         if (detailPanel != null)
         {
@@ -226,11 +367,173 @@ public class ItemDetailPanel : MonoBehaviour
         }
     }
 
+    // ✅ ใหม่: สำหรับ check rune ID duplication
+    private bool IsRuneIdAlreadyEquipped(string runeId)
+    {
+        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
+        if (slotsManager == null) return false;
+
+        Debug.Log($"🔍 Checking if rune ID '{runeId}' is already equipped...");
+
+        for (int i = 0; i < slotsManager.runeSlots.Length; i++)
+        {
+            var runeSlot = slotsManager.runeSlots[i];
+            if (runeSlot != null && runeSlot.HasEquippedItem())
+            {
+                var equippedRune = runeSlot.GetEquippedItem();
+                if (equippedRune != null && equippedRune.ItemId == runeId)
+                {
+                    Debug.Log($"❌ Rune ID '{runeId}' already equipped in {runeSlot.slotName}");
+                    return true;
+                }
+            }
+        }
+
+        Debug.Log($"✅ Rune ID '{runeId}' not found in any equipment slot");
+        return false;
+    }
+
+    // ✅ ใหม่: แสดง error message
+    private void ShowEquipError(string message)
+    {
+        Debug.LogWarning($"⚠️ {message}");
+        // TODO: แสดง UI popup หรือ notification ถ้าต้องการ
+    }
+
+    private void ForceUpdateButtons()
+    {
+        if (currentItem == null) return;
+
+        Debug.Log($"🔄 Force updating buttons for {currentItem.ItemName}");
+
+        // ✅ Force re-check equipment status แทนการใช้ cached
+        bool isEquipped = ForceCheckEquipmentStatus(currentItem);
+        bool canEquip = !isEquipped && ForceCheckCanEquip(currentItem) && !isProcessingButton;
+
+        // ✅ สำหรับ rune: เช็คเพิ่มเติมว่ามี ID เดียวกันใน equipment แล้วหรือยัง
+        if (currentItem.ItemType == ItemType.Rune && !isEquipped)
+        {
+            bool runeIdExists = IsRuneIdAlreadyEquipped(currentItem.ItemId);
+            if (runeIdExists)
+            {
+                canEquip = false;
+                Debug.Log($"🚫 Cannot equip: Rune ID '{currentItem.ItemId}' already equipped");
+            }
+        }
+
+        if (equipButton != null)
+        {
+            equipButton.gameObject.SetActive(!isEquipped);
+            equipButton.interactable = canEquip;
+
+            var buttonColors = equipButton.colors;
+            buttonColors.normalColor = canEquip ? Color.green : Color.gray;
+            equipButton.colors = buttonColors;
+        }
+
+        if (unequipButton != null)
+        {
+            unequipButton.gameObject.SetActive(isEquipped);
+            unequipButton.interactable = !isProcessingButton;
+        }
+
+        Debug.Log($"🔘 Force updated buttons: isEquipped={isEquipped}, canEquip={canEquip}");
+    }
+
+    // ✅ ปรับปรุง: สำหรับ force check (ไม่ใช้ cache)
+    private bool ForceCheckEquipmentStatus(ItemData item)
+    {
+        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
+        if (slotsManager != null)
+        {
+            // ✅ สำหรับ rune: เช็คจาก ItemId
+            if (item.ItemType == ItemType.Rune)
+            {
+                // เช็คว่า rune นี้ (instance นี้โดยเฉพาะ) อยู่ใน equipment หรือไม่
+                // โดยดูจาก currentSlotIndex: ถ้า = -1 แสดงว่าเปิดจาก equipment slot
+                if (currentSlotIndex == -1)
+                {
+                    Debug.Log($"✅ Rune {item.ItemName} shown from equipment slot - IS EQUIPPED");
+                    return true;
+                }
+                else
+                {
+                    Debug.Log($"✅ Rune {item.ItemName} shown from inventory slot {currentSlotIndex} - NOT EQUIPPED");
+                    return false;
+                }
+            }
+            else
+            {
+                // สำหรับ equipment อื่น: ใช้วิธีเดิม
+                foreach (var slot in slotsManager.allSlots)
+                {
+                    if (slot != null && slot.HasEquippedItem())
+                    {
+                        var equippedItem = slot.GetEquippedItem();
+                        if (equippedItem != null &&
+                            equippedItem.ItemId == item.ItemId &&
+                            equippedItem.ItemName == item.ItemName)
+                        {
+                            Debug.Log($"✅ Force check: {item.ItemName} found in {slot.slotName}");
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"✅ Force check: {item.ItemName} not equipped anywhere");
+        return false;
+    }
+
+    // ✅ ปรับปรุง method สำหรับ force check can equip
+    private bool ForceCheckCanEquip(ItemData item)
+    {
+        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
+        if (slotsManager != null)
+        {
+            if (item.ItemType == ItemType.Rune)
+            {
+                // ✅ เช็คว่ามีช่องรูนว่างหรือไม่ AND ไม่มี rune ID เดียวกันใน equipment
+                for (int i = 0; i < slotsManager.runeSlots.Length; i++)
+                {
+                    var runeSlot = slotsManager.runeSlots[i];
+                    if (runeSlot != null && runeSlot.isEmpty && !runeSlot.HasEquippedItem())
+                    {
+                        Debug.Log($"✅ Force check: Found empty rune slot {i + 1}");
+
+                        // ✅ เช็คเพิ่มเติมว่าไม่มี rune ID เดียวกันใน equipment
+                        bool runeIdExists = IsRuneIdAlreadyEquipped(item.ItemId);
+                        if (!runeIdExists)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            Debug.Log($"🚫 Rune ID '{item.ItemId}' already equipped, cannot equip duplicate");
+                            return false;
+                        }
+                    }
+                }
+                return false;
+            }
+            else
+            {
+                var targetSlot = slotsManager.GetSlotForItemType(item.ItemType);
+                return targetSlot != null && targetSlot.isEmpty && !targetSlot.HasEquippedItem();
+            }
+        }
+        return false;
+    }
+
     public void HidePanel()
     {
         currentItem = null;
         currentSlotIndex = -1;
         isVisible = false;
+
+        // ✅ Reset processing flag
+        isProcessingButton = false;
 
         if (detailPanel != null)
             detailPanel.SetActive(false);
@@ -269,7 +572,6 @@ public class ItemDetailPanel : MonoBehaviour
         if (tierText != null)
         {
             tierText.text = $"{currentItem.GetTierText()}";
-            // เปลี่ยนสีตาม tier (optional)
             tierText.color = currentItem.GetTierColor();
         }
 
@@ -289,12 +591,20 @@ public class ItemDetailPanel : MonoBehaviour
             descriptionsText.text = $"{currentItem.Description}";
     }
 
+    public void RefreshButtonState()
+    {
+        if (currentItem == null) return;
+
+        Debug.Log($"🔄 RefreshButtonState for {currentItem.ItemName}");
+        ForceUpdateButtons(); // ✅ เปลี่ยนเป็น ForceUpdateButtons
+    }
+
     string GetStatsDisplayText(ItemStats stats)
     {
         if (!stats.HasAnyStats())
             return "No bonus stats";
 
-        var statsList = new System.Collections.Generic.List<string>();
+        var statsList = new List<string>();
 
         // Combat Stats
         if (stats.attackDamageBonus != 0)
@@ -333,58 +643,7 @@ public class ItemDetailPanel : MonoBehaviour
         return string.Join("\n", statsList);
     }
 
-    void UpdateButtons()
-    {
-        if (currentItem == null) return;
-
-        // ตรวจสอบว่า item นี้ equipped อยู่ไหม
-        bool isEquipped = IsItemCurrentlyEquipped(currentItem);
-
-        // ตรวจสอบว่าสามารถ equip ได้ไหม (ถ้ายังไม่ equipped)
-        bool canEquip = !isEquipped && CanEquipItem(currentItem);
-
-        if (equipButton != null)
-        {
-            equipButton.gameObject.SetActive(!isEquipped);
-            equipButton.interactable = canEquip;
-
-            // เปลี่ยนสีปุ่มถ้า equip ไม่ได้
-            var buttonColors = equipButton.colors;
-            buttonColors.normalColor = canEquip ? Color.green : Color.gray;
-            equipButton.colors = buttonColors;
-        }
-
-        if (unequipButton != null)
-        {
-            unequipButton.gameObject.SetActive(isEquipped);
-        }
-
-        Debug.Log($"🔘 Buttons updated: isEquipped={isEquipped}, canEquip={canEquip}");
-    }
-
-    bool CanEquipItem(ItemData item)
-    {
-        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
-        if (slotsManager != null)
-        {
-            var targetSlot = slotsManager.GetSlotForItemType(item.ItemType);
-            if (targetSlot == null)
-            {
-                Debug.LogWarning($"❌ No slot available for {item.ItemType}");
-                return false;
-            }
-
-            if (!targetSlot.isEmpty)
-            {
-                Debug.LogWarning($"❌ {targetSlot.slotName} slot is occupied by {targetSlot.GetEquippedItem()?.ItemName}");
-                return false;
-            }
-
-            return true;
-        }
-
-        return false;
-    }
+    // ✅ ลบ method เก่าที่ไม่ใช้แล้ว - UpdateButtons, CanEquipItem, IsItemCurrentlyEquipped
 
     string GetItemTypeDisplayName(ItemType itemType)
     {
@@ -398,20 +657,6 @@ public class ItemDetailPanel : MonoBehaviour
             case ItemType.Rune: return "Rune";
             default: return itemType.ToString();
         }
-    }
-
-    bool IsItemCurrentlyEquipped(ItemData item)
-    {
-        var slotsManager = FindObjectOfType<EquipmentSlotsManager>();
-        if (slotsManager != null)
-        {
-            bool isEquipped = slotsManager.IsItemEquipped(item);
-            Debug.Log($"🔍 IsItemCurrentlyEquipped: {item.ItemName} = {isEquipped}");
-            return isEquipped;
-        }
-
-        Debug.LogWarning("⚠️ EquipmentSlotsManager not found!");
-        return false;
     }
     #endregion
 
@@ -441,9 +686,10 @@ public class ItemDetailPanel : MonoBehaviour
         Debug.Log($"   isVisible: {isVisible}");
         Debug.Log($"   currentItem: {currentItem?.ItemName ?? "NULL"}");
         Debug.Log($"   currentSlotIndex: {currentSlotIndex}");
+        Debug.Log($"   isProcessingButton: {isProcessingButton}");
         Debug.Log($"   Panel Active: {(detailPanel != null ? detailPanel.activeSelf.ToString() : "N/A")}");
 
-        // ✅ เพิ่ม: Debug event subscribers
+        // Debug event subscribers
         Debug.Log($"   OnEquipRequested subscribers: {(OnEquipRequested?.GetInvocationList()?.Length ?? 0)}");
         Debug.Log($"   OnUnequipRequested subscribers: {(OnUnequipRequested?.GetInvocationList()?.Length ?? 0)}");
     }
@@ -482,6 +728,34 @@ public class ItemDetailPanel : MonoBehaviour
         }
 
         Debug.Log("🔍 === END EVENT SUBSCRIBERS CHECK ===");
+    }
+
+    [ContextMenu("Test - Force Reconnect Events")]
+    public void TestForceReconnectEvents()
+    {
+        var inventoryManager = FindObjectOfType<InventoryManager>();
+        if (inventoryManager != null)
+        {
+            inventoryManager.DebugResetupEvents();
+            Debug.Log("🔧 Forced event reconnection");
+        }
+        else
+        {
+            Debug.LogError("❌ InventoryManager not found!");
+        }
+    }
+
+    [ContextMenu("Test - Check Rune Duplicates")]
+    public void TestCheckRuneDuplicates()
+    {
+        if (currentItem == null || currentItem.ItemType != ItemType.Rune)
+        {
+            Debug.Log("❌ No rune item selected");
+            return;
+        }
+
+        bool isDuplicate = IsRuneIdAlreadyEquipped(currentItem.ItemId);
+        Debug.Log($"🔍 Rune {currentItem.ItemName} (ID: {currentItem.ItemId}) duplicate check: {isDuplicate}");
     }
     #endregion
 }
