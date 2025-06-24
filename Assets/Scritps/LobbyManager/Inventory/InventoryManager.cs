@@ -53,8 +53,8 @@ public class InventoryManager : MonoBehaviour
     {
         SetupButtons();
         HideInventory();
-        if (itemDatabase == null)
-            itemDatabase = ItemDatabase.Instance;
+        LoadItemSystem();
+       
     }
 
     void SetupButtons()
@@ -73,7 +73,10 @@ public class InventoryManager : MonoBehaviour
 
             // 🔧 เพิ่ม: แสดง inventory grid
             if (inventoryGrid != null)
+            {
                 inventoryGrid.gameObject.SetActive(true);
+                inventoryGrid.RefreshAllSlots(); // refresh เพื่อให้รูปขึ้น
+            }
 
             Debug.Log("📦 Inventory panel opened");
         }
@@ -298,13 +301,147 @@ public class InventoryManager : MonoBehaviour
     {
       
     }
+    void LoadItemSystem()
+    {
+        // โหลด ItemDatabase
+        if (itemDatabase == null)
+            itemDatabase = ItemDatabase.Instance;
 
-    [ContextMenu("Test - Add Random Items to Inventory")]
+        // ตรวจสอบว่า InventoryGrid มี ItemDatabase
+        if (inventoryGrid != null)
+        {
+            inventoryGrid.itemDatabase = itemDatabase;
+            inventoryGrid.LoadItemDatabase(); // เรียก method ใหม่ที่เพิ่มไป
+        }
+
+        if (itemDatabase != null)
+        {
+            Debug.Log($"✅ Item system loaded with {itemDatabase.GetAllItems().Count} items");
+        }
+    }
+
+    public void AddItemToInventory(ItemData item)
+    {
+        if (inventoryGrid != null && item != null)
+        {
+            bool added = inventoryGrid.AddItem(item);
+            if (added)
+            {
+                Debug.Log($"✅ Added {item.ItemName} to inventory");
+
+                // Refresh character info หลังจากเพิ่ม item
+                if (isInventoryOpen)
+                {
+                    RefreshCharacterInfo();
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"❌ Failed to add {item.ItemName} - inventory full");
+            }
+        }
+    }
+
+    public void AddItemToInventory(string itemId)
+    {
+        if (itemDatabase != null)
+        {
+            ItemData item = itemDatabase.GetItemById(itemId);
+            if (item != null)
+            {
+                AddItemToInventory(item);
+            }
+            else
+            {
+                Debug.LogWarning($"❌ Item with ID '{itemId}' not found in database");
+            }
+        }
+    }
+
+    public bool RemoveItemFromInventory(int slotIndex)
+    {
+        if (inventoryGrid != null)
+        {
+            bool removed = inventoryGrid.RemoveItem(slotIndex);
+            if (removed && isInventoryOpen)
+            {
+                RefreshCharacterInfo();
+            }
+            return removed;
+        }
+        return false;
+    }
+
+    public ItemData GetItemInSlot(int slotIndex)
+    {
+        if (inventoryGrid != null)
+        {
+            return inventoryGrid.GetItemInSlot(slotIndex);
+        }
+        return null;
+    }
+
+    public void RefreshInventoryVisuals()
+    {
+        if (inventoryGrid != null)
+        {
+            inventoryGrid.RefreshAllSlots();
+        }
+    }
+
+    [ContextMenu("Test - Add Random Items")]
     public void TestAddRandomItems()
     {
-        if (inventoryGrid != null && itemDatabase != null)
+        if (inventoryGrid != null)
         {
             inventoryGrid.TestFillRandomItems();
+        }
+    }
+
+    [ContextMenu("Test - Clear Inventory")]
+    public void TestClearInventory()
+    {
+        if (inventoryGrid != null)
+        {
+            inventoryGrid.TestClearAllItems();
+        }
+    }
+
+    [ContextMenu("Test - Add Legendary Item")]
+    public void TestAddLegendaryItem()
+    {
+        if (itemDatabase != null)
+        {
+            var legendaryItems = itemDatabase.GetItemsByTier(ItemTier.Legendary);
+            if (legendaryItems.Count > 0)
+            {
+                AddItemToInventory(legendaryItems[0]);
+            }
+            else
+            {
+                Debug.LogWarning("❌ No legendary items found in database");
+            }
+        }
+    }
+
+    [ContextMenu("Test - Debug Inventory State")]
+    public void TestDebugInventoryState()
+    {
+        if (inventoryGrid != null && inventoryGrid.slotItemIds != null)
+        {
+            int filledSlots = 0;
+            for (int i = 0; i < inventoryGrid.slotItemIds.Count; i++)
+            {
+                string itemId = inventoryGrid.slotItemIds[i];
+                if (!string.IsNullOrEmpty(itemId))
+                {
+                    ItemData item = inventoryGrid.GetItemInSlot(i);
+                    string itemName = item?.ItemName ?? "Unknown";
+                    Debug.Log($"📦 Slot {i}: {itemName} ({itemId})");
+                    filledSlots++;
+                }
+            }
+            Debug.Log($"📊 Inventory Summary: {filledSlots}/{inventoryGrid.totalSlots} slots filled");
         }
     }
 }

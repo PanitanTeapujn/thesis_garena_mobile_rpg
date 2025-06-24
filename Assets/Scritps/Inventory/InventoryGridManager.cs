@@ -5,6 +5,14 @@ using System;
 
 public class InventoryGridManager : MonoBehaviour
 {
+
+    #region Reference
+    [Header("Item Database")]
+    public ItemDatabase itemDatabase;
+    [Header("Inventory Items")]
+    public List<string> slotItemIds = new List<string>(); // เก็บ item IDs ในแต่ละ slot
+    #endregion
+
     #region Grid Settings
     [Header("Grid Configuration")]
     public int gridWidth = 8;   // 8 คอลัมน์
@@ -29,10 +37,8 @@ public class InventoryGridManager : MonoBehaviour
     public InventorySlot currentSelectedSlot = null;
     public int selectedSlotIndex = -1;
     #endregion
-    #region Reference
-    [Header("Item Database")]
-    public ItemDatabase itemDatabase;
-    #endregion
+   
+   
     #region Events
     public static event Action<InventorySlot> OnSlotSelectionChanged;
     #endregion
@@ -354,7 +360,7 @@ public class InventoryGridManager : MonoBehaviour
     #endregion
 
     #region ItemdataBase
-    void LoadItemDatabase()
+   public void LoadItemDatabase()
     {
         if (itemDatabase == null)
         {
@@ -365,6 +371,151 @@ public class InventoryGridManager : MonoBehaviour
         {
             Debug.Log($"✅ ItemDatabase loaded with {itemDatabase.GetAllItems().Count} items");
         }
+        else
+        {
+            Debug.LogError("❌ ItemDatabase not found! Make sure it's in Resources folder.");
+        }
+
+        // Initialize slot item IDs
+        slotItemIds.Clear();
+        for (int i = 0; i < totalSlots; i++)
+        {
+            slotItemIds.Add(""); // empty slots
+        }
+    }
+
+    public bool AddItem(ItemData item, int slotIndex = -1)
+    {
+        if (item == null) return false;
+
+        // หา slot ว่างถ้าไม่ระบุ slot
+        if (slotIndex == -1)
+        {
+            slotIndex = FindEmptySlot();
+        }
+
+        if (slotIndex == -1 || slotIndex >= totalSlots)
+        {
+            Debug.LogWarning($"❌ Cannot add {item.ItemName} - no empty slots");
+            return false;
+        }
+
+        // ตรวจสอบว่า slot ว่างหรือไม่
+        if (!string.IsNullOrEmpty(slotItemIds[slotIndex]))
+        {
+            Debug.LogWarning($"❌ Slot {slotIndex} is not empty");
+            return false;
+        }
+
+        // เพิ่ม item
+        slotItemIds[slotIndex] = item.ItemId;
+        allSlots[slotIndex].SetItem(item);
+
+        Debug.Log($"✅ Added {item.ItemName} to slot {slotIndex}");
+        return true;
+    }
+    public bool RemoveItem(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= totalSlots) return false;
+
+        string itemId = slotItemIds[slotIndex];
+        if (string.IsNullOrEmpty(itemId))
+        {
+            Debug.LogWarning($"❌ Slot {slotIndex} is already empty");
+            return false;
+        }
+
+        ItemData item = GetItemInSlot(slotIndex);
+        string itemName = item?.ItemName ?? "Unknown";
+
+        slotItemIds[slotIndex] = "";
+        allSlots[slotIndex].ClearItem();
+
+        Debug.Log($"✅ Removed {itemName} from slot {slotIndex}");
+        return true;
+    }
+
+    public ItemData GetItemInSlot(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= totalSlots) return null;
+
+        string itemId = slotItemIds[slotIndex];
+        if (string.IsNullOrEmpty(itemId)) return null;
+
+        if (itemDatabase != null)
+        {
+            return itemDatabase.GetItemById(itemId);
+        }
+
+        return null;
+    }
+
+    public int FindEmptySlot()
+    {
+        for (int i = 0; i < totalSlots; i++)
+        {
+            if (string.IsNullOrEmpty(slotItemIds[i]))
+            {
+                return i;
+            }
+        }
+        return -1; // ไม่มี slot ว่าง
+    }
+
+    public bool MoveItem(int fromSlot, int toSlot)
+    {
+        if (fromSlot < 0 || fromSlot >= totalSlots || toSlot < 0 || toSlot >= totalSlots)
+            return false;
+
+        // ตรวจสอบว่า fromSlot มี item
+        if (string.IsNullOrEmpty(slotItemIds[fromSlot]))
+            return false;
+
+        // ตรวจสอบว่า toSlot ว่าง
+        if (!string.IsNullOrEmpty(slotItemIds[toSlot]))
+            return false;
+
+        // ย้าย item
+        string itemId = slotItemIds[fromSlot];
+        ItemData item = GetItemInSlot(fromSlot);
+
+        slotItemIds[fromSlot] = "";
+        slotItemIds[toSlot] = itemId;
+
+        allSlots[fromSlot].ClearItem();
+        allSlots[toSlot].SetItem(item);
+
+        Debug.Log($"✅ Moved item from slot {fromSlot} to {toSlot}");
+        return true;
+    }
+
+    public void RefreshAllSlots()
+    {
+        for (int i = 0; i < totalSlots && i < allSlots.Count; i++)
+        {
+            string itemId = slotItemIds[i];
+
+            if (string.IsNullOrEmpty(itemId))
+            {
+                allSlots[i].SetEmptyState();
+            }
+            else
+            {
+                ItemData item = itemDatabase?.GetItemById(itemId);
+                if (item != null)
+                {
+                    allSlots[i].SetItem(item);
+                }
+                else
+                {
+                    // Item ไม่พบใน database - เคลียร์ slot
+                    slotItemIds[i] = "";
+                    allSlots[i].SetEmptyState();
+                }
+            }
+        }
+
+        Debug.Log("🔄 Refreshed all inventory slots");
     }
     #endregion
 
@@ -377,25 +528,67 @@ public class InventoryGridManager : MonoBehaviour
             return;
         }
 
-        // เติม items สุ่มใน 10 slots
         var allItems = itemDatabase.GetAllItems();
         if (allItems.Count == 0)
         {
-            Debug.LogError("❌ No items in database!");
+            itemDatabase.GenerateTestItems(); // สร้าง test items ถ้ายังไม่มี
+            allItems = itemDatabase.GetAllItems();
+        }
+
+        if (allItems.Count == 0)
+        {
+            Debug.LogError("❌ No items available in database!");
             return;
         }
 
-        for (int i = 0; i < 10; i++)
+        // เติม 15 items สุ่ม
+        int itemsAdded = 0;
+        for (int attempts = 0; attempts < 50 && itemsAdded < 15; attempts++)
         {
-            int randomSlotIndex = UnityEngine.Random.Range(0, totalSlots);
             int randomItemIndex = UnityEngine.Random.Range(0, allItems.Count);
+            ItemData randomItem = allItems[randomItemIndex];
 
-            if (allSlots[randomSlotIndex].isEmpty)
+            if (AddItem(randomItem))
             {
-                allSlots[randomSlotIndex].SetItem(allItems[randomItemIndex]);
+                itemsAdded++;
             }
         }
 
-        Debug.Log("🎲 Filled random slots with ItemData");
+        Debug.Log($"🎲 Added {itemsAdded} random items to inventory");
+    }
+    [ContextMenu("Test - Clear All Items")]
+    public void TestClearAllItems()
+    {
+        for (int i = 0; i < totalSlots; i++)
+        {
+            slotItemIds[i] = "";
+        }
+
+        foreach (var slot in allSlots)
+        {
+            slot.SetEmptyState();
+        }
+
+        currentSelectedSlot = null;
+        selectedSlotIndex = -1;
+
+        Debug.Log("🧹 Cleared all inventory items");
+    }
+
+    [ContextMenu("Test - Add Specific Items")]
+    public void TestAddSpecificItems()
+    {
+        if (itemDatabase == null) return;
+
+        // เพิ่ม items ตัวอย่างแต่ละประเภท
+        var weapons = itemDatabase.GetItemsByType(ItemType.Weapon);
+        var armor = itemDatabase.GetItemsByType(ItemType.Armor);
+        var runes = itemDatabase.GetItemsByType(ItemType.Rune);
+
+        if (weapons.Count > 0) AddItem(weapons[0]);
+        if (armor.Count > 0) AddItem(armor[0]);
+        if (runes.Count > 0) AddItem(runes[0]);
+
+        Debug.Log("🔧 Added specific test items");
     }
 }
