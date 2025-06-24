@@ -172,15 +172,25 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     #region Touch Events (Mobile Optimized)
     public void OnPointerClick(PointerEventData eventData)
     {
+        Debug.Log($"🖱️ OnPointerClick triggered on slot {slotIndex}");
         SelectSlot();
     }
-
     public void SelectSlot()
     {
+        Debug.Log($"🎯 SelectSlot called for slot {slotIndex} (isEmpty: {isEmpty}, hasItem: {HasItem()})");
+
         // แจ้งให้ InventoryGridManager รู้ว่า slot นี้ถูกเลือก
         OnSlotSelected?.Invoke(this);
 
-        Debug.Log($"🎯 Slot {slotIndex} selected (isEmpty: {isEmpty}, item: {currentItem?.ItemName ?? "None"})");
+        // Debug: แสดงข้อมูล item
+        if (HasItem() && currentItem != null)
+        {
+            Debug.Log($"📦 Selected item: {currentItem.ItemName} ({currentItem.ItemType})");
+        }
+        else
+        {
+            Debug.Log($"📭 Selected empty slot {slotIndex}");
+        }
     }
     #endregion
 
@@ -294,6 +304,8 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
     #region Item Management Methods (Step 2)
     public void SetItem(ItemData item)
     {
+        Debug.Log($"🔄 SetItem called for slot {slotIndex}: {item?.ItemName ?? "NULL"}");
+
         if (item == null)
         {
             SetEmptyState();
@@ -302,6 +314,8 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         {
             SetFilledState(item);
         }
+
+        Debug.Log($"✅ Slot {slotIndex} after SetItem: isEmpty={isEmpty}, hasItem={HasItem()}");
     }
 
     public ItemData GetItem()
@@ -316,7 +330,9 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
 
     public bool HasItem()
     {
-        return currentItem != null && !isEmpty;
+        bool hasItem = currentItem != null && !isEmpty;
+        Debug.Log($"🔍 Slot {slotIndex} HasItem(): {hasItem} (currentItem: {currentItem?.ItemName ?? "NULL"}, isEmpty: {isEmpty})");
+        return hasItem;
     }
 
     public bool CanAcceptItem(ItemData item)
@@ -414,6 +430,25 @@ public class InventorySlot : MonoBehaviour, IPointerClickHandler
         {
             Debug.Log($"📦 Slot {slotIndex}: Empty");
         }
+    }
+
+    [ContextMenu("Test - Fire Selection Event")]
+    public void TestFireSelectionEvent()
+    {
+        Debug.Log($"🧪 Testing selection event for slot {slotIndex}");
+        SelectSlot();
+    }
+
+    [ContextMenu("Test - Debug Slot State")]
+    public void TestDebugSlotState()
+    {
+        Debug.Log($"📦 Slot {slotIndex} Debug:");
+        Debug.Log($"   isEmpty: {isEmpty}");
+        Debug.Log($"   isSelected: {isSelected}");
+        Debug.Log($"   currentItem: {currentItem?.ItemName ?? "NULL"}");
+        Debug.Log($"   HasItem(): {HasItem()}");
+        Debug.Log($"   Button interactable: {(slotButton != null ? slotButton.interactable.ToString() : "N/A")}");
+        Debug.Log($"   GameObject active: {gameObject.activeSelf}");
     }
     #endregion
 }

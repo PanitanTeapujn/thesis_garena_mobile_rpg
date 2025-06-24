@@ -12,10 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b565fec6bbbf9c648b33e156c8947816, type: 3}
   m_Name: ItemDatabase
   m_EditorClassIdentifier: 
-  allItems: []
-  weapons: []
+  allItems:
+  - {fileID: 11400000, guid: 2dd3b27bb1e8a12489b223e0433fab4f, type: 2}
+  - {fileID: 11400000, guid: 9d9dc44b6388a9745bc257e5347f74a2, type: 2}
+  - {fileID: 11400000, guid: 4e86b6359ac5009458c9e505df33e3d3, type: 2}
+  weapons:
+  - {fileID: 11400000, guid: 2dd3b27bb1e8a12489b223e0433fab4f, type: 2}
   headItems: []
   armorItems: []
-  pantsItems: []
+  pantsItems:
+  - {fileID: 11400000, guid: 9d9dc44b6388a9745bc257e5347f74a2, type: 2}
   shoesItems: []
-  runes: []
+  runes:
+  - {fileID: 11400000, guid: 4e86b6359ac5009458c9e505df33e3d3, type: 2}

@@ -12,24 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3e1545ad7e52d54986772ac95248ccd, type: 3}
   m_Name: LeatherHelmet
   m_EditorClassIdentifier: 
-  itemId: 
-  itemName: 
+  itemId: weapon_leatherhelmet_8077
+  itemName: LeatherHelmet
   itemIcon: {fileID: 0}
-  itemType: 0
-  tier: 0
+  itemType: 3
+  tier: 1
   description: 
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 0
+    armorBonus: 5
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    maxHpBonus: 0
+    maxHpBonus: 10
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0
     reductionCoolDownBonus: 0
-    physicalResistanceBonus: 0
-    magicalResistanceBonus: 0
+    physicalResistanceBonus: 2
+    magicalResistanceBonus: 2

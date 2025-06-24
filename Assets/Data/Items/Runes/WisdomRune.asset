@@ -12,15 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c3e1545ad7e52d54986772ac95248ccd, type: 3}
   m_Name: WisdomRune
   m_EditorClassIdentifier: 
-  itemId: 
-  itemName: 
-  itemIcon: {fileID: 0}
-  itemType: 0
-  tier: 0
+  itemId: weapon__3700
+  itemName: WisdomRune
+  itemIcon: {fileID: 21300000, guid: 6f98b3e70c3ad8a48a0396785dad48e8, type: 3}
+  itemType: 5
+  tier: 5
   description: 
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: 0
+    magicDamageBonus: 5
     armorBonus: 0
     criticalChanceBonus: 0
     criticalDamageBonus: 0
@@ -30,6 +30,6 @@ MonoBehaviour:
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0
-    reductionCoolDownBonus: 0
+    reductionCoolDownBonus: 1
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

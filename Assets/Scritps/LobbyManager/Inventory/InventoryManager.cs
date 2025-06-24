@@ -41,6 +41,11 @@ public class InventoryManager : MonoBehaviour
     public TextMeshProUGUI attackSpeedStatText;
     public TextMeshProUGUI reductionCooldownStatText;
 
+
+    [Header("Item Detail Panel")]
+    public ItemDetailPanel itemDetailPanel;
+
+
     [Header("Inventory Grid")]
     public InventoryGridManager inventoryGrid;
     [Header("Item Database")]
@@ -54,7 +59,8 @@ public class InventoryManager : MonoBehaviour
         SetupButtons();
         HideInventory();
         LoadItemSystem();
-       
+        SetupItemDetailPanel();
+
     }
 
     void SetupButtons()
@@ -65,20 +71,41 @@ public class InventoryManager : MonoBehaviour
 
     public void ShowInventory()
     {
+        Debug.Log("📦 ShowInventory called");
+
         if (inventoryPanel != null)
         {
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
             RefreshCharacterInfo();
 
-            // 🔧 เพิ่ม: แสดง inventory grid
+            // แสดง inventory grid
             if (inventoryGrid != null)
             {
                 inventoryGrid.gameObject.SetActive(true);
-                inventoryGrid.RefreshAllSlots(); // refresh เพื่อให้รูปขึ้น
+                inventoryGrid.RefreshAllSlots();
+                Debug.Log($"✅ InventoryGrid activated with {inventoryGrid.GetFilledSlotCount()} items");
+            }
+            else
+            {
+                Debug.LogError("❌ InventoryGrid is null!");
             }
 
-            Debug.Log("📦 Inventory panel opened");
+            // ตรวจสอบ ItemDetailPanel
+            if (itemDetailPanel != null)
+            {
+                Debug.Log("✅ ItemDetailPanel ready for events");
+            }
+            else
+            {
+                Debug.LogError("❌ ItemDetailPanel is null!");
+            }
+
+            Debug.Log("📦 Inventory panel opened successfully");
+        }
+        else
+        {
+            Debug.LogError("❌ inventoryPanel is null!");
         }
     }
 
@@ -89,11 +116,12 @@ public class InventoryManager : MonoBehaviour
             inventoryPanel.SetActive(false);
             isInventoryOpen = false;
 
-            // 🔧 เพิ่ม: ซ่อน inventory grid
+            // เพิ่ม: ซ่อน item detail panel
+            HideItemDetail();
+
             if (inventoryGrid != null)
                 inventoryGrid.gameObject.SetActive(false);
 
-            // ซ่อนรูป character เมื่อปิด inventory
             if (characterDisplayImage != null)
             {
                 characterDisplayImage.gameObject.SetActive(false);
@@ -296,10 +324,15 @@ public class InventoryManager : MonoBehaviour
                 return assassinImage; // Fallback to Assassin
         }
     }
-   
+
     void OnDestroy()
     {
-      
+        // Unsubscribe from events
+        if (itemDetailPanel != null)
+        {
+            ItemDetailPanel.OnEquipRequested -= HandleEquipRequest;
+            ItemDetailPanel.OnUnequipRequested -= HandleUnequipRequest;
+        }
     }
     void LoadItemSystem()
     {
@@ -357,7 +390,89 @@ public class InventoryManager : MonoBehaviour
             }
         }
     }
+    #region Item Detail Panel
+    void SetupItemDetailPanel()
+    {
+        Debug.Log("🔧 Setting up ItemDetailPanel...");
 
+        // หา ItemDetailPanel ถ้าไม่ได้ assign
+        if (itemDetailPanel == null)
+        {
+            itemDetailPanel = FindObjectOfType<ItemDetailPanel>();
+            Debug.Log($"🔍 FindObjectOfType result: {(itemDetailPanel != null ? "Found" : "Not Found")}");
+        }
+
+        if (itemDetailPanel != null)
+        {
+            // Subscribe to events
+            ItemDetailPanel.OnEquipRequested += HandleEquipRequest;
+            ItemDetailPanel.OnUnequipRequested += HandleUnequipRequest;
+
+            // เรียก debug method เพื่อตรวจสอบสถานะ
+            itemDetailPanel.DebugPanelState();
+
+            Debug.Log("✅ Item detail panel connected");
+        }
+        else
+        {
+            Debug.LogError("❌ ItemDetailPanel not found! Make sure it exists in the scene.");
+        }
+    }
+
+    void HandleEquipRequest(ItemData item, int slotIndex)
+    {
+        if (item == null) return;
+
+        Debug.Log($"🎽 Equip request: {item.ItemName} from slot {slotIndex}");
+
+        // TODO: Step 6 จะ implement การ equip จริง
+        // ตอนนี้แค่แสดง log
+        Debug.Log($"✅ {item.ItemName} equipped! (Step 6 will implement actual equipping)");
+
+        // ปิด detail panel หลัง equip
+        if (itemDetailPanel != null)
+        {
+            itemDetailPanel.HidePanel();
+        }
+
+        // Refresh inventory display
+        RefreshInventoryVisuals();
+    }
+
+    void HandleUnequipRequest(ItemData item, int slotIndex)
+    {
+        if (item == null) return;
+
+        Debug.Log($"🎽 Unequip request: {item.ItemName}");
+
+        // TODO: Step 6 จะ implement การ unequip จริง
+        Debug.Log($"✅ {item.ItemName} unequipped! (Step 6 will implement actual unequipping)");
+
+        // ปิด detail panel หลัง unequip
+        if (itemDetailPanel != null)
+        {
+            itemDetailPanel.HidePanel();
+        }
+
+        // Refresh inventory display
+        RefreshInventoryVisuals();
+    }
+
+    public void ShowItemDetail(ItemData item, int slotIndex)
+    {
+        if (itemDetailPanel != null && item != null)
+        {
+            itemDetailPanel.ShowItemDetail(item, slotIndex);
+        }
+    }
+
+    public void HideItemDetail()
+    {
+        if (itemDetailPanel != null)
+        {
+            itemDetailPanel.HidePanel();
+        }
+    }
     public bool RemoveItemFromInventory(int slotIndex)
     {
         if (inventoryGrid != null)
@@ -388,6 +503,8 @@ public class InventoryManager : MonoBehaviour
             inventoryGrid.RefreshAllSlots();
         }
     }
+
+    #endregion
 
     [ContextMenu("Test - Add Random Items")]
     public void TestAddRandomItems()
@@ -442,6 +559,116 @@ public class InventoryManager : MonoBehaviour
                 }
             }
             Debug.Log($"📊 Inventory Summary: {filledSlots}/{inventoryGrid.totalSlots} slots filled");
+        }
+    }
+
+    [ContextMenu("Test - Show Detail Panel")]
+    public void TestShowDetailPanel()
+    {
+        if (itemDatabase != null && itemDetailPanel != null)
+        {
+            var testItem = itemDatabase.GetRandomItem();
+            if (testItem != null)
+            {
+                itemDetailPanel.ShowItemDetail(testItem, 0);
+                Debug.Log($"📋 Showing detail for test item: {testItem.ItemName}");
+            }
+        }
+    }
+
+    [ContextMenu("Test - Hide Detail Panel")]
+    public void TestHideDetailPanel()
+    {
+        HideItemDetail();
+    }
+
+    [ContextMenu("Test - Manual Show Detail Panel")]
+    public void TestManualShowDetailPanel()
+    {
+        Debug.Log("🧪 Testing manual show detail panel...");
+
+        if (itemDetailPanel == null)
+        {
+            Debug.LogError("❌ itemDetailPanel is null!");
+            return;
+        }
+
+        if (itemDatabase == null)
+        {
+            Debug.LogError("❌ itemDatabase is null!");
+            return;
+        }
+
+        var testItem = itemDatabase.GetRandomItem();
+        if (testItem != null)
+        {
+            Debug.Log($"📋 Manually showing detail for: {testItem.ItemName}");
+            itemDetailPanel.ShowItemDetail(testItem, 0);
+        }
+        else
+        {
+            Debug.LogError("❌ No test item available!");
+        }
+    }
+
+    [ContextMenu("Test - Check All Systems")]
+    public void TestCheckAllSystems()
+    {
+        Debug.Log("🔍 === SYSTEM CHECK ===");
+
+        // Check ItemDetailPanel
+        Debug.Log($"ItemDetailPanel: {(itemDetailPanel != null ? "✅ OK" : "❌ NULL")}");
+        if (itemDetailPanel != null)
+        {
+            itemDetailPanel.DebugPanelState();
+        }
+
+        // Check InventoryGrid
+        Debug.Log($"InventoryGrid: {(inventoryGrid != null ? "✅ OK" : "❌ NULL")}");
+        if (inventoryGrid != null)
+        {
+            Debug.Log($"   Total slots: {inventoryGrid.allSlots?.Count ?? 0}");
+            Debug.Log($"   Filled slots: {inventoryGrid.GetFilledSlotCount()}");
+        }
+
+        // Check ItemDatabase
+        Debug.Log($"ItemDatabase: {(itemDatabase != null ? "✅ OK" : "❌ NULL")}");
+        if (itemDatabase != null)
+        {
+            Debug.Log($"   Total items: {itemDatabase.GetAllItems().Count}");
+        }
+
+        // Check Events
+        Debug.Log("Event subscriptions:");
+        Debug.Log($"   OnEquipRequested: {(ItemDetailPanel.OnEquipRequested != null ? "✅ Subscribed" : "❌ No subscribers")}");
+        Debug.Log($"   OnUnequipRequested: {(ItemDetailPanel.OnUnequipRequested != null ? "✅ Subscribed" : "❌ No subscribers")}");
+
+        Debug.Log("🔍 === END SYSTEM CHECK ===");
+    }
+
+    // 🔧 เพิ่ม test สำหรับ event chain
+    [ContextMenu("Test - Event Chain")]
+    public void TestEventChain()
+    {
+        Debug.Log("🧪 Testing event chain...");
+
+        if (inventoryGrid != null && inventoryGrid.allSlots != null)
+        {
+            // หา slot ที่มี item
+            for (int i = 0; i < inventoryGrid.allSlots.Count; i++)
+            {
+                var slot = inventoryGrid.allSlots[i];
+                if (slot != null && slot.HasItem())
+                {
+                    Debug.Log($"🎯 Testing slot {i} with item: {slot.GetItem()?.ItemName}");
+                    slot.TestFireSelectionEvent(); // ใช้ method ที่เพิ่มใน InventorySlot
+                    break;
+                }
+            }
+        }
+        else
+        {
+            Debug.LogError("❌ No inventory grid or slots available for testing!");
         }
     }
 }
