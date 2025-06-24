@@ -41,6 +41,9 @@ public class InventoryManager : MonoBehaviour
     public TextMeshProUGUI attackSpeedStatText;
     public TextMeshProUGUI reductionCooldownStatText;
 
+    [Header("Inventory Grid")]
+    public InventoryGridManager inventoryGrid;
+
     private CharacterProgressData currentCharacterData;
     private bool isInventoryOpen = false;
     private GameObject currentCharacterPreview;
@@ -64,6 +67,11 @@ public class InventoryManager : MonoBehaviour
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
             RefreshCharacterInfo();
+
+            // 🔧 เพิ่ม: แสดง inventory grid
+            if (inventoryGrid != null)
+                inventoryGrid.gameObject.SetActive(true);
+
             Debug.Log("📦 Inventory panel opened");
         }
     }
@@ -74,6 +82,10 @@ public class InventoryManager : MonoBehaviour
         {
             inventoryPanel.SetActive(false);
             isInventoryOpen = false;
+
+            // 🔧 เพิ่ม: ซ่อน inventory grid
+            if (inventoryGrid != null)
+                inventoryGrid.gameObject.SetActive(false);
 
             // ซ่อนรูป character เมื่อปิด inventory
             if (characterDisplayImage != null)
