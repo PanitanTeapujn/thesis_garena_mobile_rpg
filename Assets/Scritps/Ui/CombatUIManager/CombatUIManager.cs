@@ -27,6 +27,15 @@ public class CombatUIManager : MonoBehaviour
     public GameObject inventoryPanel; // ✅ เพิ่ม Inventory Panel
     public Button inventoryCloseButton; // ✅ ปุ่มปิด Inventory
 
+   
+    [Header("Item Info Panel")]
+    public GameObject itemInfoPanel;           // Panel แสดงข้อมูลไอเทม
+    public TextMeshProUGUI itemInfoNameText;   // ชื่อไอเทม
+    public TextMeshProUGUI itemInfoDescText;   // คำอธิบายไอเทม
+    public Image itemInfoIcon;                 // ไอคอนไอเทม
+    public Button useItemButton;               // ปุ่มใช้ไอเทม
+    public Button dropItemButton;              // ปุ่มทิ้งไอเทม
+
     [Header("Character Stats in Inventory")]
     public TextMeshProUGUI characterNameText; // ✅ เปลี่ยนเป็น TextMeshPro
     public TextMeshProUGUI characterLevelText; // ✅ เปลี่ยนเป็น TextMeshPro
@@ -53,6 +62,9 @@ public class CombatUIManager : MonoBehaviour
 
     // ✅ เพิ่มตัวแปรสถานะ Inventory
     private bool isInventoryOpen = false;
+
+   
+    private int selectedSlotIndex = -1;
 
     private void Start()
     {
@@ -169,71 +181,32 @@ public class CombatUIManager : MonoBehaviour
         uiInstance = Instantiate(combatUIPrefab, safeArea);
         Debug.Log($"UI Instance created: {uiInstance.name}");
 
-        SetupUIReferences();
         SetupInventoryPanel(); // ✅ Setup Inventory Panel
-        // ไม่เรียก SetupButtonEvents() ที่นี่ เพราะจะเรียกใน Coroutine
+        // ไม่เรียก SetupUIReferences() เพราะใช้ Inspector แทน
     }
 
-    private void SetupUIReferences()
-    {
-        if (uiInstance == null) return;
-
-        // หา UI elements
-        attackButton = FindUIComponent<Button>("AttackButton");
-        skill1Button = FindUIComponent<Button>("Skill1Button");
-        skill2Button = FindUIComponent<Button>("Skill2Button");
-        skill3Button = FindUIComponent<Button>("Skill3Button");
-        skill4Button = FindUIComponent<Button>("Skill4Button");
-        inventoryButton = FindUIComponent<Button>("InventoryButton"); // ✅ หาปุ่ม Inventory
-
-        healthBar = FindUIComponent<Slider>("HealthBar");
-        manaBar = FindUIComponent<Slider>("ManaBar");
-
-        healthText = FindUIComponent<TextMeshProUGUI>("HealthText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        manaText = FindUIComponent<TextMeshProUGUI>("ManaText"); // ✅ เปลี่ยนเป็น TextMeshPro
-
-        movementJoystick = FindUIComponent<FixedJoystick>("JoystickCharacter");
-        cameraJoystick = FindUIComponent<FixedJoystick>("CameraJoystick");
-
-        // ✅ หา Inventory Panel
-        inventoryPanel = FindUIComponent<RectTransform>("InventoryPanel").gameObject;
-        inventoryCloseButton = FindUIComponent<Button>("InventoryCloseButton");
-
-        // ✅ หา Character Stats UI ใน Inventory Panel
-        characterNameText = FindUIComponent<TextMeshProUGUI>("CharacterNameText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        characterLevelText = FindUIComponent<TextMeshProUGUI>("CharacterLevelText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        inventoryHealthBar = FindUIComponent<Slider>("InventoryHealthBar");
-        inventoryManaBar = FindUIComponent<Slider>("InventoryManaBar");
-        inventoryHealthText = FindUIComponent<TextMeshProUGUI>("InventoryHealthText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        inventoryManaText = FindUIComponent<TextMeshProUGUI>("InventoryManaText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        attackDamageText = FindUIComponent<TextMeshProUGUI>("AttackDamageText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        magicDamageText = FindUIComponent<TextMeshProUGUI>("MagicDamageText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        armorText = FindUIComponent<TextMeshProUGUI>("ArmorText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        moveSpeedText = FindUIComponent<TextMeshProUGUI>("MoveSpeedText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        criticalChanceText = FindUIComponent<TextMeshProUGUI>("CriticalChanceText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        criticalDamageText = FindUIComponent<TextMeshProUGUI>("CriticalDamageText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        hitRateText = FindUIComponent<TextMeshProUGUI>("HitRateText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        evasionRateText = FindUIComponent<TextMeshProUGUI>("EvasionRateText"); // ✅ เปลี่ยนเป็น TextMeshPro
-        attackSpeedText = FindUIComponent<TextMeshProUGUI>("AttackSpeedText"); // ✅ เปลี่ยนเป็น TextMeshPro
-
-        Debug.Log($"UI Setup Results:");
-        Debug.Log($"- Attack Button: {attackButton != null}");
-        Debug.Log($"- Inventory Button: {inventoryButton != null}"); // ✅ เพิ่ม debug
-        Debug.Log($"- Health Bar: {healthBar != null}");
-        Debug.Log($"- Mana Bar: {manaBar != null}");
-        Debug.Log($"- Movement Joystick: {movementJoystick != null}");
-        Debug.Log($"- Camera Joystick: {cameraJoystick != null}");
-        Debug.Log($"- Inventory Panel: {inventoryPanel != null}"); // ✅ เพิ่ม debug
-        Debug.Log($"- Character Stats UI Found: {characterNameText != null && attackDamageText != null}"); // ✅ เพิ่ม debug
-    }
+   
 
     // ✅ เพิ่มฟังก์ชัน Setup Inventory Panel
     private void SetupInventoryPanel()
     {
+        Debug.Log("=== Setting up Inventory Panel ===");
+
         if (inventoryPanel != null)
         {
             inventoryPanel.SetActive(false); // เริ่มต้นซ่อน Panel
-            Debug.Log("Inventory Panel initialized (hidden)");
+            Debug.Log("✅ Inventory Panel initialized (hidden)");
+
+            // Setup Inventory Grid
+
+            // Setup Item Info Panel
+            SetupItemInfoPanel();
+
+            // เพิ่มไอเทมทดสอบ
+        }
+        else
+        {
+            Debug.LogError("❌ Inventory Panel not assigned in Inspector!");
         }
     }
 
@@ -267,16 +240,18 @@ public class CombatUIManager : MonoBehaviour
             return;
         }
 
+        Debug.Log("=== Setting up UI Button Events ===");
+
         if (attackButton != null)
         {
-            // ลบ listener เก่าก่อน (ป้องกันการ add ซ้ำ)
             attackButton.onClick.RemoveAllListeners();
             attackButton.onClick.AddListener(() => {
                 Debug.Log("Attack button pressed");
                 inputController.SetAttackPressed();
             });
-            Debug.Log("Attack button event setup complete");
+            Debug.Log("✅ Attack button event setup complete");
         }
+        else Debug.LogWarning("❌ Attack button not assigned in Inspector!");
 
         if (skill1Button != null)
         {
@@ -285,8 +260,9 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("Skill1 button pressed");
                 inputController.SetSkill1Pressed();
             });
-            Debug.Log("Skill1 button event setup complete");
+            Debug.Log("✅ Skill1 button event setup complete");
         }
+        else Debug.LogWarning("❌ Skill1 button not assigned in Inspector!");
 
         if (skill2Button != null)
         {
@@ -295,8 +271,9 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("Skill2 button pressed");
                 inputController.SetSkill2Pressed();
             });
-            Debug.Log("Skill2 button event setup complete");
+            Debug.Log("✅ Skill2 button event setup complete");
         }
+        else Debug.LogWarning("❌ Skill2 button not assigned in Inspector!");
 
         if (skill3Button != null)
         {
@@ -305,8 +282,9 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("Skill3 button pressed");
                 inputController.SetSkill3Pressed();
             });
-            Debug.Log("Skill3 button event setup complete");
+            Debug.Log("✅ Skill3 button event setup complete");
         }
+        else Debug.LogWarning("❌ Skill3 button not assigned in Inspector!");
 
         if (skill4Button != null)
         {
@@ -315,8 +293,9 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("Skill4 button pressed");
                 inputController.SetSkill4Pressed();
             });
-            Debug.Log("Skill4 button event setup complete");
+            Debug.Log("✅ Skill4 button event setup complete");
         }
+        else Debug.LogWarning("❌ Skill4 button not assigned in Inspector!");
 
         // ✅ Setup Inventory Button
         if (inventoryButton != null)
@@ -326,8 +305,9 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("Inventory button pressed");
                 ToggleInventory();
             });
-            Debug.Log("Inventory button event setup complete");
+            Debug.Log("✅ Inventory button event setup complete");
         }
+        else Debug.LogWarning("❌ Inventory button not assigned in Inspector!");
 
         // ✅ Setup Inventory Close Button
         if (inventoryCloseButton != null)
@@ -337,8 +317,14 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("Inventory close button pressed");
                 CloseInventory();
             });
-            Debug.Log("Inventory close button event setup complete");
+            Debug.Log("✅ Inventory close button event setup complete");
         }
+        else Debug.LogWarning("❌ Inventory close button not assigned in Inspector!");
+
+        // ✅ Setup Item Info Buttons
+       
+
+        Debug.Log("=== UI Button Events Setup Complete ===");
     }
 
     // ✅ เพิ่มฟังก์ชัน Inventory
@@ -502,4 +488,37 @@ public class CombatUIManager : MonoBehaviour
             attackSpeedText.text = $"AS: {localHero.GetEffectiveAttackSpeed():F2}";
         }
     }
+
+    // ✅ Inventory Grid System Functions
+   
+    private void SetupItemInfoPanel()
+    {
+        if (itemInfoPanel != null)
+        {
+            itemInfoPanel.SetActive(false); // เริ่มต้นซ่อน
+            Debug.Log("✅ Item Info Panel initialized (hidden)");
+        }
+        else
+        {
+            Debug.LogWarning("❌ Item Info Panel not assigned in Inspector!");
+        }
+    }
+
+   
+   
+    
+  
+
+   
+    
+
+   
+
+   
+
+   
+
+  
+    
+   
 }
