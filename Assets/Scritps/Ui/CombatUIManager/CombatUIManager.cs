@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Fusion;
 using TMPro;
+
 public class CombatUIManager : MonoBehaviour
 {
     [Header("UI Prefab")]
@@ -15,43 +16,40 @@ public class CombatUIManager : MonoBehaviour
     public Button skill2Button;
     public Button skill3Button;
     public Button skill4Button;
-    public Button inventoryButton; // ✅ เพิ่มปุ่ม Inventory
+    public Button inventoryButton;
     public Slider healthBar;
     public Slider manaBar;
-    public TextMeshProUGUI healthText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI manaText; // ✅ เปลี่ยนเป็น TextMeshPro
+    public TextMeshProUGUI healthText;
+    public TextMeshProUGUI manaText;
     public FixedJoystick movementJoystick;
     public FixedJoystick cameraJoystick;
 
     [Header("Inventory Panel")]
-    public GameObject inventoryPanel; // ✅ เพิ่ม Inventory Panel
-    public Button inventoryCloseButton; // ✅ ปุ่มปิด Inventory
+    public GameObject inventoryPanel;
+    public Button inventoryCloseButton;
 
-   
-    [Header("Item Info Panel")]
-    public GameObject itemInfoPanel;           // Panel แสดงข้อมูลไอเทม
-    public TextMeshProUGUI itemInfoNameText;   // ชื่อไอเทม
-    public TextMeshProUGUI itemInfoDescText;   // คำอธิบายไอเทม
-    public Image itemInfoIcon;                 // ไอคอนไอเทม
-    public Button useItemButton;               // ปุ่มใช้ไอเทม
-    public Button dropItemButton;              // ปุ่มทิ้งไอเทม
+    [Header("🎯 NEW: Inventory Grid System")]
+    public Transform inventoryGridParent;           // Parent สำหรับ inventory grid
+    public GameObject inventorySlotPrefab;          // Prefab สำหรับ inventory slot (optional)
+    public ScrollRect inventoryScrollRect;          // Scroll Rect สำหรับ inventory (optional)
 
+  
     [Header("Character Stats in Inventory")]
-    public TextMeshProUGUI characterNameText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI characterLevelText; // ✅ เปลี่ยนเป็น TextMeshPro
+    public TextMeshProUGUI characterNameText;
+    public TextMeshProUGUI characterLevelText;
     public Slider inventoryHealthBar;
     public Slider inventoryManaBar;
-    public TextMeshProUGUI inventoryHealthText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI inventoryManaText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI attackDamageText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI magicDamageText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI armorText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI moveSpeedText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI criticalChanceText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI criticalDamageText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI hitRateText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI evasionRateText; // ✅ เปลี่ยนเป็น TextMeshPro
-    public TextMeshProUGUI attackSpeedText; // ✅ เปลี่ยนเป็น TextMeshPro
+    public TextMeshProUGUI inventoryHealthText;
+    public TextMeshProUGUI inventoryManaText;
+    public TextMeshProUGUI attackDamageText;
+    public TextMeshProUGUI magicDamageText;
+    public TextMeshProUGUI armorText;
+    public TextMeshProUGUI moveSpeedText;
+    public TextMeshProUGUI criticalChanceText;
+    public TextMeshProUGUI criticalDamageText;
+    public TextMeshProUGUI hitRateText;
+    public TextMeshProUGUI evasionRateText;
+    public TextMeshProUGUI attackSpeedText;
 
     public Hero localHero { get; private set; }
     private SingleInputController inputController;
@@ -60,11 +58,12 @@ public class CombatUIManager : MonoBehaviour
     // เพิ่มการรอหา InputController
     private bool inputControllerFound = false;
 
-    // ✅ เพิ่มตัวแปรสถานะ Inventory
+    // ตัวแปรสถานะ Inventory
     private bool isInventoryOpen = false;
-
-   
     private int selectedSlotIndex = -1;
+
+    // 🎯 NEW: Inventory Grid Manager
+    private InventoryGridManager inventoryGridManager;
 
     private void Start()
     {
@@ -89,6 +88,7 @@ public class CombatUIManager : MonoBehaviour
                 Debug.Log("InputController found in Update!");
             }
         }
+
         if (localHero == null)
         {
             Hero[] heroes = FindObjectsOfType<Hero>();
@@ -102,12 +102,13 @@ public class CombatUIManager : MonoBehaviour
                 }
             }
         }
+
         // อัพเดท UI
         if (localHero != null)
         {
             UpdateUI();
 
-            // ✅ อัพเดท Character Stats ใน Inventory Panel ถ้าเปิดอยู่
+            // อัพเดท Character Stats ใน Inventory Panel ถ้าเปิดอยู่
             if (isInventoryOpen)
             {
                 UpdateInventoryCharacterStats();
@@ -118,7 +119,7 @@ public class CombatUIManager : MonoBehaviour
     // เพิ่ม Coroutine สำหรับหา InputController
     private IEnumerator FindInputControllerRoutine()
     {
-        float timeout = 5f; // รอสูงสุด 5 วินาที
+        float timeout = 5f;
         float elapsed = 0f;
 
         while (inputController == null && elapsed < timeout)
@@ -129,11 +130,7 @@ public class CombatUIManager : MonoBehaviour
             {
                 Debug.Log("InputController found!");
                 inputControllerFound = true;
-
-                // อัพเดท joystick references
                 inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
-
-                // Setup button events
                 SetupButtonEvents();
                 break;
             }
@@ -181,32 +178,120 @@ public class CombatUIManager : MonoBehaviour
         uiInstance = Instantiate(combatUIPrefab, safeArea);
         Debug.Log($"UI Instance created: {uiInstance.name}");
 
-        SetupInventoryPanel(); // ✅ Setup Inventory Panel
-        // ไม่เรียก SetupUIReferences() เพราะใช้ Inspector แทน
+        SetupInventoryPanel();
     }
 
-   
-
-    // ✅ เพิ่มฟังก์ชัน Setup Inventory Panel
+    // 🎯 UPDATED: Setup Inventory Panel with Grid System
     private void SetupInventoryPanel()
     {
-        Debug.Log("=== Setting up Inventory Panel ===");
+        Debug.Log("=== Setting up Inventory Panel with Grid System ===");
 
         if (inventoryPanel != null)
         {
-            inventoryPanel.SetActive(false); // เริ่มต้นซ่อน Panel
+            inventoryPanel.SetActive(false);
             Debug.Log("✅ Inventory Panel initialized (hidden)");
 
-            // Setup Inventory Grid
+            // 🎯 Setup Inventory Grid
+            SetupInventoryGrid();
 
             // Setup Item Info Panel
-            SetupItemInfoPanel();
-
-            // เพิ่มไอเทมทดสอบ
         }
         else
         {
             Debug.LogError("❌ Inventory Panel not assigned in Inspector!");
+        }
+    }
+
+    // 🎯 NEW: Setup Inventory Grid System
+    private void SetupInventoryGrid()
+    {
+        Debug.Log("=== Setting up Inventory Grid ===");
+
+        // หา Inventory Grid Parent ถ้าไม่ได้ assign
+        if (inventoryGridParent == null)
+        {
+            inventoryGridParent = FindInventoryGridParent();
+        }
+
+        if (inventoryGridParent == null)
+        {
+            Debug.LogError("❌ Inventory Grid Parent not found! Creating new one...");
+            CreateInventoryGridParent();
+        }
+
+        // สร้าง InventoryGridManager
+        inventoryGridManager = inventoryGridParent.GetComponent<InventoryGridManager>();
+        if (inventoryGridManager == null)
+        {
+            inventoryGridManager = inventoryGridParent.gameObject.AddComponent<InventoryGridManager>();
+            Debug.Log("✅ Created InventoryGridManager component");
+        }
+
+        // Subscribe to grid events
+        inventoryGridManager.OnSlotSelectionChanged += HandleSlotSelectionChanged;
+
+        Debug.Log("✅ Inventory Grid setup complete");
+    }
+
+    private Transform FindInventoryGridParent()
+    {
+        // ลองหาใน hierarchy ต่างๆ
+        string[] possiblePaths = {
+            "InventoryGrid",
+            "Grid",
+            "Content",
+            "Scroll View/Viewport/Content",
+            "InventoryScrollRect/Viewport/Content"
+        };
+
+        foreach (string path in possiblePaths)
+        {
+            Transform found = inventoryPanel.transform.Find(path);
+            if (found != null)
+            {
+                Debug.Log($"✅ Found inventory grid parent at: {path}");
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private void CreateInventoryGridParent()
+    {
+        // สร้าง Grid Parent ใหม่
+        GameObject gridParentObj = new GameObject("InventoryGrid");
+        gridParentObj.transform.SetParent(inventoryPanel.transform, false);
+
+        RectTransform gridRect = gridParentObj.AddComponent<RectTransform>();
+        gridRect.anchorMin = Vector2.zero;
+        gridRect.anchorMax = Vector2.one;
+        gridRect.offsetMin = new Vector2(20, 20);  // margin
+        gridRect.offsetMax = new Vector2(-20, -20);
+
+        inventoryGridParent = gridRect;
+
+        Debug.Log("✅ Created new Inventory Grid Parent");
+    }
+
+    // 🎯 NEW: Handle slot selection events
+    private void HandleSlotSelectionChanged(int slotIndex)
+    {
+        selectedSlotIndex = slotIndex;
+
+        if (slotIndex >= 0)
+        {
+            Debug.Log($"[CombatUI] Selected inventory slot: {slotIndex}");
+
+            // TODO Step 4: แสดง item detail panel เมื่อมี item ใน slot
+            // ShowItemDetail(slotIndex);
+        }
+        else
+        {
+            Debug.Log("[CombatUI] No slot selected");
+
+            // TODO Step 4: ซ่อน item detail panel
+            // HideItemDetail();
         }
     }
 
@@ -297,7 +382,7 @@ public class CombatUIManager : MonoBehaviour
         }
         else Debug.LogWarning("❌ Skill4 button not assigned in Inspector!");
 
-        // ✅ Setup Inventory Button
+        // Setup Inventory Button
         if (inventoryButton != null)
         {
             inventoryButton.onClick.RemoveAllListeners();
@@ -309,7 +394,7 @@ public class CombatUIManager : MonoBehaviour
         }
         else Debug.LogWarning("❌ Inventory button not assigned in Inspector!");
 
-        // ✅ Setup Inventory Close Button
+        // Setup Inventory Close Button
         if (inventoryCloseButton != null)
         {
             inventoryCloseButton.onClick.RemoveAllListeners();
@@ -321,13 +406,10 @@ public class CombatUIManager : MonoBehaviour
         }
         else Debug.LogWarning("❌ Inventory close button not assigned in Inspector!");
 
-        // ✅ Setup Item Info Buttons
-       
-
         Debug.Log("=== UI Button Events Setup Complete ===");
     }
 
-    // ✅ เพิ่มฟังก์ชัน Inventory
+    // เพิ่มฟังก์ชัน Inventory
     public void ToggleInventory()
     {
         if (isInventoryOpen)
@@ -347,7 +429,7 @@ public class CombatUIManager : MonoBehaviour
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
 
-            // ✅ อัพเดท Character Stats ทันทีที่เปิด Panel
+            // อัพเดท Character Stats ทันทีที่เปิด Panel
             if (localHero != null)
             {
                 UpdateInventoryCharacterStats();
@@ -363,6 +445,13 @@ public class CombatUIManager : MonoBehaviour
         {
             inventoryPanel.SetActive(false);
             isInventoryOpen = false;
+
+            // ยกเลิกการเลือก slot
+            if (inventoryGridManager != null)
+            {
+                inventoryGridManager.DeselectAllSlots();
+            }
+
             Debug.Log("Inventory panel closed");
         }
     }
@@ -403,7 +492,7 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
-    // ✅ เพิ่มฟังก์ชันอัพเดท Character Stats ใน Inventory Panel
+    // เพิ่มฟังก์ชันอัพเดท Character Stats ใน Inventory Panel
     public void UpdateInventoryCharacterStats()
     {
         if (localHero == null) return;
@@ -489,36 +578,71 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
-    // ✅ Inventory Grid System Functions
-   
-    private void SetupItemInfoPanel()
+  
+
+    // 🎯 NEW: Public methods for accessing inventory grid
+    public InventoryGridManager GetInventoryGridManager()
     {
-        if (itemInfoPanel != null)
+        return inventoryGridManager;
+    }
+
+    public int GetSelectedSlotIndex()
+    {
+        return selectedSlotIndex;
+    }
+
+    // 🎯 NEW: Context Menu สำหรับทดสอบ
+    [ContextMenu("Test: Open Inventory")]
+    private void TestOpenInventory()
+    {
+        OpenInventory();
+    }
+
+    [ContextMenu("Test: Close Inventory")]
+    private void TestCloseInventory()
+    {
+        CloseInventory();
+    }
+
+    [ContextMenu("Test: Fill Random Inventory Slots")]
+    private void TestFillRandomInventorySlots()
+    {
+        if (inventoryGridManager != null)
         {
-            itemInfoPanel.SetActive(false); // เริ่มต้นซ่อน
-            Debug.Log("✅ Item Info Panel initialized (hidden)");
+            OpenInventory(); // เปิด inventory ก่อน
+            inventoryGridManager.GetComponent<InventoryGridManager>().SendMessage("TestFillRandomSlots");
         }
         else
         {
-            Debug.LogWarning("❌ Item Info Panel not assigned in Inspector!");
+            Debug.LogWarning("Inventory Grid Manager not found!");
         }
     }
 
-   
-   
-    
-  
+    [ContextMenu("Test: Auto-Fit Grid to Panel")]
+    private void TestAutoFitGrid()
+    {
+        if (inventoryGridManager != null)
+        {
+            OpenInventory(); // เปิด inventory ก่อน
+            inventoryGridManager.SendMessage("TestAutoFitGrid");
+        }
+        else
+        {
+            Debug.LogWarning("Inventory Grid Manager not found!");
+        }
+    }
 
-   
-    
-
-   
-
-   
-
-   
-
-  
-    
-   
+    [ContextMenu("Test: Set Medium Grid Cells")]
+    private void TestSetMediumGridCells()
+    {
+        if (inventoryGridManager != null)
+        {
+            OpenInventory(); // เปิด inventory ก่อน
+            inventoryGridManager.SendMessage("TestSetMediumCells");
+        }
+        else
+        {
+            Debug.LogWarning("Inventory Grid Manager not found!");
+        }
+    }
 }
