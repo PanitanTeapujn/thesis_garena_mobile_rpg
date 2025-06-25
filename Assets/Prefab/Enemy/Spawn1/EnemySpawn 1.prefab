@@ -174,7 +174,12 @@ MonoBehaviour:
   bossSpawnPoints:
   - {fileID: 6608536978320820854}
   useBossSpawnPoints: 1
-  maxTotalEnemies: 10
+  multiSpawnMode: 1
+  spawnPointCount: 6
+  enemiesPerPoint: 1
+  minPlayerDistance: 8
+  multiSpawnCooldown: 10
+  maxTotalEnemies: 20
   spawnInterval: 5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
@@ -185,10 +190,11 @@ MonoBehaviour:
   - {fileID: 5449713855246032909}
   - {fileID: 6023309308642714384}
   - {fileID: 3756664571040027359}
-  spawnRadius: 10.42
-  useSpawnPoints: 0
+  spawnRadius: 20
+  useSpawnPoints: 1
   showDebugInfo: 0
   verboseKillTracking: 1
+  showMultiSpawnInfo: 1
   balanceEnemyTypes: 1
   spawnInWaves: 0
   enemiesPerWave: 3

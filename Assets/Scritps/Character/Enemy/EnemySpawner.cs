@@ -43,6 +43,17 @@ public class BossSpawnCondition
     public bool isSpawningBoss = false;
 }
 
+// 🎯 ระบบ Multi-Point ที่เรียบง่าย
+public enum MultiSpawnMode
+{
+    Off,              // ปิดใช้งาน - spawn ปกติ
+    Balanced,         // spawn กระจายทุกจุดเท่าๆ กัน
+    ClusterAttack,    // spawn รุมหลายจุดใกล้ๆ กัน
+    SurroundPlayer,   // spawn ล้อมรอบผู้เล่น
+    RandomBurst,      // spawn สุ่มหลายจุดพร้อมกัน
+    EdgeSpawn         // spawn แค่จุดที่ไกลจากผู้เล่น
+}
+
 public class EnemySpawner : NetworkBehaviour
 {
     [Header("Enemy Prefabs")]
@@ -53,6 +64,26 @@ public class EnemySpawner : NetworkBehaviour
     public bool enableBossSpawning = true;
     public Transform[] bossSpawnPoints;
     public bool useBossSpawnPoints = true;
+
+    [Header("🌊 Simple Multi-Point Spawning")]
+    [Tooltip("เลือกรูปแบบการ spawn หลายจุด")]
+    public MultiSpawnMode multiSpawnMode = MultiSpawnMode.Balanced;
+
+    [Tooltip("จำนวนจุดที่จะ spawn พร้อมกัน (2-8)")]
+    [Range(2, 8)]
+    public int spawnPointCount = 3;
+
+    [Tooltip("จำนวนศัตรูต่อจุด (1-4)")]
+    [Range(1, 4)]
+    public int enemiesPerPoint = 1;
+
+    [Tooltip("ระยะห่างขั้นต่ำจากผู้เล่น (เมตร)")]
+    [Range(5f, 20f)]
+    public float minPlayerDistance = 8f;
+
+    [Tooltip("เวลาคูลดาวน์หลัง multi-spawn (วินาที)")]
+    [Range(3f, 15f)]
+    public float multiSpawnCooldown = 5f;
 
     [Header("Spawn Settings")]
     public int maxTotalEnemies = 10;
@@ -67,7 +98,8 @@ public class EnemySpawner : NetworkBehaviour
 
     [Header("🔧 Debug Settings")]
     public bool showDebugInfo = false;
-    public bool verboseKillTracking = true; // เพิ่มการ debug kill tracking
+    public bool verboseKillTracking = true;
+    public bool showMultiSpawnInfo = true; // 🆕 แสดงข้อมูล multi-spawn
 
     [Header("Advanced Settings")]
     public bool balanceEnemyTypes = false;
@@ -77,20 +109,25 @@ public class EnemySpawner : NetworkBehaviour
 
     private float nextSpawnTime = 0f;
     private float nextWaveTime = 0f;
+    private float nextMultiSpawnTime = 0f;
     private List<NetworkEnemy> activeEnemies = new List<NetworkEnemy>();
     private List<NetworkEnemy> activeBosses = new List<NetworkEnemy>();
 
-    // 🔧 ปรับปรุงระบบ spawn points
+    // ระบบ spawn points ที่เรียบง่าย
     private List<int> availableSpawnPoints = new List<int>();
-    private int lastUsedSpawnPoint = -1; // เพื่อป้องกันการใช้จุดเดิมซ้ำ
+    private List<int> recentlyUsedPoints = new List<int>();
+    private int lastUsedSpawnPoint = -1;
 
     // สถิติ
     private Dictionary<string, int> spawnedCounts = new Dictionary<string, int>();
     private Dictionary<string, int> killedCounts = new Dictionary<string, int>();
     private int totalEnemiesKilled = 0;
-
-    // 🔧 เพิ่มระบบติดตาม enemy ที่ spawn
     private Dictionary<NetworkObject, string> spawnedEnemyTypes = new Dictionary<NetworkObject, string>();
+
+    // 🆕 Multi-spawn ที่เรียบง่าย
+    private bool isMultiSpawning = false;
+    private Queue<Vector3> pendingSpawnPositions = new Queue<Vector3>();
+    private Queue<EnemySpawnData> pendingSpawnEnemies = new Queue<EnemySpawnData>();
 
     private void Start()
     {
@@ -107,12 +144,17 @@ public class EnemySpawner : NetworkBehaviour
         InitializeSpawnCounts();
         InitializeBossConditions();
         ValidateSettings();
+
+        if (showMultiSpawnInfo)
+        {
+            Debug.Log($"🌊 Multi-Spawn Mode: {multiSpawnMode} | Points: {spawnPointCount} | Per Point: {enemiesPerPoint}");
+        }
     }
 
-    // 🔧 ปรับปรุงการจัดการ spawn points
     private void InitializeSpawnPoints()
     {
         availableSpawnPoints.Clear();
+        recentlyUsedPoints.Clear();
 
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
@@ -130,12 +172,13 @@ public class EnemySpawner : NetworkBehaviour
 
             if (showDebugInfo)
             {
-                Debug.Log($"[EnemySpawner] Initialized {availableSpawnPoints.Count} valid spawn points out of {spawnPoints.Length}");
+                Debug.Log($"[EnemySpawner] Initialized {availableSpawnPoints.Count} valid spawn points");
             }
         }
         else
         {
-            Debug.LogWarning("[EnemySpawner] No spawn points configured! Will use random positions.");
+            Debug.LogWarning("[EnemySpawner] No spawn points configured! Multi-spawn will be disabled.");
+            multiSpawnMode = MultiSpawnMode.Off;
         }
     }
 
@@ -145,6 +188,7 @@ public class EnemySpawner : NetworkBehaviour
 
         CleanupDeadEnemies();
         CleanupDeadBosses();
+        ProcessPendingMultiSpawns(); // 🆕 ประมวลผล multi-spawn queue
 
         if (enableBossSpawning)
         {
@@ -155,10 +199,369 @@ public class EnemySpawner : NetworkBehaviour
         {
             HandleWaveSpawning();
         }
+        else if (multiSpawnMode != MultiSpawnMode.Off)
+        {
+            HandleSimpleMultiSpawning(); // 🆕 ระบบใหม่ที่เรียบง่าย
+        }
         else
         {
             HandleNormalSpawning();
         }
+    }
+
+    // 🆕 ระบบ Multi-Spawn ที่เรียบง่าย
+    private void HandleSimpleMultiSpawning()
+    {
+        if (Time.time >= nextMultiSpawnTime && CanSpawnMore() && !isMultiSpawning)
+        {
+            StartSimpleMultiSpawn();
+        }
+    }
+
+    private void StartSimpleMultiSpawn()
+    {
+        if (isMultiSpawning || availableSpawnPoints.Count == 0) return;
+
+        List<Vector3> spawnPositions = GetMultiSpawnPositions();
+        if (spawnPositions.Count == 0) return;
+
+        isMultiSpawning = true;
+        pendingSpawnPositions.Clear();
+        pendingSpawnEnemies.Clear();
+
+        // เตรียม spawn requests
+        int totalPlanned = 0;
+        foreach (Vector3 position in spawnPositions)
+        {
+            for (int i = 0; i < enemiesPerPoint && totalPlanned < (maxTotalEnemies - activeEnemies.Count); i++)
+            {
+                EnemySpawnData selectedEnemy = SelectEnemyToSpawn();
+                if (selectedEnemy != null)
+                {
+                    // เพิ่ม offset เล็กน้อยสำหรับตัวที่ 2, 3, 4...
+                    Vector3 adjustedPosition = position;
+                    if (i > 0)
+                    {
+                        Vector2 randomOffset = Random.insideUnitCircle * 2f;
+                        adjustedPosition += new Vector3(randomOffset.x, 0, randomOffset.y);
+                    }
+
+                    pendingSpawnPositions.Enqueue(adjustedPosition);
+                    pendingSpawnEnemies.Enqueue(selectedEnemy);
+                    totalPlanned++;
+                }
+            }
+        }
+
+        nextMultiSpawnTime = Time.time + multiSpawnCooldown;
+
+        if (showMultiSpawnInfo && totalPlanned > 0)
+        {
+            Debug.Log($"🌊 Multi-Spawn ({multiSpawnMode}): {totalPlanned} enemies at {spawnPositions.Count} points!");
+        }
+    }
+
+    // 🎯 หาตำแหน่ง spawn ตามโหมดที่เลือก
+    private List<Vector3> GetMultiSpawnPositions()
+    {
+        if (!useSpawnPoints || availableSpawnPoints.Count == 0)
+            return new List<Vector3>();
+
+        List<Vector3> positions = new List<Vector3>();
+        List<Transform> playerTransforms = GetAllPlayerTransforms();
+
+        // จำกัดจำนวนจุดไม่ให้เกินที่มี
+        int actualPointCount = Mathf.Min(spawnPointCount, availableSpawnPoints.Count);
+
+        switch (multiSpawnMode)
+        {
+            case MultiSpawnMode.Balanced:
+                positions = GetBalancedSpawnPositions(actualPointCount);
+                break;
+
+            case MultiSpawnMode.ClusterAttack:
+                positions = GetClusterSpawnPositions(actualPointCount);
+                break;
+
+            case MultiSpawnMode.SurroundPlayer:
+                positions = GetSurroundPlayerPositions(actualPointCount, playerTransforms);
+                break;
+
+            case MultiSpawnMode.RandomBurst:
+                positions = GetRandomSpawnPositions(actualPointCount);
+                break;
+
+            case MultiSpawnMode.EdgeSpawn:
+                positions = GetEdgeSpawnPositions(actualPointCount, playerTransforms);
+                break;
+        }
+
+        return FilterPositionsByPlayerDistance(positions, playerTransforms);
+    }
+
+    // 🎯 Balanced: กระจายทุกจุดเท่าๆ กัน
+    private List<Vector3> GetBalancedSpawnPositions(int count)
+    {
+        List<Vector3> positions = new List<Vector3>();
+
+        if (count >= availableSpawnPoints.Count)
+        {
+            // ใช้ทุกจุด
+            foreach (int pointIndex in availableSpawnPoints)
+            {
+                positions.Add(spawnPoints[pointIndex].position);
+            }
+        }
+        else
+        {
+            // เลือกจุดที่กระจายเท่าๆ กัน
+            float step = (float)availableSpawnPoints.Count / count;
+            for (int i = 0; i < count; i++)
+            {
+                int index = Mathf.RoundToInt(i * step) % availableSpawnPoints.Count;
+                int pointIndex = availableSpawnPoints[index];
+                positions.Add(spawnPoints[pointIndex].position);
+            }
+        }
+
+        return positions;
+    }
+
+    // 🎯 Cluster: spawn รุมหลายจุดใกล้ๆ กัน
+    private List<Vector3> GetClusterSpawnPositions(int count)
+    {
+        List<Vector3> positions = new List<Vector3>();
+
+        // หาจุดกลางที่สุ่ม
+        int centerIndex = availableSpawnPoints[Random.Range(0, availableSpawnPoints.Count)];
+        Vector3 centerPos = spawnPoints[centerIndex].position;
+        positions.Add(centerPos);
+
+        // หาจุดใกล้เคียงกับจุดกลาง
+        List<(int index, float distance)> nearbyPoints = new List<(int, float)>();
+        foreach (int pointIndex in availableSpawnPoints)
+        {
+            if (pointIndex != centerIndex)
+            {
+                float distance = Vector3.Distance(centerPos, spawnPoints[pointIndex].position);
+                nearbyPoints.Add((pointIndex, distance));
+            }
+        }
+
+        // เรียงตามระยะทางจากใกล้ไปไกล
+        nearbyPoints.Sort((a, b) => a.distance.CompareTo(b.distance));
+
+        // เพิ่มจุดใกล้เคียง
+        for (int i = 0; i < count - 1 && i < nearbyPoints.Count; i++)
+        {
+            positions.Add(spawnPoints[nearbyPoints[i].index].position);
+        }
+
+        return positions;
+    }
+
+    // 🎯 Surround: ล้อมรอบผู้เล่น
+    private List<Vector3> GetSurroundPlayerPositions(int count, List<Transform> players)
+    {
+        List<Vector3> positions = new List<Vector3>();
+
+        if (players.Count == 0)
+            return GetRandomSpawnPositions(count);
+
+        // หาตำแหน่งกลางของผู้เล่น
+        Vector3 playerCenter = Vector3.zero;
+        foreach (Transform player in players)
+        {
+            playerCenter += player.position;
+        }
+        playerCenter /= players.Count;
+
+        // หาจุดที่ล้อมรอบผู้เล่น (วางเป็นวงกลม)
+        List<(int index, float angle)> surroundPoints = new List<(int, float)>();
+
+        foreach (int pointIndex in availableSpawnPoints)
+        {
+            Vector3 direction = spawnPoints[pointIndex].position - playerCenter;
+            direction.y = 0;
+            float angle = Mathf.Atan2(direction.z, direction.x) * Mathf.Rad2Deg;
+            if (angle < 0) angle += 360;
+            surroundPoints.Add((pointIndex, angle));
+        }
+
+        // เรียงตามมุม
+        surroundPoints.Sort((a, b) => a.angle.CompareTo(b.angle));
+
+        // เลือกจุดที่กระจายเป็นวงกลม
+        float angleStep = 360f / count;
+        for (int i = 0; i < count && i < surroundPoints.Count; i++)
+        {
+            int selectedIndex = Mathf.RoundToInt((float)i / count * surroundPoints.Count) % surroundPoints.Count;
+            positions.Add(spawnPoints[surroundPoints[selectedIndex].index].position);
+        }
+
+        return positions;
+    }
+
+    // 🎯 Random: สุ่มจุด
+    private List<Vector3> GetRandomSpawnPositions(int count)
+    {
+        List<Vector3> positions = new List<Vector3>();
+        List<int> availableCopy = new List<int>(availableSpawnPoints);
+
+        // ลบจุดที่ใช้ไปแล้วเมื่อเร็วๆ นี้
+        foreach (int usedPoint in recentlyUsedPoints)
+        {
+            availableCopy.Remove(usedPoint);
+        }
+
+        if (availableCopy.Count == 0)
+            availableCopy = new List<int>(availableSpawnPoints);
+
+        for (int i = 0; i < count && availableCopy.Count > 0; i++)
+        {
+            int randomIndex = Random.Range(0, availableCopy.Count);
+            int pointIndex = availableCopy[randomIndex];
+            positions.Add(spawnPoints[pointIndex].position);
+            availableCopy.RemoveAt(randomIndex);
+        }
+
+        return positions;
+    }
+
+    // 🎯 Edge: จุดที่ไกลจากผู้เล่นที่สุด
+    private List<Vector3> GetEdgeSpawnPositions(int count, List<Transform> players)
+    {
+        List<Vector3> positions = new List<Vector3>();
+
+        if (players.Count == 0)
+            return GetRandomSpawnPositions(count);
+
+        // คำนวณระยะห่างขั้นต่ำของแต่ละจุดจากผู้เล่น
+        List<(int index, float minDistance)> pointDistances = new List<(int, float)>();
+
+        foreach (int pointIndex in availableSpawnPoints)
+        {
+            float minDistance = float.MaxValue;
+            Vector3 pointPos = spawnPoints[pointIndex].position;
+
+            foreach (Transform player in players)
+            {
+                float distance = Vector3.Distance(pointPos, player.position);
+                if (distance < minDistance)
+                    minDistance = distance;
+            }
+
+            pointDistances.Add((pointIndex, minDistance));
+        }
+
+        // เรียงจากไกลที่สุด
+        pointDistances.Sort((a, b) => b.minDistance.CompareTo(a.minDistance));
+
+        for (int i = 0; i < count && i < pointDistances.Count; i++)
+        {
+            positions.Add(spawnPoints[pointDistances[i].index].position);
+        }
+
+        return positions;
+    }
+
+    // 🔍 กรองตำแหน่งตามระยะห่างจากผู้เล่น
+    private List<Vector3> FilterPositionsByPlayerDistance(List<Vector3> positions, List<Transform> players)
+    {
+        if (players.Count == 0) return positions;
+
+        List<Vector3> validPositions = new List<Vector3>();
+
+        foreach (Vector3 position in positions)
+        {
+            bool isSafe = true;
+            foreach (Transform player in players)
+            {
+                if (Vector3.Distance(position, player.position) < minPlayerDistance)
+                {
+                    isSafe = false;
+                    break;
+                }
+            }
+
+            if (isSafe)
+                validPositions.Add(position);
+        }
+
+        // ถ้าไม่มีจุดที่ปลอดภัย ให้ใช้จุดเดิม (อาจจะ spawn ใกล้ผู้เล่น)
+        if (validPositions.Count == 0)
+        {
+            if (showMultiSpawnInfo)
+                Debug.LogWarning("🌊 No safe spawn positions found, using original positions");
+            return positions;
+        }
+
+        return validPositions;
+    }
+
+    // 🆕 ประมวลผล queue ที่เรียบง่าย
+    private void ProcessPendingMultiSpawns()
+    {
+        if (!isMultiSpawning) return;
+
+        if (pendingSpawnPositions.Count == 0)
+        {
+            isMultiSpawning = false;
+            return;
+        }
+
+        // Spawn ทีละตัวในแต่ละ frame เพื่อลด lag
+        if (pendingSpawnPositions.Count > 0 && pendingSpawnEnemies.Count > 0 && CanSpawnMore())
+        {
+            Vector3 position = pendingSpawnPositions.Dequeue();
+            EnemySpawnData enemyData = pendingSpawnEnemies.Dequeue();
+
+            ExecuteSpawn(enemyData, position);
+        }
+    }
+
+    private void ExecuteSpawn(EnemySpawnData enemyData, Vector3 position)
+    {
+        NetworkEnemy enemy = Runner.Spawn(enemyData.enemyPrefab, position, Quaternion.identity, PlayerRef.None);
+
+        if (enemy != null)
+        {
+            activeEnemies.Add(enemy);
+            spawnedEnemyTypes[enemy.Object] = enemyData.enemyName;
+
+            enemyData.currentCount++;
+            enemyData.lastSpawnTime = Time.time;
+
+            if (spawnedCounts.ContainsKey(enemyData.enemyName))
+            {
+                spawnedCounts[enemyData.enemyName]++;
+            }
+            else
+            {
+                spawnedCounts[enemyData.enemyName] = 1;
+            }
+
+            if (showMultiSpawnInfo)
+            {
+                Debug.Log($"🌊 Spawned {enemyData.enemyName} at {position} | Active: {activeEnemies.Count}/{maxTotalEnemies}");
+            }
+        }
+    }
+
+    private List<Transform> GetAllPlayerTransforms()
+    {
+        List<Transform> playerTransforms = new List<Transform>();
+        Hero[] heroes = FindObjectsOfType<Hero>();
+
+        foreach (Hero hero in heroes)
+        {
+            if (hero != null && hero.IsSpawned)
+            {
+                playerTransforms.Add(hero.transform);
+            }
+        }
+
+        return playerTransforms;
     }
 
     private void HandleNormalSpawning()
@@ -178,7 +581,25 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (Time.time >= nextWaveTime && CanSpawnMore())
         {
-            SpawnWave();
+            if (multiSpawnMode != MultiSpawnMode.Off)
+            {
+                // แปลง wave เป็น multi-spawn แบบง่ายๆ
+                int originalEnemiesPerPoint = enemiesPerPoint;
+                int originalPointCount = spawnPointCount;
+
+                enemiesPerPoint = 1; // 1 ตัวต่อจุดสำหรับ wave
+                spawnPointCount = Mathf.Min(enemiesPerWave, availableSpawnPoints.Count);
+
+                StartSimpleMultiSpawn();
+
+                // คืนค่าเดิม
+                enemiesPerPoint = originalEnemiesPerPoint;
+                spawnPointCount = originalPointCount;
+            }
+            else
+            {
+                SpawnWave();
+            }
             nextWaveTime = Time.time + waveCooldown;
         }
     }
@@ -274,8 +695,6 @@ public class EnemySpawner : NetworkBehaviour
         if (enemy != null)
         {
             activeEnemies.Add(enemy);
-
-            // 🔧 เพิ่มการติดตาม enemy type ที่ spawn
             spawnedEnemyTypes[enemy.Object] = enemyData.enemyName;
 
             enemyData.currentCount++;
@@ -302,28 +721,24 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    // 🔧 ปรับปรุงระบบ spawn position
     private Vector3 GetRandomSpawnPosition()
     {
         if (useSpawnPoints && spawnPoints != null && availableSpawnPoints.Count > 0)
         {
-            // 🔧 ใช้ระบบหมุนเวียนจุด spawn เพื่อให้ใช้ครบทุกจุด
             int selectedIndex;
 
             if (availableSpawnPoints.Count == 1)
             {
                 selectedIndex = 0;
             }
-            else if (balanceEnemyTypes) // ถ้า balance ให้ใช้จุดแบบหมุนเวียน
+            else if (balanceEnemyTypes)
             {
-                // หาจุดถัดไปจาก lastUsedSpawnPoint
                 int currentIndex = availableSpawnPoints.IndexOf(lastUsedSpawnPoint);
                 int nextIndex = (currentIndex + 1) % availableSpawnPoints.Count;
                 selectedIndex = nextIndex;
             }
             else
             {
-                // สุ่มแบบปกติ แต่พยายามไม่ใช้จุดเดิม
                 List<int> otherPoints = new List<int>(availableSpawnPoints);
                 if (lastUsedSpawnPoint >= 0 && otherPoints.Count > 1)
                 {
@@ -347,7 +762,6 @@ public class EnemySpawner : NetworkBehaviour
         }
         else
         {
-            // Random position in radius
             Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
             Vector3 position = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
 
@@ -373,7 +787,7 @@ public class EnemySpawner : NetworkBehaviour
         nextSpawnTime = Time.time + interval;
     }
 
-    // 🔧 ปรับปรุงการนับ kill count
+    // ระบบการจัดการ dead enemies (เหมือนเดิม)
     private void CleanupDeadEnemies()
     {
         for (int i = activeEnemies.Count - 1; i >= 0; i--)
@@ -384,15 +798,13 @@ public class EnemySpawner : NetworkBehaviour
             {
                 string enemyTypeName = "";
 
-                // 🔧 ใช้ระบบติดตามที่ปรับปรุงแล้ว
                 if (enemy != null && enemy.Object != null && spawnedEnemyTypes.ContainsKey(enemy.Object))
                 {
                     enemyTypeName = spawnedEnemyTypes[enemy.Object];
-                    spawnedEnemyTypes.Remove(enemy.Object); // ลบออกจาก tracking
+                    spawnedEnemyTypes.Remove(enemy.Object);
                 }
                 else if (enemy != null)
                 {
-                    // Fallback: ใช้วิธีเดิมแต่ปรับปรุง
                     string enemyName = enemy.name.Replace("(Clone)", "").Trim();
 
                     foreach (EnemySpawnData enemyData in enemyPrefabs)
@@ -410,7 +822,6 @@ public class EnemySpawner : NetworkBehaviour
                     }
                 }
 
-                // 🔧 บันทึกการฆ่า enemy
                 if (!string.IsNullOrEmpty(enemyTypeName))
                 {
                     RecordEnemyKill(enemyTypeName);
@@ -466,7 +877,6 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    // 🔧 ปรับปรุงการนับ kill
     private void RecordEnemyKill(string enemyName)
     {
         totalEnemiesKilled++;
@@ -480,7 +890,6 @@ public class EnemySpawner : NetworkBehaviour
             killedCounts[enemyName] = 1;
         }
 
-        // 🔧 แสดงสถิติทุกๆ 5 kills
         if (verboseKillTracking && totalEnemiesKilled % 5 == 0)
         {
             Debug.Log($"📊 Kill Stats - Total: {totalEnemiesKilled}, {enemyName}: {killedCounts[enemyName]}");
@@ -489,7 +898,6 @@ public class EnemySpawner : NetworkBehaviour
         UpdateBossKillCounts(enemyName);
     }
 
-    // 🔧 ปรับปรุงการอัปเดต boss kill counts
     private void UpdateBossKillCounts(string killedEnemyName)
     {
         foreach (BossSpawnCondition condition in bossConditions)
@@ -512,14 +920,13 @@ public class EnemySpawner : NetworkBehaviour
             }
             else
             {
-                shouldCount = true; // นับทุก enemy
+                shouldCount = true;
             }
 
             if (shouldCount)
             {
                 condition.currentKillCount++;
 
-                // 🔧 แสดง progress ของบอส
                 if (verboseKillTracking && condition.currentKillCount % 5 == 0)
                 {
                     int remaining = condition.enemiesToKill - condition.currentKillCount;
@@ -528,7 +935,6 @@ public class EnemySpawner : NetworkBehaviour
                     Debug.Log($"🎯 Boss {condition.bossName} progress: {condition.currentKillCount}/{condition.enemiesToKill} " +
                              $"({progress:F1}%) - Remaining: {remaining}");
 
-                    // เตือนเมื่อใกล้จะ spawn บอส
                     if (remaining <= 5 && remaining > 0)
                     {
                         Debug.Log($"⚠️ WARNING: {condition.bossName} will spawn in {remaining} more kills!");
@@ -585,7 +991,7 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    // ========== Boss Spawning System ==========
+    // ========== Boss Spawning System (เหมือนเดิม) ==========
 
     private void CheckBossSpawnConditions()
     {
@@ -611,7 +1017,6 @@ public class EnemySpawner : NetworkBehaviour
         if (condition.currentBossCount >= condition.maxBossInstances) return false;
         if (condition.currentKillCount < condition.enemiesToKill) return false;
 
-        // เช็ค cooldown
         if (Time.time < condition.lastBossDeathTime + condition.bossRespawnCooldown) return false;
 
         return true;
@@ -628,7 +1033,7 @@ public class EnemySpawner : NetworkBehaviour
         }
 
         SpawnBoss(condition);
-        condition.currentKillCount = 0; // รีเซ็ต kill count
+        condition.currentKillCount = 0;
         condition.isSpawningBoss = false;
     }
 
@@ -660,13 +1065,11 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (useBossSpawnPoints && bossSpawnPoints != null && bossSpawnPoints.Length > 0)
         {
-            // ใช้ boss spawn points พิเศษ
             Transform bossSpawnPoint = bossSpawnPoints[Random.Range(0, bossSpawnPoints.Length)];
             return bossSpawnPoint.position;
         }
         else
         {
-            // ใช้ spawn points ปกติหรือสุ่มในรัศมี
             return GetRandomSpawnPosition();
         }
     }
@@ -699,7 +1102,6 @@ public class EnemySpawner : NetworkBehaviour
             return;
         }
 
-        // 🔧 ปรับปรุงการ validate
         int validEnemies = 0;
         foreach (EnemySpawnData enemy in enemyPrefabs)
         {
@@ -720,21 +1122,25 @@ public class EnemySpawner : NetworkBehaviour
 
         Debug.Log($"[EnemySpawner] Validated {validEnemies} valid enemy types");
 
-        // Validate spawn points
         if (useSpawnPoints)
         {
             if (spawnPoints == null || availableSpawnPoints.Count == 0)
             {
-                Debug.LogWarning("[EnemySpawner] useSpawnPoints is enabled but no valid spawn points found! Will use random spawning.");
+                Debug.LogWarning("[EnemySpawner] useSpawnPoints is enabled but no valid spawn points found! Multi-spawn disabled.");
                 useSpawnPoints = false;
+                multiSpawnMode = MultiSpawnMode.Off;
             }
             else
             {
                 Debug.Log($"[EnemySpawner] Using {availableSpawnPoints.Count} spawn points");
+
+                if (multiSpawnMode != MultiSpawnMode.Off)
+                {
+                    Debug.Log($"🌊 Multi-Spawn enabled: {multiSpawnMode} mode");
+                }
             }
         }
 
-        // Validate boss conditions
         if (bossConditions != null)
         {
             int validBosses = 0;
@@ -770,7 +1176,7 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    // ========== Public Methods ==========
+    // ========== Public Methods สำหรับการควบคุม ==========
 
     public void ForceSpawnEnemy(string enemyName)
     {
@@ -800,7 +1206,69 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    // 🔧 เพิ่ม method สำหรับทดสอบ
+    // 🆕 เปลี่ยนโหมด Multi-Spawn แบบง่ายๆ
+    public void SetMultiSpawnMode(MultiSpawnMode newMode)
+    {
+        multiSpawnMode = newMode;
+
+        if (showMultiSpawnInfo)
+        {
+            Debug.Log($"🌊 Multi-Spawn mode changed to: {newMode}");
+        }
+    }
+
+    // 🆕 บังคับให้เกิด Multi-Spawn ทันที
+    public void ForceMultiSpawn()
+    {
+        if (!Runner.IsServer || multiSpawnMode == MultiSpawnMode.Off) return;
+
+        nextMultiSpawnTime = 0f; // Reset cooldown
+        StartSimpleMultiSpawn();
+
+        Debug.Log("🌊 Force triggered multi-spawn!");
+    }
+
+    // 🆕 ตั้งค่าง่ายๆ สำหรับ intensity
+    public void SetSpawnIntensity(int intensity)
+    {
+        // intensity 1-5
+        intensity = Mathf.Clamp(intensity, 1, 5);
+
+        switch (intensity)
+        {
+            case 1: // Easy
+                spawnPointCount = 2;
+                enemiesPerPoint = 1;
+                multiSpawnCooldown = 8f;
+                break;
+            case 2: // Normal
+                spawnPointCount = 3;
+                enemiesPerPoint = 1;
+                multiSpawnCooldown = 6f;
+                break;
+            case 3: // Hard
+                spawnPointCount = 4;
+                enemiesPerPoint = 2;
+                multiSpawnCooldown = 5f;
+                break;
+            case 4: // Very Hard
+                spawnPointCount = 5;
+                enemiesPerPoint = 2;
+                multiSpawnCooldown = 4f;
+                break;
+            case 5: // Insane
+                spawnPointCount = 6;
+                enemiesPerPoint = 3;
+                multiSpawnCooldown = 3f;
+                break;
+        }
+
+        if (showMultiSpawnInfo)
+        {
+            Debug.Log($"🌊 Spawn intensity set to {intensity}: {spawnPointCount} points, {enemiesPerPoint} per point, {multiSpawnCooldown}s cooldown");
+        }
+    }
+
     public void AddKillCount(string enemyName, int count = 1)
     {
         if (!Runner.IsServer) return;
@@ -832,7 +1300,8 @@ public class EnemySpawner : NetworkBehaviour
     {
         nextSpawnTime = Time.time + duration;
         nextWaveTime = Time.time + duration;
-        Debug.Log($"[EnemySpawner] Spawning paused for {duration} seconds");
+        nextMultiSpawnTime = Time.time + duration;
+        Debug.Log($"[EnemySpawner] All spawning paused for {duration} seconds");
     }
 
     public void ClearAllEnemies()
@@ -849,6 +1318,12 @@ public class EnemySpawner : NetworkBehaviour
 
         activeEnemies.Clear();
         spawnedEnemyTypes.Clear();
+
+        // ล้าง multi-spawn queue
+        pendingSpawnPositions.Clear();
+        pendingSpawnEnemies.Clear();
+        isMultiSpawning = false;
+
         InitializeSpawnCounts();
         Debug.Log("[EnemySpawner] All enemies cleared");
     }
@@ -901,11 +1376,76 @@ public class EnemySpawner : NetworkBehaviour
 
         return progress;
     }
-   
-    // ========== Debug Methods ==========
 
+    // 🆕 Get simple status
+    public bool IsMultiSpawning()
+    {
+        return isMultiSpawning;
+    }
 
+    public int GetPendingSpawnCount()
+    {
+        return pendingSpawnPositions.Count;
+    }
 
+    public MultiSpawnMode GetCurrentMode()
+    {
+        return multiSpawnMode;
+    }
 
+    // ========== Debug Visualization ==========
+    private void OnDrawGizmosSelected()
+    {
+        if (spawnPoints == null) return;
 
+        for (int i = 0; i < spawnPoints.Length; i++)
+        {
+            if (spawnPoints[i] != null)
+            {
+                // เปลี่ยนสีตามโหมด Multi-Spawn
+                switch (multiSpawnMode)
+                {
+                    case MultiSpawnMode.Off:
+                        Gizmos.color = Color.gray;
+                        break;
+                    case MultiSpawnMode.Balanced:
+                        Gizmos.color = Color.green;
+                        break;
+                    case MultiSpawnMode.ClusterAttack:
+                        Gizmos.color = Color.red;
+                        break;
+                    case MultiSpawnMode.SurroundPlayer:
+                        Gizmos.color = Color.blue;
+                        break;
+                    case MultiSpawnMode.RandomBurst:
+                        Gizmos.color = Color.yellow;
+                        break;
+                    case MultiSpawnMode.EdgeSpawn:
+                        Gizmos.color = Color.magenta;
+                        break;
+                }
+
+                Gizmos.DrawWireSphere(spawnPoints[i].position, 1f);
+
+#if UNITY_EDITOR
+                UnityEditor.Handles.Label(spawnPoints[i].position + Vector3.up * 2f, $"SP {i}");
+#endif
+            }
+        }
+
+        // วาดรัศมีป้องกันผู้เล่น
+        if (multiSpawnMode != MultiSpawnMode.Off)
+        {
+            Gizmos.color = Color.red;
+            List<Transform> players = GetAllPlayerTransforms();
+            foreach (Transform player in players)
+            {
+                Gizmos.DrawWireSphere(player.position, minPlayerDistance);
+            }
+        }
+
+        // วาดรัศมี spawn ปกติ
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(transform.position, spawnRadius);
+    }
 }
