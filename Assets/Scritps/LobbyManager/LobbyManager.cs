@@ -69,7 +69,6 @@ public class LobbyManager : MonoBehaviour
     #region External References - การอ้างอิงถึง Manager และ Component อื่นๆ
     [Header("References")]
     public StageSelectionManager stageSelectionManager;
-    public InventoryManager inventoryManager;
     #endregion
 
     #region Private Variables - ตัวแปรภายในสำหรับจัดการข้อมูลและสถานะ
@@ -207,15 +206,7 @@ public class LobbyManager : MonoBehaviour
 
         HideAllPanels();
 
-        if (inventoryManager != null)
-        {
-            inventoryManager.ShowInventory();
-            Debug.Log("✅ Inventory panel activated");
-        }
-        else
-        {
-            Debug.LogError("❌ InventoryManager is NULL!");
-        }
+       
     }
 
     void BackToMainLobby()
@@ -229,8 +220,7 @@ public class LobbyManager : MonoBehaviour
         joinRoomPanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
-        if (inventoryManager != null)
-            inventoryManager.HideInventory();
+        
     }
     #endregion
 
@@ -419,12 +409,8 @@ public class LobbyManager : MonoBehaviour
                 UpdatePlayerStatsUI();
 
                 // ✅ เพิ่มบรรทัดนี้ - Refresh inventory ด้วยถ้าเปิดอยู่
-                if (inventoryManager != null && inventoryManager.IsInventoryOpen())
-                {
-                    inventoryManager.RefreshCharacterInfo();
-                }
+               
 
-                Debug.Log($"✅ [LobbyManager] Refreshed stats for {activeCharacter} - Level {activeCharacterData.currentLevel}");
             }
             else
             {
