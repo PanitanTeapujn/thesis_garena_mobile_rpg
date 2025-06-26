@@ -210,9 +210,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridWidth: 10
   gridHeight: 13
-  cellSize: 50
+  cellSize: 60
   spacing: 5
   autoFitToParent: 0
+  ownerCharacter: {fileID: 0}
+  autoDetectCharacter: 1
   gridParent: {fileID: 3544891625863736057}
   slotPrefab: {fileID: 0}
   gridLayout: {fileID: 5237203492083404919}

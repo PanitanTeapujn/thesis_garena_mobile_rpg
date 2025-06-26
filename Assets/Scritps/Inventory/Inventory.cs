@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
 using System;
-
+using System.Linq;
 [System.Serializable]
 public class InventoryItem
 {
@@ -11,17 +11,19 @@ public class InventoryItem
     public int stackCount;
     public int slotIndex; // ตำแหน่งใน inventory
 
-    public InventoryItem(ItemData item, int count = 1, int slot = -1)
+    public InventoryItem(ItemData item = null, int count = 0, int slot = -1)
     {
         itemData = item;
         stackCount = count;
         slotIndex = slot;
     }
 
-    public bool IsEmpty => itemData == null;
+    public bool IsEmpty => itemData == null || stackCount <= 0;
     public bool CanStack => itemData != null && itemData.CanStack();
-    public bool IsMaxStack => stackCount >= itemData.MaxStackSize;
+    public bool IsMaxStack => itemData != null && stackCount >= itemData.MaxStackSize;
+    public int GetMaxStackSize() => itemData?.MaxStackSize ?? 1;
 }
+
 
 public class Inventory : NetworkBehaviour
 {
@@ -36,6 +38,19 @@ public class Inventory : NetworkBehaviour
     [SerializeField] private int maxSlots = 48; // 8x6 = 48 slots เริ่มต้น
     [SerializeField] private int currentSlots = 24; // เริ่มต้นที่ 24 ช่อง (6x4)
     [SerializeField] private List<InventoryItem> items = new List<InventoryItem>();
+    [Header("🎯 Test Items (ScriptableObjects)")]
+    [SerializeField] private ItemData testSword;
+    [SerializeField] private ItemData testStaff;
+    [SerializeField] private ItemData testArmor;
+    [SerializeField] private ItemData testBoots;
+    [SerializeField] private ItemData testRune;
+    [SerializeField] private List<ItemData> testItems = new List<ItemData>();
+    [Header("🎁 Starter Items")]
+    [SerializeField] private bool giveStarterItems = true;
+    [SerializeField] private bool starterItemsGiven = false; // ป้องกันการให้ซ้ำ
+    [Header("🎯 Item Database")]
+    [SerializeField] private bool useItemDatabase = true; // เปิด/ปิดการใช้ database
+    [SerializeField] private bool fallbackToTestItems = true; // ใช้ test items ถ้า database ไม่มี
 
     [Header("🎯 Grid Layout")]
     [SerializeField] private int gridWidth = 6;   // จำนวน columns
@@ -82,6 +97,10 @@ public class Inventory : NetworkBehaviour
 
     protected virtual void Start()
     {
+        if (HasStateAuthority) // เฉพาะ host/authority เท่านั้น
+        {
+            GiveStarterItems();
+        }
         // Subscribe to equipment events
         if (character != null)
         {
@@ -199,19 +218,25 @@ public class Inventory : NetworkBehaviour
             return false;
         }
 
+        // ✅ Force สร้าง inventory grid ก่อนเพิ่ม item
+        ForceCreateInventoryGridIfNeeded();
+
         // ถ้า item สามารถ stack ได้ ลองหา slot ที่มี item เดียวกันแล้วยังไม่เต็ม
         if (itemData.CanStack())
         {
             for (int i = 0; i < currentSlots; i++)
             {
                 InventoryItem slot = items[i];
-                if (!slot.IsEmpty && slot.itemData.ItemName == itemData.ItemName && !slot.IsMaxStack)
+                if (!slot.IsEmpty && slot.itemData.CanStackWith(itemData) && !slot.IsMaxStack)
                 {
                     int canAdd = Mathf.Min(count, itemData.MaxStackSize - slot.stackCount);
                     slot.stackCount += canAdd;
                     count -= canAdd;
 
                     Debug.Log($"[Inventory] Stacked {canAdd} {itemData.ItemName} in slot {i}. Total: {slot.stackCount}");
+
+                    // ✅ แจ้ง UI ทันที
+                    OnInventoryItemChanged?.Invoke(character, i, slot);
 
                     if (HasStateAuthority)
                     {
@@ -240,6 +265,9 @@ public class Inventory : NetworkBehaviour
 
             Debug.Log($"[Inventory] Added {addCount} {itemData.ItemName} to slot {emptySlot}");
 
+            // ✅ แจ้ง UI ทันที
+            OnInventoryItemChanged?.Invoke(character, emptySlot, items[emptySlot]);
+
             if (HasStateAuthority)
             {
                 RPC_NotifyInventoryChanged(emptySlot, true, addCount);
@@ -248,7 +276,79 @@ public class Inventory : NetworkBehaviour
 
         return true;
     }
+    private void ForceCreateInventoryGridIfNeeded()
+    {
+        // หา InventoryGridManager
+        InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
 
+        if (gridManager != null)
+        {
+            // ถ้า gridManager มีแต่ยังไม่มี slots
+            if (gridManager.AllSlots.Count == 0)
+            {
+                Debug.Log("[Inventory] Requesting inventory grid creation...");
+
+                // Set character ถ้ายังไม่ได้ set
+                if (gridManager.OwnerCharacter == null)
+                {
+                    gridManager.SetOwnerCharacter(character);
+                }
+
+                // ✅ ใช้ Coroutine แทน direct call
+                StartCoroutine(RequestGridCreation(gridManager));
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[Inventory] No InventoryGridManager found! Requesting setup...");
+
+            // หา CombatUIManager และ setup grid
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                uiManager.ForceSetupInventoryGrid();
+
+                // รอแล้วลองอีกครั้ง
+                StartCoroutine(RetryForceCreateGrid());
+            }
+            else
+            {
+                Debug.LogError("[Inventory] No CombatUIManager found!");
+            }
+        }
+    }
+
+    private IEnumerator RequestGridCreation(InventoryGridManager gridManager)
+    {
+        yield return null; // รอ 1 frame
+
+        gridManager.ForceUpdateFromCharacter();
+
+        yield return null; // รออีก 1 frame
+
+        // ตรวจสอบว่าสร้างแล้วหรือยัง
+        if (gridManager.AllSlots.Count > 0)
+        {
+            Debug.Log("[Inventory] Grid creation successful");
+        }
+        else
+        {
+            Debug.LogWarning("[Inventory] Grid creation failed, retrying...");
+            gridManager.ForceUpdateFromCharacter();
+        }
+    }
+    private IEnumerator RetryForceCreateGrid()
+    {
+        yield return null; // รอ 1 frame
+
+        InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
+        if (gridManager != null && gridManager.OwnerCharacter == null)
+        {
+            gridManager.SetOwnerCharacter(character);
+            gridManager.ForceUpdateFromCharacter();
+            Debug.Log("[Inventory] Retry grid creation successful");
+        }
+    }
     public bool RemoveItem(int slotIndex, int count = 1)
     {
         if (slotIndex < 0 || slotIndex >= currentSlots || count <= 0)
@@ -375,6 +475,96 @@ public class Inventory : NetworkBehaviour
 
         return true;
     }
+    private void GiveStarterItems()
+    {
+        if (!giveStarterItems || starterItemsGiven) return;
+
+        ItemDatabase database = GetDatabase();
+        if (database == null)
+        {
+            Debug.LogWarning("[Inventory] No ItemDatabase found for starter items");
+            return;
+        }
+
+        Debug.Log("🎁 Giving starter items...");
+
+        // รอ 1 frame เพื่อให้ระบบ setup เสร็จ
+        StartCoroutine(GiveStarterItemsCoroutine(database));
+    }
+
+    private IEnumerator GiveStarterItemsCoroutine(ItemDatabase database)
+    {
+        yield return null; // รอ 1 frame
+
+        int itemsGiven = 0;
+
+        // ให้ weapon 1 ชิ้น
+        var weapons = database.GetItemsByType(ItemType.Weapon);
+        if (weapons.Count > 0)
+        {
+            ItemData weapon = weapons[UnityEngine.Random.Range(0, weapons.Count)];
+            if (AddItem(weapon, 1))
+            {
+                itemsGiven++;
+                Debug.Log($"🗡️ Starter weapon: {weapon.ItemName}");
+            }
+        }
+
+        // ให้ potion 5-10 ขวด
+        var potions = database.GetItemsByType(ItemType.Potion);
+        if (potions.Count > 0)
+        {
+            ItemData potion = potions[0]; // เอาอันแรก
+            int count = UnityEngine.Random.Range(5, 11);
+            if (AddItem(potion, count))
+            {
+                itemsGiven++;
+                Debug.Log($"🧪 Starter potions: {potion.ItemName} x{count}");
+            }
+        }
+
+        // ให้ armor 1 ชิ้น
+        var armors = database.GetItemsByType(ItemType.Armor);
+        if (armors.Count > 0)
+        {
+            ItemData armor = armors[UnityEngine.Random.Range(0, armors.Count)];
+            if (AddItem(armor, 1))
+            {
+                itemsGiven++;
+                Debug.Log($"🛡️ Starter armor: {armor.ItemName}");
+            }
+        }
+
+        // ให้ rune 3-5 ชิ้น
+        var runes = database.GetItemsByType(ItemType.Rune);
+        if (runes.Count > 0)
+        {
+            ItemData rune = runes[UnityEngine.Random.Range(0, runes.Count)];
+            int count = UnityEngine.Random.Range(3, 6);
+            if (AddItem(rune, count))
+            {
+                itemsGiven++;
+                Debug.Log($"💎 Starter runes: {rune.ItemName} x{count}");
+            }
+        }
+
+        starterItemsGiven = true;
+        Debug.Log($"🎁 Gave {itemsGiven} types of starter items!");
+    }
+    public ItemDatabase GetDatabase()
+    {
+        if (!useItemDatabase) return null;
+
+        // ใช้ Resources folder (วิธีที่ 1)
+        return ItemDatabase.Instance;
+    }
+
+    // เพิ่ม method ตรวจสอบ database
+    private bool HasDatabase()
+    {
+        return GetDatabase() != null && GetDatabase().GetAllItems().Count > 0;
+    }
+
     #endregion
 
     #region Inventory Expansion
@@ -484,43 +674,113 @@ public class Inventory : NetworkBehaviour
     }
     #endregion
 
-    #region Context Menu for Testing
-    [ContextMenu("📦 Show Inventory Info")]
-    private void ShowInventoryInfo()
+    public bool UsePotion(int slotIndex, int count = 1)
     {
-        Debug.Log("=== INVENTORY INFORMATION ===");
-        Debug.Log($"📛 Owner: {character?.CharacterName}");
-        Debug.Log($"📦 Slots: {currentSlots}/{maxSlots}");
-        Debug.Log($"📊 Used: {UsedSlots}, Free: {FreeSlots}");
-        Debug.Log("=============================");
-
-        for (int i = 0; i < currentSlots; i++)
+        if (slotIndex < 0 || slotIndex >= currentSlots || count <= 0)
         {
-            InventoryItem item = items[i];
-            if (!item.IsEmpty)
-            {
-                Debug.Log($"[{i:D2}] {item.itemData.ItemName} x{item.stackCount}");
-            }
+            Debug.LogWarning($"[Inventory] Invalid use parameters: slot {slotIndex}, count {count}");
+            return false;
         }
+
+        InventoryItem slot = items[slotIndex];
+        if (slot.IsEmpty)
+        {
+            Debug.LogWarning($"[Inventory] Slot {slotIndex} is empty");
+            return false;
+        }
+
+        if (slot.itemData.ItemType != ItemType.Potion)
+        {
+            Debug.LogWarning($"[Inventory] Item '{slot.itemData.ItemName}' is not a potion");
+            return false;
+        }
+
+        if (slot.stackCount < count)
+        {
+            Debug.LogWarning($"[Inventory] Not enough potions in slot {slotIndex}. Has: {slot.stackCount}, Requested: {count}");
+            return false;
+        }
+
+        // ใช้ potion (ลดจำนวน)
+        bool success = RemoveItem(slotIndex, count);
+
+        if (success)
+        {
+            Debug.Log($"[Inventory] Used {count} {slot.itemData.ItemName}");
+
+            // TODO: Apply potion effects ที่นี่
+            // ApplyPotionEffect(slot.itemData, count);
+        }
+
+        return success;
     }
 
-    [ContextMenu("🧪 Test: Add Test Items")]
-    private void TestAddItems()
+    #region Context Menu for Testing
+   
+
+    // เพิ่ม method สำหรับใช้ database
+  
+
+    // เพิ่ม method สำหรับ test items แบบเก่า
+  
+    // เพิ่ม Context Menu ใหม่ๆ สำหรับ database
+   
+
+    
+
+    
+
+
+
+    [ContextMenu("🧪 Test: Add Items from Database")]
+    private void TestAddItemsFromDatabase()
     {
-        // ต้องมี ItemData test objects สำหรับทดสอบ
-        Debug.Log("[Inventory] Test adding items - Need ItemData assets to test properly");
+        ItemDatabase database = GetDatabase();
+        if (database == null)
+        {
+            Debug.LogWarning("❌ ItemDatabase not found!");
+            return;
+        }
+
+        Debug.Log("🧪 Testing items from database...");
+
+        // ลอง add อย่างละชนิด
+        var allItems = database.GetAllItems();
+        if (allItems.Count == 0)
+        {
+            Debug.LogWarning("❌ No items found in database!");
+            return;
+        }
+
+        // เอา weapon 1 ชิ้น
+        var weapons = database.GetItemsByType(ItemType.Weapon);
+        if (weapons.Count > 0)
+        {
+            bool success = AddItem(weapons[0], 1);
+            Debug.Log($"🗡️ Weapon: {weapons[0].ItemName} - {(success ? "✅ Added" : "❌ Failed")}");
+        }
+
+        // เอา potion 5 ชิ้น
+        var potions = database.GetItemsByType(ItemType.Potion);
+        if (potions.Count > 0)
+        {
+            bool success = AddItem(potions[0], 5);
+            Debug.Log($"🧪 Potion: {potions[0].ItemName} x5 - {(success ? "✅ Added" : "❌ Failed")}");
+        }
+
+        // เอา armor 1 ชิ้น
+        var armors = database.GetItemsByType(ItemType.Armor);
+        if (armors.Count > 0)
+        {
+            bool success = AddItem(armors[0], 1);
+            Debug.Log($"🛡️ Armor: {armors[0].ItemName} - {(success ? "✅ Added" : "❌ Failed")}");
+        }
+
+        Debug.Log($"🧪 Test complete! Check inventory slots for items and icons.");
     }
 
-    [ContextMenu("🗑️ Test: Clear Inventory")]
-    private void TestClearInventory()
-    {
-        ClearInventory();
-    }
 
-    [ContextMenu("📈 Test: Expand Inventory (+12 slots)")]
-    private void TestExpandInventory()
-    {
-        ExpandInventory(12);
-    }
+
+
     #endregion
 }

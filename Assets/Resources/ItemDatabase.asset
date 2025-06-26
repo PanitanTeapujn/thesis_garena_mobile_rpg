@@ -9,19 +9,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b565fec6bbbf9c648b33e156c8947816, type: 3}
+  m_Script: {fileID: 11500000, guid: f749eee557ccdb148ad3bc8fec545f64, type: 3}
   m_Name: ItemDatabase
   m_EditorClassIdentifier: 
   allItems:
-  - {fileID: 11400000, guid: 2dd3b27bb1e8a12489b223e0433fab4f, type: 2}
-  - {fileID: 11400000, guid: 9d9dc44b6388a9745bc257e5347f74a2, type: 2}
-  - {fileID: 11400000, guid: 4e86b6359ac5009458c9e505df33e3d3, type: 2}
+  - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
+  - {fileID: 11400000, guid: 946c7168c96f70e4da4c9bbaf5931de6, type: 2}
   weapons:
-  - {fileID: 11400000, guid: 2dd3b27bb1e8a12489b223e0433fab4f, type: 2}
+  - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
   headItems: []
   armorItems: []
-  pantsItems:
-  - {fileID: 11400000, guid: 9d9dc44b6388a9745bc257e5347f74a2, type: 2}
+  pantsItems: []
   shoesItems: []
-  runes:
-  - {fileID: 11400000, guid: 4e86b6359ac5009458c9e505df33e3d3, type: 2}
+  runes: []
+  potions:
+  - {fileID: 11400000, guid: 946c7168c96f70e4da4c9bbaf5931de6, type: 2}

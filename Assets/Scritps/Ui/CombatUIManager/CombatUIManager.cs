@@ -203,9 +203,26 @@ public class CombatUIManager : MonoBehaviour
     }
 
     // 🎯 NEW: Setup Inventory Grid System
+    public void ForceSetupInventoryGrid()
+    {
+        if (inventoryGridManager == null)
+        {
+            SetupInventoryGrid();
+            Debug.Log("[CombatUI] Force setup inventory grid completed");
+        }
+        else
+        {
+            Debug.Log("[CombatUI] Inventory grid already exists");
+        }
+    }
+
+    // ✅ แก้ไข SetupInventoryGrid ให้รอนานกว่า
     private void SetupInventoryGrid()
     {
         Debug.Log("=== Setting up Inventory Grid ===");
+
+        // ✅ ลบการ force activate panel ออก
+        // ให้ grid สร้างได้โดยไม่ต้อง activate
 
         // หา Inventory Grid Parent ถ้าไม่ได้ assign
         if (inventoryGridParent == null)
@@ -233,11 +250,97 @@ public class CombatUIManager : MonoBehaviour
         // 🎯 เชื่อมต่อกับ local hero ถ้ามีแล้ว
         if (localHero != null)
         {
-            inventoryGridManager.SetOwnerCharacter(localHero);
-            Debug.Log($"[CombatUI] Connected inventory grid to existing hero: {localHero.CharacterName}");
+            ConnectInventoryToHero(localHero);
+        }
+        else
+        {
+            // เพิ่มส่วนนี้เพื่อหา hero ใน coroutine
+            StartCoroutine(WaitForHeroAndSetupGrid());
         }
 
         Debug.Log("✅ Inventory Grid setup complete");
+    }
+    private void ConnectInventoryToHero(Hero hero)
+    {
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.SetOwnerCharacter(hero);
+
+            // ✅ ใช้ StartCoroutine แทน direct call
+            StartCoroutine(DelayedInventorySetup());
+
+            Debug.Log($"[CombatUI] Connected inventory grid to {hero.CharacterName}");
+        }
+    }
+
+    // ✅ เพิ่ม delayed setup
+    private IEnumerator DelayedInventorySetup()
+    {
+        yield return null; // รอ 1 frame ให้ connection เสร็จ
+
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ForceUpdateFromCharacter();
+            Debug.Log("[CombatUI] Delayed inventory setup completed");
+        }
+    }
+
+    private IEnumerator DelayedDeactivatePanelLonger()
+{
+    // รอ 3 frames เพื่อให้แน่ใจว่า slots สร้างเสร็จ
+    yield return null;
+    yield return null;
+    yield return null;
+
+    if (!isInventoryOpen) // ถ้า user ยังไม่ได้เปิด panel เอง
+    {
+        inventoryPanel.SetActive(false);
+        Debug.Log("[CombatUI] Deactivated inventory panel after extended grid setup");
+    }
+}
+
+    // เพิ่ม coroutine นี้
+    private IEnumerator DelayedDeactivatePanel()
+    {
+        yield return null; // รอ 1 frame ให้ grid setup เสร็จ
+        yield return null; // รออีก 1 frame เพื่อให้แน่ใจ
+        yield return null; // รออีก 1 frame สำหรับ slots
+
+        if (!isInventoryOpen) // ถ้า user ยังไม่ได้เปิด panel เอง
+        {
+            inventoryPanel.SetActive(false);
+            Debug.Log("[CombatUI] Deactivated inventory panel after grid setup");
+        }
+    }
+
+   
+    private IEnumerator WaitForHeroAndSetupGrid()
+    {
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (localHero == null && elapsed < timeout)
+        {
+            // ลองหา hero
+            Hero[] heroes = FindObjectsOfType<Hero>();
+            foreach (Hero hero in heroes)
+            {
+                if (hero.HasInputAuthority && hero.IsSpawned)
+                {
+                    SetLocalHero(hero);
+                    Debug.Log($"[CombatUI] Found hero in coroutine: {hero.CharacterName}");
+                    yield break;
+                }
+            }
+
+            elapsed += 0.1f;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        if (localHero == null)
+        {
+            Debug.LogWarning("[CombatUI] No hero found within timeout for grid setup");
+        }
     }
 
     private Transform FindInventoryGridParent()
@@ -442,6 +545,13 @@ public class CombatUIManager : MonoBehaviour
                 UpdateInventoryCharacterStats();
             }
 
+            // ✅ เพิ่มบรรทัดนี้เพื่อ force update inventory grid
+            if (inventoryGridManager != null)
+            {
+                inventoryGridManager.ForceUpdateFromCharacter();
+                Debug.Log("[CombatUI] Forced inventory grid update");
+            }
+
             Debug.Log("Inventory panel opened");
         }
     }
@@ -468,12 +578,8 @@ public class CombatUIManager : MonoBehaviour
         localHero = hero;
         Debug.Log($"Local hero set: {hero.CharacterName} - HP: {hero.CurrentHp}/{hero.MaxHp}");
 
-        // 🎯 เชื่อมต่อ InventoryGridManager กับ Character
-        if (inventoryGridManager != null)
-        {
-            inventoryGridManager.SetOwnerCharacter(hero);
-            Debug.Log($"[CombatUI] Connected inventory grid to {hero.CharacterName}");
-        }
+        // ✅ ใช้ method ใหม่
+        ConnectInventoryToHero(hero);
 
         UpdateUI();
     }
@@ -593,8 +699,11 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
-  
 
+    public bool IsInventoryOpen()
+    {
+        return isInventoryOpen;
+    }
     // 🎯 NEW: Public methods for accessing inventory grid
     public InventoryGridManager GetInventoryGridManager()
     {
@@ -607,115 +716,5 @@ public class CombatUIManager : MonoBehaviour
     }
 
     // 🎯 NEW: Context Menu สำหรับทดสอบ
-    [ContextMenu("Test: Open Inventory")]
-    private void TestOpenInventory()
-    {
-        OpenInventory();
-    }
-
-    [ContextMenu("Test: Close Inventory")]
-    private void TestCloseInventory()
-    {
-        CloseInventory();
-    }
-
-    [ContextMenu("Test: Fill Random Inventory Slots")]
-    private void TestFillRandomInventorySlots()
-    {
-        if (inventoryGridManager != null)
-        {
-            OpenInventory(); // เปิด inventory ก่อน
-            inventoryGridManager.GetComponent<InventoryGridManager>().SendMessage("TestFillRandomSlots");
-        }
-        else
-        {
-            Debug.LogWarning("Inventory Grid Manager not found!");
-        }
-    }
-
-    [ContextMenu("Test: Auto-Fit Grid to Panel")]
-    private void TestAutoFitGrid()
-    {
-        if (inventoryGridManager != null)
-        {
-            OpenInventory(); // เปิด inventory ก่อน
-            inventoryGridManager.SendMessage("TestAutoFitGrid");
-        }
-        else
-        {
-            Debug.LogWarning("Inventory Grid Manager not found!");
-        }
-    }
-
-    [ContextMenu("Test: Set Medium Grid Cells")]
-    private void TestSetMediumGridCells()
-    {
-        if (inventoryGridManager != null)
-        {
-            OpenInventory(); // เปิด inventory ก่อน
-            inventoryGridManager.SendMessage("TestSetMediumCells");
-        }
-        else
-        {
-            Debug.LogWarning("Inventory Grid Manager not found!");
-        }
-    }
-
-    [ContextMenu("📦 Test: Show Hero Inventory Info")]
-    private void TestShowHeroInventoryInfo()
-    {
-        if (localHero == null)
-        {
-            Debug.LogWarning("❌ No local hero found!");
-            return;
-        }
-
-        Inventory inv = localHero.GetInventory();
-        if (inv == null)
-        {
-            Debug.LogWarning("❌ Hero has no inventory!");
-            return;
-        }
-
-        Debug.Log("=== HERO INVENTORY INFO ===");
-        Debug.Log($"📛 Hero: {localHero.CharacterName}");
-        Debug.Log($"📦 Inventory Slots: {inv.CurrentSlots}/{inv.MaxSlots}");
-        Debug.Log($"📊 Used Slots: {inv.UsedSlots}");
-        Debug.Log($"📊 Free Slots: {inv.FreeSlots}");
-
-        if (inventoryGridManager != null)
-        {
-            Debug.Log($"🎯 Grid Connected: {inventoryGridManager.OwnerCharacter?.CharacterName}");
-            Debug.Log($"🎯 Grid Slots: {inventoryGridManager.TotalSlots}");
-        }
-
-        Debug.Log("==========================");
-    }
-
-    [ContextMenu("🧪 Test: Add Test Item to Hero")]
-    private void TestAddItemToHero()
-    {
-        if (localHero == null)
-        {
-            Debug.LogWarning("❌ No local hero to add items to!");
-            return;
-        }
-
-        // สร้าง test ItemData (ต้องมี ItemData ScriptableObject ก่อน)
-        Debug.Log("🧪 Test adding item - Need to create ItemData ScriptableObject first");
-        Debug.Log($"Hero {localHero.CharacterName} has {localHero.GetInventorySlotCount()} inventory slots");
-    }
-
-    [ContextMenu("📈 Test: Expand Hero Inventory")]
-    private void TestExpandHeroInventory()
-    {
-        if (localHero == null)
-        {
-            Debug.LogWarning("❌ No local hero found!");
-            return;
-        }
-
-        localHero.ExpandInventory(6); // เพิ่ม 6 ช่อง
-        Debug.Log($"📈 Expanded {localHero.CharacterName}'s inventory to {localHero.GetInventorySlotCount()} slots");
-    }
+   
 }

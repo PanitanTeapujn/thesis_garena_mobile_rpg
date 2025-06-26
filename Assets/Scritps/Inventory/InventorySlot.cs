@@ -84,9 +84,38 @@ public class InventorySlot : MonoBehaviour
             iconRect.offsetMax = Vector2.one * -5f;
 
             itemIcon.raycastTarget = false; // ไม่ให้ block การกดปุ่ม
+            itemIcon.preserveAspect = true; // รักษา aspect ratio ของ sprite
         }
 
-        // ซ่อน stack text ไว้ก่อน (ใช้ในอนาคต)
+        // สร้าง Stack Text ถ้าไม่มี
+        if (stackText == null)
+        {
+            GameObject textObj = new GameObject("StackText");
+            textObj.transform.SetParent(transform, false);
+            stackText = textObj.AddComponent<TextMeshProUGUI>();
+
+            // ตั้งค่า RectTransform ให้อยู่มุมล่างขวา
+            RectTransform textRect = stackText.GetComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0.6f, 0f);
+            textRect.anchorMax = new Vector2(1f, 0.4f);
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            // ตั้งค่า text properties
+            stackText.text = "";
+            stackText.fontSize = 12f;
+            stackText.color = Color.white;
+            stackText.fontStyle = FontStyles.Bold;
+            stackText.alignment = TextAlignmentOptions.BottomRight;
+            stackText.raycastTarget = false;
+
+            // เพิ่ม outline สำหรับอ่านง่าย
+            var outline = textObj.AddComponent<UnityEngine.UI.Outline>();
+            outline.effectColor = Color.black;
+            outline.effectDistance = new Vector2(1, -1);
+        }
+
+        // ซ่อน stack text ไว้ก่อน
         if (stackText != null)
             stackText.gameObject.SetActive(false);
     }
@@ -104,6 +133,7 @@ public class InventorySlot : MonoBehaviour
     #region Slot State Management
     public void SetEmptyState()
     {
+        // ✅ ตั้งค่า isEmpty ก่อนเป็นอันดับแรก
         isEmpty = true;
         isSelected = false;
 
@@ -113,16 +143,16 @@ public class InventorySlot : MonoBehaviour
         if (itemIcon != null)
         {
             itemIcon.sprite = null;
+            itemIcon.color = Color.white; // รีเซ็ต color
             itemIcon.gameObject.SetActive(false);
         }
 
         if (stackText != null)
             stackText.gameObject.SetActive(false);
 
-        Debug.Log($"[InventorySlot] Slot {slotIndex} set to empty state");
+        Debug.Log($"[InventorySlot] Slot {slotIndex} set to empty state, isEmpty now: {isEmpty}");
     }
-
-    public void SetFilledState(Sprite itemSprite, int stackCount = 1)
+    public void SetFilledState(Sprite itemSprite, int stackCount = 0)
     {
         if (itemSprite == null)
         {
@@ -131,93 +161,178 @@ public class InventorySlot : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[InventorySlot] Setting sprite: {itemSprite.name} for slot {slotIndex}");
+
+        // ✅ ตั้งค่า isEmpty ก่อนเป็นอันดับแรก
         isEmpty = false;
         isSelected = false;
 
         if (slotBackground != null)
             slotBackground.color = filledSlotColor;
+        else
+            Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotBackground is null!");
 
         if (itemIcon != null)
         {
             itemIcon.sprite = itemSprite;
             itemIcon.gameObject.SetActive(true);
+
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: ItemIcon active={itemIcon.gameObject.activeSelf}, Sprite={itemIcon.sprite?.name}");
+
+            // ✅ Force refresh canvas
+            Canvas.ForceUpdateCanvases();
+        }
+        else
+        {
+            Debug.LogError($"[InventorySlot] Slot {slotIndex}: itemIcon is null!");
         }
 
-        // Stack text (สำหรับอนาคต)
-        if (stackText != null && stackCount > 1)
+        // แสดง Stack text เฉพาะเมื่อ stackCount > 1
+        if (stackText != null)
         {
-            stackText.text = stackCount.ToString();
-            stackText.gameObject.SetActive(true);
-        }
-        else if (stackText != null)
-        {
-            stackText.gameObject.SetActive(false);
+            if (stackCount > 1)
+            {
+                stackText.text = stackCount.ToString();
+                stackText.gameObject.SetActive(true);
+            }
+            else
+            {
+                stackText.gameObject.SetActive(false);
+            }
         }
 
-        Debug.Log($"[InventorySlot] Slot {slotIndex} filled with item: {itemSprite.name}");
+        string stackInfo = stackCount > 1 ? $" x{stackCount}" : "";
+        Debug.Log($"[InventorySlot] Slot {slotIndex} filled with item: {itemSprite.name}{stackInfo}, isEmpty now: {isEmpty}");
     }
+    public void SetRarityColor(Color rarityColor)
+    {
+        if (itemIcon != null)
+        {
+            itemIcon.color = rarityColor;
+        }
+    }
+
 
     public void SetSelectedState(bool selected)
     {
         isSelected = selected;
+
+        // ✅ ดึงข้อมูล item ที่อยู่ใน slot นี้จาก character inventory
+        string itemInfo = GetCurrentItemInfo();
 
         if (slotBackground != null)
         {
             if (isSelected)
             {
                 slotBackground.color = selectedSlotColor;
-                Debug.Log($"[InventorySlot] Slot {slotIndex} selected");
+                Debug.Log($"[InventorySlot] Slot {slotIndex} selected - Item: {itemInfo}");
             }
             else
             {
                 // กลับไปสีปกติตามสถานะ empty/filled
                 slotBackground.color = isEmpty ? emptySlotColor : filledSlotColor;
-                Debug.Log($"[InventorySlot] Slot {slotIndex} deselected");
+                Debug.Log($"[InventorySlot] Slot {slotIndex} deselected - Item: {itemInfo}");
             }
         }
     }
-    #endregion
 
+    // ✅ เพิ่ม method นี้เพื่อดึงข้อมูล item
+    private string GetCurrentItemInfo()
+    {
+        // หา Character จาก InventoryGridManager
+        InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
+        if (gridManager?.OwnerCharacter == null)
+        {
+            return "No Character";
+        }
+
+        Inventory inventory = gridManager.OwnerCharacter.GetInventory();
+        if (inventory == null)
+        {
+            return "No Inventory";
+        }
+
+        InventoryItem item = inventory.GetItem(slotIndex);
+        if (item == null || item.IsEmpty)
+        {
+            return "Empty";
+        }
+
+        string stackInfo = item.stackCount > 1 ? $" x{item.stackCount}" : "";
+        return $"{item.itemData.ItemName}{stackInfo} ({item.itemData.ItemType})";
+    }
+    #endregion
+    public void ForceSetupComponents()
+    {
+        Debug.Log($"[InventorySlot] Force setup components for slot {slotIndex}");
+
+        SetupComponents();
+        SetupButton();
+
+        // ตรวจสอบว่า components พร้อมหรือยัง
+        if (slotBackground == null)
+            Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotBackground is null after setup!");
+
+        if (itemIcon == null)
+            Debug.LogError($"[InventorySlot] Slot {slotIndex}: itemIcon is null after setup!");
+        else
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: itemIcon setup complete - {itemIcon.gameObject.name}");
+
+        if (slotButton == null)
+            Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotButton is null after setup!");
+    }
     #region Button Events
     private void OnSlotClicked()
     {
+        // ✅ ตรวจสอบสถานะจริงจาก character inventory ก่อน
+        SyncWithCharacterInventory();
+
         Debug.Log($"[InventorySlot] Slot {slotIndex} clicked - Empty: {isEmpty}, Selected: {isSelected}");
 
         // แจ้ง InventoryGridManager ว่า slot นี้ถูกกด
         OnSlotSelected?.Invoke(slotIndex);
     }
+
+    private void SyncWithCharacterInventory()
+    {
+        // หา Character จาก InventoryGridManager
+        InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
+        if (gridManager?.OwnerCharacter == null) return;
+
+        Inventory inventory = gridManager.OwnerCharacter.GetInventory();
+        if (inventory == null) return;
+
+        InventoryItem item = inventory.GetItem(slotIndex);
+
+        // อัปเดตสถานะตาม inventory จริง
+        if (item == null || item.IsEmpty)
+        {
+            if (!isEmpty) // ถ้าเดิมไม่ empty แต่ตอนนี้ empty แล้ว
+            {
+                SetEmptyState();
+                Debug.Log($"[InventorySlot] Synced slot {slotIndex} to empty state");
+            }
+        }
+        else
+        {
+            if (isEmpty) // ถ้าเดิม empty แต่ตอนนี้มี item แล้ว
+            {
+                Sprite itemIcon = item.itemData.ItemIcon;
+                int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+                SetFilledState(itemIcon, stackCount);
+
+                // เพิ่ม tier color
+                Color tierColor = item.itemData.GetTierColor();
+                SetRarityColor(tierColor);
+
+                Debug.Log($"[InventorySlot] Synced slot {slotIndex} to filled state: {item.itemData.ItemName}");
+            }
+        }
+    }
     #endregion
 
     #region Public Methods for Testing
-    [ContextMenu("Test: Set Empty")]
-    private void TestSetEmpty()
-    {
-        SetEmptyState();
-    }
 
-    [ContextMenu("Test: Set Filled")]
-    private void TestSetFilled()
-    {
-        // ใช้ sprite ปัจจุบันของ itemIcon หรือสร้างสี solid
-        if (itemIcon != null)
-        {
-            // สร้าง texture สี่เหลี่ยมสีแดงทดสอบ
-            Texture2D testTexture = new Texture2D(64, 64);
-            Color[] colors = new Color[64 * 64];
-            for (int i = 0; i < colors.Length; i++)
-                colors[i] = Color.red;
-            testTexture.SetPixels(colors);
-            testTexture.Apply();
-
-            Sprite testSprite = Sprite.Create(testTexture, new Rect(0, 0, 64, 64), Vector2.one * 0.5f);
-            SetFilledState(testSprite);
-        }
-    }
-
-    [ContextMenu("Test: Toggle Selected")]
-    private void TestToggleSelected()
-    {
-        SetSelectedState(!isSelected);
-    }
     #endregion
 }

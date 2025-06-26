@@ -29,7 +29,7 @@ public class StageProgressData
         lastPlayedStage = stageName;
         lastUpdateDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        Debug.Log($"✅ [StageProgress] {stageName}: {stageEnemyKills[stageName]} enemies killed");
+      /*  Debug.Log($"✅ [StageProgress] {stageName}: {stageEnemyKills[stageName]} enemies killed");*/
     }
 
     // ✅ ผ่านด่าน

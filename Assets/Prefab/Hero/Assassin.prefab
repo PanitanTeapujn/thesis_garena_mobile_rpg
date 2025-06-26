@@ -492,8 +492,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxSlots: 500
-  currentSlots: 130
+  currentSlots: 80
   items: []
+  testSword: {fileID: 11400000, guid: 6b004d4d561a8ef4f95345b3f0db0fc6, type: 2}
+  testStaff: {fileID: 11400000, guid: b3c059e594a94be43b8cb7ee8a6f0a9c, type: 2}
+  testArmor: {fileID: 0}
+  testBoots: {fileID: 0}
+  testRune: {fileID: 0}
+  testItems: []
+  useItemDatabase: 1
+  fallbackToTestItems: 1
   gridWidth: 10
   gridHeight: 13
   _NetworkedCurrentSlots: 0

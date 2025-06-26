@@ -906,9 +906,9 @@ public class StatusEffectManager : NetworkBehaviour
         // Debug info ถ้ามี aura
         if (IsReceivingAnyAura())
         {
-            Debug.Log($"[Aura Effects] {character.CharacterName} receiving: " +
+          /*  Debug.Log($"[Aura Effects] {character.CharacterName} receiving: " +
                      $"ATK+{ReceivedAttackSpeedBonus:F2}, DMG+{ReceivedDamageBonus:F2}, " +
-                     $"SPD+{ReceivedMoveSpeedBonus:F2}, PROT+{ReceivedProtectionBonus:F2}");
+                     $"SPD+{ReceivedMoveSpeedBonus:F2}, PROT+{ReceivedProtectionBonus:F2}");*/
         }
     }
 
