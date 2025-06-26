@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: -2598280145371838362}
   - component: {fileID: -3790733776071842223}
   - component: {fileID: 9052754494654850431}
+  - component: {fileID: -7973809261940948947}
   m_Layer: 6
   m_Name: Assassin
   m_TagString: Untagged
@@ -169,6 +170,7 @@ MonoBehaviour:
   - {fileID: -2598280145371838362}
   - {fileID: -3790733776071842223}
   - {fileID: 9052754494654850431}
+  - {fileID: -7973809261940948947}
   ForceRemoteRenderTimeframe: 0
 --- !u!95 &6031354943333226893
 Animator:
@@ -222,13 +224,13 @@ MonoBehaviour:
   attackSpeed: 0
   reductionCoolDown: 0
   attackType: 0
-  healthRegenPerSecond: 1
-  manaRegenPerSecond: 1
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
   _NetworkedCurrentMana: 0
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
+  healthRegenPerSecond: 1
+  manaRegenPerSecond: 1
   rb: {fileID: 0}
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
@@ -264,6 +266,9 @@ MonoBehaviour:
   _PoisonInfusionStacks: 0
   _IsInPlagueCloud: 0
   _PlagueCloudEndTime: 0
+  _IsDashing: 0
+  _IsAssassinating: 0
+  _IsInvisible: 0
 --- !u!114 &1314459988218318116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -474,3 +479,22 @@ MonoBehaviour:
   _CurrentExp: 0
   _ExpToNextLevel: 150
   _IsInitialized: 0
+--- !u!114 &-7973809261940948947
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d269ba3e644a7a64e801e375e75d7c56, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxSlots: 500
+  currentSlots: 130
+  items: []
+  gridWidth: 10
+  gridHeight: 13
+  _NetworkedCurrentSlots: 0
+  _NetworkedMaxSlots: 0

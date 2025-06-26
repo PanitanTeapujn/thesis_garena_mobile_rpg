@@ -104,6 +104,8 @@ public class Character : NetworkBehaviour
     protected EquipmentManager equipmentManager;
     protected CharacterVisualManager visualManager;
     protected LevelManager levelManager;
+    protected Inventory inventory;
+
     #endregion
 
     #region Unity Lifecycle & Initialization Awake, Start และการเริ่มต้นระบบต่างๆ
@@ -140,6 +142,9 @@ public class Character : NetworkBehaviour
         levelManager = GetComponent<LevelManager>();
         if (levelManager == null)
             levelManager = gameObject.AddComponent<LevelManager>();
+        inventory = GetComponent<Inventory>();
+        if (inventory == null)
+            inventory = gameObject.AddComponent<Inventory>();
     }
 
     private void InitializePhysics()
@@ -503,7 +508,60 @@ public class Character : NetworkBehaviour
         Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
     }
     #endregion
+    #region Inventory Methods การจัดการ inventory และ items
+    public Inventory GetInventory()
+    {
+        return inventory;
+    }
 
+    public int GetInventorySlotCount()
+    {
+        if (inventory == null) return 24; // default slots
+        return inventory.CurrentSlots;
+    }
+
+    public int GetInventoryMaxSlots()
+    {
+        if (inventory == null) return 48; // default max slots
+        return inventory.MaxSlots;
+    }
+
+    public bool AddItemToInventory(ItemData itemData, int count = 1)
+    {
+        if (inventory == null) return false;
+        return inventory.AddItem(itemData, count);
+    }
+
+    public bool RemoveItemFromInventory(int slotIndex, int count = 1)
+    {
+        if (inventory == null) return false;
+        return inventory.RemoveItem(slotIndex, count);
+    }
+
+    public InventoryItem GetInventoryItem(int slotIndex)
+    {
+        if (inventory == null) return null;
+        return inventory.GetItem(slotIndex);
+    }
+
+    public bool IsInventorySlotEmpty(int slotIndex)
+    {
+        if (inventory == null) return true;
+        return inventory.IsSlotEmpty(slotIndex);
+    }
+
+    public void ExpandInventory(int additionalSlots)
+    {
+        if (inventory == null) return;
+        inventory.ExpandInventory(additionalSlots);
+    }
+
+    public bool CanExpandInventory(int additionalSlots)
+    {
+        if (inventory == null) return false;
+        return inventory.CanExpandInventory(additionalSlots);
+    }
+    #endregion
     #region Regeneration System ระบบการฟื้นฟู HP/Mana อัตโนมัติ
     private void ProcessRegeneration()
     {

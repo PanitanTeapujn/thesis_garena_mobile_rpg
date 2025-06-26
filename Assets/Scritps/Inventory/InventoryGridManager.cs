@@ -11,7 +11,9 @@ public class InventoryGridManager : MonoBehaviour
     [SerializeField] private float cellSize = 60f;   // ขนาดแต่ละ cell (ลดลงจาก 80f)
     [SerializeField] private float spacing = 3f;     // ระยะห่างระหว่าง cells (ลดลงจาก 5f)
     [SerializeField] private bool autoFitToParent = true;  // ปรับขนาดอัตโนมัติตาม parent
-
+    [Header("Character Integration")]
+    [SerializeField] private Character ownerCharacter;          // Character ที่เป็นเจ้าของ inventory นี้
+    [SerializeField] private bool autoDetectCharacter = true;   // หา Character อัตโนมัติ
     [Header("UI References")]
     [SerializeField] private Transform gridParent;          // Parent สำหรับ grid
     [SerializeField] private GameObject slotPrefab;         // Prefab สำหรับแต่ละ slot
@@ -27,6 +29,7 @@ public class InventoryGridManager : MonoBehaviour
     public System.Action<int> OnSlotDoubleClicked;      // เมื่อ double click (สำหรับ equip ในอนาคต)
 
     // Properties
+    public Character OwnerCharacter { get { return ownerCharacter; } }
     public int TotalSlots { get { return totalSlots; } }
     public int SelectedSlotIndex { get { return selectedSlotIndex; } }
     public List<InventorySlot> AllSlots { get { return allSlots; } }
@@ -39,6 +42,7 @@ public class InventoryGridManager : MonoBehaviour
 
     private void Start()
     {
+        SetupCharacterConnection();
         CreateInventoryGrid();
     }
 
@@ -155,8 +159,23 @@ public class InventoryGridManager : MonoBehaviour
         // ลบ slots เก่าถ้ามี
         ClearExistingSlots();
 
-        // คำนวณจำนวน slots
-        totalSlots = gridWidth * gridHeight;
+        // ดึงจำนวน slots จาก Character ถ้ามี
+        if (ownerCharacter != null)
+        {
+            int characterSlots = ownerCharacter.GetInventorySlotCount();
+            totalSlots = characterSlots;
+
+            // คำนวณ grid dimensions ใหม่
+            CalculateGridDimensions(characterSlots);
+
+            Debug.Log($"[InventoryGrid] Using character's inventory: {characterSlots} slots ({gridWidth}x{gridHeight})");
+        }
+        else
+        {
+            // ใช้ค่าเริ่มต้นถ้าไม่มี character
+            totalSlots = gridWidth * gridHeight;
+            Debug.LogWarning("[InventoryGrid] No character found, using default slot count");
+        }
 
         // สร้าง slots ใหม่
         for (int i = 0; i < totalSlots; i++)
@@ -164,9 +183,11 @@ public class InventoryGridManager : MonoBehaviour
             CreateSlot(i);
         }
 
+        // โหลด items จาก character inventory
+        LoadItemsFromCharacterInventory();
+
         Debug.Log($"[InventoryGrid] Created {allSlots.Count} inventory slots");
     }
-
     private void CreateSlot(int slotIndex)
     {
         GameObject slotObj;
@@ -300,7 +321,176 @@ public class InventoryGridManager : MonoBehaviour
         return null;
     }
     #endregion
+    private void SetupCharacterConnection()
+    {
+        // หา Character อัตโนมัติถ้าไม่ได้ assign
+        if (ownerCharacter == null && autoDetectCharacter)
+        {
+            // ลองหาจาก parent objects ก่อน
+            ownerCharacter = GetComponentInParent<Character>();
 
+            // ถ้าไม่เจอ ลองหาจาก UI Manager
+            if (ownerCharacter == null)
+            {
+                CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+                if (uiManager != null && uiManager.localHero != null)
+                {
+                    ownerCharacter = uiManager.localHero;
+                }
+            }
+
+            Debug.Log($"[InventoryGrid] Auto-detected character: {ownerCharacter?.CharacterName}");
+        }
+
+        // Subscribe to inventory events
+        if (ownerCharacter != null)
+        {
+            Inventory.OnInventorySlotCountChanged += OnCharacterInventoryChanged;
+            Inventory.OnInventoryItemChanged += OnCharacterItemChanged;
+
+            Debug.Log($"[InventoryGrid] Connected to {ownerCharacter.CharacterName}'s inventory");
+        }
+    }
+
+    // เพิ่ม method สำหรับ handle character inventory events
+    private void OnCharacterInventoryChanged(Character character, int newSlotCount)
+    {
+        if (character == ownerCharacter)
+        {
+            Debug.Log($"[InventoryGrid] Character inventory slots changed: {newSlotCount}");
+            UpdateGridFromCharacterInventory();
+        }
+    }
+
+    private void OnCharacterItemChanged(Character character, int slotIndex, InventoryItem item)
+    {
+        if (character == ownerCharacter && slotIndex < allSlots.Count)
+        {
+            UpdateSlotFromInventoryItem(slotIndex, item);
+        }
+    }
+
+    private void CalculateGridDimensions(int slotCount)
+    {
+        // หา dimensions ที่เหมาะสมที่สุด
+        if (slotCount <= 24) // 6x4
+        {
+            gridWidth = 6;
+            gridHeight = 4;
+        }
+        else if (slotCount <= 30) // 6x5
+        {
+            gridWidth = 6;
+            gridHeight = 5;
+        }
+        else if (slotCount <= 36) // 6x6
+        {
+            gridWidth = 6;
+            gridHeight = 6;
+        }
+        else if (slotCount <= 42) // 7x6
+        {
+            gridWidth = 7;
+            gridHeight = 6;
+        }
+        else // 8x6 หรือมากกว่า
+        {
+            gridWidth = 8;
+            gridHeight = Mathf.CeilToInt((float)slotCount / gridWidth);
+        }
+
+        // อัปเดต GridLayoutGroup
+        if (gridLayout != null)
+        {
+            gridLayout.constraintCount = gridWidth;
+        }
+
+        totalSlots = gridWidth * gridHeight; // อาจจะมากกว่า slotCount เล็กน้อย
+    }
+
+    // เพิ่ม method สำหรับโหลด items จาก character
+    private void LoadItemsFromCharacterInventory()
+    {
+        if (ownerCharacter == null || ownerCharacter.GetInventory() == null) return;
+
+        Inventory characterInventory = ownerCharacter.GetInventory();
+
+        for (int i = 0; i < totalSlots && i < characterInventory.CurrentSlots; i++)
+        {
+            InventoryItem item = characterInventory.GetItem(i);
+            UpdateSlotFromInventoryItem(i, item);
+        }
+    }
+
+    // เพิ่ม method สำหรับอัปเดต slot จาก inventory item
+    private void UpdateSlotFromInventoryItem(int slotIndex, InventoryItem item)
+    {
+        if (slotIndex < 0 || slotIndex >= allSlots.Count) return;
+
+        InventorySlot slot = allSlots[slotIndex];
+
+        if (item == null || item.IsEmpty)
+        {
+            slot.SetEmptyState();
+        }
+        else
+        {
+            slot.SetFilledState(item.itemData.ItemIcon, item.stackCount);
+        }
+    }
+
+    // เพิ่ม method สำหรับอัปเดต grid จาก character inventory
+    public void UpdateGridFromCharacterInventory()
+    {
+        if (ownerCharacter == null) return;
+
+        int newSlotCount = ownerCharacter.GetInventorySlotCount();
+
+        if (newSlotCount != totalSlots)
+        {
+            // สร้าง grid ใหม่ถ้าจำนวน slots เปลี่ยน
+            CreateInventoryGrid();
+        }
+        else
+        {
+            // อัปเดต items ถ้าจำนวน slots เท่าเดิม
+            LoadItemsFromCharacterInventory();
+        }
+    }
+
+    // เพิ่ม method สำหรับ set character manually
+    public void SetOwnerCharacter(Character character)
+    {
+        // ยกเลิก subscription เก่า
+        if (ownerCharacter != null)
+        {
+            Inventory.OnInventorySlotCountChanged -= OnCharacterInventoryChanged;
+            Inventory.OnInventoryItemChanged -= OnCharacterItemChanged;
+        }
+
+        ownerCharacter = character;
+
+        // Subscribe ใหม่
+        if (ownerCharacter != null)
+        {
+            Inventory.OnInventorySlotCountChanged += OnCharacterInventoryChanged;
+            Inventory.OnInventoryItemChanged += OnCharacterItemChanged;
+
+            // อัปเดต grid ทันที
+            UpdateGridFromCharacterInventory();
+
+            Debug.Log($"[InventoryGrid] Set owner character: {ownerCharacter.CharacterName}");
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (ownerCharacter != null)
+        {
+            Inventory.OnInventorySlotCountChanged -= OnCharacterInventoryChanged;
+            Inventory.OnInventoryItemChanged -= OnCharacterItemChanged;
+        }
+    }
     #region Public Methods for Testing
     [ContextMenu("Test: Create Grid")]
     private void TestCreateGrid()
@@ -438,4 +628,43 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log($"[InventoryGrid] Spacing changed to {spacing}");
     }
     #endregion
+
+    [ContextMenu("🔗 Test: Connect to Local Hero")]
+    private void TestConnectToLocalHero()
+    {
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager != null && uiManager.localHero != null)
+        {
+            SetOwnerCharacter(uiManager.localHero);
+            Debug.Log($"✅ Connected to {uiManager.localHero.CharacterName}");
+        }
+        else
+        {
+            Debug.LogWarning("❌ No local hero found!");
+        }
+    }
+
+    [ContextMenu("📊 Test: Show Character Inventory Info")]
+    private void TestShowCharacterInventoryInfo()
+    {
+        if (ownerCharacter == null)
+        {
+            Debug.LogWarning("❌ No owner character assigned!");
+            return;
+        }
+
+        Inventory inv = ownerCharacter.GetInventory();
+        if (inv == null)
+        {
+            Debug.LogWarning("❌ Character has no inventory!");
+            return;
+        }
+
+        Debug.Log("=== CHARACTER INVENTORY INFO ===");
+        Debug.Log($"📛 Owner: {ownerCharacter.CharacterName}");
+        Debug.Log($"📦 Slots: {inv.CurrentSlots}/{inv.MaxSlots}");
+        Debug.Log($"📊 Used: {inv.UsedSlots}, Free: {inv.FreeSlots}");
+        Debug.Log($"🎯 Grid Size: {gridWidth}x{gridHeight} = {totalSlots}");
+        Debug.Log("===============================");
+    }
 }
