@@ -530,7 +530,7 @@ public class Inventory : NetworkBehaviour
         if (weapons.Count > 0)
         {
             ItemData weapon = weapons[UnityEngine.Random.Range(0, weapons.Count)];
-            if (AddItem(weapon, 1))
+            if (AddItem(weapon, 10))
             {
                 itemsGiven++;
                 Debug.Log($"🗡️ Starter weapon: {weapon.ItemName}");

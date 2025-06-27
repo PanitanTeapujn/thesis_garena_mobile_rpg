@@ -18,8 +18,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
   - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
   - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+  - {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
   weapons:
   - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+  - {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
   headItems:
   - {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
   armorItems:

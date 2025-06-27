@@ -14,18 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: weapon_s_8431
   itemName: Sword
-  itemIcon: {fileID: 21300000, guid: 4ad16adfdf2d1a441879a598de742eb6, type: 3}
+  itemIcon: {fileID: 21300000, guid: d91ce643b75a45f47baee6493da5d705, type: 3}
   itemType: 0
   tier: 1
   description: 
   maxStackSize: 1
   isStackable: 0
   stats:
-    attackDamageBonus: 10000000
+    attackDamageBonus: 60
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 100
-    criticalDamageBonus: 100
+    criticalChanceBonus: 5
+    criticalDamageBonus: 5
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0

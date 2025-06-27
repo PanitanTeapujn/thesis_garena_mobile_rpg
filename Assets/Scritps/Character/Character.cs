@@ -792,7 +792,7 @@ public class Character : NetworkBehaviour
         if (characterEquippedItems.Count < 6)
         {
             Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
-            InitializeEquipmentSlots(); // เรียกอีกครั้งเพื่อให้แน่ใจ
+            InitializeEquipmentSlots();
         }
 
         // สำหรับ potion
@@ -805,11 +805,10 @@ public class Character : NetworkBehaviour
                 return false;
             }
 
-            // ✅ ตรวจสอบ potionSlots list ก่อน
             if (potionSlots.Count < 5)
             {
                 Debug.LogWarning($"[Character] potionSlots list too small: {potionSlots.Count}");
-                InitializeEquipmentSlots(); // เรียกอีกครั้ง
+                InitializeEquipmentSlots();
             }
 
             potionSlots[potionSlotIndex] = itemData;
@@ -821,6 +820,7 @@ public class Character : NetworkBehaviour
             if (characterEquippedItems[slotIndex] != null)
             {
                 ItemData oldItem = characterEquippedItems[slotIndex];
+
                 if (inventory != null)
                 {
                     inventory.AddItem(oldItem, 1);
@@ -832,9 +832,8 @@ public class Character : NetworkBehaviour
             characterEquippedItems[slotIndex] = itemData;
             Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
 
-            // ✅ Debug: ตรวจสอบ slot หลัง equip
-            ItemData checkItem = GetEquippedItem(itemData.ItemType);
-            Debug.Log($"[Character] Verification - GetEquippedItem({itemData.ItemType}): {(checkItem?.ItemName ?? "NULL")}");
+            // 🆕 คำนวณ total stats จาก equipment ทั้งหมด แล้วส่งไปให้ EquipmentManager ครั้งเดียว
+            ApplyAllEquipmentStats();
         }
 
         // ✅ แจ้ง Event สำหรับ UI
@@ -882,23 +881,122 @@ public class Character : NetworkBehaviour
         ItemData unequippedItem = characterEquippedItems[slotIndex];
         characterEquippedItems[slotIndex] = null;
 
-        // ใช้ EquipmentManager เดิมด้วย
-        if (equipmentManager != null)
-        {
-            equipmentManager.UnequipItem();
-        }
-
         // เพิ่มกลับไป inventory
         if (inventory != null)
         {
             inventory.AddItem(unequippedItem, 1);
         }
 
+        // 🆕 คำนวณ total stats ใหม่หลังจาก unequip
+        ApplyAllEquipmentStats();
+
         // แจ้ง Event สำหรับ UI
         OnItemUnequippedFromSlot?.Invoke(this, itemType);
 
         Debug.Log($"[Character] Unequipped {unequippedItem.ItemName} from {itemType} slot");
         return true;
+    }
+
+    // 🆕 Method ใหม่: คำนวณ total stats จาก equipment ทั้งหมด
+    private void ApplyAllEquipmentStats()
+    {
+        if (equipmentManager == null)
+        {
+            Debug.LogWarning("[Character] EquipmentManager not found - stats will not be applied!");
+            return;
+        }
+
+        // 🆕 Debug stats ก่อน apply
+        Debug.Log($"[Character] 📈 STATS BEFORE APPLY: ATK={AttackDamage}, ARM={Armor}, CRIT={CriticalChance:F1}%, CRIT_DMG={CriticalDamageBonus:F1}%");
+
+        // คำนวณ total stats จาก characterEquippedItems ทั้งหมด
+        EquipmentStats totalStats = CalculateTotalEquipmentStats();
+
+        // สร้าง EquipmentData ที่มี total stats
+        EquipmentData totalEquipmentData = new EquipmentData
+        {
+            itemName = "Total Equipment",
+            stats = totalStats,
+            itemIcon = null
+        };
+
+        // ส่ง total stats ไปให้ EquipmentManager ครั้งเดียว
+        equipmentManager.EquipItem(totalEquipmentData);
+
+        // 🆕 Debug stats หลัง apply
+        Debug.Log($"[Character] 📈 STATS AFTER APPLY: ATK={AttackDamage}, ARM={Armor}, CRIT={CriticalChance:F1}%, CRIT_DMG={GetEffectiveCriticalDamageBonus():F1}%");
+
+        Debug.Log($"[Character] ✅ Applied total equipment stats to EquipmentManager");
+    }
+
+    private EquipmentStats CalculateTotalEquipmentStats()
+    {
+        EquipmentStats totalStats = new EquipmentStats();
+
+        // รวม stats จาก equipment ทุกชิ้น
+        foreach (ItemData equippedItem in characterEquippedItems)
+        {
+            if (equippedItem != null)
+            {
+                EquipmentStats itemStats = equippedItem.Stats.ToEquipmentStats();
+
+                totalStats.attackDamageBonus += itemStats.attackDamageBonus;
+                totalStats.magicDamageBonus += itemStats.magicDamageBonus;
+                totalStats.armorBonus += itemStats.armorBonus;
+                totalStats.criticalChanceBonus += itemStats.criticalChanceBonus;
+                totalStats.criticalMultiplierBonus += itemStats.criticalMultiplierBonus;
+                totalStats.maxHpBonus += itemStats.maxHpBonus;
+                totalStats.maxManaBonus += itemStats.maxManaBonus;
+                totalStats.moveSpeedBonus += itemStats.moveSpeedBonus;
+                totalStats.attackSpeedBonus += itemStats.attackSpeedBonus;
+                totalStats.hitRateBonus += itemStats.hitRateBonus;
+                totalStats.evasionRateBonus += itemStats.evasionRateBonus;
+                totalStats.reductionCoolDownBonus += itemStats.reductionCoolDownBonus;
+                totalStats.physicalResistanceBonus += itemStats.physicalResistanceBonus;
+                totalStats.magicalResistanceBonus += itemStats.magicalResistanceBonus;
+
+                Debug.Log($"[Character] Added stats from {equippedItem.ItemName}: ATK+{itemStats.attackDamageBonus}, ARM+{itemStats.armorBonus}");
+            }
+        }
+
+        Debug.Log($"[Character] Total calculated stats: ATK+{totalStats.attackDamageBonus}, ARM+{totalStats.armorBonus}, HP+{totalStats.maxHpBonus}");
+
+        // 🆕 แสดง total stats ทั้งหมดที่มีค่ามากกว่า 0
+        List<string> totalStatsList = new List<string>();
+
+        if (totalStats.attackDamageBonus != 0)
+            totalStatsList.Add($"ATK+{totalStats.attackDamageBonus}");
+        if (totalStats.magicDamageBonus != 0)
+            totalStatsList.Add($"MAG+{totalStats.magicDamageBonus}");
+        if (totalStats.armorBonus != 0)
+            totalStatsList.Add($"ARM+{totalStats.armorBonus}");
+        if (totalStats.criticalChanceBonus != 0f)
+            totalStatsList.Add($"CRIT+{totalStats.criticalChanceBonus:F1}%");
+        if (totalStats.criticalMultiplierBonus != 0f)
+            totalStatsList.Add($"CRIT_DMG+{totalStats.criticalMultiplierBonus:F1}%");
+        if (totalStats.maxHpBonus != 0)
+            totalStatsList.Add($"HP+{totalStats.maxHpBonus}");
+        if (totalStats.maxManaBonus != 0)
+            totalStatsList.Add($"MP+{totalStats.maxManaBonus}");
+        if (totalStats.moveSpeedBonus != 0f)
+            totalStatsList.Add($"SPD+{totalStats.moveSpeedBonus:F1}");
+        if (totalStats.attackSpeedBonus != 0f)
+            totalStatsList.Add($"AS+{totalStats.attackSpeedBonus:F1}%");
+        if (totalStats.hitRateBonus != 0f)
+            totalStatsList.Add($"HIT+{totalStats.hitRateBonus:F1}%");
+        if (totalStats.evasionRateBonus != 0f)
+            totalStatsList.Add($"EVA+{totalStats.evasionRateBonus:F1}%");
+        if (totalStats.reductionCoolDownBonus != 0f)
+            totalStatsList.Add($"CDR+{totalStats.reductionCoolDownBonus:F1}%");
+        if (totalStats.physicalResistanceBonus != 0f)
+            totalStatsList.Add($"PHYS_RES+{totalStats.physicalResistanceBonus:F1}%");
+        if (totalStats.magicalResistanceBonus != 0f)
+            totalStatsList.Add($"MAG_RES+{totalStats.magicalResistanceBonus:F1}%");
+
+        string totalStatsString = totalStatsList.Count > 0 ? string.Join(", ", totalStatsList) : "No total stats";
+        Debug.Log($"[Character] 📊 TOTAL EQUIPMENT STATS: [{totalStatsString}]");
+
+        return totalStats;
     }
 
     // เพิ่ม method สำหรับ potion
@@ -951,11 +1049,23 @@ public class Character : NetworkBehaviour
 
     private EquipmentData ConvertItemDataToEquipmentData(ItemData itemData)
     {
-        // TODO: แปลง ItemData เป็น EquipmentData สำหรับใช้กับ EquipmentManager เดิม
-        // ตอนนี้ return null ไว้ก่อน
-        return null;
-    }
+        if (itemData == null)
+        {
+            Debug.LogError("[Character] Cannot convert null ItemData to EquipmentData");
+            return null;
+        }
 
+        // สร้าง EquipmentData จาก ItemData
+        EquipmentData equipmentData = new EquipmentData
+        {
+            itemName = itemData.ItemName,
+            stats = itemData.Stats.ToEquipmentStats(), // ใช้ ToEquipmentStats() ที่มีอยู่แล้ว
+            itemIcon = itemData.ItemIcon
+        };
+
+        Debug.Log($"[Character] Converted {itemData.ItemName} to EquipmentData with stats");
+        return equipmentData;
+    }
     // เพิ่ม getter methods
     public ItemData GetEquippedItem(ItemType itemType)
     {
@@ -1078,6 +1188,90 @@ public class Character : NetworkBehaviour
     }
 
     #endregion
+    [ContextMenu("🔄 Recalculate All Equipment Stats")]
+    private void RecalculateAllEquipmentStats()
+    {
+        ApplyAllEquipmentStats();
+    }
 
+    [ContextMenu("🔍 Debug Equipment Items")]
+    private void DebugEquipmentItems()
+    {
+        Debug.Log($"=== DEBUG EQUIPMENT ITEMS ({CharacterName}) ===");
 
+        for (int i = 0; i < characterEquippedItems.Count; i++)
+        {
+            ItemType itemType = GetItemTypeFromSlotIndex(i);
+            ItemData item = characterEquippedItems[i];
+
+            if (item != null)
+            {
+                EquipmentStats itemStats = item.Stats.ToEquipmentStats();
+
+                // สร้าง list ของ stats ทั้งหมด
+                List<string> statsList = new List<string>();
+
+                if (itemStats.attackDamageBonus != 0)
+                    statsList.Add($"ATK+{itemStats.attackDamageBonus}");
+                if (itemStats.magicDamageBonus != 0)
+                    statsList.Add($"MAG+{itemStats.magicDamageBonus}");
+                if (itemStats.armorBonus != 0)
+                    statsList.Add($"ARM+{itemStats.armorBonus}");
+                if (itemStats.criticalChanceBonus != 0f)
+                    statsList.Add($"CRIT+{itemStats.criticalChanceBonus:F1}%");
+                if (itemStats.criticalMultiplierBonus != 0f)
+                    statsList.Add($"CRIT_DMG+{itemStats.criticalMultiplierBonus:F1}%");
+                if (itemStats.maxHpBonus != 0)
+                    statsList.Add($"HP+{itemStats.maxHpBonus}");
+                if (itemStats.maxManaBonus != 0)
+                    statsList.Add($"MP+{itemStats.maxManaBonus}");
+                if (itemStats.moveSpeedBonus != 0f)
+                    statsList.Add($"SPD+{itemStats.moveSpeedBonus:F1}");
+                if (itemStats.attackSpeedBonus != 0f)
+                    statsList.Add($"AS+{itemStats.attackSpeedBonus:F1}%");
+                if (itemStats.hitRateBonus != 0f)
+                    statsList.Add($"HIT+{itemStats.hitRateBonus:F1}%");
+                if (itemStats.evasionRateBonus != 0f)
+                    statsList.Add($"EVA+{itemStats.evasionRateBonus:F1}%");
+                if (itemStats.reductionCoolDownBonus != 0f)
+                    statsList.Add($"CDR+{itemStats.reductionCoolDownBonus:F1}%");
+                if (itemStats.physicalResistanceBonus != 0f)
+                    statsList.Add($"PHYS_RES+{itemStats.physicalResistanceBonus:F1}%");
+                if (itemStats.magicalResistanceBonus != 0f)
+                    statsList.Add($"MAG_RES+{itemStats.magicalResistanceBonus:F1}%");
+
+                string statsString = statsList.Count > 0 ? string.Join(", ", statsList) : "No stats";
+                Debug.Log($"Slot {i} ({itemType}): {item.ItemName} - [{statsString}]");
+            }
+            else
+            {
+                Debug.Log($"Slot {i} ({itemType}): EMPTY");
+            }
+        }
+    }
+
+    [ContextMenu("🔍 Debug All Character Stats")]
+    private void DebugAllCharacterStats()
+    {
+        Debug.Log($"=== DEBUG ALL CHARACTER STATS ({CharacterName}) ===");
+        Debug.Log($"⚔️ ATK: {AttackDamage}");
+        Debug.Log($"🪄 MAG: {MagicDamage}");
+        Debug.Log($"🛡️ ARM: {Armor}");
+        Debug.Log($"❤️ HP: {CurrentHp}/{MaxHp}");
+        Debug.Log($"💙 MP: {CurrentMana}/{MaxMana}");
+        Debug.Log($"💥 CRIT: {CriticalChance:F1}%");
+        Debug.Log($"🔥 CRIT DMG: {CriticalDamageBonus:F1}% (Base) | {GetEffectiveCriticalDamageBonus():F1}% (Effective)");
+        Debug.Log($"💨 SPD: {MoveSpeed:F1} (Base) | {GetEffectiveMoveSpeed():F1} (Effective)");
+        Debug.Log($"🎯 HIT: {HitRate:F1}%");
+        Debug.Log($"🌪️ EVA: {EvasionRate:F1}%");
+        Debug.Log($"⚡ AS: {AttackSpeed:F2} (Base) | {GetEffectiveAttackSpeed():F2} (Effective)");
+        Debug.Log($"⏰ CDR: {ReductionCoolDown:F1}% (Base) | {GetEffectiveReductionCoolDown():F1}% (Effective)");
+        Debug.Log($"EquipmentManager: {(equipmentManager != null ? "✅" : "❌")}");
+
+        if (equipmentManager != null)
+        {
+            EquipmentStats totalStats = equipmentManager.GetTotalStats();
+            Debug.Log($"📦 Equipment Bonuses: ATK+{totalStats.attackDamageBonus}, ARM+{totalStats.armorBonus}, CRIT_DMG+{totalStats.criticalMultiplierBonus:F1}%");
+        }
+    }
 }

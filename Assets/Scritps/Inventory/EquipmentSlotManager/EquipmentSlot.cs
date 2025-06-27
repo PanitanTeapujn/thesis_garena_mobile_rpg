@@ -20,9 +20,11 @@ public class EquipmentSlot : MonoBehaviour
     [Header("Visual Settings")]
     public Color emptySlotColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
     public Color filledSlotColor = new Color(0.3f, 0.3f, 0.3f, 1f);
+    public Color selectedSlotColor = new Color(0.8f, 0.8f, 0.2f, 1f);     // สีเหลืองเมื่อถูกเลือก
 
     [Header("🔍 Debug Info")]
     [SerializeField] private bool isEmpty = true;
+    [SerializeField] private bool isSelected = false;
 
     // References
     private EquipmentSlotManager manager;
@@ -34,6 +36,7 @@ public class EquipmentSlot : MonoBehaviour
     public ItemType SlotType { get { return slotType; } }
     public int PotionSlotIndex { get { return potionSlotIndex; } }
     public bool IsEmpty { get { return isEmpty; } }
+    public bool IsSelected { get { return isSelected; } }
 
     #region Unity Lifecycle
     private void Awake()
@@ -95,7 +98,25 @@ public class EquipmentSlot : MonoBehaviour
             slotTypeText.raycastTarget = false;
         }
     }
+    public void SetSelectedState(bool selected)
+    {
+        isSelected = selected;
 
+        if (slotBackground != null)
+        {
+            if (isSelected)
+            {
+                slotBackground.color = selectedSlotColor;
+                Debug.Log($"[EquipmentSlot] {slotType} slot selected");
+            }
+            else
+            {
+                // กลับไปสีปกติตามสถานะ empty/filled
+                slotBackground.color = isEmpty ? emptySlotColor : filledSlotColor;
+                Debug.Log($"[EquipmentSlot] {slotType} slot deselected");
+            }
+        }
+    }
     private void CreateItemIcon()
     {
         GameObject iconObj = new GameObject("ItemIcon");
@@ -149,6 +170,7 @@ public class EquipmentSlot : MonoBehaviour
     public void SetEmptyState()
     {
         isEmpty = true; // 🆕 ตั้งค่า isEmpty = true
+        isSelected = false;
 
         if (slotBackground != null)
             slotBackground.color = emptySlotColor;
@@ -171,7 +193,7 @@ public class EquipmentSlot : MonoBehaviour
             SetEmptyState();
             return;
         }
-
+        isSelected = false;
         isEmpty = false;
 
         if (slotBackground != null)
@@ -222,6 +244,8 @@ public class EquipmentSlot : MonoBehaviour
     #region Button Events
     private void OnSlotButtonClicked()
     {
+        SetSelectedState(!isSelected); // Toggle selected state
+
         Debug.Log($"[EquipmentSlot] {slotType} slot clicked - Empty: {isEmpty}");
         Debug.Log($"[EquipmentSlot] ItemIcon raycastTarget: {itemIcon?.raycastTarget ?? false}");
         Debug.Log($"[EquipmentSlot] ItemIcon active: {itemIcon?.gameObject.activeSelf ?? false}");
@@ -348,6 +372,134 @@ public class EquipmentSlot : MonoBehaviour
     #endregion
 
     #region Context Menu for Testing
-   
+#if UNITY_EDITOR
+    [UnityEditor.MenuItem("CONTEXT/EquipmentSlot/Test Button Click")]
+    private static void TestButtonClick(UnityEditor.MenuCommand command)
+    {
+        EquipmentSlot slot = (EquipmentSlot)command.context;
+        Debug.Log($"[TEST] Manual click on {slot.slotType} slot");
+        slot.OnSlotButtonClicked();
+    }
+
+    [UnityEditor.MenuItem("CONTEXT/EquipmentSlot/Test Set Selected")]
+    private static void TestSetSelected(UnityEditor.MenuCommand command)
+    {
+        EquipmentSlot slot = (EquipmentSlot)command.context;
+        slot.SetSelectedState(!slot.isSelected);
+        Debug.Log($"[TEST] Toggle selected state: {slot.isSelected}");
+    }
+
+    [UnityEditor.MenuItem("CONTEXT/EquipmentSlot/Test Set Empty")]
+    private static void TestSetEmpty(UnityEditor.MenuCommand command)
+    {
+        EquipmentSlot slot = (EquipmentSlot)command.context;
+        slot.SetEmptyState();
+        Debug.Log($"[TEST] Set to empty state");
+    }
+
+    [UnityEditor.MenuItem("CONTEXT/EquipmentSlot/Check Button Status")]
+    private static void CheckButtonStatus(UnityEditor.MenuCommand command)
+    {
+        EquipmentSlot slot = (EquipmentSlot)command.context;
+        Debug.Log($"=== BUTTON STATUS CHECK ===");
+        Debug.Log($"SlotButton exists: {slot.slotButton != null}");
+        Debug.Log($"SlotButton enabled: {slot.slotButton?.enabled ?? false}");
+        Debug.Log($"SlotButton interactable: {slot.slotButton?.interactable ?? false}");
+        Debug.Log($"GameObject active: {slot.gameObject.activeSelf}");
+        Debug.Log($"IsEmpty: {slot.isEmpty}");
+        Debug.Log($"IsSelected: {slot.isSelected}");
+
+        if (slot.slotButton != null)
+        {
+            Debug.Log($"Button listeners count: {slot.slotButton.onClick.GetPersistentEventCount()}");
+
+            // ตรวจสอบ raycast target
+            var graphic = slot.slotButton.targetGraphic;
+            if (graphic != null)
+            {
+                Debug.Log($"Target graphic raycastTarget: {graphic.raycastTarget}");
+            }
+        }
+
+        // ตรวจสอบ Canvas Group
+        var canvasGroup = slot.GetComponentInParent<UnityEngine.CanvasGroup>();
+        if (canvasGroup != null)
+        {
+            Debug.Log($"CanvasGroup blocksRaycasts: {canvasGroup.blocksRaycasts}");
+            Debug.Log($"CanvasGroup interactable: {canvasGroup.interactable}");
+        }
+    }
+
+    [UnityEditor.MenuItem("CONTEXT/EquipmentSlot/Fix Raycast Target")]
+    private static void FixRaycastTarget(UnityEditor.MenuCommand command)
+    {
+        EquipmentSlot slot = (EquipmentSlot)command.context;
+
+        Debug.Log($"[FIX] Fixing raycast targets for {slot.slotType}");
+
+        // แก้ slotBackground ให้รับ raycast ได้
+        if (slot.slotBackground != null)
+        {
+            slot.slotBackground.raycastTarget = true;
+            Debug.Log($"[FIX] Set slotBackground.raycastTarget = true");
+        }
+
+        // แก้ itemIcon ให้ไม่บัง raycast
+        if (slot.itemIcon != null)
+        {
+            slot.itemIcon.raycastTarget = false;
+            Debug.Log($"[FIX] Set itemIcon.raycastTarget = false");
+        }
+
+        // แก้ slotTypeText ให้ไม่บัง raycast
+        if (slot.slotTypeText != null)
+        {
+            slot.slotTypeText.raycastTarget = false;
+            Debug.Log($"[FIX] Set slotTypeText.raycastTarget = false");
+        }
+
+        // ตั้งค่า button target graphic
+        if (slot.slotButton != null && slot.slotBackground != null)
+        {
+            slot.slotButton.targetGraphic = slot.slotBackground;
+            Debug.Log($"[FIX] Set button target graphic");
+        }
+
+        Debug.Log($"[FIX] Raycast fix complete!");
+    }
+
+    [UnityEditor.MenuItem("CONTEXT/EquipmentSlot/Force Setup Button")]
+    private static void ForceSetupButton(UnityEditor.MenuCommand command)
+    {
+        EquipmentSlot slot = (EquipmentSlot)command.context;
+
+        Debug.Log($"[TEST] Force setup button for {slot.slotType}");
+
+        // ตรวจสอบว่ามี Button component หรือไม่
+        if (slot.slotButton == null)
+        {
+            slot.slotButton = slot.GetComponent<Button>();
+            if (slot.slotButton == null)
+            {
+                slot.slotButton = slot.gameObject.AddComponent<Button>();
+                Debug.Log($"[TEST] Added Button component");
+            }
+        }
+
+        // Setup button
+        slot.slotButton.onClick.RemoveAllListeners();
+        slot.slotButton.onClick.AddListener(slot.OnSlotButtonClicked);
+        slot.slotButton.interactable = true;
+
+        // ตรวจสอบ target graphic
+        if (slot.slotButton.targetGraphic == null && slot.slotBackground != null)
+        {
+            slot.slotButton.targetGraphic = slot.slotBackground;
+            Debug.Log($"[TEST] Set target graphic to slotBackground");
+        }
+
+        Debug.Log($"[TEST] Button setup complete");
+    }
+#endif
     #endregion
 }
