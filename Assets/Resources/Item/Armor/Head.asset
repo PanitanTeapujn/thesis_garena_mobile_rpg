@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Sword
+  m_Name: Head
   m_EditorClassIdentifier: 
-  itemId: weapon_s_8431
-  itemName: Sword
-  itemIcon: {fileID: 21300000, guid: 4ad16adfdf2d1a441879a598de742eb6, type: 3}
-  itemType: 0
+  itemId: Head
+  itemName: Head
+  itemIcon: {fileID: 21300000, guid: c3d7abc009f1f574daaa5cd896fd477d, type: 3}
+  itemType: 1
   tier: 1
   description: 
   maxStackSize: 1
   isStackable: 0
   stats:
-    attackDamageBonus: 5
+    attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 0
@@ -31,7 +31,7 @@ MonoBehaviour:
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 0
+    evasionRateBonus: 5
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

@@ -145,31 +145,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 679cd2ad75c8ca3489ca971d57775fdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enemyPrefabs:
-  - enemyPrefab: {fileID: 2102208964661930907, guid: eaf15b70e569d2343846e52d707dd01e,
-      type: 3}
-    enemyName: Slime
-    spawnWeight: 5
-    maxCount: -1
-    spawnCooldown: 1
-    lastSpawnTime: 0
-    currentCount: 0
-  bossConditions:
-  - bossPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
-      type: 3}
-    bossName: Shadowboss
-    enemiesToKill: 10
-    includeSpecificEnemies: 1
-    specificEnemyNames:
-    - Slime
-    bossRespawnCooldown: 0
-    maxBossInstances: 1
-    announceSpawn: 1
-    spawnWarningTime: 10
-    currentKillCount: 0
-    lastBossDeathTime: 0
-    currentBossCount: 0
-    isSpawningBoss: 0
+  enemyPrefabs: []
+  bossConditions: []
   enableBossSpawning: 1
   bossSpawnPoints:
   - {fileID: 6608536978320820854}

@@ -294,8 +294,16 @@ public class Inventory : NetworkBehaviour
                     gridManager.SetOwnerCharacter(character);
                 }
 
-                // ✅ ใช้ Coroutine แทน direct call
-                StartCoroutine(RequestGridCreation(gridManager));
+                // ✅ เพิ่มการ force update ทันที
+                gridManager.ForceUpdateFromCharacter();
+
+                // รอ 1 frame แล้วตรวจสอบอีกครั้ง
+                StartCoroutine(VerifyGridCreation(gridManager));
+            }
+            else
+            {
+                Debug.Log("[Inventory] Grid already exists, updating...");
+                gridManager.ForceUpdateFromCharacter();
             }
         }
         else
@@ -307,7 +315,6 @@ public class Inventory : NetworkBehaviour
             if (uiManager != null)
             {
                 uiManager.ForceSetupInventoryGrid();
-
                 // รอแล้วลองอีกครั้ง
                 StartCoroutine(RetryForceCreateGrid());
             }
@@ -315,6 +322,26 @@ public class Inventory : NetworkBehaviour
             {
                 Debug.LogError("[Inventory] No CombatUIManager found!");
             }
+        }
+    }
+    private IEnumerator VerifyGridCreation(InventoryGridManager gridManager)
+    {
+        yield return null; // รอ 1 frame
+
+        if (gridManager.AllSlots.Count > 0)
+        {
+            Debug.Log("[Inventory] Grid creation verified successfully");
+
+            // ✅ Sync ทุก slots ทันที
+            gridManager.ForceSyncAllSlots();
+        }
+        else
+        {
+            Debug.LogWarning("[Inventory] Grid creation failed, forcing again...");
+            gridManager.ForceUpdateFromCharacter();
+
+            yield return null;
+            gridManager.ForceSyncAllSlots();
         }
     }
 
@@ -534,6 +561,36 @@ public class Inventory : NetworkBehaviour
                 Debug.Log($"🛡️ Starter armor: {armor.ItemName}");
             }
         }
+        var plants = database.GetItemsByType(ItemType.Pants);
+        if (plants.Count > 0)
+        {
+            ItemData plant = plants[UnityEngine.Random.Range(0, plants.Count)];
+            if (AddItem(plant, 1))
+            {
+                itemsGiven++;
+                Debug.Log($"🛡️ Starter armor: {plant.ItemName}");
+            }
+        }
+        var heads = database.GetItemsByType(ItemType.Head);
+        if (heads.Count > 0)
+        {
+            ItemData head = heads[UnityEngine.Random.Range(0, heads.Count)];
+            if (AddItem(head, 1))
+            {
+                itemsGiven++;
+                Debug.Log($"🛡️ Starter armor: {head.ItemName}");
+            }
+        }
+        var shoses = database.GetItemsByType(ItemType.Shoes);
+        if (shoses.Count > 0)
+        {
+            ItemData shose = shoses[UnityEngine.Random.Range(0, shoses.Count)];
+            if (AddItem(shose, 1))
+            {
+                itemsGiven++;
+                Debug.Log($"🛡️ Starter armor: {shose.ItemName}");
+            }
+        }
 
         // ให้ rune 3-5 ชิ้น
         var runes = database.GetItemsByType(ItemType.Rune);
@@ -716,19 +773,19 @@ public class Inventory : NetworkBehaviour
     }
 
     #region Context Menu for Testing
-   
+
 
     // เพิ่ม method สำหรับใช้ database
-  
+
 
     // เพิ่ม method สำหรับ test items แบบเก่า
-  
+
     // เพิ่ม Context Menu ใหม่ๆ สำหรับ database
-   
 
-    
 
-    
+
+
+
 
 
 

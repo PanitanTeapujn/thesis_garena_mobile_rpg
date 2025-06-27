@@ -139,6 +139,9 @@ public class EquipmentSlotManager : MonoBehaviour
             }
         }
 
+        // 🆕 Force update canvas เพื่อให้แน่ใจว่า UI update
+        Canvas.ForceUpdateCanvases();
+
         Debug.Log("[EquipmentSlotManager] Loaded equipped items to all slots");
     }
 
@@ -297,6 +300,18 @@ public class EquipmentSlotManager : MonoBehaviour
     /// <summary>
     /// ข้อมูลสำหรับ Debug
     /// </summary>
+    /// 
+    public void ForceRefreshFromCharacter()
+    {
+        if (ownerCharacter == null)
+        {
+            Debug.LogWarning("[EquipmentSlotManager] No owner character for refresh");
+            return;
+        }
+
+        LoadEquippedItemsToSlots();
+        Debug.Log("[EquipmentSlotManager] Force refreshed all slots from character");
+    }
     public void LogStatus()
     {
         Debug.Log($"=== EQUIPMENT SLOT MANAGER STATUS ===");

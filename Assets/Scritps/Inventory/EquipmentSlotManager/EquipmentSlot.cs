@@ -77,11 +77,22 @@ public class EquipmentSlot : MonoBehaviour
         {
             CreateItemIcon();
         }
+        else
+        {
+            // 🆕 ถ้ามี itemIcon อยู่แล้ว ให้แน่ใจว่า raycastTarget = false
+            itemIcon.raycastTarget = false;
+        }
 
         // สร้าง SlotTypeText ถ้าต้องการและไม่มี
         if (slotTypeText == null && ShouldShowSlotTypeText())
         {
             CreateSlotTypeText();
+        }
+
+        // 🆕 แน่ใจว่า slotTypeText ไม่ block button
+        if (slotTypeText != null)
+        {
+            slotTypeText.raycastTarget = false;
         }
     }
 
@@ -97,6 +108,7 @@ public class EquipmentSlot : MonoBehaviour
         iconRect.offsetMin = Vector2.one * 5f;
         iconRect.offsetMax = Vector2.one * -5f;
 
+        // 🆕 สำคัญมาก: ป้องกันการ block button click
         itemIcon.raycastTarget = false;
         itemIcon.preserveAspect = true;
         itemIcon.gameObject.SetActive(false);
@@ -136,7 +148,7 @@ public class EquipmentSlot : MonoBehaviour
     #region Visual Management
     public void SetEmptyState()
     {
-        isEmpty = true;
+        isEmpty = true; // 🆕 ตั้งค่า isEmpty = true
 
         if (slotBackground != null)
             slotBackground.color = emptySlotColor;
@@ -148,7 +160,7 @@ public class EquipmentSlot : MonoBehaviour
             itemIcon.gameObject.SetActive(false);
         }
 
-        Debug.Log($"[EquipmentSlot] {slotType} slot set to empty");
+        Debug.Log($"[EquipmentSlot] {slotType} slot set to empty, isEmpty now: {isEmpty}");
     }
 
     public void SetFilledState(Sprite itemSprite, Color tierColor = default)
@@ -170,11 +182,13 @@ public class EquipmentSlot : MonoBehaviour
             itemIcon.sprite = itemSprite;
             itemIcon.color = tierColor != default ? tierColor : Color.white;
             itemIcon.gameObject.SetActive(true);
+
+            // 🆕 แน่ใจว่า raycastTarget = false เสมอ
+            itemIcon.raycastTarget = false;
         }
 
-        Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}");
+        Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
     }
-
     private bool ShouldShowSlotTypeText()
     {
         // แสดงข้อความประเภท slot เฉพาะ equipment slots (ไม่ใช่ potion slots)
@@ -209,9 +223,107 @@ public class EquipmentSlot : MonoBehaviour
     private void OnSlotButtonClicked()
     {
         Debug.Log($"[EquipmentSlot] {slotType} slot clicked - Empty: {isEmpty}");
+        Debug.Log($"[EquipmentSlot] ItemIcon raycastTarget: {itemIcon?.raycastTarget ?? false}");
+        Debug.Log($"[EquipmentSlot] ItemIcon active: {itemIcon?.gameObject.activeSelf ?? false}");
 
         // แจ้ง Manager
         OnSlotClicked?.Invoke(this);
+
+        // 🆕 ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด
+        if (!isEmpty)
+        {
+            ShowItemDetailForThisSlot();
+        }
+        else
+        {
+            Debug.Log($"[EquipmentSlot] {slotType} slot is empty, not showing item detail");
+        }
+    }
+    private void ShowItemDetailForThisSlot()
+    {
+        Debug.Log($"[EquipmentSlot] Attempting to show item detail for {slotType} slot, isEmpty: {isEmpty}");
+
+        // หา CombatUIManager เพื่อแสดง item detail
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager?.itemDetailManager == null)
+        {
+            Debug.LogWarning("[EquipmentSlot] CombatUIManager or ItemDetailManager not found");
+            return;
+        }
+
+        // หา Character ผ่าน CombatUIManager
+        Character character = uiManager.localHero;
+        if (character == null)
+        {
+            Debug.LogWarning("[EquipmentSlot] No character found from CombatUIManager");
+            return;
+        }
+
+        // 🆕 Debug character's equipped items
+        DebugCharacterEquippedItems(character);
+
+        ItemData itemData = null;
+
+        // ดึง item data ตาม slot type
+        if (slotType == ItemType.Potion)
+        {
+            itemData = character.GetPotionInSlot(potionSlotIndex);
+        }
+        else
+        {
+            itemData = character.GetEquippedItem(slotType);
+        }
+
+        if (itemData == null)
+        {
+            Debug.LogWarning($"[EquipmentSlot] No item found in {slotType} slot");
+
+            // 🆕 Debug เพิ่มเติม
+            Debug.LogWarning($"[EquipmentSlot] Character equipped items count: {character.GetAllEquippedItems().Count}");
+            return;
+        }
+
+        // สร้าง InventoryItem สำหรับ ItemDetailPanel (เหมือน InventorySlot)
+        InventoryItem displayItem = new InventoryItem(itemData, 1, -1);
+
+        // แสดง item detail ผ่าง CombatUIManager (เหมือน InventorySlot)
+        uiManager.itemDetailManager.ShowItemDetail(displayItem);
+        Debug.Log($"[EquipmentSlot] Requested item detail for: {itemData.ItemName}");
+    }
+
+    // 🆕 เพิ่ม method สำหรับ debug equipped items
+    private void DebugCharacterEquippedItems(Character character)
+    {
+        Debug.Log($"=== DEBUG CHARACTER EQUIPPED ITEMS ({character.CharacterName}) ===");
+
+        // ตรวจสอบแต่ละ equipment slot
+        for (int i = 0; i < 6; i++)
+        {
+            ItemType itemType = GetItemTypeFromSlotIndex(i);
+            ItemData equippedItem = character.GetEquippedItem(itemType);
+            Debug.Log($"Slot {i} ({itemType}): {(equippedItem?.ItemName ?? "NULL")}");
+        }
+
+        // ตรวจสอบ potion slots
+        for (int i = 0; i < 5; i++)
+        {
+            ItemData potionItem = character.GetPotionInSlot(i);
+            Debug.Log($"Potion {i}: {(potionItem?.ItemName ?? "NULL")}");
+        }
+    }
+
+    private ItemType GetItemTypeFromSlotIndex(int slotIndex)
+    {
+        switch (slotIndex)
+        {
+            case 0: return ItemType.Head;
+            case 1: return ItemType.Armor;
+            case 2: return ItemType.Weapon;
+            case 3: return ItemType.Pants;
+            case 4: return ItemType.Shoes;
+            case 5: return ItemType.Rune;
+            default: return ItemType.Weapon;
+        }
     }
     #endregion
 
@@ -236,21 +348,6 @@ public class EquipmentSlot : MonoBehaviour
     #endregion
 
     #region Context Menu for Testing
-    [ContextMenu("🔄 Force Refresh This Slot")]
-    private void TestForceRefresh()
-    {
-        ForceRefresh();
-    }
-
-    [ContextMenu("🔍 Debug This Slot")]
-    private void DebugThisSlot()
-    {
-        Debug.Log($"=== SLOT DEBUG ===");
-        Debug.Log($"Slot Type: {slotType}");
-        Debug.Log($"Potion Index: {potionSlotIndex}");
-        Debug.Log($"Is Empty: {isEmpty}");
-        Debug.Log($"Has Manager: {manager != null}");
-        Debug.Log($"Item Icon Active: {itemIcon?.gameObject.activeSelf ?? false}");
-    }
+   
     #endregion
 }

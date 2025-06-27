@@ -488,37 +488,7 @@ public class Character : NetworkBehaviour
     #endregion
 
     #region Equipment Methods การจัดการอุปกรณ์และ runes
-    public void EquipItem(EquipmentData equipment)
-    {
-        if (equipmentManager == null) return;
-        equipmentManager.EquipItem(equipment);
-    }
-
-    public void UnequipItem()
-    {
-        if (equipmentManager == null) return;
-        equipmentManager.UnequipItem();
-    }
-
-    public void ApplyRune(EquipmentStats runeStats)
-    {
-        if (equipmentManager == null) return;
-        equipmentManager.ApplyRuneBonus(runeStats);
-    }
-
-    public EquipmentStats GetTotalEquipmentStats()
-    {
-        if (equipmentManager == null) return new EquipmentStats();
-        return equipmentManager.GetTotalStats();
-    }
-
-    public void OnEquipmentStatsChanged()
-    {
-        // แจ้งให้ระบบอื่นๆ รู้ว่า stats เปลี่ยน (รวม Inspector)
-        OnStatsChanged?.Invoke();
-
-        Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
-    }
+   
     #endregion
     #region Inventory Methods การจัดการ inventory และ items
     public Inventory GetInventory()
@@ -768,6 +738,38 @@ public class Character : NetworkBehaviour
     #endregion
     #region Equipment Methods (ปรับปรุงใหม่)
     // เพิ่ม method ใหม่สำหรับ equip ItemData
+
+    public void EquipItem(EquipmentData equipment)
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.EquipItem(equipment);
+    }
+
+    public void UnequipItem()
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.UnequipItem();
+    }
+
+    public void ApplyRune(EquipmentStats runeStats)
+    {
+        if (equipmentManager == null) return;
+        equipmentManager.ApplyRuneBonus(runeStats);
+    }
+
+    public EquipmentStats GetTotalEquipmentStats()
+    {
+        if (equipmentManager == null) return new EquipmentStats();
+        return equipmentManager.GetTotalStats();
+    }
+
+    public void OnEquipmentStatsChanged()
+    {
+        // แจ้งให้ระบบอื่นๆ รู้ว่า stats เปลี่ยน (รวม Inspector)
+        OnStatsChanged?.Invoke();
+
+        Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
+    }
     public bool EquipItemData(ItemData itemData)
     {
         if (itemData == null)
@@ -775,6 +777,8 @@ public class Character : NetworkBehaviour
             Debug.LogWarning($"[Character] Cannot equip null item");
             return false;
         }
+
+        Debug.Log($"[Character] EquipItemData called: {itemData.ItemName} ({itemData.ItemType})");
 
         // หา slot index ที่เหมาะสม
         int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
@@ -784,10 +788,16 @@ public class Character : NetworkBehaviour
             return false;
         }
 
-        // Unequip item เก่าถ้ามี
+        // ✅ ตรวจสอบ characterEquippedItems list ก่อน
+        if (characterEquippedItems.Count < 6)
+        {
+            Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
+            InitializeEquipmentSlots(); // เรียกอีกครั้งเพื่อให้แน่ใจ
+        }
+
+        // สำหรับ potion
         if (itemData.ItemType == ItemType.Potion)
         {
-            // สำหรับ potion หา slot ว่าง
             int potionSlotIndex = FindEmptyPotionSlot();
             if (potionSlotIndex == -1)
             {
@@ -795,37 +805,62 @@ public class Character : NetworkBehaviour
                 return false;
             }
 
+            // ✅ ตรวจสอบ potionSlots list ก่อน
+            if (potionSlots.Count < 5)
+            {
+                Debug.LogWarning($"[Character] potionSlots list too small: {potionSlots.Count}");
+                InitializeEquipmentSlots(); // เรียกอีกครั้ง
+            }
+
             potionSlots[potionSlotIndex] = itemData;
-            Debug.Log($"[Character] Equipped {itemData.ItemName} to potion slot {potionSlotIndex}");
+            Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to potion slot {potionSlotIndex}");
         }
         else
         {
-            // Unequip item เก่าถ้ามี
+            // Unequip item เก่าถ้ามี (และเพิ่มกลับไป inventory)
             if (characterEquippedItems[slotIndex] != null)
             {
-                UnequipItemData(itemData.ItemType);
+                ItemData oldItem = characterEquippedItems[slotIndex];
+                if (inventory != null)
+                {
+                    inventory.AddItem(oldItem, 1);
+                    Debug.Log($"[Character] Added old item back to inventory: {oldItem.ItemName}");
+                }
             }
 
             // Equip item ใหม่
             characterEquippedItems[slotIndex] = itemData;
+            Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
 
-            // ใช้ EquipmentManager เดิมด้วย (ถ้าต้องการ)
-            if (equipmentManager != null)
-            {
-                EquipmentData equipData = ConvertItemDataToEquipmentData(itemData);
-                if (equipData != null)
-                {
-                    equipmentManager.EquipItem(equipData);
-                }
-            }
-
-            Debug.Log($"[Character] Equipped {itemData.ItemName} to {itemData.ItemType} slot");
+            // ✅ Debug: ตรวจสอบ slot หลัง equip
+            ItemData checkItem = GetEquippedItem(itemData.ItemType);
+            Debug.Log($"[Character] Verification - GetEquippedItem({itemData.ItemType}): {(checkItem?.ItemName ?? "NULL")}");
         }
 
-        // แจ้ง Event สำหรับ UI
+        // ✅ แจ้ง Event สำหรับ UI
         OnItemEquippedToSlot?.Invoke(this, itemData.ItemType, itemData);
 
+        // ✅ Force update equipment slots ทันที
+        ForceUpdateEquipmentSlotsNow();
+
         return true;
+    }
+    private void ForceUpdateEquipmentSlotsNow()
+    {
+        EquipmentSlotManager equipmentSlotManager = GetComponent<EquipmentSlotManager>();
+        if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
+        {
+            equipmentSlotManager.ForceRefreshFromCharacter();
+            Debug.Log("[Character] ✅ Immediate equipment slots refresh");
+        }
+
+        // หา CombatUIManager แล้วลอง refresh ด้วย
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager?.equipmentSlotManager != null)
+        {
+            uiManager.equipmentSlotManager.ForceRefreshFromCharacter();
+            Debug.Log("[Character] ✅ Immediate UI manager refresh");
+        }
     }
 
     // เพิ่ม method สำหรับ unequip
@@ -931,9 +966,16 @@ public class Character : NetworkBehaviour
         }
 
         int slotIndex = GetSlotIndexForItemType(itemType);
-        if (slotIndex >= 0 && slotIndex < characterEquippedItems.Count)
-            return characterEquippedItems[slotIndex];
+        Debug.Log($"[Character] GetEquippedItem({itemType}) -> slotIndex: {slotIndex}");
 
+        if (slotIndex >= 0 && slotIndex < characterEquippedItems.Count)
+        {
+            ItemData item = characterEquippedItems[slotIndex];
+            Debug.Log($"[Character] GetEquippedItem result: {(item?.ItemName ?? "NULL")}");
+            return item;
+        }
+
+        Debug.LogWarning($"[Character] Invalid slot index {slotIndex} for {itemType}");
         return null;
     }
 
@@ -1000,6 +1042,42 @@ public class Character : NetworkBehaviour
     {
         return equipmentSlotManager;
     }
+    [ContextMenu("🔍 Debug All Equipped Items")]
+    private void DebugAllEquippedItems()
+    {
+        Debug.Log($"=== DEBUG ALL EQUIPPED ITEMS ({CharacterName}) ===");
+        Debug.Log($"characterEquippedItems.Count: {characterEquippedItems.Count}");
+        Debug.Log($"potionSlots.Count: {potionSlots.Count}");
+
+        for (int i = 0; i < characterEquippedItems.Count; i++)
+        {
+            ItemType itemType = GetItemTypeFromSlotIndex(i);
+            ItemData item = characterEquippedItems[i];
+            Debug.Log($"Slot {i} ({itemType}): {(item?.ItemName ?? "NULL")}");
+        }
+
+        for (int i = 0; i < potionSlots.Count; i++)
+        {
+            ItemData potion = potionSlots[i];
+            Debug.Log($"Potion {i}: {(potion?.ItemName ?? "NULL")}");
+        }
+    }
+
+    private ItemType GetItemTypeFromSlotIndex(int slotIndex)
+    {
+        switch (slotIndex)
+        {
+            case 0: return ItemType.Head;
+            case 1: return ItemType.Armor;
+            case 2: return ItemType.Weapon;
+            case 3: return ItemType.Pants;
+            case 4: return ItemType.Shoes;
+            case 5: return ItemType.Rune;
+            default: return ItemType.Weapon;
+        }
+    }
 
     #endregion
+
+
 }

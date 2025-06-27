@@ -658,6 +658,16 @@ public class CombatUIManager : MonoBehaviour
             if (equipmentSlots.Count > 0)
             {
                 equipmentSlotManager.ConnectEquipmentSlots(equipmentSlots);
+
+                // 🆕 Setup events สำหรับแต่ละ slot
+                foreach (EquipmentSlot slot in equipmentSlots)
+                {
+                    if (slot != null)
+                    {
+                        slot.OnSlotClicked += HandleEquipmentSlotClicked;
+                    }
+                }
+
                 Debug.Log($"[CombatUI] Connected {equipmentSlots.Count} equipment slots to {hero.CharacterName}");
             }
 
@@ -665,6 +675,16 @@ public class CombatUIManager : MonoBehaviour
             if (potionSlots.Count > 0)
             {
                 equipmentSlotManager.ConnectPotionSlots(potionSlots);
+
+                // 🆕 Setup events สำหรับแต่ละ slot
+                foreach (EquipmentSlot slot in potionSlots)
+                {
+                    if (slot != null)
+                    {
+                        slot.OnSlotClicked += HandleEquipmentSlotClicked;
+                    }
+                }
+
                 Debug.Log($"[CombatUI] Connected {potionSlots.Count} potion slots to {hero.CharacterName}");
             }
 
@@ -674,6 +694,35 @@ public class CombatUIManager : MonoBehaviour
         else
         {
             Debug.LogWarning($"[CombatUI] No EquipmentSlotManager found in {hero.CharacterName}! Please add EquipmentSlotManager component to Character.");
+        }
+    }
+
+    private void HandleEquipmentSlotClicked(EquipmentSlot slot)
+    {
+        if (slot == null || localHero == null) return;
+
+        Debug.Log($"[CombatUI] Equipment slot clicked: {slot.SlotType}");
+
+        // หา item ใน slot
+        ItemData itemData = null;
+
+        if (slot.SlotType == ItemType.Potion)
+        {
+            itemData = localHero.GetPotionInSlot(slot.PotionSlotIndex);
+        }
+        else
+        {
+            itemData = localHero.GetEquippedItem(slot.SlotType);
+        }
+
+        // แสดง item detail ถ้ามี item
+        if (itemData != null)
+        {
+            ShowEquipmentItemDetail(itemData);
+        }
+        else
+        {
+            Debug.Log($"[CombatUI] No item in {slot.SlotType} slot");
         }
     }
 
@@ -792,7 +841,30 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
+    public void ShowEquipmentItemDetail(ItemData itemData)
+    {
+        if (itemDetailManager != null && itemData != null)
+        {
+            // สร้าง InventoryItem temporary
+            InventoryItem displayItem = new InventoryItem(itemData, 1, -1);
+            itemDetailManager.ShowItemDetail(displayItem);
 
+            Debug.Log($"[CombatUI] Showing equipment item detail: {itemData.ItemName}");
+        }
+        else
+        {
+            Debug.LogWarning("[CombatUI] Cannot show item detail - missing manager or item data");
+        }
+    }
+
+    // 🆕 เพิ่ม method สำหรับซ่อน item detail
+    public void HideEquipmentItemDetail()
+    {
+        if (itemDetailManager != null)
+        {
+            itemDetailManager.HideItemDetail();
+        }
+    }
     public bool IsInventoryOpen()
     {
         return isInventoryOpen;
@@ -809,5 +881,26 @@ public class CombatUIManager : MonoBehaviour
     }
 
     // 🎯 NEW: Context Menu สำหรับทดสอบ
-   
+    [ContextMenu("🔍 Debug Equipment Connection")]
+    private void DebugEquipmentConnection()
+    {
+        Debug.Log($"=== DEBUG EQUIPMENT CONNECTION ===");
+        Debug.Log($"localHero: {(localHero?.CharacterName ?? "NULL")}");
+        Debug.Log($"equipmentSlotManager: {(equipmentSlotManager != null)}");
+
+        if (equipmentSlotManager != null)
+        {
+            Debug.Log($"equipmentSlotManager.IsConnected(): {equipmentSlotManager.IsConnected()}");
+            Debug.Log($"equipmentSlotManager.OwnerCharacter: {(equipmentSlotManager.OwnerCharacter?.CharacterName ?? "NULL")}");
+        }
+
+        Debug.Log($"equipmentSlots.Count: {equipmentSlots.Count}");
+        Debug.Log($"potionSlots.Count: {potionSlots.Count}");
+
+        if (localHero != null)
+        {
+            var allEquipped = localHero.GetAllEquippedItems();
+            Debug.Log($"localHero.GetAllEquippedItems().Count: {allEquipped.Count}");
+        }
+    }
 }

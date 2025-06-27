@@ -14,13 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   allItems:
   - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
-  - {fileID: 11400000, guid: 946c7168c96f70e4da4c9bbaf5931de6, type: 2}
+  - {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
+  - {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
+  - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
+  - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
   weapons:
+  - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+  headItems:
+  - {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
+  armorItems:
   - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
-  headItems: []
-  armorItems: []
-  pantsItems: []
-  shoesItems: []
+  pantsItems:
+  - {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
+  shoesItems:
+  - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
   runes: []
-  potions:
-  - {fileID: 11400000, guid: 946c7168c96f70e4da4c9bbaf5931de6, type: 2}
+  potions: []

@@ -834,13 +834,33 @@ public class InventoryGridManager : MonoBehaviour
         }
     }
     #region Public Methods for Testing
-   
 
- 
+
+
 
 
     #endregion
+    public void UpdateSlotFromCharacter(int slotIndex)
+    {
+        if (ownerCharacter?.GetInventory() == null)
+        {
+            Debug.LogWarning($"[InventoryGrid] No character or inventory to update slot {slotIndex}");
+            return;
+        }
 
+        if (slotIndex < 0 || slotIndex >= allSlots.Count)
+        {
+            Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range");
+            return;
+        }
+
+        Inventory inventory = ownerCharacter.GetInventory();
+        InventoryItem item = inventory.GetItem(slotIndex);
+
+        UpdateSlotFromInventoryItem(slotIndex, item);
+
+        Debug.Log($"[InventoryGrid] Updated slot {slotIndex} from character inventory");
+    }
     #region Runtime Grid Modification
     public void ResizeGrid(int newWidth, int newHeight)
     {

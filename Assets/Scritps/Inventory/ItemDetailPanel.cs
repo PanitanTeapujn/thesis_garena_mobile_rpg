@@ -22,7 +22,8 @@ public class ItemDetailPanel : MonoBehaviour
 
     private InventoryItem currentItem;      // Item ที่กำลังแสดงอยู่
     private Character currentCharacter;     // Character ที่เป็นเจ้าของ item
-
+    [SerializeField]
+    private CombatUIManager combatUIManager;
     private void Awake()
     {
         // Setup close button
@@ -45,6 +46,7 @@ public class ItemDetailPanel : MonoBehaviour
             unequipButton.onClick.RemoveAllListeners();
             unequipButton.onClick.AddListener(OnUnequipButtonClicked);
         }
+        combatUIManager = GetComponentInParent<CombatUIManager>();
 
         // ซ่อน panel ตั้งแต่เริ่มต้น
         HideItemDetail();
@@ -142,25 +144,7 @@ public class ItemDetailPanel : MonoBehaviour
     }
 
     // 🆕 จัดการการแสดงปุ่ม Equip/Unequip
-    private void UpdateEquipButtons(ItemData itemData)
-    {
-        // ไม่ตรวจสอบใดๆแล้ว แสดงปุ่มตลอด
-        if (equipButton != null)
-        {
-            equipButton.gameObject.SetActive(true);
-            if (equipButtonText != null)
-                equipButtonText.text = "Equip";
-        }
-
-        if (unequipButton != null)
-        {
-            unequipButton.gameObject.SetActive(true);
-            if (unequipButtonText != null)
-                unequipButtonText.text = "Unequip";
-        }
-
-        Debug.Log($"[ItemDetailPanel] Always showing Equip/Unequip buttons for: {itemData.ItemName}");
-    }
+    
 
     // 🆕 ตรวจสอบว่า item สามารถ equip ได้หรือไม่
     private bool CanEquipItem(ItemData itemData)
@@ -204,17 +188,59 @@ public class ItemDetailPanel : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[ItemDetailPanel] Equipping item: {currentItem.itemData.ItemName}");
+        ItemType itemType = currentItem.itemData.ItemType;
+
+        // หาช่องที่ตรงกับ ItemType
+        EquipmentSlot targetSlot = null;
+
+        if (combatUIManager != null)
+        {
+            // เช็ค equipment slots
+            foreach (var slot in combatUIManager.equipmentSlots)
+            {
+                if (slot.SlotType == itemType)
+                {
+                    targetSlot = slot;
+                    break;
+                }
+            }
+
+            // ถ้ายังไม่เจอ ลองเช็ค potion slots
+            if (targetSlot == null)
+            {
+                foreach (var slot in combatUIManager.potionSlots)
+                {
+                    if (slot.SlotType == itemType)
+                    {
+                        targetSlot = slot;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (targetSlot == null)
+        {
+            Debug.LogWarning($"[ItemDetailPanel] No slot found for ItemType: {itemType}");
+            return;
+        }
+
+        Debug.Log($"[ItemDetailPanel] Equipping item: {currentItem.itemData.ItemName} into slot {targetSlot.SlotType}");
 
         // สร้าง EquipmentData จาก ItemData
         EquipmentData equipmentData = CreateEquipmentDataFromItem(currentItem.itemData);
 
         if (equipmentData != null)
         {
-            // Equip item
-            currentCharacter.EquipItem(equipmentData);
+            // Equip ใน character
+            currentCharacter.EquipItemData(currentItem.itemData);
 
-            // อัปเดตปุ่ม
+            // แสดงไอคอนใน slot
+            targetSlot.SetFilledState(currentItem.itemData.ItemIcon, currentItem.itemData.GetTierColor());
+
+            // 🆕 ลบไอเทมออกจาก inventory
+            RemoveItemFromInventory();
+
             UpdateEquipButtons(currentItem.itemData);
 
             Debug.Log($"[ItemDetailPanel] Successfully equipped: {currentItem.itemData.ItemName}");
@@ -225,6 +251,82 @@ public class ItemDetailPanel : MonoBehaviour
         }
     }
 
+    private void RemoveItemFromInventory()
+    {
+        if (currentItem == null || currentCharacter == null)
+            return;
+
+        Inventory inventory = currentCharacter.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogWarning("[ItemDetailPanel] Character has no inventory");
+            return;
+        }
+
+        // หา slot ที่มี item นี้
+        int itemSlotIndex = FindItemSlotIndex(inventory, currentItem.itemData);
+
+        if (itemSlotIndex != -1)
+        {
+            // ลบ 1 ชิ้นจาก inventory
+            bool success = inventory.RemoveItem(itemSlotIndex, 1);
+
+            if (success)
+            {
+                Debug.Log($"[ItemDetailPanel] Removed {currentItem.itemData.ItemName} from inventory slot {itemSlotIndex}");
+
+                // อัปเดต inventory UI
+                UpdateInventoryUI(itemSlotIndex);
+            }
+            else
+            {
+                Debug.LogError($"[ItemDetailPanel] Failed to remove {currentItem.itemData.ItemName} from inventory");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[ItemDetailPanel] Could not find {currentItem.itemData.ItemName} in inventory");
+        }
+    }
+
+    private int FindItemSlotIndex(Inventory inventory, ItemData itemData)
+    {
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            InventoryItem item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty && item.itemData == itemData)
+            {
+                return i;
+            }
+        }
+        return -1; // ไม่เจอ
+    }
+
+    // 🆕 อัปเดต inventory UI
+    private void UpdateInventoryUI(int slotIndex)
+    {
+        // หา InventoryGridManager
+        InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
+        if (gridManager != null)
+        {
+            // ใช้ ForceSyncAllSlots เพื่ออัปเดต inventory ทั้งหมด
+            gridManager.ForceSyncAllSlots();
+            Debug.Log($"[ItemDetailPanel] Updated inventory UI for all slots");
+        }
+        else
+        {
+            Debug.LogWarning("[ItemDetailPanel] InventoryGridManager not found for UI update");
+        }
+
+        // 🆕 อัปเดต equipment slots ผ่าง CombatUIManager
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager?.equipmentSlotManager != null)
+        {
+            uiManager.equipmentSlotManager.RefreshAllSlots();
+            Debug.Log("[ItemDetailPanel] Updated equipment slots UI");
+        }
+    }
+    // 🆕 เมื่อกดปุ่ม Unequip
     // 🆕 เมื่อกดปุ่ม Unequip
     private void OnUnequipButtonClicked()
     {
@@ -234,24 +336,156 @@ public class ItemDetailPanel : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[ItemDetailPanel] Unequipping item: {currentItem.itemData.ItemName}");
+        ItemType itemType = currentItem.itemData.ItemType;
+        Debug.Log($"[ItemDetailPanel] Unequipping item: {currentItem.itemData.ItemName} ({itemType})");
 
-        // Unequip item
-        currentCharacter.UnequipItem();
+        // หา slot ที่ต้อง unequip
+        EquipmentSlot targetSlot = FindEquipmentSlot(itemType);
+        if (targetSlot == null)
+        {
+            Debug.LogWarning($"[ItemDetailPanel] No slot found for ItemType: {itemType}");
+            return;
+        }
 
-        // อัปเดตปุ่ม
-        UpdateEquipButtons(currentItem.itemData);
+        // Unequip จาก character
+        bool unequipSuccess = false;
+        if (itemType == ItemType.Potion)
+        {
+            unequipSuccess = currentCharacter.UnequipPotion(targetSlot.PotionSlotIndex);
+        }
+        else
+        {
+            unequipSuccess = currentCharacter.UnequipItemData(itemType);
+        }
 
-        Debug.Log($"[ItemDetailPanel] Successfully unequipped: {currentItem.itemData.ItemName}");
+        if (unequipSuccess)
+        {
+            // อัปเดต slot UI
+            targetSlot.SetEmptyState();
+
+            // Unequip จาก EquipmentManager เดิมด้วย (ถ้ามี)
+           /* if (equipmentManager != null && itemType != ItemType.Potion)
+            {
+                equipmentManager.UnequipItem();
+            }*/
+
+            // อัปเดต inventory UI
+            UpdateInventoryUI(-1);
+
+            // ปิด detail panel
+            HideItemDetail();
+
+            Debug.Log($"[ItemDetailPanel] Successfully unequipped: {currentItem.itemData.ItemName}");
+        }
+        else
+        {
+            Debug.LogError($"[ItemDetailPanel] Failed to unequip: {currentItem.itemData.ItemName}");
+        }
+    }
+    private void UpdateEquipButtons(ItemData itemData)
+    {
+        bool isCurrentlyEquipped = IsItemCurrentlyEquipped(itemData);
+
+        if (equipButton != null)
+        {
+            equipButton.gameObject.SetActive(!isCurrentlyEquipped);
+            if (equipButtonText != null)
+                equipButtonText.text = "Equip";
+        }
+
+        if (unequipButton != null)
+        {
+            unequipButton.gameObject.SetActive(isCurrentlyEquipped);
+            if (unequipButtonText != null)
+                unequipButtonText.text = "Unequip";
+        }
+
+        Debug.Log($"[ItemDetailPanel] Updated buttons for {itemData.ItemName}: Equipped={isCurrentlyEquipped}");
+    }
+
+    private bool IsItemCurrentlyEquipped(ItemData itemData)
+    {
+        if (currentCharacter == null || itemData == null) return false;
+
+        // ตรวจสอบตาม item type
+        if (itemData.ItemType == ItemType.Potion)
+        {
+            // ตรวจสอบ potion slots
+            for (int i = 0; i < 5; i++)
+            {
+                ItemData potionInSlot = currentCharacter.GetPotionInSlot(i);
+                if (potionInSlot == itemData)
+                {
+                    return true;
+                }
+            }
+        }
+        else
+        {
+            // ตรวจสอบ equipment slots
+            ItemData equippedItem = currentCharacter.GetEquippedItem(itemData.ItemType);
+            return equippedItem == itemData;
+        }
+
+        return false;
+    }
+
+    // 🆕 เพิ่ม method สำหรับหา Equipment Slot
+    private EquipmentSlot FindEquipmentSlot(ItemType itemType)
+    {
+        if (combatUIManager == null) return null;
+
+        // หาใน equipment slots
+        foreach (var slot in combatUIManager.equipmentSlots)
+        {
+            if (slot.SlotType == itemType)
+            {
+                return slot;
+            }
+        }
+
+        // หาใน potion slots
+        if (itemType == ItemType.Potion)
+        {
+            foreach (var slot in combatUIManager.potionSlots)
+            {
+                if (slot.SlotType == itemType && !slot.IsEmpty)
+                {
+                    return slot;
+                }
+            }
+        }
+
+        return null;
     }
 
     // 🆕 สร้าง EquipmentData จาก ItemData
     private EquipmentData CreateEquipmentDataFromItem(ItemData itemData)
     {
-        // TODO: ต้องสร้าง EquipmentData จาก ItemData
-        // ตอนนี้ return null ไว้ก่อน เพราะต้องดู structure ของ EquipmentData
+        if (itemData == null)
+        {
+            Debug.LogError("[ItemDetailPanel] Cannot create EquipmentData: ItemData is null");
+            return null;
+        }
 
-        Debug.LogWarning("[ItemDetailPanel] CreateEquipmentDataFromItem not implemented yet");
-        return null;
+        // ตรวจสอบว่าเป็นไอเทมประเภทที่สวมใส่ได้
+        if (!IsEquippableItem(itemData))
+        {
+            Debug.LogError($"[ItemDetailPanel] Item {itemData.ItemName} is not equippable.");
+            return null;
+        }
+
+        // สร้าง EquipmentStats จาก ItemStats
+        EquipmentStats equipmentStats = itemData.Stats.ToEquipmentStats();
+
+        // สร้าง EquipmentData
+        EquipmentData newEquipment = new EquipmentData
+        {
+            itemName = itemData.ItemName,
+            stats = equipmentStats,
+            itemIcon = itemData.ItemIcon
+        };
+
+        return newEquipment;
     }
 }
