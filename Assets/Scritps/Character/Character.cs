@@ -105,7 +105,14 @@ public class Character : NetworkBehaviour
     protected CharacterVisualManager visualManager;
     protected LevelManager levelManager;
     protected Inventory inventory;
+    protected EquipmentSlotManager equipmentSlotManager; // 🆕 เพิ่มใหม่
+    [Header("🆕 Equipment Slots")]
+    [SerializeField] private List<ItemData> characterEquippedItems = new List<ItemData>(6); // 6 slots: Head, Armor, Weapon, Pants, Shoes, Rune
+    [SerializeField] private List<ItemData> potionSlots = new List<ItemData>(5);   // 5 potion quick slots
 
+    // Events สำหรับแจ้ง UI
+    public static event System.Action<Character, ItemType, ItemData> OnItemEquippedToSlot;
+    public static event System.Action<Character, ItemType> OnItemUnequippedFromSlot;
     #endregion
 
     #region Unity Lifecycle & Initialization Awake, Start และการเริ่มต้นระบบต่างๆ
@@ -145,6 +152,9 @@ public class Character : NetworkBehaviour
         inventory = GetComponent<Inventory>();
         if (inventory == null)
             inventory = gameObject.AddComponent<Inventory>();
+        equipmentSlotManager = GetComponent<EquipmentSlotManager>();
+        if (equipmentSlotManager == null)
+            equipmentSlotManager = gameObject.AddComponent<EquipmentSlotManager>();
     }
 
     private void InitializePhysics()
@@ -185,6 +195,8 @@ public class Character : NetworkBehaviour
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
             attackType = characterStats.attackType;
+            InitializeEquipmentSlots();
+
         }
     }
     #endregion
@@ -753,5 +765,241 @@ public class Character : NetworkBehaviour
     }
 
     public bool IsSpawned => Object != null && Object.IsValid;
+    #endregion
+    #region Equipment Methods (ปรับปรุงใหม่)
+    // เพิ่ม method ใหม่สำหรับ equip ItemData
+    public bool EquipItemData(ItemData itemData)
+    {
+        if (itemData == null)
+        {
+            Debug.LogWarning($"[Character] Cannot equip null item");
+            return false;
+        }
+
+        // หา slot index ที่เหมาะสม
+        int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
+        if (slotIndex == -1)
+        {
+            Debug.LogWarning($"[Character] No slot available for item type: {itemData.ItemType}");
+            return false;
+        }
+
+        // Unequip item เก่าถ้ามี
+        if (itemData.ItemType == ItemType.Potion)
+        {
+            // สำหรับ potion หา slot ว่าง
+            int potionSlotIndex = FindEmptyPotionSlot();
+            if (potionSlotIndex == -1)
+            {
+                Debug.LogWarning($"[Character] All potion slots are full");
+                return false;
+            }
+
+            potionSlots[potionSlotIndex] = itemData;
+            Debug.Log($"[Character] Equipped {itemData.ItemName} to potion slot {potionSlotIndex}");
+        }
+        else
+        {
+            // Unequip item เก่าถ้ามี
+            if (characterEquippedItems[slotIndex] != null)
+            {
+                UnequipItemData(itemData.ItemType);
+            }
+
+            // Equip item ใหม่
+            characterEquippedItems[slotIndex] = itemData;
+
+            // ใช้ EquipmentManager เดิมด้วย (ถ้าต้องการ)
+            if (equipmentManager != null)
+            {
+                EquipmentData equipData = ConvertItemDataToEquipmentData(itemData);
+                if (equipData != null)
+                {
+                    equipmentManager.EquipItem(equipData);
+                }
+            }
+
+            Debug.Log($"[Character] Equipped {itemData.ItemName} to {itemData.ItemType} slot");
+        }
+
+        // แจ้ง Event สำหรับ UI
+        OnItemEquippedToSlot?.Invoke(this, itemData.ItemType, itemData);
+
+        return true;
+    }
+
+    // เพิ่ม method สำหรับ unequip
+    public bool UnequipItemData(ItemType itemType)
+    {
+        if (itemType == ItemType.Potion)
+        {
+            Debug.LogWarning($"[Character] Use UnequipPotion() for potion slots");
+            return false;
+        }
+
+        int slotIndex = GetSlotIndexForItemType(itemType);
+        if (slotIndex == -1 || characterEquippedItems[slotIndex] == null)
+        {
+            Debug.LogWarning($"[Character] No equipped item found for type: {itemType}");
+            return false;
+        }
+
+        ItemData unequippedItem = characterEquippedItems[slotIndex];
+        characterEquippedItems[slotIndex] = null;
+
+        // ใช้ EquipmentManager เดิมด้วย
+        if (equipmentManager != null)
+        {
+            equipmentManager.UnequipItem();
+        }
+
+        // เพิ่มกลับไป inventory
+        if (inventory != null)
+        {
+            inventory.AddItem(unequippedItem, 1);
+        }
+
+        // แจ้ง Event สำหรับ UI
+        OnItemUnequippedFromSlot?.Invoke(this, itemType);
+
+        Debug.Log($"[Character] Unequipped {unequippedItem.ItemName} from {itemType} slot");
+        return true;
+    }
+
+    // เพิ่ม method สำหรับ potion
+    public bool UnequipPotion(int potionSlotIndex)
+    {
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlots[potionSlotIndex] == null)
+        {
+            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex}");
+            return false;
+        }
+
+        ItemData unequippedPotion = potionSlots[potionSlotIndex];
+        potionSlots[potionSlotIndex] = null;
+
+        // เพิ่มกลับไป inventory
+        if (inventory != null)
+        {
+            inventory.AddItem(unequippedPotion, 1);
+        }
+
+        Debug.Log($"[Character] Unequipped {unequippedPotion.ItemName} from potion slot {potionSlotIndex}");
+        return true;
+    }
+
+    // เพิ่ม helper methods
+    private int GetSlotIndexForItemType(ItemType itemType)
+    {
+        switch (itemType)
+        {
+            case ItemType.Head: return 0;
+            case ItemType.Armor: return 1;
+            case ItemType.Weapon: return 2;
+            case ItemType.Pants: return 3;
+            case ItemType.Shoes: return 4;
+            case ItemType.Rune: return 5;
+            case ItemType.Potion: return -1; // ใช้ potionSlots แทน
+            default: return -1;
+        }
+    }
+
+    private int FindEmptyPotionSlot()
+    {
+        for (int i = 0; i < potionSlots.Count; i++)
+        {
+            if (potionSlots[i] == null)
+                return i;
+        }
+        return -1; // เต็มหมด
+    }
+
+    private EquipmentData ConvertItemDataToEquipmentData(ItemData itemData)
+    {
+        // TODO: แปลง ItemData เป็น EquipmentData สำหรับใช้กับ EquipmentManager เดิม
+        // ตอนนี้ return null ไว้ก่อน
+        return null;
+    }
+
+    // เพิ่ม getter methods
+    public ItemData GetEquippedItem(ItemType itemType)
+    {
+        if (itemType == ItemType.Potion)
+        {
+            Debug.LogWarning($"[Character] Use GetPotionInSlot() for potion items");
+            return null;
+        }
+
+        int slotIndex = GetSlotIndexForItemType(itemType);
+        if (slotIndex >= 0 && slotIndex < characterEquippedItems.Count)
+            return characterEquippedItems[slotIndex];
+
+        return null;
+    }
+
+    public ItemData GetPotionInSlot(int slotIndex)
+    {
+        if (slotIndex >= 0 && slotIndex < potionSlots.Count)
+            return potionSlots[slotIndex];
+
+        return null;
+    }
+
+    public bool IsEquipmentSlotEmpty(ItemType itemType)
+    {
+        ItemData item = GetEquippedItem(itemType);
+        return item == null;
+    }
+
+    public bool IsPotionSlotEmpty(int slotIndex)
+    {
+        ItemData potion = GetPotionInSlot(slotIndex);
+        return potion == null;
+    }
+
+    public List<ItemData> GetAllEquippedItems()
+    {
+        List<ItemData> allEquipped = new List<ItemData>();
+
+        // เพิ่ม equipment items
+        foreach (ItemData item in characterEquippedItems)
+        {
+            if (item != null)
+                allEquipped.Add(item);
+        }
+
+        // เพิ่ม potion items
+        foreach (ItemData potion in potionSlots)
+        {
+            if (potion != null)
+                allEquipped.Add(potion);
+        }
+
+        return allEquipped;
+    }
+
+    private void InitializeEquipmentSlots()
+    {
+        // Initialize equipped items list (6 slots)
+        characterEquippedItems.Clear();
+        for (int i = 0; i < 6; i++)
+        {
+            characterEquippedItems.Add(null);
+        }
+
+        // Initialize potion slots (5 slots)
+        potionSlots.Clear();
+        for (int i = 0; i < 5; i++)
+        {
+            potionSlots.Add(null);
+        }
+
+        Debug.Log($"[Character] Equipment slots initialized: 6 equipment + 5 potion slots");
+    }
+    public EquipmentSlotManager GetEquipmentSlotManager()
+    {
+        return equipmentSlotManager;
+    }
+
     #endregion
 }

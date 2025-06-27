@@ -21,6 +21,7 @@ GameObject:
   - component: {fileID: -3790733776071842223}
   - component: {fileID: 9052754494654850431}
   - component: {fileID: -7973809261940948947}
+  - component: {fileID: 3719753113342829952}
   m_Layer: 6
   m_Name: Assassin
   m_TagString: Untagged
@@ -232,6 +233,8 @@ MonoBehaviour:
   healthRegenPerSecond: 1
   manaRegenPerSecond: 1
   rb: {fileID: 0}
+  characterEquippedItems: []
+  potionSlots: []
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
@@ -500,9 +503,27 @@ MonoBehaviour:
   testBoots: {fileID: 0}
   testRune: {fileID: 0}
   testItems: []
+  giveStarterItems: 1
+  starterItemsGiven: 0
   useItemDatabase: 1
   fallbackToTestItems: 1
   gridWidth: 10
   gridHeight: 13
   _NetworkedCurrentSlots: 0
   _NetworkedMaxSlots: 0
+--- !u!114 &3719753113342829952
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96d92d1fbb61eb342a5cb952d326119f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  equipmentSlots: []
+  potionSlots: []
+  connectedEquipmentSlots: []
+  connectedPotionSlots: []

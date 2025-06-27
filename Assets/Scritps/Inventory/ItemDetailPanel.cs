@@ -144,26 +144,22 @@ public class ItemDetailPanel : MonoBehaviour
     // 🆕 จัดการการแสดงปุ่ม Equip/Unequip
     private void UpdateEquipButtons(ItemData itemData)
     {
-        bool canEquip = CanEquipItem(itemData);
-        bool isEquippable = IsEquippableItem(itemData);
-
-        // แสดง/ซ่อนปุ่ม equip
+        // ไม่ตรวจสอบใดๆแล้ว แสดงปุ่มตลอด
         if (equipButton != null)
         {
-            equipButton.gameObject.SetActive(isEquippable && canEquip);
+            equipButton.gameObject.SetActive(true);
             if (equipButtonText != null)
                 equipButtonText.text = "Equip";
         }
 
-        // แสดง/ซ่อนปุ่ม unequip
         if (unequipButton != null)
         {
-            unequipButton.gameObject.SetActive(isEquippable && !canEquip);
+            unequipButton.gameObject.SetActive(true);
             if (unequipButtonText != null)
                 unequipButtonText.text = "Unequip";
         }
 
-        Debug.Log($"[ItemDetailPanel] Item: {itemData.ItemName}, IsEquippable: {isEquippable}, CanEquip: {canEquip}");
+        Debug.Log($"[ItemDetailPanel] Always showing Equip/Unequip buttons for: {itemData.ItemName}");
     }
 
     // 🆕 ตรวจสอบว่า item สามารถ equip ได้หรือไม่

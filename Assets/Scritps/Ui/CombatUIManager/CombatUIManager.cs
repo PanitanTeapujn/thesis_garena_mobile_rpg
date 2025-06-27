@@ -55,6 +55,10 @@ public class CombatUIManager : MonoBehaviour
     public GameObject itemDetailPanel;              // Panel สำหรับแสดงรายละเอียดไอเทม
     public ItemDetailPanel itemDetailManager;      // Manager สำหรับจัดการ panel
 
+    [Header("🆕 Equipment Slots (ลากจาก UI มาใส่)")]
+    public List<EquipmentSlot> equipmentSlots = new List<EquipmentSlot>(); // Head, Armor, Weapon, Pants, Shoes, Rune
+    public List<EquipmentSlot> potionSlots = new List<EquipmentSlot>();    // Potion quick slots (5 slots)
+    public EquipmentSlotManager equipmentSlotManager; // Manager สำหรับจัดการ equipment slots
 
     public Hero localHero { get; private set; }
     private SingleInputController inputController;
@@ -635,10 +639,42 @@ public class CombatUIManager : MonoBehaviour
         localHero = hero;
         Debug.Log($"Local hero set: {hero.CharacterName} - HP: {hero.CurrentHp}/{hero.MaxHp}");
 
-        // ✅ ใช้ method ใหม่
+        // ✅ เชื่อมต่อ Inventory Grid
         ConnectInventoryToHero(hero);
 
+        // 🆕 เชื่อมต่อ Equipment Slots ผ่าน EquipmentSlotManager
+        ConnectEquipmentSlotsToHero(hero);
+
         UpdateUI();
+    }
+    private void ConnectEquipmentSlotsToHero(Hero hero)
+    {
+        // หา EquipmentSlotManager จาก Character
+        EquipmentSlotManager equipmentSlotManager = hero.GetComponent<EquipmentSlotManager>();
+
+        if (equipmentSlotManager != null)
+        {
+            // เชื่อมต่อ Equipment Slots ที่ลากมาใน Inspector
+            if (equipmentSlots.Count > 0)
+            {
+                equipmentSlotManager.ConnectEquipmentSlots(equipmentSlots);
+                Debug.Log($"[CombatUI] Connected {equipmentSlots.Count} equipment slots to {hero.CharacterName}");
+            }
+
+            // เชื่อมต่อ Potion Slots ที่ลากมาใน Inspector
+            if (potionSlots.Count > 0)
+            {
+                equipmentSlotManager.ConnectPotionSlots(potionSlots);
+                Debug.Log($"[CombatUI] Connected {potionSlots.Count} potion slots to {hero.CharacterName}");
+            }
+
+            // เก็บ reference
+            this.equipmentSlotManager = equipmentSlotManager;
+        }
+        else
+        {
+            Debug.LogWarning($"[CombatUI] No EquipmentSlotManager found in {hero.CharacterName}! Please add EquipmentSlotManager component to Character.");
+        }
     }
 
     public void UpdateUI()
