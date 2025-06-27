@@ -51,6 +51,11 @@ public class CombatUIManager : MonoBehaviour
     public TextMeshProUGUI evasionRateText;
     public TextMeshProUGUI attackSpeedText;
 
+    [Header("🆕 Item Detail Panel")]
+    public GameObject itemDetailPanel;              // Panel สำหรับแสดงรายละเอียดไอเทม
+    public ItemDetailPanel itemDetailManager;      // Manager สำหรับจัดการ panel
+
+
     public Hero localHero { get; private set; }
     private SingleInputController inputController;
     private GameObject uiInstance;
@@ -195,13 +200,62 @@ public class CombatUIManager : MonoBehaviour
             SetupInventoryGrid();
 
             // Setup Item Info Panel
+            SetupItemDetailPanel();
+
         }
         else
         {
             Debug.LogError("❌ Inventory Panel not assigned in Inspector!");
         }
     }
+    private void SetupItemDetailPanel()
+    {
+        Debug.Log("=== Setting up Item Detail Panel ===");
 
+        // ถ้ายังไม่มี ItemDetailPanel component ให้เพิ่ม
+        if (itemDetailManager == null && itemDetailPanel != null)
+        {
+            itemDetailManager = itemDetailPanel.GetComponent<ItemDetailPanel>();
+            if (itemDetailManager == null)
+            {
+                itemDetailManager = itemDetailPanel.AddComponent<ItemDetailPanel>();
+            }
+        }
+
+        // ซ่อน panel ไว้ก่อน
+        if (itemDetailPanel != null)
+        {
+            itemDetailPanel.SetActive(false);
+        }
+
+        Debug.Log("✅ Item Detail Panel setup complete");
+    }
+    private void ShowItemDetailForSlot(int slotIndex)
+    {
+        if (localHero?.GetInventory() == null || itemDetailManager == null)
+            return;
+
+        InventoryItem item = localHero.GetInventory().GetItem(slotIndex);
+
+        if (item != null && !item.IsEmpty)
+        {
+            itemDetailManager.ShowItemDetail(item);
+            Debug.Log($"[CombatUI] Showing item detail for slot {slotIndex}: {item.itemData.ItemName}");
+        }
+        else
+        {
+            HideItemDetail();
+        }
+    }
+
+    // เพิ่ม method ใหม่สำหรับซ่อนรายละเอียดไอเทม
+    private void HideItemDetail()
+    {
+        if (itemDetailManager != null)
+        {
+            itemDetailManager.HideItemDetail();
+        }
+    }
     // 🎯 NEW: Setup Inventory Grid System
     public void ForceSetupInventoryGrid()
     {
@@ -393,15 +447,15 @@ public class CombatUIManager : MonoBehaviour
         {
             Debug.Log($"[CombatUI] Selected inventory slot: {slotIndex}");
 
-            // TODO Step 4: แสดง item detail panel เมื่อมี item ใน slot
-            // ShowItemDetail(slotIndex);
+            // 🆕 แสดง item detail ถ้ามี item ใน slot
+            ShowItemDetailForSlot(slotIndex);
         }
         else
         {
             Debug.Log("[CombatUI] No slot selected");
 
-            // TODO Step 4: ซ่อน item detail panel
-            // HideItemDetail();
+            // 🆕 ซ่อน item detail panel
+            HideItemDetail();
         }
     }
 
@@ -568,6 +622,9 @@ public class CombatUIManager : MonoBehaviour
             {
                 inventoryGridManager.DeselectAllSlots();
             }
+
+            // 🆕 ซ่อน item detail panel ด้วย
+            HideItemDetail();
 
             Debug.Log("Inventory panel closed");
         }

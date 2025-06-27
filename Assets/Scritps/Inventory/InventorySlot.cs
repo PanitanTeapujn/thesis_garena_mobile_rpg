@@ -291,6 +291,32 @@ public class InventorySlot : MonoBehaviour
 
         // แจ้ง InventoryGridManager ว่า slot นี้ถูกกด
         OnSlotSelected?.Invoke(slotIndex);
+
+        // 🆕 ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด
+        if (!isEmpty)
+        {
+            ShowItemDetailForThisSlot();
+        }
+    }
+    private void ShowItemDetailForThisSlot()
+    {
+        // หา Character จาก InventoryGridManager
+        InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
+        if (gridManager?.OwnerCharacter == null) return;
+
+        Inventory inventory = gridManager.OwnerCharacter.GetInventory();
+        if (inventory == null) return;
+
+        InventoryItem item = inventory.GetItem(slotIndex);
+        if (item == null || item.IsEmpty) return;
+
+        // หา CombatUIManager เพื่อแสดง item detail
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager?.itemDetailManager != null)
+        {
+            uiManager.itemDetailManager.ShowItemDetail(item);
+            Debug.Log($"[InventorySlot] Requested item detail for: {item.itemData.ItemName}");
+        }
     }
 
     private void SyncWithCharacterInventory()
