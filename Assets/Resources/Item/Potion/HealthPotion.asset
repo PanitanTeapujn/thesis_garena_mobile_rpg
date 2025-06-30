@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Potion
+  m_Name: HealthPotion
   m_EditorClassIdentifier: 
-  itemId: weapon_s_8431
-  itemName: Potion
+  itemId: HealthPotion
+  itemName: HealthPotion
   itemIcon: {fileID: 21300000, guid: a20d322c5e65a6746808e67a31dfe555, type: 3}
   itemType: 6
   tier: 1
@@ -21,7 +21,7 @@ MonoBehaviour:
   maxStackSize: 99
   isStackable: 1
   stats:
-    attackDamageBonus: 5
+    attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 0
@@ -35,3 +35,7 @@ MonoBehaviour:
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    healAmount: 50
+    manaAmount: 0
+    healPercentage: 0
+    manaPercentage: 0

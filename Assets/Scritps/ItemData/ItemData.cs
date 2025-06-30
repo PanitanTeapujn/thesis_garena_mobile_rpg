@@ -56,11 +56,17 @@ public class ItemStats
     public float magicalResistanceBonus = 0f;   // % (0.15f = +15% resistance)
     private bool isStackable;
     #endregion
-
+    #region Potion Stats
+    [Header("Potion Effects")]
+    public int healAmount = 0;          // จำนวน HP ที่ฟื้นฟู (เช่น 50 HP)
+    public int manaAmount = 0;          // จำนวน Mana ที่ฟื้นฟู (เช่น 30 MP)
+    public float healPercentage = 0f;   // เปอร์เซ็นต์ HP ที่ฟื้นฟู (0.1f = 10%)
+    public float manaPercentage = 0f;   // เปอร์เซ็นต์ Mana ที่ฟื้นฟู (0.1f = 10%)
+    #endregion
 
 
     #region Utility Methods
-   
+
     public EquipmentStats ToEquipmentStats()
     {
         EquipmentStats equipStats = new EquipmentStats();
@@ -90,10 +96,12 @@ public class ItemStats
                reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f || magicalResistanceBonus != 0f;
     }
 
+    // แทนที่ GetStatsDescription() method เดิมด้วยโค้ดนี้
     public string GetStatsDescription()
     {
         List<string> statsList = new List<string>();
 
+        // Equipment Stats
         if (attackDamageBonus != 0)
             statsList.Add($"Attack: +{attackDamageBonus}");
         if (magicDamageBonus != 0)
@@ -123,7 +131,37 @@ public class ItemStats
         if (magicalResistanceBonus != 0f)
             statsList.Add($"Magical Res: +{magicalResistanceBonus:P1}");
 
+        // 🆕 Potion Effects
+        if (healAmount > 0)
+            statsList.Add($"🔴 Heal: +{healAmount} HP");
+        if (manaAmount > 0)
+            statsList.Add($"🔵 Mana: +{manaAmount} MP");
+        if (healPercentage > 0f)
+            statsList.Add($"🔴 Heal: +{healPercentage:P1} Max HP");
+        if (manaPercentage > 0f)
+            statsList.Add($"🔵 Mana: +{manaPercentage:P1} Max MP");
+
         return statsList.Count > 0 ? string.Join("\n", statsList) : "No bonus stats";
+    }
+
+    public bool IsPotion()
+    {
+        return healAmount > 0 || manaAmount > 0 || healPercentage > 0f || manaPercentage > 0f;
+    }
+
+    public bool IsHealthPotion()
+    {
+        return healAmount > 0 || healPercentage > 0f;
+    }
+
+    public bool IsManaPotion()
+    {
+        return manaAmount > 0 || manaPercentage > 0f;
+    }
+
+    public bool IsMixedPotion()
+    {
+        return IsHealthPotion() && IsManaPotion();
     }
     #endregion
 }
@@ -135,17 +173,17 @@ public class ItemData : ScriptableObject
 {
     #region Basic Info
     [Header("Basic Information")]
-    [SerializeField] private string itemId;
-    [SerializeField] private string itemName;
-    [SerializeField] private Sprite itemIcon;
-    [SerializeField] private ItemType itemType;
-    [SerializeField] private ItemTier tier;
+    [SerializeField] public string itemId;
+    [SerializeField] public string itemName;
+    [SerializeField] public Sprite itemIcon;
+    [SerializeField] public ItemType itemType;
+    [SerializeField] public ItemTier tier;
     [TextArea(3, 5)]
-    [SerializeField] private string description;
+    [SerializeField] public string description;
     #endregion
     [Header("Stack Settings")]
-    [SerializeField] private int maxStackSize = 1;
-    [SerializeField] private bool isStackable = false;
+    [SerializeField] public int maxStackSize = 1;
+    [SerializeField] public bool isStackable = false;
 
 
   
@@ -285,6 +323,12 @@ public class ItemData : ScriptableObject
         firebaseData.physicalResistanceBonus = stats.physicalResistanceBonus;
         firebaseData.magicalResistanceBonus = stats.magicalResistanceBonus;
 
+
+        firebaseData.healAmount = stats.healAmount;
+        firebaseData.manaAmount = stats.manaAmount;
+        firebaseData.healPercentage = stats.healPercentage;
+        firebaseData.manaPercentage = stats.manaPercentage;
+
         return firebaseData;
     }
 
@@ -313,7 +357,9 @@ public class ItemData : ScriptableObject
         item.stats.reductionCoolDownBonus = firebaseData.reductionCoolDownBonus;
         item.stats.physicalResistanceBonus = firebaseData.physicalResistanceBonus;
         item.stats.magicalResistanceBonus = firebaseData.magicalResistanceBonus;
-
+        item.stats.manaAmount = firebaseData.manaAmount;
+        item.stats.healPercentage = firebaseData.healPercentage;
+        item.stats.manaPercentage = firebaseData.manaPercentage;
         return item;
     }
     #endregion
@@ -359,7 +405,12 @@ public class FirebaseItemData
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
     #endregion
-
+    #region Potion Stats (เพิ่มใหม่)
+    public int healAmount = 0;
+    public int manaAmount = 0;
+    public float healPercentage = 0f;
+    public float manaPercentage = 0f;
+    #endregion
     #region Utility
     public ItemType GetItemType()
     {
@@ -389,6 +440,11 @@ public class FirebaseItemData
         stats.reductionCoolDownBonus = reductionCoolDownBonus;
         stats.physicalResistanceBonus = physicalResistanceBonus;
         stats.magicalResistanceBonus = magicalResistanceBonus;
+
+        stats.healAmount = healAmount;
+        stats.manaAmount = manaAmount;
+        stats.healPercentage = healPercentage;
+        stats.manaPercentage = manaPercentage;
         return stats;
     }
     #endregion

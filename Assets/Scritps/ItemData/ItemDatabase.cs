@@ -199,6 +199,110 @@ public class ItemDatabase : ScriptableObject
     #endregion
 
     #region Test Data Generation
-  
+
+    [ContextMenu("🧪 Create Sample Health Potion")]
+    private void CreateSampleHealthPotion()
+    {
+        ItemData healthPotion = CreateInstance<ItemData>();
+
+        // Basic Info
+        healthPotion.name = "HealthPotion_Common";
+        healthPotion.itemName = "Health Potion";
+        healthPotion.itemType = ItemType.Potion;
+        healthPotion.tier = ItemTier.Common;
+        healthPotion.description = "Restores 50 HP instantly. Essential for survival.";
+        healthPotion.maxStackSize = 99;
+        healthPotion.isStackable = true;
+
+        // Potion Stats
+        healthPotion.Stats.healAmount = 50;  // ฟื้นฟู 50 HP
+
+        // เพิ่มลง database
+        AddItem(healthPotion);
+
+        Debug.Log("✅ Created Health Potion: +50 HP");
+    }
+
+    [ContextMenu("🧪 Create Sample Mana Potion")]
+    private void CreateSampleManaPotion()
+    {
+        ItemData manaPotion = CreateInstance<ItemData>();
+
+        // Basic Info
+        manaPotion.name = "ManaPotion_Common";
+        manaPotion.itemName = "Mana Potion";
+        manaPotion.itemType = ItemType.Potion;
+        manaPotion.tier = ItemTier.Common;
+        manaPotion.description = "Restores 30 MP instantly. Keep your magic flowing.";
+        manaPotion.maxStackSize = 99;
+        manaPotion.isStackable = true;
+
+        // Potion Stats
+        manaPotion.Stats.manaAmount = 30;  // ฟื้นฟู 30 MP
+
+        // เพิ่มลง database
+        AddItem(manaPotion);
+
+        Debug.Log("✅ Created Mana Potion: +30 MP");
+    }
+
+    [ContextMenu("🧪 Create Sample Mixed Potion")]
+    private void CreateSampleMixedPotion()
+    {
+        ItemData mixedPotion = CreateInstance<ItemData>();
+
+        // Basic Info
+        mixedPotion.name = "MixedPotion_Uncommon";
+        mixedPotion.itemName = "Greater Healing Potion";
+        mixedPotion.itemType = ItemType.Potion;
+        mixedPotion.tier = ItemTier.Uncommon;
+        mixedPotion.description = "Restores both HP and MP. A versatile recovery solution.";
+        mixedPotion.maxStackSize = 50;
+        mixedPotion.isStackable = true;
+
+        // Potion Stats
+        mixedPotion.Stats.healAmount = 75;   // ฟื้นฟู 75 HP
+        mixedPotion.Stats.manaAmount = 45;   // ฟื้นฟู 45 MP
+
+        // เพิ่มลง database
+        AddItem(mixedPotion);
+
+        Debug.Log("✅ Created Mixed Potion: +75 HP, +45 MP");
+    }
+
+    [ContextMenu("🧪 Create Sample Percentage Potion")]
+    private void CreateSamplePercentagePotion()
+    {
+        ItemData percentPotion = CreateInstance<ItemData>();
+
+        // Basic Info
+        percentPotion.name = "PercentPotion_Rare";
+        percentPotion.itemName = "Supreme Recovery Elixir";
+        percentPotion.itemType = ItemType.Potion;
+        percentPotion.tier = ItemTier.Rare;
+        percentPotion.description = "Restores 25% of max HP and MP. For the wealthy adventurer.";
+        percentPotion.maxStackSize = 10;
+        percentPotion.isStackable = true;
+
+        // Potion Stats (percentage-based)
+        percentPotion.Stats.healPercentage = 0.25f;  // ฟื้นฟู 25% ของ Max HP
+        percentPotion.Stats.manaPercentage = 0.25f;  // ฟื้นฟู 25% ของ Max MP
+
+        // เพิ่มลง database
+        AddItem(percentPotion);
+
+        Debug.Log("✅ Created Percentage Potion: +25% Max HP/MP");
+    }
+
+    [ContextMenu("🧪 Create All Sample Potions")]
+    private void CreateAllSamplePotions()
+    {
+        CreateSampleHealthPotion();
+        CreateSampleManaPotion();
+        CreateSampleMixedPotion();
+        CreateSamplePercentagePotion();
+
+        Debug.Log("🎉 Created all sample potions! Check your database.");
+    }
     #endregion
 }

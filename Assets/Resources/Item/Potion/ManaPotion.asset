@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Sword587
+  m_Name: ManaPotion
   m_EditorClassIdentifier: 
-  itemId: weapon_s_8431
-  itemName: Something
-  itemIcon: {fileID: 21300000, guid: d91ce643b75a45f47baee6493da5d705, type: 3}
-  itemType: 0
+  itemId: ManaPotion
+  itemName: ManaPotion
+  itemIcon: {fileID: 21300000, guid: b9b402fef77c76b4aa99c6809ccb598c, type: 3}
+  itemType: 6
   tier: 1
   description: 
-  maxStackSize: 1
-  isStackable: 0
+  maxStackSize: 99
+  isStackable: 1
   stats:
-    attackDamageBonus: 60
+    attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 5
-    criticalDamageBonus: 5
+    criticalChanceBonus: 0
+    criticalDamageBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
@@ -36,6 +36,6 @@ MonoBehaviour:
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     healAmount: 0
-    manaAmount: 0
+    manaAmount: 30
     healPercentage: 0
     manaPercentage: 0

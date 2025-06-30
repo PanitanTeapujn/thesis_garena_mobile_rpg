@@ -145,7 +145,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 679cd2ad75c8ca3489ca971d57775fdc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  enemyPrefabs: []
+  enemyPrefabs:
+  - enemyPrefab: {fileID: 2102208964661930907, guid: eaf15b70e569d2343846e52d707dd01e,
+      type: 3}
+    enemyName: 
+    spawnWeight: 0
+    maxCount: -1
+    spawnCooldown: 1
+    lastSpawnTime: 0
+    currentCount: 0
   bossConditions: []
   enableBossSpawning: 1
   bossSpawnPoints:

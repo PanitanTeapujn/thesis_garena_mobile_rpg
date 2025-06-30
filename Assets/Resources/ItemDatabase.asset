@@ -19,6 +19,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
   - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
   - {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
+  - {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
+  - {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
   weapons:
   - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
   - {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
@@ -31,4 +33,6 @@ MonoBehaviour:
   shoesItems:
   - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
   runes: []
-  potions: []
+  potions:
+  - {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
+  - {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}

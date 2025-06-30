@@ -523,90 +523,146 @@ public class Inventory : NetworkBehaviour
     {
         yield return null; // รอ 1 frame
 
-        int itemsGiven = 0;
+        int totalItemsGiven = 0;
+        int totalItemTypesGiven = 0;
 
-        // ให้ weapon 1 ชิ้น
+        Debug.Log("🎁 === GIVING ALL STARTER ITEMS FROM DATABASE ===");
+
+        // ✅ 1. ให้ Weapons ทุกชิ้นที่มี
         var weapons = database.GetItemsByType(ItemType.Weapon);
         if (weapons.Count > 0)
         {
-            ItemData weapon = weapons[UnityEngine.Random.Range(0, weapons.Count)];
-            if (AddItem(weapon, 10))
+            Debug.Log($"🗡️ Found {weapons.Count} weapons in database");
+            foreach (ItemData weapon in weapons)
             {
-                itemsGiven++;
-                Debug.Log($"🗡️ Starter weapon: {weapon.ItemName}");
+                if (AddItem(weapon, 1))
+                {
+                    totalItemsGiven++;
+                    Debug.Log($"  ✅ Added: {weapon.ItemName} ({weapon.GetTierText()})");
+                }
             }
+            totalItemTypesGiven++;
         }
 
-        // ให้ potion 5-10 ขวด
+        // ✅ 2. ให้ Potions ทุกชิ้นที่มี (จำนวนมาก)
         var potions = database.GetItemsByType(ItemType.Potion);
         if (potions.Count > 0)
         {
-            ItemData potion = potions[0]; // เอาอันแรก
-            int count = UnityEngine.Random.Range(5, 11);
-            if (AddItem(potion, count))
+            Debug.Log($"🧪 Found {potions.Count} potions in database");
+            foreach (ItemData potion in potions)
             {
-                itemsGiven++;
-                Debug.Log($"🧪 Starter potions: {potion.ItemName} x{count}");
+                // ให้ potion เยอะหน่อย เพื่อทดสอบ
+                int potionCount = UnityEngine.Random.Range(10, 21); // 10-20 ขวด
+                if (AddItem(potion, potionCount))
+                {
+                    totalItemsGiven += potionCount;
+                    Debug.Log($"  ✅ Added: {potion.ItemName} x{potionCount} ({potion.GetTierText()})");
+
+                    // แสดง potion stats
+                    if (potion.Stats.IsPotion())
+                    {
+                        string effects = "";
+                        if (potion.Stats.healAmount > 0) effects += $"+{potion.Stats.healAmount}HP ";
+                        if (potion.Stats.manaAmount > 0) effects += $"+{potion.Stats.manaAmount}MP ";
+                        if (potion.Stats.healPercentage > 0) effects += $"+{potion.Stats.healPercentage:P0}HP ";
+                        if (potion.Stats.manaPercentage > 0) effects += $"+{potion.Stats.manaPercentage:P0}MP ";
+                        Debug.Log($"    💊 Effects: {effects.Trim()}");
+                    }
+                }
             }
+            totalItemTypesGiven++;
         }
 
-        // ให้ armor 1 ชิ้น
+        // ✅ 3. ให้ Armors ทุกชิ้นที่มี
         var armors = database.GetItemsByType(ItemType.Armor);
         if (armors.Count > 0)
         {
-            ItemData armor = armors[UnityEngine.Random.Range(0, armors.Count)];
-            if (AddItem(armor, 1))
+            Debug.Log($"🛡️ Found {armors.Count} armors in database");
+            foreach (ItemData armor in armors)
             {
-                itemsGiven++;
-                Debug.Log($"🛡️ Starter armor: {armor.ItemName}");
+                if (AddItem(armor, 1))
+                {
+                    totalItemsGiven++;
+                    Debug.Log($"  ✅ Added: {armor.ItemName} ({armor.GetTierText()})");
+                }
             }
+            totalItemTypesGiven++;
         }
-        var plants = database.GetItemsByType(ItemType.Pants);
-        if (plants.Count > 0)
-        {
-            ItemData plant = plants[UnityEngine.Random.Range(0, plants.Count)];
-            if (AddItem(plant, 1))
-            {
-                itemsGiven++;
-                Debug.Log($"🛡️ Starter armor: {plant.ItemName}");
-            }
-        }
+
+        // ✅ 4. ให้ Head Items ทุกชิ้นที่มี
         var heads = database.GetItemsByType(ItemType.Head);
         if (heads.Count > 0)
         {
-            ItemData head = heads[UnityEngine.Random.Range(0, heads.Count)];
-            if (AddItem(head, 1))
+            Debug.Log($"⛑️ Found {heads.Count} head items in database");
+            foreach (ItemData head in heads)
             {
-                itemsGiven++;
-                Debug.Log($"🛡️ Starter armor: {head.ItemName}");
+                if (AddItem(head, 1))
+                {
+                    totalItemsGiven++;
+                    Debug.Log($"  ✅ Added: {head.ItemName} ({head.GetTierText()})");
+                }
             }
-        }
-        var shoses = database.GetItemsByType(ItemType.Shoes);
-        if (shoses.Count > 0)
-        {
-            ItemData shose = shoses[UnityEngine.Random.Range(0, shoses.Count)];
-            if (AddItem(shose, 1))
-            {
-                itemsGiven++;
-                Debug.Log($"🛡️ Starter armor: {shose.ItemName}");
-            }
+            totalItemTypesGiven++;
         }
 
-        // ให้ rune 3-5 ชิ้น
+        // ✅ 5. ให้ Pants ทุกชิ้นที่มี
+        var pants = database.GetItemsByType(ItemType.Pants);
+        if (pants.Count > 0)
+        {
+            Debug.Log($"👖 Found {pants.Count} pants in database");
+            foreach (ItemData pant in pants)
+            {
+                if (AddItem(pant, 1))
+                {
+                    totalItemsGiven++;
+                    Debug.Log($"  ✅ Added: {pant.ItemName} ({pant.GetTierText()})");
+                }
+            }
+            totalItemTypesGiven++;
+        }
+
+        // ✅ 6. ให้ Shoes ทุกชิ้นที่มี
+        var shoes = database.GetItemsByType(ItemType.Shoes);
+        if (shoes.Count > 0)
+        {
+            Debug.Log($"👟 Found {shoes.Count} shoes in database");
+            foreach (ItemData shoe in shoes)
+            {
+                if (AddItem(shoe, 1))
+                {
+                    totalItemsGiven++;
+                    Debug.Log($"  ✅ Added: {shoe.ItemName} ({shoe.GetTierText()})");
+                }
+            }
+            totalItemTypesGiven++;
+        }
+
+        // ✅ 7. ให้ Runes ทุกชิ้นที่มี (จำนวนปานกลาง)
         var runes = database.GetItemsByType(ItemType.Rune);
         if (runes.Count > 0)
         {
-            ItemData rune = runes[UnityEngine.Random.Range(0, runes.Count)];
-            int count = UnityEngine.Random.Range(3, 6);
-            if (AddItem(rune, count))
+            Debug.Log($"💎 Found {runes.Count} runes in database");
+            foreach (ItemData rune in runes)
             {
-                itemsGiven++;
-                Debug.Log($"💎 Starter runes: {rune.ItemName} x{count}");
+                int runeCount = UnityEngine.Random.Range(3, 8); // 3-7 ชิ้น
+                if (AddItem(rune, runeCount))
+                {
+                    totalItemsGiven += runeCount;
+                    Debug.Log($"  ✅ Added: {rune.ItemName} x{runeCount} ({rune.GetTierText()})");
+                }
             }
+            totalItemTypesGiven++;
         }
 
         starterItemsGiven = true;
-        Debug.Log($"🎁 Gave {itemsGiven} types of starter items!");
+
+        Debug.Log($"🎉 === STARTER ITEMS COMPLETE ===");
+        Debug.Log($"📊 Total Item Types: {totalItemTypesGiven}");
+        Debug.Log($"📊 Total Items Given: {totalItemsGiven}");
+        Debug.Log($"💼 Inventory Status: {UsedSlots}/{CurrentSlots} slots used");
+
+        // แสดงสรุป inventory
+        LogInventorySummary();
     }
     public ItemDatabase GetDatabase()
     {
@@ -623,7 +679,34 @@ public class Inventory : NetworkBehaviour
     }
 
     #endregion
+    private void LogInventorySummary()
+    {
+        Debug.Log("=== INVENTORY SUMMARY ===");
 
+        for (int i = 0; i < CurrentSlots; i++)
+        {
+            InventoryItem item = GetItem(i);
+            if (item != null && !item.IsEmpty)
+            {
+                string itemInfo = $"Slot {i}: {item.itemData.ItemName}";
+                if (item.stackCount > 1) itemInfo += $" x{item.stackCount}";
+                itemInfo += $" ({item.itemData.ItemType}, {item.itemData.GetTierText()})";
+
+                // แสดง potion effects ถ้าเป็น potion
+                if (item.itemData.ItemType == ItemType.Potion && item.itemData.Stats.IsPotion())
+                {
+                    string effects = "";
+                    if (item.itemData.Stats.healAmount > 0) effects += $"+{item.itemData.Stats.healAmount}HP ";
+                    if (item.itemData.Stats.manaAmount > 0) effects += $"+{item.itemData.Stats.manaAmount}MP ";
+                    if (item.itemData.Stats.healPercentage > 0) effects += $"+{item.itemData.Stats.healPercentage:P0}HP ";
+                    if (item.itemData.Stats.manaPercentage > 0) effects += $"+{item.itemData.Stats.manaPercentage:P0}MP ";
+                    itemInfo += $" [💊 {effects.Trim()}]";
+                }
+
+                Debug.Log(itemInfo);
+            }
+        }
+    }
     #region Inventory Expansion
     public void ExpandInventory(int additionalSlots)
     {
@@ -836,7 +919,82 @@ public class Inventory : NetworkBehaviour
         Debug.Log($"🧪 Test complete! Check inventory slots for items and icons.");
     }
 
+    [ContextMenu("🔍 Debug Current Inventory")]
+    private void DebugCurrentInventory()
+    {
+        LogInventorySummary();
+    }
 
+    [ContextMenu("🎁 Force Give Starter Items Now")]
+    private void ForceGiveStarterItemsNow()
+    {
+        if (starterItemsGiven)
+        {
+            Debug.LogWarning("⚠️ Starter items already given! Clearing inventory first...");
+            ClearInventory();
+            starterItemsGiven = false;
+        }
+
+        ItemDatabase database = GetDatabase();
+        if (database != null)
+        {
+            StartCoroutine(GiveStarterItemsCoroutine(database));
+        }
+        else
+        {
+            Debug.LogError("❌ No ItemDatabase found!");
+        }
+    }
+
+    [ContextMenu("🧪 Debug Potions Only")]
+    private void DebugPotionsOnly()
+    {
+        Debug.Log("=== POTIONS IN INVENTORY ===");
+
+        int potionCount = 0;
+        for (int i = 0; i < CurrentSlots; i++)
+        {
+            InventoryItem item = GetItem(i);
+            if (item != null && !item.IsEmpty && item.itemData.ItemType == ItemType.Potion)
+            {
+                potionCount++;
+
+                string potionInfo = $"Slot {i}: {item.itemData.ItemName} x{item.stackCount} ({item.itemData.GetTierText()})";
+
+                // แสดง potion effects
+                if (item.itemData.Stats.IsPotion())
+                {
+                    string effects = "";
+                    if (item.itemData.Stats.healAmount > 0) effects += $"Heal +{item.itemData.Stats.healAmount} HP ";
+                    if (item.itemData.Stats.manaAmount > 0) effects += $"Mana +{item.itemData.Stats.manaAmount} MP ";
+                    if (item.itemData.Stats.healPercentage > 0) effects += $"Heal +{item.itemData.Stats.healPercentage:P0} Max HP ";
+                    if (item.itemData.Stats.manaPercentage > 0) effects += $"Mana +{item.itemData.Stats.manaPercentage:P0} Max MP ";
+
+                    potionInfo += $"\n    💊 Effects: {effects.Trim()}";
+
+                    // ตรวจสอบประเภท potion
+                    string potionType = "";
+                    if (item.itemData.Stats.IsMixedPotion()) potionType = "Mixed Potion";
+                    else if (item.itemData.Stats.IsHealthPotion()) potionType = "Health Potion";
+                    else if (item.itemData.Stats.IsManaPotion()) potionType = "Mana Potion";
+
+                    potionInfo += $"\n    🏷️ Type: {potionType}";
+                }
+
+                Debug.Log(potionInfo);
+            }
+        }
+
+        Debug.Log($"📊 Total Potions Found: {potionCount}");
+    }
+
+    [ContextMenu("🧹 Clear Inventory")]
+    private void ForceClearInventory()
+    {
+        ClearInventory();
+        starterItemsGiven = false;
+        Debug.Log("🧹 Inventory cleared! starterItemsGiven reset to false.");
+    }
 
 
     #endregion
