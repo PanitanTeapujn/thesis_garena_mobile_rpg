@@ -45,7 +45,12 @@ public class CombatUIManager : MonoBehaviour
     public TextMeshProUGUI potion3Count;
     public TextMeshProUGUI potion4Count;
     public TextMeshProUGUI potion5Count;
-
+    [Header("🧪 Potion Cooldown Overlays (Optional)")]
+    public Image potion1Cooldown;
+    public Image potion2Cooldown;
+    public Image potion3Cooldown;
+    public Image potion4Cooldown;
+    public Image potion5Cooldown;
     [Header("Inventory Panel")]
     public GameObject inventoryPanel;
     public Button inventoryCloseButton;
@@ -686,11 +691,20 @@ public class CombatUIManager : MonoBehaviour
             OpenInventory();
         }
     }
-    private void UpdateSinglePotionButton(int slotIndex, Image iconImage, TextMeshProUGUI countText, Button button)
+    private void UpdateSinglePotionButton(int slotIndex, Image iconImage, TextMeshProUGUI countText, Button button, Image cooldownOverlay = null)
     {
         // ดึง potion data จาก character
         ItemData potionData = localHero.GetPotionInSlot(slotIndex);
         int stackCount = localHero.GetPotionStackCount(slotIndex);
+        bool canUse = localHero.CanUsePotion(slotIndex);
+        float cooldownRemaining = localHero.GetPotionCooldownRemaining(slotIndex);
+
+        // แสดงปุ่มเสมอ
+        if (button != null)
+        {
+            button.gameObject.SetActive(true);
+            button.interactable = canUse && stackCount > 0;
+        }
 
         if (potionData != null && stackCount > 0)
         {
@@ -698,8 +712,8 @@ public class CombatUIManager : MonoBehaviour
             if (iconImage != null)
             {
                 iconImage.sprite = potionData.ItemIcon;
-                iconImage.color = Color.white;
-                iconImage.enabled = true;
+                iconImage.color = canUse ? Color.white : new Color(1f, 1f, 1f, 0.5f); // ทำให้จางถ้าใช้ไม่ได้
+                iconImage.gameObject.SetActive(true);
             }
 
             if (countText != null)
@@ -707,31 +721,34 @@ public class CombatUIManager : MonoBehaviour
                 countText.text = stackCount > 1 ? stackCount.ToString() : "";
                 countText.gameObject.SetActive(stackCount > 1);
             }
-
-            // เปิดใช้งานปุ่ม
-            if (button != null)
-            {
-                button.interactable = localHero.CanUsePotion(slotIndex);
-            }
         }
         else
         {
-            // ไม่มี potion - ซ่อนรูป
+            // ไม่มี potion - แสดงปุ่มว่าง
             if (iconImage != null)
             {
                 iconImage.sprite = null;
-                iconImage.enabled = false;
+                iconImage.color = new Color(1f, 1f, 1f, 0.3f); // สีจางเป็น placeholder
+                iconImage.gameObject.SetActive(false);
             }
 
             if (countText != null)
             {
                 countText.gameObject.SetActive(false);
             }
+        }
 
-            // ปิดใช้งานปุ่ม
-            if (button != null)
+        // แสดง cooldown overlay
+        if (cooldownOverlay != null)
+        {
+            if (cooldownRemaining > 0)
             {
-                button.interactable = false;
+                cooldownOverlay.gameObject.SetActive(true);
+                cooldownOverlay.fillAmount = cooldownRemaining / localHero.potionCooldown;
+            }
+            else
+            {
+                cooldownOverlay.gameObject.SetActive(false);
             }
         }
     }

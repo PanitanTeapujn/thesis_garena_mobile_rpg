@@ -112,8 +112,10 @@ public class Character : NetworkBehaviour
     [Header("🧪 Potion Stack Counts")]
     [SerializeField] private List<int> potionStackCounts = new List<int>(5); // เก็บจำนวนของแต่ละ potion slot
     [Header("🧪 Potion Usage")]
-    [SerializeField] private float potionCooldown = 1f; // cooldown 1 วินาที
-    private float lastPotionUseTime = 0f;
+    [SerializeField] public float potionCooldown = 1f; // cooldown 1 วินาที
+    private float[] lastPotionUseTime = new float[5]; // cooldown แยกแต่ละ slot
+    public float PotionCooldown { get { return potionCooldown; } }
+
     // Events สำหรับแจ้ง UI
     public static event System.Action<Character, ItemType, ItemData> OnItemEquippedToSlot;
     public static event System.Action<Character, ItemType> OnItemUnequippedFromSlot;
@@ -1411,17 +1413,17 @@ public class Character : NetworkBehaviour
 
     public bool UsePotion(int potionSlotIndex)
     {
-        // ตรวจสอบ cooldown
-        if (Time.time - lastPotionUseTime < potionCooldown)
+        // ตรวจสอบ slot index
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlotIndex >= 5)
         {
-            Debug.LogWarning($"[Character] Potion cooldown not ready! ({Time.time - lastPotionUseTime:F1}s / {potionCooldown}s)");
+            Debug.LogWarning($"[Character] Invalid potion slot index: {potionSlotIndex}");
             return false;
         }
 
-        // ตรวจสอบ slot index
-        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count)
+        // ตรวจสอบ cooldown แยกแต่ละ slot
+        if (Time.time - lastPotionUseTime[potionSlotIndex] < potionCooldown)
         {
-            Debug.LogWarning($"[Character] Invalid potion slot index: {potionSlotIndex}");
+            Debug.LogWarning($"[Character] Potion slot {potionSlotIndex} cooldown not ready! ({Time.time - lastPotionUseTime[potionSlotIndex]:F1}s / {potionCooldown}s)");
             return false;
         }
 
@@ -1459,8 +1461,8 @@ public class Character : NetworkBehaviour
                 Debug.Log($"[Character] 🧪 Potion slot {potionSlotIndex} depleted and cleared");
             }
 
-            // อัปเดต cooldown
-            lastPotionUseTime = Time.time;
+            // อัปเดต cooldown เฉพาะ slot นี้
+            lastPotionUseTime[potionSlotIndex] = Time.time;
 
             // แจ้ง UI ให้อัปเดต
             OnStatsChanged?.Invoke();
@@ -1533,20 +1535,20 @@ public class Character : NetworkBehaviour
 
         return appliedAnyEffect;
     }
-
     /// <summary>
     /// ตรวจสอบว่า potion สามารถใช้ได้หรือไม่
     /// </summary>
     public bool CanUsePotion(int potionSlotIndex)
     {
-        // ตรวจสอบ cooldown
-        if (Time.time - lastPotionUseTime < potionCooldown)
+        // ตรวจสอบ slot index
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlotIndex >= 5)
+            return false;
+
+        // ตรวจสอบ cooldown เฉพาะ slot นี้
+        if (Time.time - lastPotionUseTime[potionSlotIndex] < potionCooldown)
             return false;
 
         // ตรวจสอบว่ามี potion และมี stack count > 0
-        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count)
-            return false;
-
         ItemData potionData = GetPotionInSlot(potionSlotIndex);
         if (potionData == null)
             return false;
@@ -1556,13 +1558,25 @@ public class Character : NetworkBehaviour
     }
 
     /// <summary>
-    /// ดูเวลา cooldown ที่เหลือ
+    /// ดูเวลา cooldown ที่เหลือสำหรับ slot ที่ระบุ
     /// </summary>
-    public float GetPotionCooldownRemaining()
+    public float GetPotionCooldownRemaining(int potionSlotIndex)
     {
-        float remaining = potionCooldown - (Time.time - lastPotionUseTime);
+        if (potionSlotIndex < 0 || potionSlotIndex >= 5)
+            return 0f;
+
+        float remaining = potionCooldown - (Time.time - lastPotionUseTime[potionSlotIndex]);
         return Mathf.Max(0f, remaining);
     }
+
+    /// <summary>
+    /// ดูเวลา cooldown ที่เหลือสำหรับ slot ที่ระบุ
+    /// </summary>
+   
+    /// <summary>
+    /// ดูเวลา cooldown ที่เหลือ
+    /// </summary>
+
     #endregion
 
 

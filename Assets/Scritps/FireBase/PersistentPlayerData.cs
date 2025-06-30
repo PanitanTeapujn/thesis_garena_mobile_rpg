@@ -780,60 +780,7 @@ public class PersistentPlayerData : MonoBehaviour
     #endregion
 
     #region Debug Methods ฟังก์ชันสำหรับ debug
-    [ContextMenu("Debug All Players")]
-    public void DebugAllPlayers()
-    {
-        StartCoroutine(DebugAllPlayersCoroutine());
-    }
-
-    private IEnumerator DebugAllPlayersCoroutine()
-    {
-        Debug.Log("🔍 Fetching all players from Firebase...");
-
-        var task = databaseReference.Child("players").GetValueAsync();
-        yield return new WaitUntil(() => task.IsCompleted);
-
-        if (task.Exception != null)
-        {
-            Debug.LogError($"❌ Error: {task.Exception.Message}");
-            yield break;
-        }
-
-        if (!task.Result.Exists)
-        {
-            Debug.Log("❌ No players found!");
-            yield break;
-        }
-
-        Debug.Log($"📊 Found {task.Result.ChildrenCount} players:");
-
-        foreach (var player in task.Result.Children)
-        {
-            var playerData = player;
-            string userId = player.Key;
-
-            // แสดงข้อมูลแบบละเอียด
-            Debug.Log($"\n👤 Player: {userId}");
-
-            if (playerData.HasChild("playerName"))
-            {
-                string playerName = playerData.Child("playerName").Value?.ToString();
-                Debug.Log($"   📝 Name: '{playerName}'");
-            }
-            else
-            {
-                Debug.Log($"   ❌ No playerName field");
-            }
-
-            // แสดง JSON structure
-            string json = playerData.GetRawJsonValue();
-            if (!string.IsNullOrEmpty(json) && json.Length < 500)
-            {
-                Debug.Log($"   📄 Data: {json}");
-            }
-        }
-    }
-
+   
     // Note: This method is not implemented - consider implementing or removing
     internal void CheckFirebaseStatus()
     {

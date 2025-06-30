@@ -244,15 +244,21 @@ public class ItemDetailPanel : MonoBehaviour
 
     private bool EquipFullPotionStack()
     {
-        if (currentItem == null || currentItem.itemData.ItemType != ItemType.Potion)
+        if (currentItem == null || currentItem.itemData?.ItemType != ItemType.Potion)
         {
-            Debug.LogError("[ItemDetailPanel] EquipFullPotionStack called with non-potion item!");
+            Debug.LogError("[ItemDetailPanel] EquipFullPotionStack called with invalid item!");
+            return false;
+        }
+
+        if (currentCharacter == null)
+        {
+            Debug.LogError("[ItemDetailPanel] No current character for potion equip!");
             return false;
         }
 
         Debug.Log($"[ItemDetailPanel] 🧪 Equipping full potion stack: {currentItem.itemData.ItemName} x{currentItem.stackCount}");
 
-        // หา inventory slot ที่มี potion นี้
+        // หา inventory
         Inventory inventory = currentCharacter.GetInventory();
         if (inventory == null)
         {
@@ -260,10 +266,31 @@ public class ItemDetailPanel : MonoBehaviour
             return false;
         }
 
+        // หา inventory slot ที่มี potion นี้
         int inventorySlotIndex = FindItemSlotIndex(inventory, currentItem.itemData);
         if (inventorySlotIndex == -1)
         {
             Debug.LogError($"[ItemDetailPanel] Cannot find {currentItem.itemData.ItemName} in inventory!");
+            return false;
+        }
+
+        // ตรวจสอบว่ามี CombatUIManager
+        if (combatUIManager == null)
+        {
+            combatUIManager = FindObjectOfType<CombatUIManager>();
+            if (combatUIManager == null)
+            {
+                Debug.LogError("[ItemDetailPanel] CombatUIManager not found!");
+                return false;
+            }
+        }
+
+        // หา empty potion slot
+        EquipmentSlot targetSlot = FindEmptyPotionSlot();
+        if (targetSlot == null)
+        {
+            Debug.LogWarning("[ItemDetailPanel] All potion slots are full!");
+            ShowMessage("All potion slots are full!");
             return false;
         }
 
@@ -283,17 +310,10 @@ public class ItemDetailPanel : MonoBehaviour
         {
             Debug.Log($"[ItemDetailPanel] ✅ Removed entire potion stack ({totalStackCount} items) from inventory slot {inventorySlotIndex}");
 
-            // หา equipment slot และแสดง potion พร้อม stack count
-            EquipmentSlot targetSlot = FindEmptyPotionSlot();
-            if (targetSlot != null)
-            {
-                targetSlot.SetFilledState(currentItem.itemData.ItemIcon, currentItem.itemData.GetTierColor());
+            // อัปเดต equipment slot visual
+            targetSlot.SetFilledState(currentItem.itemData.ItemIcon, currentItem.itemData.GetTierColor());
 
-                // 🆕 อัปเดต stack count ใน equipment slot
-                UpdatePotionSlotStackCount(targetSlot, totalStackCount);
-            }
-
-            // Force sync inventory UI เฉพาะ slot ที่เปลี่ยน
+            // Force sync inventory UI
             ForceUpdateInventorySlot(inventorySlotIndex);
 
             Debug.Log($"[ItemDetailPanel] 🎉 Successfully equipped full potion stack!");
