@@ -17,6 +17,11 @@ public struct NetworkInputData : INetworkInput
     public NetworkBool skill3;
     public NetworkBool skill4;
     public NetworkBool dodge;
+    public NetworkBool potion1;       // ปุ่ม Potion slot 1
+    public NetworkBool potion2;       // ปุ่ม Potion slot 2
+    public NetworkBool potion3;       // ปุ่ม Potion slot 3
+    public NetworkBool potion4;       // ปุ่ม Potion slot 4
+    public NetworkBool potion5;       // ปุ่ม Potion slot 5
 
     // ข้อมูลเพิ่มเติม
     public Vector3 lookDirection;      // ทิศทางที่ตัวละครหัน

@@ -26,6 +26,19 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
     private float skill3PressedTime = 0f;
     private float skill4PressedTime = 0f;
 
+    private bool potion1Pressed = false;
+    private bool potion2Pressed = false;
+    private bool potion3Pressed = false;
+    private bool potion4Pressed = false;
+    private bool potion5Pressed = false;
+
+    private float potion1PressedTime = 0f;
+    private float potion2PressedTime = 0f;
+    private float potion3PressedTime = 0f;
+    private float potion4PressedTime = 0f;
+    private float potion5PressedTime = 0f;
+
+
     private const float buttonPressDuration = 0.1f;
 
     void Awake()
@@ -146,15 +159,74 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
             skill4Pressed = false;
         }
 
+        if (potion1Pressed && Time.time - potion1PressedTime > buttonPressDuration)
+        {
+            potion1Pressed = false;
+        }
+        if (potion2Pressed && Time.time - potion2PressedTime > buttonPressDuration)
+        {
+            potion2Pressed = false;
+        }
+        if (potion3Pressed && Time.time - potion3PressedTime > buttonPressDuration)
+        {
+            potion3Pressed = false;
+        }
+        if (potion4Pressed && Time.time - potion4PressedTime > buttonPressDuration)
+        {
+            potion4Pressed = false;
+        }
+        if (potion5Pressed && Time.time - potion5PressedTime > buttonPressDuration)
+        {
+            potion5Pressed = false;
+        }
         // Set input states - แต่ละสกิลทำงานอิสระ
         localInput.attack = attackPressed;
         localInput.skill1 = skill1Pressed;
         localInput.skill2 = skill2Pressed;
         localInput.skill3 = skill3Pressed;
         localInput.skill4 = skill4Pressed;
+
+        localInput.potion1 = potion1Pressed;
+        localInput.potion2 = potion2Pressed;
+        localInput.potion3 = potion3Pressed;
+        localInput.potion4 = potion4Pressed;
+        localInput.potion5 = potion5Pressed;
+    }
+    public void SetPotion1Pressed()
+    {
+        potion1Pressed = true;
+        potion1PressedTime = Time.time;
+        Debug.Log("Potion1 input set");
     }
 
-   
+    public void SetPotion2Pressed()
+    {
+        potion2Pressed = true;
+        potion2PressedTime = Time.time;
+        Debug.Log("Potion2 input set");
+    }
+
+    public void SetPotion3Pressed()
+    {
+        potion3Pressed = true;
+        potion3PressedTime = Time.time;
+        Debug.Log("Potion3 input set");
+    }
+
+    public void SetPotion4Pressed()
+    {
+        potion4Pressed = true;
+        potion4PressedTime = Time.time;
+        Debug.Log("Potion4 input set");
+    }
+
+    public void SetPotion5Pressed()
+    {
+        potion5Pressed = true;
+        potion5PressedTime = Time.time;
+        Debug.Log("Potion5 input set");
+    }
+
     public void SetAttackPressed()
     {
         attackPressed = true;
@@ -194,26 +266,7 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
     }
 
     // Debug display
-    void OnGUI()
-    {
-        if (runner != null && runner.IsRunning)
-        {
-            GUI.Label(new Rect(10, 70, 400, 20), $"Input System Active");
-            GUI.Label(new Rect(10, 90, 400, 20), $"Movement: {localInput.movementInput}");
-            GUI.Label(new Rect(10, 110, 400, 20), $"Camera: {localInput.cameraRotationInput}");
-            GUI.Label(new Rect(10, 130, 400, 20), $"Attack: {localInput.attack}");
-            GUI.Label(new Rect(10, 150, 400, 20), $"Skills: S1={localInput.skill1} S2={localInput.skill2} S3={localInput.skill3} S4={localInput.skill4}");
-
-            // แสดงปุ่มที่กดค้างอยู่
-            string pressedButtons = "";
-            if (attackPressed) pressedButtons += "ATK ";
-            if (skill1Pressed) pressedButtons += "S1 ";
-            if (skill2Pressed) pressedButtons += "S2 ";
-            if (skill3Pressed) pressedButtons += "S3 ";
-            if (skill4Pressed) pressedButtons += "S4 ";
-            GUI.Label(new Rect(10, 170, 400, 20), $"Pressed: {pressedButtons}");
-        }
-    }
+   
 
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player)
     {

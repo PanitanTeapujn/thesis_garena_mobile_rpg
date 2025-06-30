@@ -24,6 +24,28 @@ public class CombatUIManager : MonoBehaviour
     public FixedJoystick movementJoystick;
     public FixedJoystick cameraJoystick;
 
+
+
+    [Header("🧪 Potion Buttons")]
+    public Button potion1Button;
+    public Button potion2Button;
+    public Button potion3Button;
+    public Button potion4Button;
+    public Button potion5Button;
+
+    [Header("🧪 Potion Button Visuals")]
+    public Image potion1Icon;
+    public Image potion2Icon;
+    public Image potion3Icon;
+    public Image potion4Icon;
+    public Image potion5Icon;
+
+    public TextMeshProUGUI potion1Count;
+    public TextMeshProUGUI potion2Count;
+    public TextMeshProUGUI potion3Count;
+    public TextMeshProUGUI potion4Count;
+    public TextMeshProUGUI potion5Count;
+
     [Header("Inventory Panel")]
     public GameObject inventoryPanel;
     public Button inventoryCloseButton;
@@ -494,6 +516,7 @@ public class CombatUIManager : MonoBehaviour
         }
 
         Debug.Log("=== Setting up UI Button Events ===");
+        SetupPotionButtons();
 
         if (attackButton != null)
         {
@@ -575,6 +598,80 @@ public class CombatUIManager : MonoBehaviour
         else Debug.LogWarning("❌ Inventory close button not assigned in Inspector!");
 
         Debug.Log("=== UI Button Events Setup Complete ===");
+
+      
+    }
+
+    public void UpdatePotionButtons()
+    {
+        if (localHero == null) return;
+
+        UpdateSinglePotionButton(0, potion1Icon, potion1Count, potion1Button);
+        UpdateSinglePotionButton(1, potion2Icon, potion2Count, potion2Button);
+        UpdateSinglePotionButton(2, potion3Icon, potion3Count, potion3Button);
+        UpdateSinglePotionButton(3, potion4Icon, potion4Count, potion4Button);
+        UpdateSinglePotionButton(4, potion5Icon, potion5Count, potion5Button);
+    }
+    private void SetupPotionButtons()
+    {
+        Debug.Log("=== Setting up Potion Button Events ===");
+
+        // Potion 1
+        if (potion1Button != null)
+        {
+            potion1Button.onClick.RemoveAllListeners();
+            potion1Button.onClick.AddListener(() => {
+                Debug.Log("Potion1 button pressed");
+                inputController.SetPotion1Pressed();
+            });
+            Debug.Log("✅ Potion1 button event setup complete");
+        }
+
+        // Potion 2
+        if (potion2Button != null)
+        {
+            potion2Button.onClick.RemoveAllListeners();
+            potion2Button.onClick.AddListener(() => {
+                Debug.Log("Potion2 button pressed");
+                inputController.SetPotion2Pressed();
+            });
+            Debug.Log("✅ Potion2 button event setup complete");
+        }
+
+        // Potion 3
+        if (potion3Button != null)
+        {
+            potion3Button.onClick.RemoveAllListeners();
+            potion3Button.onClick.AddListener(() => {
+                Debug.Log("Potion3 button pressed");
+                inputController.SetPotion3Pressed();
+            });
+            Debug.Log("✅ Potion3 button event setup complete");
+        }
+
+        // Potion 4
+        if (potion4Button != null)
+        {
+            potion4Button.onClick.RemoveAllListeners();
+            potion4Button.onClick.AddListener(() => {
+                Debug.Log("Potion4 button pressed");
+                inputController.SetPotion4Pressed();
+            });
+            Debug.Log("✅ Potion4 button event setup complete");
+        }
+
+        // Potion 5
+        if (potion5Button != null)
+        {
+            potion5Button.onClick.RemoveAllListeners();
+            potion5Button.onClick.AddListener(() => {
+                Debug.Log("Potion5 button pressed");
+                inputController.SetPotion5Pressed();
+            });
+            Debug.Log("✅ Potion5 button event setup complete");
+        }
+
+        Debug.Log("=== Potion Button Events Setup Complete ===");
     }
 
     // เพิ่มฟังก์ชัน Inventory
@@ -589,7 +686,55 @@ public class CombatUIManager : MonoBehaviour
             OpenInventory();
         }
     }
+    private void UpdateSinglePotionButton(int slotIndex, Image iconImage, TextMeshProUGUI countText, Button button)
+    {
+        // ดึง potion data จาก character
+        ItemData potionData = localHero.GetPotionInSlot(slotIndex);
+        int stackCount = localHero.GetPotionStackCount(slotIndex);
 
+        if (potionData != null && stackCount > 0)
+        {
+            // มี potion - แสดงรูปและจำนวน
+            if (iconImage != null)
+            {
+                iconImage.sprite = potionData.ItemIcon;
+                iconImage.color = Color.white;
+                iconImage.enabled = true;
+            }
+
+            if (countText != null)
+            {
+                countText.text = stackCount > 1 ? stackCount.ToString() : "";
+                countText.gameObject.SetActive(stackCount > 1);
+            }
+
+            // เปิดใช้งานปุ่ม
+            if (button != null)
+            {
+                button.interactable = localHero.CanUsePotion(slotIndex);
+            }
+        }
+        else
+        {
+            // ไม่มี potion - ซ่อนรูป
+            if (iconImage != null)
+            {
+                iconImage.sprite = null;
+                iconImage.enabled = false;
+            }
+
+            if (countText != null)
+            {
+                countText.gameObject.SetActive(false);
+            }
+
+            // ปิดใช้งานปุ่ม
+            if (button != null)
+            {
+                button.interactable = false;
+            }
+        }
+    }
     public void OpenInventory()
     {
         if (inventoryPanel != null)
@@ -775,6 +920,7 @@ public class CombatUIManager : MonoBehaviour
     public void UpdateUI()
     {
         if (localHero == null) return;
+        UpdatePotionButtons();
 
         // ใช้ NetworkedCurrentHp/NetworkedMaxHp แทน
         if (healthBar != null && localHero.NetworkedMaxHp > 0)
@@ -927,56 +1073,5 @@ public class CombatUIManager : MonoBehaviour
     }
 
     // 🎯 NEW: Context Menu สำหรับทดสอบ
-    [ContextMenu("🔍 Debug Equipment Connection")]
-    private void DebugEquipmentConnection()
-    {
-        Debug.Log($"=== DEBUG EQUIPMENT CONNECTION ===");
-        Debug.Log($"localHero: {(localHero?.CharacterName ?? "NULL")}");
-        Debug.Log($"equipmentSlotManager: {(equipmentSlotManager != null)}");
-
-        if (equipmentSlotManager != null)
-        {
-            Debug.Log($"equipmentSlotManager.IsConnected(): {equipmentSlotManager.IsConnected()}");
-            Debug.Log($"equipmentSlotManager.OwnerCharacter: {(equipmentSlotManager.OwnerCharacter?.CharacterName ?? "NULL")}");
-        }
-
-        Debug.Log($"equipmentSlots.Count: {equipmentSlots.Count}");
-        Debug.Log($"potionSlots.Count: {potionSlots.Count}");
-
-        if (localHero != null)
-        {
-            var allEquipped = localHero.GetAllEquippedItems();
-            Debug.Log($"localHero.GetAllEquippedItems().Count: {allEquipped.Count}");
-        }
-    }
-
-    [ContextMenu("🔍 Debug Potion Slots Connection")]
-    private void DebugPotionSlotsConnection()
-    {
-        Debug.Log($"=== POTION SLOTS CONNECTION DEBUG ===");
-        Debug.Log($"potionSlots.Count: {potionSlots.Count}");
-
-        for (int i = 0; i < potionSlots.Count; i++)
-        {
-            EquipmentSlot slot = potionSlots[i];
-            if (slot != null)
-            {
-                Debug.Log($"Slot {i}: GameObject={slot.gameObject.name}, SlotType={slot.SlotType}, PotionIndex={slot.PotionSlotIndex}, IsEmpty={slot.IsEmpty}");
-            }
-            else
-            {
-                Debug.Log($"Slot {i}: NULL");
-            }
-        }
-
-        if (equipmentSlotManager != null)
-        {
-            Debug.Log($"EquipmentSlotManager connected: {equipmentSlotManager.IsConnected()}");
-            Debug.Log($"EquipmentSlotManager character: {equipmentSlotManager.OwnerCharacter?.CharacterName ?? "NULL"}");
-        }
-        else
-        {
-            Debug.Log("EquipmentSlotManager: NULL");
-        }
-    }
+   
 }

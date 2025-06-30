@@ -111,7 +111,9 @@ public class Character : NetworkBehaviour
     [SerializeField] private List<ItemData> potionSlots = new List<ItemData>(5);   // 5 potion quick slots
     [Header("🧪 Potion Stack Counts")]
     [SerializeField] private List<int> potionStackCounts = new List<int>(5); // เก็บจำนวนของแต่ละ potion slot
-
+    [Header("🧪 Potion Usage")]
+    [SerializeField] private float potionCooldown = 1f; // cooldown 1 วินาที
+    private float lastPotionUseTime = 0f;
     // Events สำหรับแจ้ง UI
     public static event System.Action<Character, ItemType, ItemData> OnItemEquippedToSlot;
     public static event System.Action<Character, ItemType> OnItemUnequippedFromSlot;
@@ -228,6 +230,43 @@ public class Character : NetworkBehaviour
             NetworkedMaxHp = maxHp;
             NetworkedMaxMana = maxMana;
             ProcessRegeneration();
+        }
+
+        if (GetInput<NetworkInputData>(out var input))
+        {
+            HandlePotionInputs(input);
+        }
+    }
+    protected virtual void HandlePotionInputs(NetworkInputData input)
+    {
+        // ตรวจสอบว่าเป็น InputAuthority หรือไม่
+        if (!HasInputAuthority)
+            return;
+
+        // จัดการ potion inputs (ใช้ implicit bool conversion)
+        if (input.potion1 && CanUsePotion(0))
+        {
+            UsePotion(0);
+        }
+
+        if (input.potion2 && CanUsePotion(1))
+        {
+            UsePotion(1);
+        }
+
+        if (input.potion3 && CanUsePotion(2))
+        {
+            UsePotion(2);
+        }
+
+        if (input.potion4 && CanUsePotion(3))
+        {
+            UsePotion(3);
+        }
+
+        if (input.potion5 && CanUsePotion(4))
+        {
+            UsePotion(4);
         }
     }
 
@@ -1228,27 +1267,7 @@ public class Character : NetworkBehaviour
     {
         return equipmentSlotManager;
     }
-    [ContextMenu("🔍 Debug All Equipped Items")]
-    private void DebugAllEquippedItems()
-    {
-        Debug.Log($"=== DEBUG ALL EQUIPPED ITEMS ({CharacterName}) ===");
-        Debug.Log($"characterEquippedItems.Count: {characterEquippedItems.Count}");
-        Debug.Log($"potionSlots.Count: {potionSlots.Count}");
-
-        for (int i = 0; i < characterEquippedItems.Count; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData item = characterEquippedItems[i];
-            Debug.Log($"Slot {i} ({itemType}): {(item?.ItemName ?? "NULL")}");
-        }
-
-        for (int i = 0; i < potionSlots.Count; i++)
-        {
-            ItemData potion = potionSlots[i];
-            Debug.Log($"Potion {i}: {(potion?.ItemName ?? "NULL")}");
-        }
-    }
-
+   
     private ItemType GetItemTypeFromSlotIndex(int slotIndex)
     {
         switch (slotIndex)
@@ -1388,6 +1407,161 @@ public class Character : NetworkBehaviour
             EquipItemData(equippedItem);
             return false;
         }
+    }
+
+    public bool UsePotion(int potionSlotIndex)
+    {
+        // ตรวจสอบ cooldown
+        if (Time.time - lastPotionUseTime < potionCooldown)
+        {
+            Debug.LogWarning($"[Character] Potion cooldown not ready! ({Time.time - lastPotionUseTime:F1}s / {potionCooldown}s)");
+            return false;
+        }
+
+        // ตรวจสอบ slot index
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count)
+        {
+            Debug.LogWarning($"[Character] Invalid potion slot index: {potionSlotIndex}");
+            return false;
+        }
+
+        // ตรวจสอบว่ามี potion ใน slot หรือไม่
+        ItemData potionData = GetPotionInSlot(potionSlotIndex);
+        if (potionData == null)
+        {
+            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex}");
+            return false;
+        }
+
+        // ตรวจสอบ stack count
+        int currentStackCount = GetPotionStackCount(potionSlotIndex);
+        if (currentStackCount <= 0)
+        {
+            Debug.LogWarning($"[Character] Potion stack depleted in slot {potionSlotIndex}");
+            // ล้าง slot ถ้า stack หมด
+            potionSlots[potionSlotIndex] = null;
+            SetPotionStackCount(potionSlotIndex, 0);
+            return false;
+        }
+
+        // ใช้ potion
+        bool success = ApplyPotionEffects(potionData);
+        if (success)
+        {
+            // ลด stack count
+            int newStackCount = currentStackCount - 1;
+            SetPotionStackCount(potionSlotIndex, newStackCount);
+
+            // ถ้า stack หมดแล้ว ให้ล้าง slot
+            if (newStackCount <= 0)
+            {
+                potionSlots[potionSlotIndex] = null;
+                Debug.Log($"[Character] 🧪 Potion slot {potionSlotIndex} depleted and cleared");
+            }
+
+            // อัปเดต cooldown
+            lastPotionUseTime = Time.time;
+
+            // แจ้ง UI ให้อัปเดต
+            OnStatsChanged?.Invoke();
+
+            Debug.Log($"[Character] ✅ Used {potionData.ItemName} from slot {potionSlotIndex}. Remaining: {newStackCount}");
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// ใช้ผลของ potion กับตัวละคร
+    /// </summary>
+    private bool ApplyPotionEffects(ItemData potionData)
+    {
+        if (potionData?.Stats == null)
+        {
+            Debug.LogWarning("[Character] Invalid potion data");
+            return false;
+        }
+
+        ItemStats stats = potionData.Stats;
+        bool appliedAnyEffect = false;
+
+        // รักษาพลังชีวิตแบบคงที่
+        if (stats.healAmount > 0)
+        {
+            int oldHp = currentHp;
+            currentHp = Mathf.Min(currentHp + stats.healAmount, maxHp);
+            Debug.Log($"[Character] 💖 Healed {stats.healAmount} HP: {oldHp} -> {currentHp}");
+            appliedAnyEffect = true;
+        }
+
+        // รักษาพลังชีวิตแบบเปอร์เซ็นต์
+        if (stats.healPercentage > 0)
+        {
+            int healAmount = Mathf.RoundToInt(maxHp * stats.healPercentage);
+            int oldHp = currentHp;
+            currentHp = Mathf.Min(currentHp + healAmount, maxHp);
+            Debug.Log($"[Character] 💖 Healed {stats.healPercentage:P0} ({healAmount} HP): {oldHp} -> {currentHp}");
+            appliedAnyEffect = true;
+        }
+
+        // ฟื้นฟูมานาแบบคงที่
+        if (stats.manaAmount > 0)
+        {
+            int oldMana = currentMana;
+            currentMana = Mathf.Min(currentMana + stats.manaAmount, maxMana);
+            Debug.Log($"[Character] 💙 Restored {stats.manaAmount} MP: {oldMana} -> {currentMana}");
+            appliedAnyEffect = true;
+        }
+
+        // ฟื้นฟูมานาแบบเปอร์เซ็นต์
+        if (stats.manaPercentage > 0)
+        {
+            int manaAmount = Mathf.RoundToInt(maxMana * stats.manaPercentage);
+            int oldMana = currentMana;
+            currentMana = Mathf.Min(currentMana + manaAmount, maxMana);
+            Debug.Log($"[Character] 💙 Restored {stats.manaPercentage:P0} ({manaAmount} MP): {oldMana} -> {currentMana}");
+            appliedAnyEffect = true;
+        }
+
+        // ส่ง network update ถ้าเป็น authority
+        if (HasStateAuthority && appliedAnyEffect)
+        {
+            NetworkedCurrentHp = currentHp;
+            NetworkedCurrentMana = currentMana;
+        }
+
+        return appliedAnyEffect;
+    }
+
+    /// <summary>
+    /// ตรวจสอบว่า potion สามารถใช้ได้หรือไม่
+    /// </summary>
+    public bool CanUsePotion(int potionSlotIndex)
+    {
+        // ตรวจสอบ cooldown
+        if (Time.time - lastPotionUseTime < potionCooldown)
+            return false;
+
+        // ตรวจสอบว่ามี potion และมี stack count > 0
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count)
+            return false;
+
+        ItemData potionData = GetPotionInSlot(potionSlotIndex);
+        if (potionData == null)
+            return false;
+
+        int stackCount = GetPotionStackCount(potionSlotIndex);
+        return stackCount > 0;
+    }
+
+    /// <summary>
+    /// ดูเวลา cooldown ที่เหลือ
+    /// </summary>
+    public float GetPotionCooldownRemaining()
+    {
+        float remaining = potionCooldown - (Time.time - lastPotionUseTime);
+        return Mathf.Max(0f, remaining);
     }
     #endregion
 
