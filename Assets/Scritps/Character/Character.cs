@@ -109,6 +109,8 @@ public class Character : NetworkBehaviour
     [Header("🆕 Equipment Slots")]
     [SerializeField] private List<ItemData> characterEquippedItems = new List<ItemData>(6); // 6 slots: Head, Armor, Weapon, Pants, Shoes, Rune
     [SerializeField] private List<ItemData> potionSlots = new List<ItemData>(5);   // 5 potion quick slots
+    [Header("🧪 Potion Stack Counts")]
+    [SerializeField] private List<int> potionStackCounts = new List<int>(5); // เก็บจำนวนของแต่ละ potion slot
 
     // Events สำหรับแจ้ง UI
     public static event System.Action<Character, ItemType, ItemData> OnItemEquippedToSlot;
@@ -780,7 +782,26 @@ public class Character : NetworkBehaviour
 
         Debug.Log($"[Character] EquipItemData called: {itemData.ItemName} ({itemData.ItemType})");
 
-        // หา slot index ที่เหมาะสม
+        // 🆕 ตรวจสอบ characterEquippedItems และ potionSlots lists ก่อน
+        if (characterEquippedItems.Count < 6)
+        {
+            Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
+            InitializeEquipmentSlots();
+        }
+
+        if (potionSlots.Count < 5)
+        {
+            Debug.LogWarning($"[Character] potionSlots list too small: {potionSlots.Count}");
+            InitializeEquipmentSlots();
+        }
+
+        // สำหรับ potion: ใช้ logic แยกต่างหาก
+        if (itemData.ItemType == ItemType.Potion)
+        {
+            return EquipPotionToSlot(itemData);
+        }
+
+        // สำหรับ equipment อื่นๆ: ใช้ logic เดิม
         int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
         if (slotIndex == -1)
         {
@@ -788,62 +809,134 @@ public class Character : NetworkBehaviour
             return false;
         }
 
-        // ✅ ตรวจสอบ characterEquippedItems list ก่อน
-        if (characterEquippedItems.Count < 6)
+        // Unequip item เก่าถ้ามี (และเพิ่มกลับไป inventory)
+        if (characterEquippedItems[slotIndex] != null)
         {
-            Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
-            InitializeEquipmentSlots();
+            ItemData oldItem = characterEquippedItems[slotIndex];
+
+            if (inventory != null)
+            {
+                inventory.AddItem(oldItem, 1);
+                Debug.Log($"[Character] Added old item back to inventory: {oldItem.ItemName}");
+            }
         }
 
-        // สำหรับ potion
-        if (itemData.ItemType == ItemType.Potion)
-        {
-            int potionSlotIndex = FindEmptyPotionSlot();
-            if (potionSlotIndex == -1)
-            {
-                Debug.LogWarning($"[Character] All potion slots are full");
-                return false;
-            }
+        // Equip item ใหม่
+        characterEquippedItems[slotIndex] = itemData;
+        Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
 
-            if (potionSlots.Count < 5)
-            {
-                Debug.LogWarning($"[Character] potionSlots list too small: {potionSlots.Count}");
-                InitializeEquipmentSlots();
-            }
+        // คำนวณ total stats จาก equipment ทั้งหมด
+        ApplyAllEquipmentStats();
 
-            potionSlots[potionSlotIndex] = itemData;
-            Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to potion slot {potionSlotIndex}");
-        }
-        else
-        {
-            // Unequip item เก่าถ้ามี (และเพิ่มกลับไป inventory)
-            if (characterEquippedItems[slotIndex] != null)
-            {
-                ItemData oldItem = characterEquippedItems[slotIndex];
-
-                if (inventory != null)
-                {
-                    inventory.AddItem(oldItem, 1);
-                    Debug.Log($"[Character] Added old item back to inventory: {oldItem.ItemName}");
-                }
-            }
-
-            // Equip item ใหม่
-            characterEquippedItems[slotIndex] = itemData;
-            Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
-
-            // 🆕 คำนวณ total stats จาก equipment ทั้งหมด แล้วส่งไปให้ EquipmentManager ครั้งเดียว
-            ApplyAllEquipmentStats();
-        }
-
-        // ✅ แจ้ง Event สำหรับ UI
+        // แจ้ง Event สำหรับ UI
         OnItemEquippedToSlot?.Invoke(this, itemData.ItemType, itemData);
 
-        // ✅ Force update equipment slots ทันที
+        // Force update equipment slots ทันที
         ForceUpdateEquipmentSlotsNow();
 
         return true;
     }
+
+    // 🆕 เพิ่ม method ใหม่สำหรับ equip potion
+    private bool EquipPotionToSlot(ItemData potionData)
+    {
+        Debug.Log($"[Character] 🧪 Attempting to equip potion: {potionData.ItemName}");
+
+        // หาช่องว่างใน potion slots (0-4)
+        int emptySlotIndex = FindEmptyPotionSlot();
+
+        if (emptySlotIndex == -1)
+        {
+            Debug.LogWarning($"[Character] ❌ All potion slots are full (0-4)");
+            DebugPotionSlots();
+            return false;
+        }
+
+        // 🆕 หาจำนวน potion ทั้งหมดใน inventory
+        int totalStackCount = GetPotionStackCountFromInventory(potionData);
+
+        // แสดง potion effects ถ้ามี
+        if (potionData.Stats.IsPotion())
+        {
+            string effects = "";
+            if (potionData.Stats.healAmount > 0) effects += $"+{potionData.Stats.healAmount}HP ";
+            if (potionData.Stats.manaAmount > 0) effects += $"+{potionData.Stats.manaAmount}MP ";
+            if (potionData.Stats.healPercentage > 0) effects += $"+{potionData.Stats.healPercentage:P0}HP ";
+            if (potionData.Stats.manaPercentage > 0) effects += $"+{potionData.Stats.manaPercentage:P0}MP ";
+            Debug.Log($"[Character] 💊 Potion effects: {effects.Trim()}");
+        }
+
+        // ใส่ potion ลงช่องที่ว่าง
+        potionSlots[emptySlotIndex] = potionData;
+        potionStackCounts[emptySlotIndex] = totalStackCount; // 🆕 เก็บจำนวน stack
+
+        Debug.Log($"[Character] ✅ Equipped {potionData.ItemName} x{totalStackCount} to potion slot {emptySlotIndex}");
+
+        // แจ้ง Event สำหรับ UI (ใช้ ItemType.Potion)
+        OnItemEquippedToSlot?.Invoke(this, ItemType.Potion, potionData);
+
+        // Force update equipment slots ทันที
+        ForceUpdateEquipmentSlotsNow();
+
+        return true;
+    }
+
+    private int GetPotionStackCountFromInventory(ItemData potionData)
+    {
+        if (inventory == null) return 1;
+
+        int totalCount = 0;
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            InventoryItem item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty && item.itemData == potionData)
+            {
+                totalCount += item.stackCount;
+            }
+        }
+
+        Debug.Log($"[Character] Found {totalCount} {potionData.ItemName} in inventory");
+        return totalCount;
+    }
+
+    // 🆕 เพิ่ม method สำหรับ get potion stack count
+    public int GetPotionStackCount(int slotIndex)
+    {
+        if (slotIndex >= 0 && slotIndex < potionStackCounts.Count)
+        {
+            return potionStackCounts[slotIndex];
+        }
+        return 0;
+    }
+
+    // 🆕 เพิ่ม method สำหรับ set potion stack count
+    public void SetPotionStackCount(int slotIndex, int stackCount)
+    {
+        if (slotIndex >= 0 && slotIndex < potionStackCounts.Count)
+        {
+            potionStackCounts[slotIndex] = stackCount;
+            Debug.Log($"[Character] Set potion slot {slotIndex} stack count to {stackCount}");
+        }
+    }
+    private void DebugPotionSlots()
+    {
+        Debug.Log("=== POTION SLOTS STATUS ===");
+        for (int i = 0; i < potionSlots.Count; i++)
+        {
+            ItemData potion = potionSlots[i];
+            int stackCount = i < potionStackCounts.Count ? potionStackCounts[i] : 0;
+
+            if (potion != null)
+            {
+                Debug.Log($"Slot {i}: {potion.ItemName} x{stackCount}");
+            }
+            else
+            {
+                Debug.Log($"Slot {i}: EMPTY");
+            }
+        }
+    }
+
     private void ForceUpdateEquipmentSlotsNow()
     {
         EquipmentSlotManager equipmentSlotManager = GetComponent<EquipmentSlotManager>();
@@ -863,40 +956,28 @@ public class Character : NetworkBehaviour
     }
 
     // เพิ่ม method สำหรับ unequip
-    public bool UnequipItemData(ItemType itemType)
+    public bool UnequipPotion(int potionSlotIndex)
     {
-        if (itemType == ItemType.Potion)
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlots[potionSlotIndex] == null)
         {
-            Debug.LogWarning($"[Character] Use UnequipPotion() for potion slots");
+            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex}");
             return false;
         }
 
-        int slotIndex = GetSlotIndexForItemType(itemType);
-        if (slotIndex == -1 || characterEquippedItems[slotIndex] == null)
-        {
-            Debug.LogWarning($"[Character] No equipped item found for type: {itemType}");
-            return false;
-        }
+        ItemData unequippedPotion = potionSlots[potionSlotIndex];
+        int stackCount = potionStackCounts[potionSlotIndex]; // 🆕 ดึงจำนวน stack
 
-        ItemData unequippedItem = characterEquippedItems[slotIndex];
-        characterEquippedItems[slotIndex] = null;
+        Debug.Log($"[Character] Unequipping {unequippedPotion.ItemName} x{stackCount} from potion slot {potionSlotIndex}");
 
-        // เพิ่มกลับไป inventory
-        if (inventory != null)
-        {
-            inventory.AddItem(unequippedItem, 1);
-        }
+        // เคลียร์ slot
+        potionSlots[potionSlotIndex] = null;
+        potionStackCounts[potionSlotIndex] = 0; // 🆕 รีเซ็ต stack count
 
-        // 🆕 คำนวณ total stats ใหม่หลังจาก unequip
-        ApplyAllEquipmentStats();
+        // 🆕 ไม่ต้องเพิ่มกลับ inventory ที่นี่ เพราะ ItemDetailPanel จะจัดการเอง
 
-        // แจ้ง Event สำหรับ UI
-        OnItemUnequippedFromSlot?.Invoke(this, itemType);
-
-        Debug.Log($"[Character] Unequipped {unequippedItem.ItemName} from {itemType} slot");
+        Debug.Log($"[Character] ✅ Unequipped {unequippedPotion.ItemName} from potion slot {potionSlotIndex}");
         return true;
     }
-
     // 🆕 Method ใหม่: คำนวณ total stats จาก equipment ทั้งหมด
     private void ApplyAllEquipmentStats()
     {
@@ -1000,27 +1081,7 @@ public class Character : NetworkBehaviour
     }
 
     // เพิ่ม method สำหรับ potion
-    public bool UnequipPotion(int potionSlotIndex)
-    {
-        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlots[potionSlotIndex] == null)
-        {
-            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex}");
-            return false;
-        }
-
-        ItemData unequippedPotion = potionSlots[potionSlotIndex];
-        potionSlots[potionSlotIndex] = null;
-
-        // เพิ่มกลับไป inventory
-        if (inventory != null)
-        {
-            inventory.AddItem(unequippedPotion, 1);
-        }
-
-        Debug.Log($"[Character] Unequipped {unequippedPotion.ItemName} from potion slot {potionSlotIndex}");
-        return true;
-    }
-
+   
     // เพิ่ม helper methods
     private int GetSlotIndexForItemType(ItemType itemType)
     {
@@ -1032,21 +1093,33 @@ public class Character : NetworkBehaviour
             case ItemType.Pants: return 3;
             case ItemType.Shoes: return 4;
             case ItemType.Rune: return 5;
-            case ItemType.Potion: return -1; // ใช้ potionSlots แทน
+            case ItemType.Potion:
+                // 🆕 สำหรับ potion: หาช่องว่างใน potion slots (0-4)
+                return FindEmptyPotionSlot();
             default: return -1;
         }
     }
 
     private int FindEmptyPotionSlot()
     {
+        Debug.Log($"[Character] Searching for empty potion slot in {potionSlots.Count} slots...");
+
         for (int i = 0; i < potionSlots.Count; i++)
         {
             if (potionSlots[i] == null)
+            {
+                Debug.Log($"[Character] Found empty potion slot at index {i}");
                 return i;
+            }
+            else
+            {
+                Debug.Log($"[Character] Potion slot {i}: {potionSlots[i].ItemName}");
+            }
         }
+
+        Debug.LogWarning("[Character] No empty potion slot found (all 5 slots full)");
         return -1; // เต็มหมด
     }
-
     private EquipmentData ConvertItemDataToEquipmentData(ItemData itemData)
     {
         if (itemData == null)
@@ -1141,13 +1214,16 @@ public class Character : NetworkBehaviour
 
         // Initialize potion slots (5 slots)
         potionSlots.Clear();
+        potionStackCounts.Clear();
         for (int i = 0; i < 5; i++)
         {
             potionSlots.Add(null);
+            potionStackCounts.Add(0); // 🆕 เริ่มต้นด้วย 0
         }
 
-        Debug.Log($"[Character] Equipment slots initialized: 6 equipment + 5 potion slots");
+        Debug.Log($"[Character] Equipment slots initialized: 6 equipment + 5 potion slots with stack counts");
     }
+
     public EquipmentSlotManager GetEquipmentSlotManager()
     {
         return equipmentSlotManager;
@@ -1186,92 +1262,135 @@ public class Character : NetworkBehaviour
             default: return ItemType.Weapon;
         }
     }
-
-    #endregion
-    [ContextMenu("🔄 Recalculate All Equipment Stats")]
-    private void RecalculateAllEquipmentStats()
+    public bool UnequipItemData(ItemType itemType)
     {
-        ApplyAllEquipmentStats();
-    }
-
-    [ContextMenu("🔍 Debug Equipment Items")]
-    private void DebugEquipmentItems()
-    {
-        Debug.Log($"=== DEBUG EQUIPMENT ITEMS ({CharacterName}) ===");
-
-        for (int i = 0; i < characterEquippedItems.Count; i++)
+        if (itemType == ItemType.Potion)
         {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData item = characterEquippedItems[i];
+            Debug.LogWarning($"[Character] Use UnequipPotion() for potion slots");
+            return false;
+        }
 
-            if (item != null)
+        int slotIndex = GetSlotIndexForItemType(itemType);
+        if (slotIndex == -1 || characterEquippedItems[slotIndex] == null)
+        {
+            Debug.LogWarning($"[Character] No equipped item found for type: {itemType}");
+            return false;
+        }
+
+        ItemData unequippedItem = characterEquippedItems[slotIndex];
+        characterEquippedItems[slotIndex] = null;
+
+        Debug.Log($"[Character] ✅ Unequipped {unequippedItem.ItemName} from {itemType} slot");
+
+        // คำนวณ total stats ใหม่หลังจาก unequip
+        ApplyAllEquipmentStats();
+
+        // แจ้ง Event สำหรับ UI
+        OnItemUnequippedFromSlot?.Invoke(this, itemType);
+
+        // Force update equipment slots
+        ForceUpdateEquipmentSlotsNow();
+
+        return true;
+    }
+    public bool UnequipPotionAndReturnToInventory(int potionSlotIndex)
+    {
+        if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlots[potionSlotIndex] == null)
+        {
+            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex} to unequip");
+            return false;
+        }
+
+        ItemData potionToUnequip = potionSlots[potionSlotIndex];
+        int stackCount = GetPotionStackCount(potionSlotIndex);
+
+        // Unequip จาก character
+        bool unequipSuccess = UnequipPotion(potionSlotIndex);
+        if (!unequipSuccess)
+        {
+            Debug.LogError($"[Character] Failed to unequip potion from slot {potionSlotIndex}");
+            return false;
+        }
+
+        // เพิ่มกลับไป inventory
+        if (inventory != null)
+        {
+            bool addSuccess = inventory.AddItem(potionToUnequip, stackCount);
+            if (addSuccess)
             {
-                EquipmentStats itemStats = item.Stats.ToEquipmentStats();
-
-                // สร้าง list ของ stats ทั้งหมด
-                List<string> statsList = new List<string>();
-
-                if (itemStats.attackDamageBonus != 0)
-                    statsList.Add($"ATK+{itemStats.attackDamageBonus}");
-                if (itemStats.magicDamageBonus != 0)
-                    statsList.Add($"MAG+{itemStats.magicDamageBonus}");
-                if (itemStats.armorBonus != 0)
-                    statsList.Add($"ARM+{itemStats.armorBonus}");
-                if (itemStats.criticalChanceBonus != 0f)
-                    statsList.Add($"CRIT+{itemStats.criticalChanceBonus:F1}%");
-                if (itemStats.criticalMultiplierBonus != 0f)
-                    statsList.Add($"CRIT_DMG+{itemStats.criticalMultiplierBonus:F1}%");
-                if (itemStats.maxHpBonus != 0)
-                    statsList.Add($"HP+{itemStats.maxHpBonus}");
-                if (itemStats.maxManaBonus != 0)
-                    statsList.Add($"MP+{itemStats.maxManaBonus}");
-                if (itemStats.moveSpeedBonus != 0f)
-                    statsList.Add($"SPD+{itemStats.moveSpeedBonus:F1}");
-                if (itemStats.attackSpeedBonus != 0f)
-                    statsList.Add($"AS+{itemStats.attackSpeedBonus:F1}%");
-                if (itemStats.hitRateBonus != 0f)
-                    statsList.Add($"HIT+{itemStats.hitRateBonus:F1}%");
-                if (itemStats.evasionRateBonus != 0f)
-                    statsList.Add($"EVA+{itemStats.evasionRateBonus:F1}%");
-                if (itemStats.reductionCoolDownBonus != 0f)
-                    statsList.Add($"CDR+{itemStats.reductionCoolDownBonus:F1}%");
-                if (itemStats.physicalResistanceBonus != 0f)
-                    statsList.Add($"PHYS_RES+{itemStats.physicalResistanceBonus:F1}%");
-                if (itemStats.magicalResistanceBonus != 0f)
-                    statsList.Add($"MAG_RES+{itemStats.magicalResistanceBonus:F1}%");
-
-                string statsString = statsList.Count > 0 ? string.Join(", ", statsList) : "No stats";
-                Debug.Log($"Slot {i} ({itemType}): {item.ItemName} - [{statsString}]");
+                Debug.Log($"[Character] ✅ Added {potionToUnequip.ItemName} x{stackCount} back to inventory");
+                return true;
             }
             else
             {
-                Debug.Log($"Slot {i} ({itemType}): EMPTY");
+                Debug.LogError($"[Character] Failed to add {potionToUnequip.ItemName} back to inventory!");
+                // ถ้าใส่ inventory ไม่ได้ ให้ equip กลับ
+                potionSlots[potionSlotIndex] = potionToUnequip;
+                SetPotionStackCount(potionSlotIndex, stackCount);
+                return false;
             }
         }
-    }
-
-    [ContextMenu("🔍 Debug All Character Stats")]
-    private void DebugAllCharacterStats()
-    {
-        Debug.Log($"=== DEBUG ALL CHARACTER STATS ({CharacterName}) ===");
-        Debug.Log($"⚔️ ATK: {AttackDamage}");
-        Debug.Log($"🪄 MAG: {MagicDamage}");
-        Debug.Log($"🛡️ ARM: {Armor}");
-        Debug.Log($"❤️ HP: {CurrentHp}/{MaxHp}");
-        Debug.Log($"💙 MP: {CurrentMana}/{MaxMana}");
-        Debug.Log($"💥 CRIT: {CriticalChance:F1}%");
-        Debug.Log($"🔥 CRIT DMG: {CriticalDamageBonus:F1}% (Base) | {GetEffectiveCriticalDamageBonus():F1}% (Effective)");
-        Debug.Log($"💨 SPD: {MoveSpeed:F1} (Base) | {GetEffectiveMoveSpeed():F1} (Effective)");
-        Debug.Log($"🎯 HIT: {HitRate:F1}%");
-        Debug.Log($"🌪️ EVA: {EvasionRate:F1}%");
-        Debug.Log($"⚡ AS: {AttackSpeed:F2} (Base) | {GetEffectiveAttackSpeed():F2} (Effective)");
-        Debug.Log($"⏰ CDR: {ReductionCoolDown:F1}% (Base) | {GetEffectiveReductionCoolDown():F1}% (Effective)");
-        Debug.Log($"EquipmentManager: {(equipmentManager != null ? "✅" : "❌")}");
-
-        if (equipmentManager != null)
+        else
         {
-            EquipmentStats totalStats = equipmentManager.GetTotalStats();
-            Debug.Log($"📦 Equipment Bonuses: ATK+{totalStats.attackDamageBonus}, ARM+{totalStats.armorBonus}, CRIT_DMG+{totalStats.criticalMultiplierBonus:F1}%");
+            Debug.LogError("[Character] No inventory found!");
+            // Equip กลับ
+            potionSlots[potionSlotIndex] = potionToUnequip;
+            SetPotionStackCount(potionSlotIndex, stackCount);
+            return false;
         }
     }
+
+    public bool UnequipAndReturnToInventory(ItemType itemType)
+    {
+        if (itemType == ItemType.Potion)
+        {
+            Debug.LogWarning($"[Character] Use UnequipPotionAndReturnToInventory() for potion");
+            return false;
+        }
+
+        // หา equipped item ก่อน unequip
+        ItemData equippedItem = GetEquippedItem(itemType);
+        if (equippedItem == null)
+        {
+            Debug.LogWarning($"[Character] No {itemType} equipped to unequip");
+            return false;
+        }
+
+        // Unequip จาก character
+        bool unequipSuccess = UnequipItemData(itemType);
+        if (!unequipSuccess)
+        {
+            Debug.LogError($"[Character] Failed to unequip {itemType}");
+            return false;
+        }
+
+        // เพิ่มกลับไป inventory
+        if (inventory != null)
+        {
+            bool addSuccess = inventory.AddItem(equippedItem, 1);
+            if (addSuccess)
+            {
+                Debug.Log($"[Character] ✅ Added {equippedItem.ItemName} back to inventory");
+                return true;
+            }
+            else
+            {
+                Debug.LogError($"[Character] Failed to add {equippedItem.ItemName} back to inventory!");
+                // ถ้าใส่ inventory ไม่ได้ ให้ equip กลับ
+                EquipItemData(equippedItem);
+                return false;
+            }
+        }
+        else
+        {
+            Debug.LogError("[Character] No inventory found!");
+            // Equip กลับ
+            EquipItemData(equippedItem);
+            return false;
+        }
+    }
+    #endregion
+
+
+
 }

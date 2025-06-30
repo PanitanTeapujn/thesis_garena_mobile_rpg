@@ -850,16 +850,40 @@ public class InventoryGridManager : MonoBehaviour
 
         if (slotIndex < 0 || slotIndex >= allSlots.Count)
         {
-            Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range");
+            Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range (0-{allSlots.Count - 1})");
             return;
         }
 
         Inventory inventory = ownerCharacter.GetInventory();
         InventoryItem item = inventory.GetItem(slotIndex);
+        InventorySlot slot = allSlots[slotIndex];
 
+        if (slot == null)
+        {
+            Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
+            return;
+        }
+
+        Debug.Log($"[InventoryGrid] 🔄 Updating slot {slotIndex} from character data...");
+
+        // 🆕 แสดงข้อมูลก่อนและหลัง update
+        string beforeState = slot.IsEmpty ? "EMPTY" : "FILLED";
+        string itemInfo = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
+
+        Debug.Log($"[InventoryGrid] Slot {slotIndex} - Before: {beforeState}, Character Data: {itemInfo}");
+
+        // อัปเดต slot ตามข้อมูลจาก character
         UpdateSlotFromInventoryItem(slotIndex, item);
 
-        Debug.Log($"[InventoryGrid] Updated slot {slotIndex} from character inventory");
+        string afterState = slot.IsEmpty ? "EMPTY" : "FILLED";
+        Debug.Log($"[InventoryGrid] Slot {slotIndex} - After: {afterState}");
+
+        // 🆕 Force refresh เฉพาะ slot นี้
+        if (slot.slotButton != null)
+        {
+            // Trigger layout rebuild สำหรับ slot นี้
+            UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(slot.GetComponent<RectTransform>());
+        }
     }
     #region Runtime Grid Modification
     public void ResizeGrid(int newWidth, int newHeight)

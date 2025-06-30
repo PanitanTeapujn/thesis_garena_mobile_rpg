@@ -121,6 +121,8 @@ public class EquipmentSlotManager : MonoBehaviour
     {
         if (ownerCharacter == null) return;
 
+        Debug.Log($"[EquipmentSlotManager] Loading equipped items for {ownerCharacter.CharacterName}...");
+
         // อัปเดต Equipment Slots
         foreach (EquipmentSlot slot in connectedEquipmentSlots)
         {
@@ -130,19 +132,25 @@ public class EquipmentSlotManager : MonoBehaviour
             }
         }
 
-        // อัปเดต Potion Slots
+        // 🆕 อัปเดต Potion Slots ด้วย debug
+        Debug.Log($"[EquipmentSlotManager] Updating {connectedPotionSlots.Count} potion slots...");
         foreach (EquipmentSlot slot in connectedPotionSlots)
         {
             if (slot != null)
             {
+                Debug.Log($"[EquipmentSlotManager] Processing potion slot {slot.PotionSlotIndex}...");
                 UpdateSlotFromCharacter(slot);
+            }
+            else
+            {
+                Debug.LogWarning("[EquipmentSlotManager] Found null potion slot!");
             }
         }
 
-        // 🆕 Force update canvas เพื่อให้แน่ใจว่า UI update
+        // Force update canvas เพื่อให้แน่ใจว่า UI update
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log("[EquipmentSlotManager] Loaded equipped items to all slots");
+        Debug.Log("[EquipmentSlotManager] ✅ Loaded equipped items to all slots");
     }
 
     public void UpdateSlotFromCharacter(EquipmentSlot slot)
@@ -154,23 +162,33 @@ public class EquipmentSlotManager : MonoBehaviour
         // ดึงข้อมูลจาก Character ตาม slot type
         if (slot.SlotType == ItemType.Potion)
         {
-            equippedItem = ownerCharacter.GetPotionInSlot(slot.PotionSlotIndex);
+            // 🆕 สำหรับ potion: ใช้ PotionSlotIndex
+            int potionIndex = slot.PotionSlotIndex;
+            equippedItem = ownerCharacter.GetPotionInSlot(potionIndex);
+
+            Debug.Log($"[EquipmentSlotManager] Updating potion slot {potionIndex}: {(equippedItem?.ItemName ?? "EMPTY")}");
         }
         else
         {
+            // สำหรับ equipment อื่นๆ
             equippedItem = ownerCharacter.GetEquippedItem(slot.SlotType);
+
+            Debug.Log($"[EquipmentSlotManager] Updating {slot.SlotType} slot: {(equippedItem?.ItemName ?? "EMPTY")}");
         }
 
         // อัปเดต UI
         if (equippedItem != null)
         {
             slot.SetFilledState(equippedItem.ItemIcon, equippedItem.GetTierColor());
+            Debug.Log($"[EquipmentSlotManager] ✅ Set {slot.SlotType} slot to filled with {equippedItem.ItemName}");
         }
         else
         {
             slot.SetEmptyState();
+            Debug.Log($"[EquipmentSlotManager] ⭕ Set {slot.SlotType} slot to empty");
         }
     }
+
 
     public void RefreshAllSlots()
     {

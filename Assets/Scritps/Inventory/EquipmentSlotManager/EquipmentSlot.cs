@@ -16,7 +16,8 @@ public class EquipmentSlot : MonoBehaviour
     public Image itemIcon;          // ไอคอน item
     public Button slotButton;       // ปุ่มสำหรับ click
     public TextMeshProUGUI slotTypeText; // ข้อความบอกประเภท slot (optional)
-
+    [Header("🧪 Potion Display")]
+    public TextMeshProUGUI stackCountText; // สำหรับแสดงจำนวน potion
     [Header("Visual Settings")]
     public Color emptySlotColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
     public Color filledSlotColor = new Color(0.3f, 0.3f, 0.3f, 1f);
@@ -82,7 +83,6 @@ public class EquipmentSlot : MonoBehaviour
         }
         else
         {
-            // 🆕 ถ้ามี itemIcon อยู่แล้ว ให้แน่ใจว่า raycastTarget = false
             itemIcon.raycastTarget = false;
         }
 
@@ -92,11 +92,48 @@ public class EquipmentSlot : MonoBehaviour
             CreateSlotTypeText();
         }
 
-        // 🆕 แน่ใจว่า slotTypeText ไม่ block button
-        if (slotTypeText != null)
+        // 🆕 สร้าง StackCountText สำหรับ potion ถ้าไม่มี
+        if (stackCountText == null && slotType == ItemType.Potion)
         {
-            slotTypeText.raycastTarget = false;
+            CreateStackCountText();
         }
+
+        // แน่ใจว่า components ไม่ block button
+        if (slotTypeText != null)
+            slotTypeText.raycastTarget = false;
+
+        if (stackCountText != null)
+            stackCountText.raycastTarget = false;
+    }
+
+    private void CreateStackCountText()
+    {
+        GameObject textObj = new GameObject("StackCountText");
+        textObj.transform.SetParent(transform, false);
+        stackCountText = textObj.AddComponent<TextMeshProUGUI>();
+
+        RectTransform textRect = stackCountText.GetComponent<RectTransform>();
+        textRect.anchorMin = new Vector2(0.6f, 0f);
+        textRect.anchorMax = new Vector2(1f, 0.4f);
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        stackCountText.text = "";
+        stackCountText.fontSize = 12f;
+        stackCountText.color = Color.white;
+        stackCountText.fontStyle = FontStyles.Bold;
+        stackCountText.alignment = TextAlignmentOptions.BottomRight;
+        stackCountText.raycastTarget = false;
+
+        // เพิ่ม outline สำหรับอ่านง่าย
+        var outline = textObj.AddComponent<UnityEngine.UI.Outline>();
+        outline.effectColor = Color.black;
+        outline.effectDistance = new Vector2(1, -1);
+
+        // ซ่อนไว้ก่อน
+        stackCountText.gameObject.SetActive(false);
+
+        Debug.Log($"[EquipmentSlot] Created StackCountText for {slotType} slot");
     }
     public void SetSelectedState(bool selected)
     {
@@ -169,7 +206,7 @@ public class EquipmentSlot : MonoBehaviour
     #region Visual Management
     public void SetEmptyState()
     {
-        isEmpty = true; // 🆕 ตั้งค่า isEmpty = true
+        isEmpty = true;
         isSelected = false;
 
         if (slotBackground != null)
@@ -182,8 +219,74 @@ public class EquipmentSlot : MonoBehaviour
             itemIcon.gameObject.SetActive(false);
         }
 
+        // 🆕 ซ่อน stack count text ด้วย
+        if (stackCountText != null)
+        {
+            stackCountText.gameObject.SetActive(false);
+        }
+
         Debug.Log($"[EquipmentSlot] {slotType} slot set to empty, isEmpty now: {isEmpty}");
     }
+
+    private void UpdatePotionStackCount()
+    {
+        if (slotType != ItemType.Potion || stackCountText == null)
+            return;
+
+        // หา Character จาก manager
+        if (manager?.OwnerCharacter == null)
+            return;
+
+        // ดึง potion จาก character
+        ItemData potionData = manager.OwnerCharacter.GetPotionInSlot(potionSlotIndex);
+        if (potionData == null)
+        {
+            stackCountText.gameObject.SetActive(false);
+            return;
+        }
+
+        // 🆕 ดึง stack count จาก character แทน
+        int stackCount = manager.OwnerCharacter.GetPotionStackCount(potionSlotIndex);
+
+        Debug.Log($"[EquipmentSlot] Potion slot {potionSlotIndex}: {potionData.ItemName} x{stackCount}");
+
+        if (stackCount > 1)
+        {
+            stackCountText.text = stackCount.ToString();
+            stackCountText.gameObject.SetActive(true);
+            Debug.Log($"[EquipmentSlot] 📊 Updated potion stack count: {stackCount}");
+        }
+        else if (stackCount == 1)
+        {
+            // ไม่แสดงเลข 1
+            stackCountText.gameObject.SetActive(false);
+        }
+        else
+        {
+            // ถ้า stack count = 0 แสดงว่าหมดแล้ว
+            stackCountText.gameObject.SetActive(false);
+            Debug.Log($"[EquipmentSlot] ⚠️ Potion stack depleted!");
+        }
+    }
+
+    // 🆕 เพิ่ม method สำหรับหาจำนวน potion ทั้งหมด
+    private int GetTotalPotionCount(ItemData potionData)
+    {
+        // 🆕 ใช้ stack count จาก character แทน
+        if (manager?.OwnerCharacter == null)
+            return 1;
+
+        return manager.OwnerCharacter.GetPotionStackCount(potionSlotIndex);
+    }
+    public void ForceUpdatePotionInfo()
+    {
+        if (slotType == ItemType.Potion)
+        {
+            UpdatePotionStackCount();
+            Debug.Log($"[EquipmentSlot] Force updated potion info for slot {potionSlotIndex}");
+        }
+    }
+
 
     public void SetFilledState(Sprite itemSprite, Color tierColor = default)
     {
@@ -193,6 +296,7 @@ public class EquipmentSlot : MonoBehaviour
             SetEmptyState();
             return;
         }
+
         isSelected = false;
         isEmpty = false;
 
@@ -204,9 +308,13 @@ public class EquipmentSlot : MonoBehaviour
             itemIcon.sprite = itemSprite;
             itemIcon.color = tierColor != default ? tierColor : Color.white;
             itemIcon.gameObject.SetActive(true);
-
-            // 🆕 แน่ใจว่า raycastTarget = false เสมอ
             itemIcon.raycastTarget = false;
+        }
+
+        // 🆕 สำหรับ potion: แสดง stack count จาก character
+        if (slotType == ItemType.Potion && stackCountText != null)
+        {
+            UpdatePotionStackCount();
         }
 
         Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
@@ -365,10 +473,18 @@ public class EquipmentSlot : MonoBehaviour
     {
         slotType = newType;
         potionSlotIndex = newPotionIndex;
-        UpdateSlotTypeDisplay();
 
-        Debug.Log($"[EquipmentSlot] Changed slot type to: {slotType}");
+        Debug.Log($"[EquipmentSlot] Changed slot type to: {slotType}, potion index: {potionSlotIndex}");
+
+        // สร้าง StackCountText ถ้าเป็น potion และยังไม่มี
+        if (slotType == ItemType.Potion && stackCountText == null)
+        {
+            CreateStackCountText();
+        }
+
+        UpdateSlotTypeDisplay();
     }
+
     #endregion
 
     #region Context Menu for Testing

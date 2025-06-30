@@ -133,24 +133,33 @@ public class InventorySlot : MonoBehaviour
     #region Slot State Management
     public void SetEmptyState()
     {
-        // ✅ ตั้งค่า isEmpty ก่อนเป็นอันดับแรก
+        Debug.Log($"[InventorySlot] 🧹 Setting empty state for slot {slotIndex}");
+
+        // ตั้งค่า isEmpty ก่อนเป็นอันดับแรก
         isEmpty = true;
         isSelected = false;
 
         if (slotBackground != null)
+        {
             slotBackground.color = emptySlotColor;
+        }
 
         if (itemIcon != null)
         {
             itemIcon.sprite = null;
             itemIcon.color = Color.white; // รีเซ็ต color
             itemIcon.gameObject.SetActive(false);
+            Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon hidden");
         }
 
         if (stackText != null)
+        {
+            stackText.text = "";
             stackText.gameObject.SetActive(false);
+            Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text hidden");
+        }
 
-        Debug.Log($"[InventorySlot] Slot {slotIndex} set to empty state, isEmpty now: {isEmpty}");
+        Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} empty state complete, isEmpty now: {isEmpty}");
     }
     public void SetFilledState(Sprite itemSprite, int stackCount = 0)
     {
@@ -161,48 +170,51 @@ public class InventorySlot : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[InventorySlot] Setting sprite: {itemSprite.name} for slot {slotIndex}");
+        Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}, stack: {stackCount}");
 
-        // ✅ ตั้งค่า isEmpty ก่อนเป็นอันดับแรก
+        // ตั้งค่า isEmpty ก่อนเป็นอันดับแรก
         isEmpty = false;
         isSelected = false;
 
         if (slotBackground != null)
+        {
             slotBackground.color = filledSlotColor;
+        }
         else
+        {
             Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotBackground is null!");
+        }
 
         if (itemIcon != null)
         {
             itemIcon.sprite = itemSprite;
             itemIcon.gameObject.SetActive(true);
 
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: ItemIcon active={itemIcon.gameObject.activeSelf}, Sprite={itemIcon.sprite?.name}");
-
-            // ✅ Force refresh canvas
-            Canvas.ForceUpdateCanvases();
+            Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon set to active with sprite {itemSprite.name}");
         }
         else
         {
             Debug.LogError($"[InventorySlot] Slot {slotIndex}: itemIcon is null!");
         }
 
-        // แสดง Stack text เฉพาะเมื่อ stackCount > 1
+        // 🆕 จัดการ Stack text ให้ดีขึ้น
         if (stackText != null)
         {
             if (stackCount > 1)
             {
                 stackText.text = stackCount.ToString();
                 stackText.gameObject.SetActive(true);
+                Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text set to '{stackCount}'");
             }
             else
             {
+                stackText.text = "";
                 stackText.gameObject.SetActive(false);
+                Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text hidden");
             }
         }
 
-        string stackInfo = stackCount > 1 ? $" x{stackCount}" : "";
-        Debug.Log($"[InventorySlot] Slot {slotIndex} filled with item: {itemSprite.name}{stackInfo}, isEmpty now: {isEmpty}");
+        Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} filled state complete, isEmpty now: {isEmpty}");
     }
     public void SetRarityColor(Color rarityColor)
     {
@@ -330,18 +342,52 @@ public class InventorySlot : MonoBehaviour
 
         InventoryItem item = inventory.GetItem(slotIndex);
 
+        // 🆕 Debug ข้อมูลก่อน sync
+        string currentUIState = isEmpty ? "EMPTY" : "FILLED";
+        string characterData = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
+
+        Debug.Log($"[InventorySlot] Sync slot {slotIndex} - UI: {currentUIState}, Character: {characterData}");
+
         // อัปเดตสถานะตาม inventory จริง
         if (item == null || item.IsEmpty)
         {
             if (!isEmpty) // ถ้าเดิมไม่ empty แต่ตอนนี้ empty แล้ว
             {
+                Debug.Log($"[InventorySlot] 🔄 Slot {slotIndex}: Changing from FILLED to EMPTY");
                 SetEmptyState();
-                Debug.Log($"[InventorySlot] Synced slot {slotIndex} to empty state");
+
+                // 🆕 Force refresh หลัง set empty
+                Canvas.ForceUpdateCanvases();
             }
         }
         else
         {
-            if (isEmpty) // ถ้าเดิม empty แต่ตอนนี้มี item แล้ว
+            // 🆕 ตรวจสอบว่าต้องอัปเดต UI หรือไม่
+            bool needsUpdate = false;
+
+            if (isEmpty)
+            {
+                // ถ้าเดิม empty แต่ตอนนี้มี item แล้ว
+                needsUpdate = true;
+                Debug.Log($"[InventorySlot] 🔄 Slot {slotIndex}: Changing from EMPTY to FILLED");
+            }
+            else
+            {
+                // ถ้ามี item อยู่แล้ว แต่ stack count อาจเปลี่ยน
+                if (stackText != null && stackText.gameObject.activeSelf)
+                {
+                    string currentStackText = stackText.text;
+                    string newStackText = item.stackCount > 1 ? item.stackCount.ToString() : "";
+
+                    if (currentStackText != newStackText)
+                    {
+                        needsUpdate = true;
+                        Debug.Log($"[InventorySlot] 🔄 Slot {slotIndex}: Stack count changed from '{currentStackText}' to '{newStackText}'");
+                    }
+                }
+            }
+
+            if (needsUpdate)
             {
                 Sprite itemIcon = item.itemData.ItemIcon;
                 int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
@@ -352,9 +398,18 @@ public class InventorySlot : MonoBehaviour
                 Color tierColor = item.itemData.GetTierColor();
                 SetRarityColor(tierColor);
 
-                Debug.Log($"[InventorySlot] Synced slot {slotIndex} to filled state: {item.itemData.ItemName}");
+                Debug.Log($"[InventorySlot] ✅ Updated slot {slotIndex}: {item.itemData.ItemName} x{item.stackCount}");
+
+                // 🆕 Force refresh หลัง update
+                Canvas.ForceUpdateCanvases();
             }
         }
+    }
+
+    public void ForceSync()
+    {
+        Debug.Log($"[InventorySlot] 🔄 Force syncing slot {slotIndex}...");
+        SyncWithCharacterInventory();
     }
     #endregion
 
