@@ -1235,14 +1235,15 @@ public class PersistentPlayerData : MonoBehaviour
             {
                 Debug.Log($"[LoadInventoryData] ✅ Inventory load completed for {character.CharacterName}");
 
-                // 3. Force refresh UI หลัง load เสร็จ
+                // 3. Force refresh หลัง load เสร็จ
                 ForceRefreshInventoryUI(character);
+
+                // 🆕 4. แจ้ง LevelManager ให้คำนวณ stats ใหม่หลังโหลด equipment
+                NotifyLevelManagerEquipmentLoaded(character);
             }
             else
             {
                 Debug.LogWarning("[LoadInventoryData] ⚠️ No data was loaded - giving starter items");
-
-                // ถ้าไม่มีข้อมูล ให้ starter items
                 GiveStarterItemsIfNeeded(character);
             }
         }
@@ -1253,6 +1254,34 @@ public class PersistentPlayerData : MonoBehaviour
 
             // ถ้า load ไม่ได้ ให้ starter items
             GiveStarterItemsIfNeeded(character);
+        }
+    }
+    /// </summary>
+    private void NotifyLevelManagerEquipmentLoaded(Character character)
+    {
+        try
+        {
+            Debug.Log("[NotifyLevelManagerEquipmentLoaded] 📢 Notifying LevelManager that equipment is loaded...");
+
+            var levelManager = character.GetComponent<LevelManager>();
+            if (levelManager != null)
+            {
+                // เรียก method ของ LevelManager เพื่อคำนวณ stats ใหม่
+                levelManager.OnEquipmentLoadedRecalculateStats();
+                Debug.Log("[NotifyLevelManagerEquipmentLoaded] ✅ LevelManager notified successfully");
+            }
+            else
+            {
+                Debug.LogWarning("[NotifyLevelManagerEquipmentLoaded] ⚠️ No LevelManager found on character");
+
+                // ถ้าไม่มี LevelManager ให้เรียก Character.ApplyLoadedEquipmentStats() โดยตรง
+                character.ApplyLoadedEquipmentStats();
+                Debug.Log("[NotifyLevelManagerEquipmentLoaded] ✅ Applied equipment stats directly to character");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[NotifyLevelManagerEquipmentLoaded] ❌ Error notifying LevelManager: {e.Message}");
         }
     }
 
@@ -1409,7 +1438,7 @@ public class PersistentPlayerData : MonoBehaviour
                 return false;
             }
 
-            // 🆕 Debug ข้อมูลก่อน load
+            // Debug ข้อมูลก่อน load
             Debug.Log($"[LoadCharacterEquipmentData] Equipment data found:");
             Debug.Log($"  - Head: {equipmentData.equipment.headItemId}");
             Debug.Log($"  - Armor: {equipmentData.equipment.armorItemId}");
@@ -1431,11 +1460,10 @@ public class PersistentPlayerData : MonoBehaviour
                 Debug.Log($"[LoadCharacterEquipmentData] ✅ Equipment loaded for {characterType}");
                 Debug.Log($"[LoadCharacterEquipmentData] Equipment loaded: {equipmentLoaded}, Potions loaded: {potionsLoaded}");
 
-                // 🆕 Debug ผลลัพธ์หลัง load
+                // Debug ผลลัพธ์หลัง load
                 character.DebugLoadedEquipment();
 
-                // 🆕 Force refresh equipment UI อีกครั้ง
-                ForceRefreshEquipmentUIOnly(character);
+                // 🆕 ไม่ต้อง Force refresh equipment UI ที่นี่ เพราะจะทำใน NotifyLevelManagerEquipmentLoaded
 
                 return true;
             }

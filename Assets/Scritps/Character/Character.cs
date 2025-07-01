@@ -1958,17 +1958,120 @@ public class Character : NetworkBehaviour
 
     public void ApplyLoadedEquipmentStats()
     {
-        Debug.Log($"[Character] Applying loaded equipment stats...");
+        // เรียกใช้ version ที่มี reset
+        ApplyLoadedEquipmentStatsWithReset();
+    }
+    public void SaveCurrentStatsAsBase()
+    {
+        if (characterStats == null)
+        {
+            Debug.LogWarning("[Character] No characterStats to update!");
+            return;
+        }
 
-        // คำนวณ total stats จาก equipment ทั้งหมด
-        ApplyAllEquipmentStats();
+        Debug.Log($"[Character] 💾 Saving current stats as new base stats...");
 
-        // แจ้ง Event สำหรับ UI
-        OnStatsChanged?.Invoke();
+        // Update characterStats ด้วยค่าปัจจุบัน (รวม equipment bonuses)
+        characterStats.maxHp = MaxHp;
+        characterStats.maxMana = MaxMana;
+        characterStats.attackDamage = AttackDamage;
+        characterStats.magicDamage = MagicDamage;
+        characterStats.arrmor = Armor;
+        characterStats.criticalChance = CriticalChance;
+        characterStats.criticalDamageBonus = CriticalDamageBonus;
+        characterStats.moveSpeed = MoveSpeed;
+        characterStats.hitRate = HitRate;
+        characterStats.evasionRate = EvasionRate;
+        characterStats.attackSpeed = AttackSpeed;
+        characterStats.reductionCoolDown = ReductionCoolDown;
 
-        Debug.Log($"[Character] ✅ Applied loaded equipment stats");
+        Debug.Log($"[Character] ✅ Current stats saved as base: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}");
+    }
+    public void ResetToBaseStats()
+    {
+        try
+        {
+            if (characterStats == null)
+            {
+                Debug.LogWarning("[Character] No characterStats available for reset!");
+                return;
+            }
+
+            Debug.Log($"[Character] 🔄 Resetting to base stats for {CharacterName}...");
+
+            // เก็บ current HP/Mana percentage เพื่อรักษาไว้
+            float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
+            // Reset ทุก stats กลับเป็นค่า base จาก characterStats
+            MaxHp = characterStats.maxHp;
+            MaxMana = characterStats.maxMana;
+            AttackDamage = characterStats.attackDamage;
+            MagicDamage = characterStats.magicDamage;
+            Armor = characterStats.arrmor;
+            CriticalChance = characterStats.criticalChance;
+            CriticalDamageBonus = characterStats.criticalDamageBonus;
+            MoveSpeed = characterStats.moveSpeed;
+            HitRate = characterStats.hitRate;
+            EvasionRate = characterStats.evasionRate;
+            AttackSpeed = characterStats.attackSpeed;
+            ReductionCoolDown = characterStats.reductionCoolDown;
+
+            // คำนวณ HP/Mana ตาม percentage เดิม
+            CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+            CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+
+            Debug.Log($"[Character] ✅ Reset to base stats: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}, CRIT={CriticalChance:F1}%");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error resetting to base stats: {e.Message}");
+        }
     }
 
+    public void ApplyLoadedEquipmentStatsWithReset()
+    {
+        try
+        {
+            Debug.Log($"[Character] 🔄 Applying loaded equipment stats with reset for {CharacterName}...");
+
+            // 1. Reset กลับเป็น base stats ก่อน
+            ResetToBaseStats();
+
+            // 2. เก็บ base stats สำหรับ comparison
+            int baseMaxHp = MaxHp;
+            int baseAttackDamage = AttackDamage;
+            int baseArmor = Armor;
+            float baseCriticalChance = CriticalChance;
+
+            // 3. Apply equipment stats ใหม่
+            ApplyAllEquipmentStats();
+
+            // 4. Debug การเปลี่ยนแปลง
+            int hpBonus = MaxHp - baseMaxHp;
+            int atkBonus = AttackDamage - baseAttackDamage;
+            int armBonus = Armor - baseArmor;
+            float critBonus = CriticalChance - baseCriticalChance;
+
+            Debug.Log($"[Character] ✅ Equipment bonuses applied (with reset):");
+            Debug.Log($"  HP: +{hpBonus} (Base: {baseMaxHp} → Total: {MaxHp})");
+            Debug.Log($"  ATK: +{atkBonus} (Base: {baseAttackDamage} → Total: {AttackDamage})");
+            Debug.Log($"  ARM: +{armBonus} (Base: {baseArmor} → Total: {Armor})");
+            Debug.Log($"  CRIT: +{critBonus:F1}% (Base: {baseCriticalChance:F1}% → Total: {CriticalChance:F1}%)");
+
+            // 5. Force update network state
+            ForceUpdateNetworkState();
+
+            // 6. แจ้ง stats changed
+            OnStatsChanged?.Invoke();
+
+            Debug.Log($"[Character] ✅ Applied loaded equipment stats with reset for {CharacterName}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying loaded equipment stats with reset: {e.Message}");
+        }
+    }
     /// <summary>
     /// Force refresh equipment UI หลัง load
     /// </summary>
