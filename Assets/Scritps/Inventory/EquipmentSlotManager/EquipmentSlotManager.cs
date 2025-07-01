@@ -208,74 +208,82 @@ public class EquipmentSlotManager : MonoBehaviour
     {
         if (slot == null || ownerCharacter == null) return;
 
-        ItemData equippedItem = null;
+        Debug.Log($"[EquipmentSlotManager] 🔄 Updating {slot.SlotType} slot...");
 
-        // ดึงข้อมูลจาก Character ตาม slot type
-        if (slot.SlotType == ItemType.Potion)
+        // 🆕 ใช้ RefreshFromCharacterData แทน
+        slot.RefreshFromCharacterData();
+    }
+    public void ForceRefreshAfterPotionUse(int potionSlotIndex)
+    {
+        Debug.Log($"[EquipmentSlotManager] 🧪 Force refreshing after potion use in slot {potionSlotIndex}...");
+
+        // หา potion slot ที่ตรงกับ index
+        foreach (EquipmentSlot slot in connectedPotionSlots)
         {
-            // สำหรับ potion: ใช้ PotionSlotIndex
-            int potionIndex = slot.PotionSlotIndex;
-            equippedItem = ownerCharacter.GetPotionInSlot(potionIndex);
-
-            Debug.Log($"[EquipmentSlotManager] Updating potion slot {potionIndex}: {(equippedItem?.ItemName ?? "EMPTY")}");
-
-            // 🆕 Debug potion stack count
-            if (equippedItem != null)
+            if (slot != null && slot.PotionSlotIndex == potionSlotIndex)
             {
-                int stackCount = ownerCharacter.GetPotionStackCount(potionIndex);
-                Debug.Log($"[EquipmentSlotManager] Potion {equippedItem.ItemName} stack count: {stackCount}");
+                Debug.Log($"[EquipmentSlotManager] Found potion slot {potionSlotIndex}, refreshing...");
+                slot.RefreshFromCharacterData();
+
+                // Force update ทันที
+                Canvas.ForceUpdateCanvases();
+
+                Debug.Log($"[EquipmentSlotManager] ✅ Refreshed potion slot {potionSlotIndex}");
+                break;
             }
-        }
-        else
-        {
-            // สำหรับ equipment อื่นๆ
-            equippedItem = ownerCharacter.GetEquippedItem(slot.SlotType);
-
-            Debug.Log($"[EquipmentSlotManager] Updating {slot.SlotType} slot: {(equippedItem?.ItemName ?? "EMPTY")}");
-
-            // 🆕 Debug equipment slot ที่ดึงมา
-            if (equippedItem != null)
-            {
-                Debug.Log($"[EquipmentSlotManager] Equipment details: {equippedItem.ItemName} ({equippedItem.ItemType}, {equippedItem.GetTierText()})");
-            }
-        }
-
-        // อัปเดต UI
-        if (equippedItem != null)
-        {
-            slot.SetFilledState(equippedItem.ItemIcon, equippedItem.GetTierColor());
-            Debug.Log($"[EquipmentSlotManager] ✅ Set {slot.SlotType} slot to filled with {equippedItem.ItemName}");
-
-            // 🆕 สำหรับ potion: อัปเดต stack count ด้วย
-            if (slot.SlotType == ItemType.Potion)
-            {
-                slot.ForceUpdatePotionInfo();
-            }
-        }
-        else
-        {
-            slot.SetEmptyState();
-            Debug.Log($"[EquipmentSlotManager] ⭕ Set {slot.SlotType} slot to empty");
         }
     }
-
-
     public void RefreshAllSlots()
     {
+        Debug.Log($"[EquipmentSlotManager] 🔄 Refreshing all slots for {ownerCharacter?.CharacterName}...");
+
+        int equipmentRefreshed = 0;
+        int potionRefreshed = 0;
+
         // Refresh Equipment Slots
         foreach (EquipmentSlot slot in connectedEquipmentSlots)
         {
-            UpdateSlotFromCharacter(slot);
+            if (slot != null)
+            {
+                slot.RefreshFromCharacterData();
+                equipmentRefreshed++;
+            }
         }
 
-        // Refresh Potion Slots  
+        // 🆕 Refresh Potion Slots พร้อม debug
         foreach (EquipmentSlot slot in connectedPotionSlots)
         {
-            UpdateSlotFromCharacter(slot);
+            if (slot != null)
+            {
+                Debug.Log($"[EquipmentSlotManager] 🧪 Refreshing potion slot {slot.PotionSlotIndex}...");
+                slot.RefreshFromCharacterData();
+                potionRefreshed++;
+            }
         }
 
-        Debug.Log("[EquipmentSlotManager] Refreshed all slots");
+        // 🆕 Force update Canvas หลัง refresh ทั้งหมด
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log($"[EquipmentSlotManager] ✅ Refreshed {equipmentRefreshed} equipment slots and {potionRefreshed} potion slots");
     }
+    public void RefreshPotionSlots()
+    {
+        Debug.Log($"[EquipmentSlotManager] 🧪 Refreshing potion slots only...");
+
+        int refreshed = 0;
+        foreach (EquipmentSlot slot in connectedPotionSlots)
+        {
+            if (slot != null)
+            {
+                slot.RefreshFromCharacterData();
+                refreshed++;
+            }
+        }
+
+        Canvas.ForceUpdateCanvases();
+        Debug.Log($"[EquipmentSlotManager] ✅ Refreshed {refreshed} potion slots");
+    }
+
 
     /// <summary>
     /// ตรวจสอบว่า slots ถูกเชื่อมต่อแล้วหรือยัง
@@ -406,7 +414,8 @@ public class EquipmentSlotManager : MonoBehaviour
             return;
         }
 
-        LoadEquippedItemsToSlots();
+        // 🆕 ใช้ RefreshAllSlots แทน LoadEquippedItemsToSlots
+        RefreshAllSlots();
 
         Debug.Log("[EquipmentSlotManager] ✅ Force refresh completed");
     }

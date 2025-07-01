@@ -1673,6 +1673,9 @@ public class Character : NetworkBehaviour
             return false;
         }
 
+        // 🆕 Debug ก่อนใช้ potion
+        Debug.Log($"[Character] 🧪 Using {potionData.ItemName} from slot {potionSlotIndex}. Current stack: {currentStackCount}");
+
         // ใช้ potion
         bool success = ApplyPotionEffects(potionData);
         if (success)
@@ -1691,15 +1694,75 @@ public class Character : NetworkBehaviour
             // อัปเดต cooldown เฉพาะ slot นี้
             lastPotionUseTime[potionSlotIndex] = Time.time;
 
-            // แจ้ง UI ให้อัปเดต
-            OnStatsChanged?.Invoke();
-
             Debug.Log($"[Character] ✅ Used {potionData.ItemName} from slot {potionSlotIndex}. Remaining: {newStackCount}");
+
+            // 🆕 แจ้ง UI ให้อัปเดตทันที
+            ForceUpdatePotionUI(potionSlotIndex);
+
+            // 🆕 บันทึกข้อมูลทันที (ย้ายเข้ามาใน if success block)
+            SavePotionDataAfterUse();
+
             return true;
         }
-        PersistentPlayerData.Instance?.SaveCharacterPotionData(this);
 
+        Debug.LogWarning($"[Character] Failed to apply potion effects for {potionData.ItemName}");
         return false;
+    }
+
+    private void ForceUpdatePotionUI(int potionSlotIndex)
+    {
+        try
+        {
+            Debug.Log($"[Character] 🔄 Force updating potion UI for slot {potionSlotIndex}...");
+
+            // 1. แจ้ง stats changed event
+            OnStatsChanged?.Invoke();
+
+            // 2. Force refresh EquipmentSlotManager - เฉพาะ potion slot ที่ใช้
+            var equipmentSlotManager = GetComponent<EquipmentSlotManager>();
+            if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
+            {
+                equipmentSlotManager.ForceRefreshAfterPotionUse(potionSlotIndex);
+                Debug.Log($"[Character] ✅ Character EquipmentSlotManager potion slot {potionSlotIndex} refreshed");
+            }
+
+            // 3. Force refresh CombatUIManager equipment slots - เฉพาะ potion slot ที่ใช้
+            var combatUIManager = FindObjectOfType<CombatUIManager>();
+            if (combatUIManager?.equipmentSlotManager != null)
+            {
+                combatUIManager.equipmentSlotManager.ForceRefreshAfterPotionUse(potionSlotIndex);
+                Debug.Log($"[Character] ✅ CombatUI EquipmentSlotManager potion slot {potionSlotIndex} refreshed");
+            }
+
+            // 4. Force update Canvas
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log($"[Character] ✅ Potion UI updated for slot {potionSlotIndex}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error updating potion UI: {e.Message}");
+        }
+    }
+
+    private void SavePotionDataAfterUse()
+    {
+        try
+        {
+            Debug.Log($"[Character] 💾 Saving potion data after use...");
+
+            // บันทึกข้อมูล potion
+            PersistentPlayerData.Instance?.SaveCharacterPotionData(this);
+
+            // บันทึกข้อมูล inventory ด้วย (ในกรณีที่ potion มาจาก inventory)
+            PersistentPlayerData.Instance?.SaveInventoryData(this);
+
+            Debug.Log($"[Character] ✅ Potion data saved successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error saving potion data: {e.Message}");
+        }
     }
 
     /// <summary>

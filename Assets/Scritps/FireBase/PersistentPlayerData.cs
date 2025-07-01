@@ -970,8 +970,9 @@ public class PersistentPlayerData : MonoBehaviour
 
         try
         {
-            string characterType = character.CharacterName;
-            Debug.Log($"[SaveCharacterPotionData] 🧪 Saving potion data for {characterType}");
+            // 🔧 ใช้ currentActiveCharacter แทน CharacterName
+            string characterType = multiCharacterData.currentActiveCharacter;
+            Debug.Log($"[SaveCharacterPotionData] 🧪 Saving potion data for {characterType} (Character: {character.CharacterName})");
 
             var characterProgressData = multiCharacterData.GetOrCreateCharacterData(characterType);
             if (characterProgressData?.characterEquipment == null)
@@ -980,34 +981,93 @@ public class PersistentPlayerData : MonoBehaviour
                 return;
             }
 
-            // อัปเดตเฉพาะ potion slots
+            // 🆕 Debug potion data ก่อน save
+            Debug.Log($"[SaveCharacterPotionData] === POTION DATA BEFORE SAVE ===");
             for (int i = 0; i < 5; i++)
             {
                 var potionItem = character.GetPotionInSlot(i);
-                if (potionItem != null)
+                int stackCount = character.GetPotionStackCount(i);
+                Debug.Log($"  Slot {i}: {(potionItem?.ItemName ?? "EMPTY")} x{stackCount}");
+            }
+
+            // อัปเดตเฉพาะ potion slots
+            bool hasChanges = false;
+            for (int i = 0; i < 5; i++)
+            {
+                var potionItem = character.GetPotionInSlot(i);
+                int stackCount = character.GetPotionStackCount(i);
+
+                // ดึงข้อมูลเก่าเพื่อเปรียบเทียบ
+                var oldPotionSlot = characterProgressData.characterEquipment.GetPotionSlot(i);
+                string oldItemId = oldPotionSlot?.itemId ?? "";
+                int oldStackCount = oldPotionSlot?.stackCount ?? 0;
+
+                if (potionItem != null && stackCount > 0)
                 {
-                    int stackCount = character.GetPotionStackCount(i);
-                    characterProgressData.characterEquipment.SetPotionSlot(i, potionItem.ItemId, stackCount, potionItem.ItemName);
-                    Debug.Log($"[SaveCharacterPotionData] Slot {i}: {potionItem.ItemName} x{stackCount}");
+                    // มี potion ใน slot นี้
+                    string newItemId = potionItem.ItemId;
+
+                    if (oldItemId != newItemId || oldStackCount != stackCount)
+                    {
+                        characterProgressData.characterEquipment.SetPotionSlot(i, newItemId, stackCount, potionItem.ItemName);
+                        Debug.Log($"[SaveCharacterPotionData] 🔄 Updated slot {i}: {potionItem.ItemName} x{stackCount} (was: {oldItemId} x{oldStackCount})");
+                        hasChanges = true;
+                    }
+                    else
+                    {
+                        Debug.Log($"[SaveCharacterPotionData] ✓ Slot {i}: No changes - {potionItem.ItemName} x{stackCount}");
+                    }
                 }
                 else
                 {
-                    characterProgressData.characterEquipment.ClearPotionSlot(i);
+                    // ไม่มี potion ใน slot นี้
+                    if (!string.IsNullOrEmpty(oldItemId) || oldStackCount > 0)
+                    {
+                        characterProgressData.characterEquipment.ClearPotionSlot(i);
+                        Debug.Log($"[SaveCharacterPotionData] 🧹 Cleared slot {i} (was: {oldItemId} x{oldStackCount})");
+                        hasChanges = true;
+                    }
+                    else
+                    {
+                        Debug.Log($"[SaveCharacterPotionData] ✓ Slot {i}: Already empty");
+                    }
                 }
             }
 
-            characterProgressData.UpdateEquipmentDebugInfo();
-            Debug.Log($"[SaveCharacterPotionData] ✅ Potion data saved for {characterType}");
+            if (hasChanges)
+            {
+                characterProgressData.UpdateEquipmentDebugInfo();
+                Debug.Log($"[SaveCharacterPotionData] ✅ Potion data saved for {characterType} with changes");
 
-            // Auto save to Firebase
-            SavePlayerDataAsync();
+                // 🆕 Debug potion data หลัง save
+                Debug.Log($"[SaveCharacterPotionData] === POTION DATA AFTER SAVE ===");
+                for (int i = 0; i < characterProgressData.characterEquipment.potionSlots.Count; i++)
+                {
+                    var savedSlot = characterProgressData.characterEquipment.potionSlots[i];
+                    if (!savedSlot.IsEmpty())
+                    {
+                        Debug.Log($"  Saved Slot {i}: {savedSlot.itemName} x{savedSlot.stackCount} (ID: {savedSlot.itemId})");
+                    }
+                    else
+                    {
+                        Debug.Log($"  Saved Slot {i}: EMPTY");
+                    }
+                }
+
+                // Auto save to Firebase
+                SavePlayerDataAsync();
+            }
+            else
+            {
+                Debug.Log($"[SaveCharacterPotionData] ✓ No changes detected for {characterType}");
+            }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[SaveCharacterPotionData] ❌ Error: {e.Message}");
+            Debug.LogError($"[SaveCharacterPotionData] Stack trace: {e.StackTrace}");
         }
     }
-
     /// <summary>
     /// บังคับบันทึก inventory ทันที (สำหรับกรณีเร่งด่วน)
     /// </summary>

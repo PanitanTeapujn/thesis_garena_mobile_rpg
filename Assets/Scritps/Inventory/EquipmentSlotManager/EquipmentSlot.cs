@@ -241,14 +241,19 @@ public class EquipmentSlot : MonoBehaviour
         ItemData potionData = manager.OwnerCharacter.GetPotionInSlot(potionSlotIndex);
         if (potionData == null)
         {
+            // 🆕 ถ้าไม่มี potion แสดงว่า slot ว่างแล้ว
+            Debug.Log($"[EquipmentSlot] Potion slot {potionSlotIndex} is now empty");
             stackCountText.gameObject.SetActive(false);
+
+            // 🆕 เปลี่ยน slot เป็น empty state
+            SetEmptyState();
             return;
         }
 
-        // 🆕 ดึง stack count จาก character แทน
+        // ดึง stack count จาก character
         int stackCount = manager.OwnerCharacter.GetPotionStackCount(potionSlotIndex);
 
-        Debug.Log($"[EquipmentSlot] Potion slot {potionSlotIndex}: {potionData.ItemName} x{stackCount}");
+        Debug.Log($"[EquipmentSlot] 🧪 Updating potion slot {potionSlotIndex}: {potionData.ItemName} x{stackCount}");
 
         if (stackCount > 1)
         {
@@ -260,12 +265,16 @@ public class EquipmentSlot : MonoBehaviour
         {
             // ไม่แสดงเลข 1
             stackCountText.gameObject.SetActive(false);
+            Debug.Log($"[EquipmentSlot] 📊 Hidden stack count for single potion");
         }
         else
         {
             // ถ้า stack count = 0 แสดงว่าหมดแล้ว
             stackCountText.gameObject.SetActive(false);
-            Debug.Log($"[EquipmentSlot] ⚠️ Potion stack depleted!");
+            Debug.Log($"[EquipmentSlot] ⚠️ Potion stack depleted! Setting slot to empty");
+
+            // 🆕 เปลี่ยน slot เป็น empty state
+            SetEmptyState();
         }
     }
 
@@ -282,12 +291,56 @@ public class EquipmentSlot : MonoBehaviour
     {
         if (slotType == ItemType.Potion)
         {
+            Debug.Log($"[EquipmentSlot] 🔄 Force updating potion info for slot {potionSlotIndex}...");
+
             UpdatePotionStackCount();
-            Debug.Log($"[EquipmentSlot] Force updated potion info for slot {potionSlotIndex}");
+
+            // Force update Canvas ทันที
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log($"[EquipmentSlot] ✅ Force updated potion info for slot {potionSlotIndex}");
         }
     }
 
+    public void RefreshFromCharacterData()
+    {
+        if (manager?.OwnerCharacter == null) return;
 
+        if (slotType == ItemType.Potion)
+        {
+            // ดึงข้อมูล potion ใหม่จาก character
+            ItemData potionData = manager.OwnerCharacter.GetPotionInSlot(potionSlotIndex);
+
+            if (potionData != null)
+            {
+                // อัปเดต UI
+                SetFilledState(potionData.ItemIcon, potionData.GetTierColor());
+                Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: {potionData.ItemName}");
+            }
+            else
+            {
+                // Slot ว่าง
+                SetEmptyState();
+                Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: EMPTY");
+            }
+        }
+        else
+        {
+            // สำหรับ equipment อื่นๆ
+            ItemData equippedItem = manager.OwnerCharacter.GetEquippedItem(slotType);
+
+            if (equippedItem != null)
+            {
+                SetFilledState(equippedItem.ItemIcon, equippedItem.GetTierColor());
+                Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: {equippedItem.ItemName}");
+            }
+            else
+            {
+                SetEmptyState();
+                Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: EMPTY");
+            }
+        }
+    }
     public void SetFilledState(Sprite itemSprite, Color tierColor = default)
     {
         if (itemSprite == null)
@@ -311,10 +364,13 @@ public class EquipmentSlot : MonoBehaviour
             itemIcon.raycastTarget = false;
         }
 
-        // 🆕 สำหรับ potion: แสดง stack count จาก character
+        // 🆕 สำหรับ potion: แสดง stack count จาก character และ force update
         if (slotType == ItemType.Potion && stackCountText != null)
         {
             UpdatePotionStackCount();
+
+            // 🆕 Force update ทันทีหลัง set filled state
+            Canvas.ForceUpdateCanvases();
         }
 
         Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
