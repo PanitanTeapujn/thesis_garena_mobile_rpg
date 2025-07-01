@@ -154,6 +154,14 @@ MonoBehaviour:
     spawnCooldown: 1
     lastSpawnTime: 0
     currentCount: 0
+  - enemyPrefab: {fileID: 2102208964661930907, guid: 4663345fe1c8fbb4798b2b02c3f20388,
+      type: 3}
+    enemyName: 
+    spawnWeight: 5
+    maxCount: 1
+    spawnCooldown: 1
+    lastSpawnTime: 0
+    currentCount: 0
   bossConditions: []
   enableBossSpawning: 1
   bossSpawnPoints:

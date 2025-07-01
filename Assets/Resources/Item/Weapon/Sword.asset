@@ -21,11 +21,11 @@ MonoBehaviour:
   maxStackSize: 1
   isStackable: 0
   stats:
-    attackDamageBonus: 10000000
+    attackDamageBonus: 5
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 100
-    criticalDamageBonus: 100
+    criticalChanceBonus: 5
+    criticalDamageBonus: 0.5
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
@@ -35,3 +35,7 @@ MonoBehaviour:
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    healAmount: 0
+    manaAmount: 0
+    healPercentage: 0
+    manaPercentage: 0

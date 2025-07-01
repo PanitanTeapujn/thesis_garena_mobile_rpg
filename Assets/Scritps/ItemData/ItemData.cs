@@ -97,6 +97,7 @@ public class ItemStats
     }
 
     // แทนที่ GetStatsDescription() method เดิมด้วยโค้ดนี้
+    // แทนที่ GetStatsDescription() method เดิมด้วยโค้ดนี้
     public string GetStatsDescription()
     {
         List<string> statsList = new List<string>();
@@ -108,38 +109,45 @@ public class ItemStats
             statsList.Add($"Magic: +{magicDamageBonus}");
         if (armorBonus != 0)
             statsList.Add($"Armor: +{armorBonus}");
+
+        // 🔧 แสดงเป็น % โดยไม่ให้ :P1 คูณ 100 อีก
         if (criticalChanceBonus != 0f)
-            statsList.Add($"Crit Chance: +{criticalChanceBonus:P1}");
+            statsList.Add($"Crit Chance: +{criticalChanceBonus:F1}%");
         if (criticalDamageBonus != 0f)
-            statsList.Add($"Crit Damage: +{criticalDamageBonus:P1}");
+            statsList.Add($"Crit Damage: +{criticalDamageBonus:F1}%");
+
         if (maxHpBonus != 0)
             statsList.Add($"HP: +{maxHpBonus}");
         if (maxManaBonus != 0)
             statsList.Add($"Mana: +{maxManaBonus}");
         if (moveSpeedBonus != 0f)
             statsList.Add($"Move Speed: +{moveSpeedBonus:F1}");
-        if (attackSpeedBonus != 0f)
-            statsList.Add($"Attack Speed: +{attackSpeedBonus:P1}");
-        if (hitRateBonus != 0f)
-            statsList.Add($"Hit Rate: +{hitRateBonus:P1}");
-        if (evasionRateBonus != 0f)
-            statsList.Add($"Evasion: +{evasionRateBonus:P1}");
-        if (reductionCoolDownBonus != 0f)
-            statsList.Add($"Cooldown: -{reductionCoolDownBonus:P1}");
-        if (physicalResistanceBonus != 0f)
-            statsList.Add($"Physical Res: +{physicalResistanceBonus:P1}");
-        if (magicalResistanceBonus != 0f)
-            statsList.Add($"Magical Res: +{magicalResistanceBonus:P1}");
 
-        // 🆕 Potion Effects
+        // 🔧 แสดงเป็น % โดยไม่ให้ :P1 คูณ 100 อีก
+        if (attackSpeedBonus != 0f)
+            statsList.Add($"Attack Speed: +{attackSpeedBonus:F1}%");
+        if (hitRateBonus != 0f)
+            statsList.Add($"Hit Rate: +{hitRateBonus:F1}%");
+        if (evasionRateBonus != 0f)
+            statsList.Add($"Evasion: +{evasionRateBonus:F1}%");
+        if (reductionCoolDownBonus != 0f)
+            statsList.Add($"Cooldown: -{reductionCoolDownBonus:F1}%");
+        if (physicalResistanceBonus != 0f)
+            statsList.Add($"Physical Res: +{physicalResistanceBonus:F1}%");
+        if (magicalResistanceBonus != 0f)
+            statsList.Add($"Magical Res: +{magicalResistanceBonus:F1}%");
+
+        // Potion Effects
         if (healAmount > 0)
             statsList.Add($"🔴 Heal: +{healAmount} HP");
         if (manaAmount > 0)
             statsList.Add($"🔵 Mana: +{manaAmount} MP");
+
+        // 🔧 แสดงเป็น % โดยไม่ให้ :P1 คูณ 100 อีก
         if (healPercentage > 0f)
-            statsList.Add($"🔴 Heal: +{healPercentage:P1} Max HP");
+            statsList.Add($"🔴 Heal: +{healPercentage:F1}% Max HP");
         if (manaPercentage > 0f)
-            statsList.Add($"🔵 Mana: +{manaPercentage:P1} Max MP");
+            statsList.Add($"🔵 Mana: +{manaPercentage:F1}% Max MP");
 
         return statsList.Count > 0 ? string.Join("\n", statsList) : "No bonus stats";
     }

@@ -35,3 +35,7 @@ MonoBehaviour:
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    healAmount: 0
+    manaAmount: 0
+    healPercentage: 0
+    manaPercentage: 0
