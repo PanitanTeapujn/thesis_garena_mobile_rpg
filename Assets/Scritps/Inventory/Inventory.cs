@@ -273,6 +273,7 @@ public class Inventory : NetworkBehaviour
                 RPC_NotifyInventoryChanged(emptySlot, true, addCount);
             }
         }
+        PersistentPlayerData.Instance?.SaveInventoryData(character);
 
         return true;
     }
@@ -415,6 +416,7 @@ public class Inventory : NetworkBehaviour
         {
             RPC_NotifyInventoryChanged(slotIndex, !slot.IsEmpty, slot.stackCount);
         }
+        PersistentPlayerData.Instance?.SaveInventoryData(character);
 
         return true;
     }
@@ -499,6 +501,7 @@ public class Inventory : NetworkBehaviour
             RPC_NotifyInventoryChanged(fromSlot, !items[fromSlot].IsEmpty, items[fromSlot].stackCount);
             RPC_NotifyInventoryChanged(toSlot, !items[toSlot].IsEmpty, items[toSlot].stackCount);
         }
+        PersistentPlayerData.Instance?.SaveInventoryData(character);
 
         return true;
     }

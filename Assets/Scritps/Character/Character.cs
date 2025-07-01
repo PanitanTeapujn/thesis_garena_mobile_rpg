@@ -127,7 +127,10 @@ public class Character : NetworkBehaviour
         InitializeComponents();
         InitializePhysics();
     }
-
+    public static void RaiseOnStatsChanged()
+    {
+        OnStatsChanged?.Invoke();
+    }
     protected virtual void Start()
     {
         InitializeStats();
@@ -874,6 +877,7 @@ public class Character : NetworkBehaviour
 
         // Force update equipment slots ทันที
         ForceUpdateEquipmentSlotsNow();
+        PersistentPlayerData.Instance?.SaveInventoryData(this);
 
         return true;
     }
@@ -1311,6 +1315,7 @@ public class Character : NetworkBehaviour
 
         // Force update equipment slots
         ForceUpdateEquipmentSlotsNow();
+        PersistentPlayerData.Instance?.SaveInventoryData(this);
 
         return true;
     }
@@ -1340,6 +1345,7 @@ public class Character : NetworkBehaviour
             if (addSuccess)
             {
                 Debug.Log($"[Character] ✅ Added {potionToUnequip.ItemName} x{stackCount} back to inventory");
+                PersistentPlayerData.Instance?.SaveInventoryData(this);
                 return true;
             }
             else
@@ -1392,6 +1398,7 @@ public class Character : NetworkBehaviour
             if (addSuccess)
             {
                 Debug.Log($"[Character] ✅ Added {equippedItem.ItemName} back to inventory");
+                PersistentPlayerData.Instance?.SaveInventoryData(this);
                 return true;
             }
             else
@@ -1470,6 +1477,7 @@ public class Character : NetworkBehaviour
             Debug.Log($"[Character] ✅ Used {potionData.ItemName} from slot {potionSlotIndex}. Remaining: {newStackCount}");
             return true;
         }
+        PersistentPlayerData.Instance?.SaveCharacterPotionData(this);
 
         return false;
     }
