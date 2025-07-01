@@ -133,7 +133,30 @@ public class Character : NetworkBehaviour
     }
     protected virtual void Start()
     {
+        LoadPlayerDataIfAvailable();
         InitializeStats();
+    }
+
+    private void LoadPlayerDataIfAvailable()
+    {
+        if (PersistentPlayerData.Instance == null)
+        {
+            Debug.LogWarning("[Character] PersistentPlayerData not available yet");
+            return;
+        }
+
+        // ตรวจสอบว่ามีข้อมูลใน Firebase หรือไม่
+        if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
+        {
+            Debug.Log($"[Character] Found saved data, loading inventory for {CharacterName}...");
+
+            // โหลดข้อมูล inventory และ equipment
+            PersistentPlayerData.Instance.LoadInventoryData(this);
+        }
+        else
+        {
+            Debug.Log($"[Character] No saved data found for {CharacterName}");
+        }
     }
 
     private void InitializeComponents()

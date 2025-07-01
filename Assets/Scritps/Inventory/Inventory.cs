@@ -99,12 +99,43 @@ public class Inventory : NetworkBehaviour
     {
         if (HasStateAuthority) // เฉพาะ host/authority เท่านั้น
         {
-            GiveStarterItems();
+            // 🆕 รอให้ PersistentPlayerData พร้อมก่อน
+            StartCoroutine(DelayedStartup());
         }
+
         // Subscribe to equipment events
         if (character != null)
         {
             Character.OnStatsChanged += OnCharacterStatsChanged;
+        }
+    }
+
+    // 🆕 เพิ่ม method ใหม่สำหรับ delayed startup
+    private IEnumerator DelayedStartup()
+    {
+        // รอ 2 frames เพื่อให้ PersistentPlayerData เริ่มต้นเสร็จ
+        yield return null;
+        yield return null;
+
+        // ตรวจสอบและโหลดข้อมูลก่อนให้ starter items
+        if (PersistentPlayerData.Instance != null)
+        {
+            if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
+            {
+                Debug.Log("[Inventory] Loading saved inventory data...");
+                // ข้อมูลจะถูกโหลดโดย Character.LoadPlayerDataIfAvailable() แล้ว
+                starterItemsGiven = true; // กันไม่ให้ให้ starter items
+            }
+            else
+            {
+                Debug.Log("[Inventory] No saved data, will give starter items");
+                GiveStarterItems();
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[Inventory] PersistentPlayerData not ready, giving starter items");
+            GiveStarterItems();
         }
     }
 
@@ -508,6 +539,14 @@ public class Inventory : NetworkBehaviour
     private void GiveStarterItems()
     {
         if (!giveStarterItems || starterItemsGiven) return;
+
+        // 🆕 ตรวจสอบว่ามีข้อมูลจาก Firebase หรือไม่
+        if (PersistentPlayerData.Instance != null && PersistentPlayerData.Instance.ShouldLoadFromFirebase())
+        {
+            Debug.Log("🔄 [Inventory] Found saved data from Firebase, skipping starter items");
+            starterItemsGiven = true; // กันไม่ให้ให้ starter items
+            return;
+        }
 
         ItemDatabase database = GetDatabase();
         if (database == null)

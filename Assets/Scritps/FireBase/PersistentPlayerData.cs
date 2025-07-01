@@ -2100,8 +2100,37 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.Log("[ForceRefreshInventoryUI] 🔄 Force refreshing all inventory UI...");
 
-            // วิธีง่ายๆ: ไม่ใช้ Coroutine
-            ForceRefreshUISimple(character);
+            // 1. หา InventoryGridManager และ refresh
+            var inventoryGridManager = FindObjectOfType<InventoryGridManager>();
+            if (inventoryGridManager != null)
+            {
+                inventoryGridManager.ForceUpdateFromCharacter();
+                Debug.Log("[ForceRefreshInventoryUI] ✅ Inventory grid refreshed");
+            }
+
+            // 2. หา EquipmentSlotManager และ refresh  
+            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
+            if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
+            {
+                equipmentSlotManager.ForceRefreshFromCharacter();
+                Debug.Log("[ForceRefreshInventoryUI] ✅ Equipment slots refreshed");
+            }
+
+            // 3. หา CombatUIManager และ refresh equipment slots
+            var combatUIManager = FindObjectOfType<CombatUIManager>();
+            if (combatUIManager?.equipmentSlotManager != null)
+            {
+                combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
+                Debug.Log("[ForceRefreshInventoryUI] ✅ CombatUI equipment slots refreshed");
+            }
+
+            // 4. แจ้ง Character.OnStatsChanged event
+            Character.RaiseOnStatsChanged();
+
+            // 5. Force update Canvas
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log("[ForceRefreshInventoryUI] ✅ All inventory UI refreshed");
         }
         catch (System.Exception e)
         {
@@ -2388,6 +2417,31 @@ public class PersistentPlayerData : MonoBehaviour
         }
 
         Debug.Log("====================================");
+    }
+
+    [ContextMenu("🔍 Debug: Check Load Status")]
+    private void DebugCheckLoadStatus()
+    {
+        Debug.Log("=== LOAD STATUS CHECK ===");
+        Debug.Log($"PersistentPlayerData Ready: {Instance != null}");
+        Debug.Log($"MultiCharacterData Ready: {multiCharacterData != null}");
+        Debug.Log($"Should Load From Firebase: {ShouldLoadFromFirebase()}");
+        Debug.Log($"Has Inventory Data: {HasInventoryDataInFirebase()}");
+
+        if (multiCharacterData != null)
+        {
+            Debug.Log($"Shared Items Count: {multiCharacterData.sharedInventory?.items?.Count ?? 0}");
+            Debug.Log($"Current Active Character: {multiCharacterData.currentActiveCharacter}");
+
+            var currentChar = multiCharacterData.GetActiveCharacterData();
+            if (currentChar != null)
+            {
+                Debug.Log($"Character Equipment: {currentChar.HasEquipmentData()}");
+                Debug.Log($"Equipped Items: {currentChar.totalEquippedItems}");
+                Debug.Log($"Potions: {currentChar.totalPotions}");
+            }
+        }
+        Debug.Log("========================");
     }
 
     #endregion
