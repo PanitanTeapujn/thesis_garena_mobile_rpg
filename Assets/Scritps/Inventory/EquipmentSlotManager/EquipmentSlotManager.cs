@@ -123,16 +123,23 @@ public class EquipmentSlotManager : MonoBehaviour
 
         Debug.Log($"[EquipmentSlotManager] Loading equipped items for {ownerCharacter.CharacterName}...");
 
+        // 🆕 Debug character equipment ก่อน update slots
+        DebugCharacterEquipment();
+
+        int equipmentUpdated = 0;
+        int potionUpdated = 0;
+
         // อัปเดต Equipment Slots
         foreach (EquipmentSlot slot in connectedEquipmentSlots)
         {
             if (slot != null)
             {
                 UpdateSlotFromCharacter(slot);
+                equipmentUpdated++;
             }
         }
 
-        // 🆕 อัปเดต Potion Slots ด้วย debug
+        // อัปเดต Potion Slots ด้วย debug
         Debug.Log($"[EquipmentSlotManager] Updating {connectedPotionSlots.Count} potion slots...");
         foreach (EquipmentSlot slot in connectedPotionSlots)
         {
@@ -140,6 +147,7 @@ public class EquipmentSlotManager : MonoBehaviour
             {
                 Debug.Log($"[EquipmentSlotManager] Processing potion slot {slot.PotionSlotIndex}...");
                 UpdateSlotFromCharacter(slot);
+                potionUpdated++;
             }
             else
             {
@@ -150,7 +158,50 @@ public class EquipmentSlotManager : MonoBehaviour
         // Force update canvas เพื่อให้แน่ใจว่า UI update
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log("[EquipmentSlotManager] ✅ Loaded equipped items to all slots");
+        Debug.Log($"[EquipmentSlotManager] ✅ Updated {equipmentUpdated} equipment slots and {potionUpdated} potion slots");
+    }
+    private void DebugCharacterEquipment()
+    {
+        if (ownerCharacter == null) return;
+
+        Debug.Log($"=== CHARACTER EQUIPMENT DEBUG ({ownerCharacter.CharacterName}) ===");
+
+        // Equipment slots
+        Debug.Log("📦 Equipment Slots:");
+        for (int i = 0; i < 6; i++)
+        {
+            ItemType itemType = GetItemTypeFromSlotIndex(i);
+            ItemData item = ownerCharacter.GetEquippedItem(itemType);
+            Debug.Log($"  {itemType}: {(item?.ItemName ?? "EMPTY")}");
+        }
+
+        // Potion slots
+        Debug.Log("🧪 Potion Slots:");
+        for (int i = 0; i < 5; i++)
+        {
+            ItemData potion = ownerCharacter.GetPotionInSlot(i);
+            int stackCount = ownerCharacter.GetPotionStackCount(i);
+            Debug.Log($"  Slot {i}: {(potion?.ItemName ?? "EMPTY")} x{stackCount}");
+        }
+
+        Debug.Log("========================================================");
+    }
+
+    /// <summary>
+    /// 🆕 Helper method
+    /// </summary>
+    private ItemType GetItemTypeFromSlotIndex(int slotIndex)
+    {
+        switch (slotIndex)
+        {
+            case 0: return ItemType.Head;
+            case 1: return ItemType.Armor;
+            case 2: return ItemType.Weapon;
+            case 3: return ItemType.Pants;
+            case 4: return ItemType.Shoes;
+            case 5: return ItemType.Rune;
+            default: return ItemType.Weapon;
+        }
     }
 
     public void UpdateSlotFromCharacter(EquipmentSlot slot)
@@ -162,11 +213,18 @@ public class EquipmentSlotManager : MonoBehaviour
         // ดึงข้อมูลจาก Character ตาม slot type
         if (slot.SlotType == ItemType.Potion)
         {
-            // 🆕 สำหรับ potion: ใช้ PotionSlotIndex
+            // สำหรับ potion: ใช้ PotionSlotIndex
             int potionIndex = slot.PotionSlotIndex;
             equippedItem = ownerCharacter.GetPotionInSlot(potionIndex);
 
             Debug.Log($"[EquipmentSlotManager] Updating potion slot {potionIndex}: {(equippedItem?.ItemName ?? "EMPTY")}");
+
+            // 🆕 Debug potion stack count
+            if (equippedItem != null)
+            {
+                int stackCount = ownerCharacter.GetPotionStackCount(potionIndex);
+                Debug.Log($"[EquipmentSlotManager] Potion {equippedItem.ItemName} stack count: {stackCount}");
+            }
         }
         else
         {
@@ -174,6 +232,12 @@ public class EquipmentSlotManager : MonoBehaviour
             equippedItem = ownerCharacter.GetEquippedItem(slot.SlotType);
 
             Debug.Log($"[EquipmentSlotManager] Updating {slot.SlotType} slot: {(equippedItem?.ItemName ?? "EMPTY")}");
+
+            // 🆕 Debug equipment slot ที่ดึงมา
+            if (equippedItem != null)
+            {
+                Debug.Log($"[EquipmentSlotManager] Equipment details: {equippedItem.ItemName} ({equippedItem.ItemType}, {equippedItem.GetTierText()})");
+            }
         }
 
         // อัปเดต UI
@@ -181,6 +245,12 @@ public class EquipmentSlotManager : MonoBehaviour
         {
             slot.SetFilledState(equippedItem.ItemIcon, equippedItem.GetTierColor());
             Debug.Log($"[EquipmentSlotManager] ✅ Set {slot.SlotType} slot to filled with {equippedItem.ItemName}");
+
+            // 🆕 สำหรับ potion: อัปเดต stack count ด้วย
+            if (slot.SlotType == ItemType.Potion)
+            {
+                slot.ForceUpdatePotionInfo();
+            }
         }
         else
         {
@@ -327,8 +397,18 @@ public class EquipmentSlotManager : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[EquipmentSlotManager] 🔄 Force refreshing from character {ownerCharacter.CharacterName}...");
+
+        // ตรวจสอบการเชื่อมต่อ slots
+        if (!IsConnected())
+        {
+            Debug.LogWarning("[EquipmentSlotManager] ⚠️ Equipment slots not connected!");
+            return;
+        }
+
         LoadEquippedItemsToSlots();
-        Debug.Log("[EquipmentSlotManager] Force refreshed all slots from character");
+
+        Debug.Log("[EquipmentSlotManager] ✅ Force refresh completed");
     }
     public void LogStatus()
     {
@@ -351,6 +431,32 @@ public class EquipmentSlotManager : MonoBehaviour
     private void DebugStatus()
     {
         LogStatus();
+    }
+
+    [ContextMenu("🔍 Debug Connected Slots")]
+    private void DebugConnectedSlots()
+    {
+        Debug.Log("=== CONNECTED SLOTS DEBUG ===");
+        Debug.Log($"Character: {ownerCharacter?.CharacterName ?? "None"}");
+        Debug.Log($"Connected Equipment Slots: {connectedEquipmentSlots.Count}");
+        Debug.Log($"Connected Potion Slots: {connectedPotionSlots.Count}");
+        Debug.Log($"Is Connected: {IsConnected()}");
+
+        // แสดงรายละเอียด equipment slots
+        for (int i = 0; i < connectedEquipmentSlots.Count; i++)
+        {
+            var slot = connectedEquipmentSlots[i];
+            Debug.Log($"  Equipment Slot {i}: {slot?.SlotType} - Empty: {slot?.IsEmpty}");
+        }
+
+        // แสดงรายละเอียด potion slots
+        for (int i = 0; i < connectedPotionSlots.Count; i++)
+        {
+            var slot = connectedPotionSlots[i];
+            Debug.Log($"  Potion Slot {i}: Index {slot?.PotionSlotIndex} - Empty: {slot?.IsEmpty}");
+        }
+
+        Debug.Log("=============================");
     }
     #endregion
 }

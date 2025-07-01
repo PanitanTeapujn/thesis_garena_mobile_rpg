@@ -1331,7 +1331,6 @@ public class PersistentPlayerData : MonoBehaviour
     {
         try
         {
-            // 🔧 แก้ไข: ใช้ currentActiveCharacter แทน CharacterName
             string characterType = multiCharacterData.currentActiveCharacter;
             Debug.Log($"[LoadCharacterEquipmentData] ⚔️ Loading equipment for {characterType} (Character: {character.CharacterName})");
 
@@ -1339,10 +1338,7 @@ public class PersistentPlayerData : MonoBehaviour
             if (characterProgressData?.characterEquipment == null)
             {
                 Debug.LogWarning($"[LoadCharacterEquipmentData] No equipment data for {characterType}");
-
-                // 🆕 Debug: ลองหาใน character อื่นๆ
-                DebugFindEquipmentDataInOtherCharacters();
-
+                DebugShowAllCharacterEquipmentData();
                 return false;
             }
 
@@ -1353,6 +1349,17 @@ public class PersistentPlayerData : MonoBehaviour
                 return false;
             }
 
+            // 🆕 Debug ข้อมูลก่อน load
+            Debug.Log($"[LoadCharacterEquipmentData] Equipment data found:");
+            Debug.Log($"  - Head: {equipmentData.equipment.headItemId}");
+            Debug.Log($"  - Armor: {equipmentData.equipment.armorItemId}");
+            Debug.Log($"  - Weapon: {equipmentData.equipment.weaponItemId}");
+            Debug.Log($"  - Pants: {equipmentData.equipment.pantsItemId}");
+            Debug.Log($"  - Shoes: {equipmentData.equipment.shoesItemId}");
+            Debug.Log($"  - Rune: {equipmentData.equipment.runeItemId}");
+            Debug.Log($"  - Total Equipment: {equipmentData.equipment.equippedCount}");
+            Debug.Log($"  - Total Potions: {equipmentData.totalPotionCount}");
+
             // 1. โหลด Equipment Slots (6 ช่อง)
             bool equipmentLoaded = LoadEquipmentSlots(character, equipmentData);
 
@@ -1362,8 +1369,13 @@ public class PersistentPlayerData : MonoBehaviour
             if (equipmentLoaded || potionsLoaded)
             {
                 Debug.Log($"[LoadCharacterEquipmentData] ✅ Equipment loaded for {characterType}");
-                Debug.Log($"[LoadCharacterEquipmentData] Equipment count: {equipmentData.equipment.equippedCount}");
-                Debug.Log($"[LoadCharacterEquipmentData] Potion count: {equipmentData.totalPotionCount}");
+                Debug.Log($"[LoadCharacterEquipmentData] Equipment loaded: {equipmentLoaded}, Potions loaded: {potionsLoaded}");
+
+                // 🆕 Debug ผลลัพธ์หลัง load
+                character.DebugLoadedEquipment();
+
+                // 🆕 Force refresh equipment UI อีกครั้ง
+                ForceRefreshEquipmentUIOnly(character);
 
                 return true;
             }
@@ -1375,6 +1387,177 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[LoadCharacterEquipmentData] ❌ Error: {e.Message}");
             return false;
         }
+    }
+    private void ForceRefreshEquipmentUIOnly(Character character)
+    {
+        StartCoroutine(ForceRefreshEquipmentUICoroutine(character));
+    }
+
+
+    private void DebugShowAllCharacterEquipmentData()
+    {
+        Debug.Log("=== ALL CHARACTER EQUIPMENT DATA ===");
+
+        if (multiCharacterData?.characters == null)
+        {
+            Debug.Log("No characters found");
+            return;
+        }
+
+        foreach (var character in multiCharacterData.characters)
+        {
+            if (character != null)
+            {
+                bool hasEquipment = character.HasEquipmentData();
+                Debug.Log($"Character: {character.characterType}");
+                Debug.Log($"  - Has Equipment: {hasEquipment}");
+
+                if (hasEquipment && character.characterEquipment != null)
+                {
+                    Debug.Log($"  - Equipment Count: {character.characterEquipment.equipment.equippedCount}");
+                    Debug.Log($"  - Potion Count: {character.characterEquipment.totalPotionCount}");
+
+                    // แสดงรายละเอียด equipment
+                    var eq = character.characterEquipment.equipment;
+                    if (!string.IsNullOrEmpty(eq.headItemId)) Debug.Log($"    Head: {eq.headItemId}");
+                    if (!string.IsNullOrEmpty(eq.armorItemId)) Debug.Log($"    Armor: {eq.armorItemId}");
+                    if (!string.IsNullOrEmpty(eq.weaponItemId)) Debug.Log($"    Weapon: {eq.weaponItemId}");
+                    if (!string.IsNullOrEmpty(eq.pantsItemId)) Debug.Log($"    Pants: {eq.pantsItemId}");
+                    if (!string.IsNullOrEmpty(eq.shoesItemId)) Debug.Log($"    Shoes: {eq.shoesItemId}");
+                    if (!string.IsNullOrEmpty(eq.runeItemId)) Debug.Log($"    Rune: {eq.runeItemId}");
+                }
+            }
+        }
+        Debug.Log("===================================");
+    }
+
+    private System.Collections.IEnumerator ForceRefreshEquipmentUICoroutine(Character character)
+    {
+        Debug.Log("[ForceRefreshEquipmentUICoroutine] 🔄 Starting equipment UI refresh...");
+
+        // รอ 2 frames เพื่อให้ equipment data settle
+        yield return null;
+        yield return null;
+
+        try
+        {
+            int refreshCount = 0;
+
+            // 1. หา และ refresh EquipmentSlotManager จาก character
+            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
+            if (equipmentSlotManager != null)
+            {
+                if (equipmentSlotManager.IsConnected())
+                {
+                    equipmentSlotManager.ForceRefreshFromCharacter();
+                    refreshCount++;
+                    Debug.Log("[ForceRefreshEquipmentUICoroutine] ✅ Character equipment slots refreshed");
+                }
+                else
+                {
+                    Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ Character EquipmentSlotManager not connected");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ No EquipmentSlotManager on character");
+            }
+
+            // 2. หา และ refresh CombatUIManager equipment slots
+            var combatUIManager = FindObjectOfType<CombatUIManager>();
+            if (combatUIManager?.equipmentSlotManager != null)
+            {
+                if (combatUIManager.equipmentSlotManager.IsConnected())
+                {
+                    combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
+                    refreshCount++;
+                    Debug.Log("[ForceRefreshEquipmentUICoroutine] ✅ CombatUI equipment slots refreshed");
+                }
+                else
+                {
+                    Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ CombatUI EquipmentSlotManager not connected");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ No CombatUIManager or equipment slot manager found");
+            }
+
+            // 3. แจ้ง Character.OnStatsChanged event
+            Character.RaiseOnStatsChanged();
+
+            // 4. Force update Canvas
+            Canvas.ForceUpdateCanvases();
+            if (refreshCount > 0)
+            {
+                // ทำซ้ำอีกครั้งเพื่อให้แน่ใจ
+                if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
+                {
+                    equipmentSlotManager.RefreshAllSlots();
+                }
+
+                if (combatUIManager?.equipmentSlotManager != null && combatUIManager.equipmentSlotManager.IsConnected())
+                {
+                    combatUIManager.equipmentSlotManager.RefreshAllSlots();
+                }
+
+                Canvas.ForceUpdateCanvases();
+
+                Debug.Log($"[ForceRefreshEquipmentUICoroutine] ✅ Equipment UI refresh complete ({refreshCount} managers refreshed)");
+            }
+            else
+            {
+                Debug.LogError("[ForceRefreshEquipmentUICoroutine] ❌ No equipment managers were refreshed!");
+
+                // ลอง debug สถานะ managers
+                DebugEquipmentManagerStatus(character);
+            }
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ForceRefreshEquipmentUICoroutine] ❌ Error: {e.Message}");
+        }// รออีก 1 frame แล้วทำซ้ำเพื่อให้แน่ใจ
+        yield return null;
+
+       
+           
+    }
+
+    private void DebugEquipmentManagerStatus(Character character)
+    {
+        Debug.Log("=== EQUIPMENT MANAGER STATUS DEBUG ===");
+
+        // Character EquipmentSlotManager
+        var charEquipmentManager = character.GetComponent<EquipmentSlotManager>();
+        Debug.Log($"Character EquipmentSlotManager: {(charEquipmentManager != null ? "Found" : "Not Found")}");
+        if (charEquipmentManager != null)
+        {
+            Debug.Log($"  - Is Connected: {charEquipmentManager.IsConnected()}");
+        }
+
+        // CombatUIManager
+        var combatUIManager = FindObjectOfType<CombatUIManager>();
+        Debug.Log($"CombatUIManager: {(combatUIManager != null ? "Found" : "Not Found")}");
+        if (combatUIManager != null)
+        {
+            Debug.Log($"  - Has Equipment Manager: {(combatUIManager.equipmentSlotManager != null)}");
+            if (combatUIManager.equipmentSlotManager != null)
+            {
+                Debug.Log($"  - Equipment Manager Connected: {combatUIManager.equipmentSlotManager.IsConnected()}");
+            }
+        }
+
+        // ทุก EquipmentSlotManager ใน scene
+        var allEquipmentManagers = FindObjectsOfType<EquipmentSlotManager>();
+        Debug.Log($"Total EquipmentSlotManagers in scene: {allEquipmentManagers.Length}");
+        for (int i = 0; i < allEquipmentManagers.Length; i++)
+        {
+            var manager = allEquipmentManagers[i];
+            Debug.Log($"  Manager {i}: {manager.gameObject.name} - Connected: {manager.IsConnected()}");
+        }
+
+        Debug.Log("=====================================");
     }
     private void DebugFindEquipmentDataInOtherCharacters()
     {
@@ -1765,29 +1948,39 @@ public class PersistentPlayerData : MonoBehaviour
 
             Debug.Log("[LoadEquipmentSlots] Loading 6 equipment slots...");
 
+            // 🆕 ใช้ method ใหม่ของ Character เพื่อเคลียร์ equipment
+            character.ClearAllEquipmentForLoad();
+
             // Head
-            if (LoadSingleEquipmentSlot(character, ItemType.Head, equipment.headItemId))
+            if (LoadSingleEquipmentSlotNew(character, ItemType.Head, equipment.headItemId))
                 loadedCount++;
 
             // Armor
-            if (LoadSingleEquipmentSlot(character, ItemType.Armor, equipment.armorItemId))
+            if (LoadSingleEquipmentSlotNew(character, ItemType.Armor, equipment.armorItemId))
                 loadedCount++;
 
             // Weapon
-            if (LoadSingleEquipmentSlot(character, ItemType.Weapon, equipment.weaponItemId))
+            if (LoadSingleEquipmentSlotNew(character, ItemType.Weapon, equipment.weaponItemId))
                 loadedCount++;
 
             // Pants
-            if (LoadSingleEquipmentSlot(character, ItemType.Pants, equipment.pantsItemId))
+            if (LoadSingleEquipmentSlotNew(character, ItemType.Pants, equipment.pantsItemId))
                 loadedCount++;
 
             // Shoes
-            if (LoadSingleEquipmentSlot(character, ItemType.Shoes, equipment.shoesItemId))
+            if (LoadSingleEquipmentSlotNew(character, ItemType.Shoes, equipment.shoesItemId))
                 loadedCount++;
 
             // Rune
-            if (LoadSingleEquipmentSlot(character, ItemType.Rune, equipment.runeItemId))
+            if (LoadSingleEquipmentSlotNew(character, ItemType.Rune, equipment.runeItemId))
                 loadedCount++;
+
+            // 🆕 Apply stats และ refresh UI หลัง load equipment ทั้งหมด
+            if (loadedCount > 0)
+            {
+                character.ApplyLoadedEquipmentStats();
+                character.ForceRefreshEquipmentAfterLoad();
+            }
 
             Debug.Log($"[LoadEquipmentSlots] ✅ Loaded {loadedCount}/6 equipment pieces");
             return loadedCount > 0;
@@ -1799,6 +1992,113 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
+    private bool LoadSingleEquipmentSlotNew(Character character, ItemType itemType, string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId))
+        {
+            Debug.Log($"[LoadSingleEquipmentSlotNew] No item to load for {itemType}");
+            return false;
+        }
+
+        try
+        {
+            // หา ItemData จาก ID
+            ItemData itemData = GetItemDataById(itemId);
+            if (itemData == null)
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotNew] Item not found: {itemId} for {itemType}");
+                return false;
+            }
+
+            // ตรวจสอบว่า item type ตรงกันหรือไม่
+            if (itemData.ItemType != itemType)
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotNew] Item type mismatch: {itemData.ItemType} != {itemType} for {itemData.ItemName}");
+                return false;
+            }
+
+            // 🆕 ใช้ method ใหม่ของ Character
+            bool success = character.LoadEquipmentDirectly(itemData);
+            if (success)
+            {
+                Debug.Log($"[LoadSingleEquipmentSlotNew] ✅ Loaded {itemData.ItemName} to {itemType} slot");
+                return true;
+            }
+            else
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotNew] Failed to load {itemData.ItemName} to {itemType} slot");
+                return false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSingleEquipmentSlotNew] ❌ Error loading {itemType} item {itemId}: {e.Message}");
+            return false;
+        }
+    }
+
+    private void ClearCharacterEquipment(Character character)
+    {
+        try
+        {
+            Debug.Log("[ClearCharacterEquipment] Clearing all equipped items...");
+
+            // ใช้ reflection เพื่อเข้าถึง characterEquippedItems
+            var field = character.GetType().GetField("characterEquippedItems",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (field != null)
+            {
+                var equippedItems = field.GetValue(character) as List<ItemData>;
+                if (equippedItems != null)
+                {
+                    for (int i = 0; i < equippedItems.Count; i++)
+                    {
+                        equippedItems[i] = null;
+                    }
+                    Debug.Log("[ClearCharacterEquipment] ✅ Cleared characterEquippedItems list");
+                }
+            }
+
+            // เคลียร์ potion slots ด้วย
+            var potionField = character.GetType().GetField("potionSlots",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (potionField != null)
+            {
+                var potionSlots = potionField.GetValue(character) as List<ItemData>;
+                if (potionSlots != null)
+                {
+                    for (int i = 0; i < potionSlots.Count; i++)
+                    {
+                        potionSlots[i] = null;
+                    }
+                    Debug.Log("[ClearCharacterEquipment] ✅ Cleared potion slots");
+                }
+            }
+
+            // เคลียร์ potion stack counts ด้วย
+            var stackField = character.GetType().GetField("potionStackCounts",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (stackField != null)
+            {
+                var stackCounts = stackField.GetValue(character) as List<int>;
+                if (stackCounts != null)
+                {
+                    for (int i = 0; i < stackCounts.Count; i++)
+                    {
+                        stackCounts[i] = 0;
+                    }
+                    Debug.Log("[ClearCharacterEquipment] ✅ Cleared potion stack counts");
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ClearCharacterEquipment] ❌ Error: {e.Message}");
+        }
+    }
     /// <summary>
     /// โหลด equipment slot เดียว
     /// </summary>
@@ -1827,16 +2127,16 @@ public class PersistentPlayerData : MonoBehaviour
                 return false;
             }
 
-            // Equip item
-            bool success = character.EquipItemData(itemData);
+            // 🆕 ใช้ reflection เพื่อใส่ item ลง characterEquippedItems โดยตรง
+            bool success = SetEquipmentDirectly(character, itemType, itemData);
             if (success)
             {
-                Debug.Log($"[LoadSingleEquipmentSlot] ✅ Equipped {itemData.ItemName} to {itemType} slot");
+                Debug.Log($"[LoadSingleEquipmentSlot] ✅ Loaded {itemData.ItemName} to {itemType} slot");
                 return true;
             }
             else
             {
-                Debug.LogError($"[LoadSingleEquipmentSlot] Failed to equip {itemData.ItemName} to {itemType} slot");
+                Debug.LogError($"[LoadSingleEquipmentSlot] Failed to load {itemData.ItemName} to {itemType} slot");
                 return false;
             }
         }
@@ -1846,6 +2146,63 @@ public class PersistentPlayerData : MonoBehaviour
             return false;
         }
     }
+
+    private bool SetEquipmentDirectly(Character character, ItemType itemType, ItemData itemData)
+    {
+        try
+        {
+            // ใช้ reflection เพื่อเข้าถึง characterEquippedItems
+            var field = character.GetType().GetField("characterEquippedItems",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (field == null)
+            {
+                Debug.LogError("[SetEquipmentDirectly] characterEquippedItems field not found");
+                return false;
+            }
+
+            var equippedItems = field.GetValue(character) as List<ItemData>;
+            if (equippedItems == null)
+            {
+                Debug.LogError("[SetEquipmentDirectly] characterEquippedItems is null");
+                return false;
+            }
+
+            // หา slot index ตาม ItemType
+            int slotIndex = GetSlotIndexForItemType(itemType);
+            if (slotIndex == -1 || slotIndex >= equippedItems.Count)
+            {
+                Debug.LogError($"[SetEquipmentDirectly] Invalid slot index {slotIndex} for {itemType}");
+                return false;
+            }
+
+            // ใส่ item ลง slot
+            equippedItems[slotIndex] = itemData;
+
+            Debug.Log($"[SetEquipmentDirectly] ✅ Set {itemData.ItemName} to {itemType} slot (index {slotIndex})");
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SetEquipmentDirectly] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    private int GetSlotIndexForItemType(ItemType itemType)
+    {
+        switch (itemType)
+        {
+            case ItemType.Head: return 0;
+            case ItemType.Armor: return 1;
+            case ItemType.Weapon: return 2;
+            case ItemType.Pants: return 3;
+            case ItemType.Shoes: return 4;
+            case ItemType.Rune: return 5;
+            default: return -1;
+        }
+    }
+    /// </summary>
     private bool LoadPotionSlots(Character character, CharacterEquipmentData equipmentData)
     {
         try
@@ -1854,31 +2211,16 @@ public class PersistentPlayerData : MonoBehaviour
 
             Debug.Log("[LoadPotionSlots] Loading 5 potion slots...");
 
-            // เคลียร์ potion slots ทั้งหมดก่อน
-            for (int i = 0; i < 5; i++)
-            {
-                if (!character.IsPotionSlotEmpty(i))
-                {
-                    character.UnequipPotion(i);
-                }
-            }
-
-            // โหลด potions ใหม่
+            // โหลด potions
             for (int i = 0; i < 5; i++)
             {
                 var potionSlot = equipmentData.GetPotionSlot(i);
                 if (potionSlot != null && !potionSlot.IsEmpty())
                 {
-                    bool loaded = LoadSinglePotionSlot(character, i, potionSlot);
+                    bool loaded = LoadSinglePotionSlotNew(character, i, potionSlot);
                     if (loaded)
                         loadedCount++;
                 }
-            }
-
-            // อัปเดต stack counts หลัง load เสร็จ
-            if (loadedCount > 0)
-            {
-                UpdatePotionStackCountsAfterLoad(character, equipmentData);
             }
 
             Debug.Log($"[LoadPotionSlots] ✅ Loaded {loadedCount}/5 potion slots");
@@ -1887,6 +2229,45 @@ public class PersistentPlayerData : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"[LoadPotionSlots] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private bool LoadSinglePotionSlotNew(Character character, int slotIndex, SavedPotionSlot potionSlot)
+    {
+        try
+        {
+            // หา ItemData จาก ID
+            ItemData itemData = GetItemDataById(potionSlot.itemId);
+            if (itemData == null)
+            {
+                Debug.LogError($"[LoadSinglePotionSlotNew] Potion not found: {potionSlot.itemId} ({potionSlot.itemName})");
+                return false;
+            }
+
+            // ตรวจสอบว่าเป็น potion หรือไม่
+            if (itemData.ItemType != ItemType.Potion)
+            {
+                Debug.LogError($"[LoadSinglePotionSlotNew] Item is not a potion: {itemData.ItemName} ({itemData.ItemType})");
+                return false;
+            }
+
+            // 🆕 ใช้ method ใหม่ของ Character
+            bool success = character.LoadPotionDirectly(itemData, slotIndex, potionSlot.stackCount);
+
+            if (success)
+            {
+                Debug.Log($"[LoadSinglePotionSlotNew] ✅ Loaded {itemData.ItemName} x{potionSlot.stackCount} to potion slot {slotIndex}");
+                return true;
+            }
+            else
+            {
+                Debug.LogError($"[LoadSinglePotionSlotNew] Failed to load {itemData.ItemName}");
+                return false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSinglePotionSlotNew] ❌ Error loading potion slot {slotIndex}: {e.Message}");
             return false;
         }
     }
@@ -2443,7 +2824,208 @@ public class PersistentPlayerData : MonoBehaviour
         }
         Debug.Log("========================");
     }
+    [ContextMenu("🔍 Debug: Test Equipment Load")]
+    private void TestEquipmentLoad()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found in scene!");
+            return;
+        }
 
+        Debug.Log("=== TESTING EQUIPMENT LOAD ===");
+
+        // ตรวจสอบข้อมูลใน Firebase
+        DebugShowAllCharacterEquipmentData();
+
+        // ลองโหลดข้อมูล
+        LoadInventoryData(character);
+
+        // ตรวจสอบผลลัพธ์
+        character.DebugCurrentEquippedItems();
+    }
+
+    [ContextMenu("🔍 Debug: Equipment vs UI Status")]
+    private void DebugEquipmentVsUIStatus()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("=== EQUIPMENT vs UI STATUS ===");
+
+        // 1. ตรวจสอบข้อมูลใน Character
+        Debug.Log("📊 CHARACTER DATA:");
+        for (int i = 0; i < 6; i++)
+        {
+            ItemType itemType = GetItemTypeFromSlotIndex(i);
+            ItemData equippedItem = character.GetEquippedItem(itemType);
+            Debug.Log($"  {itemType}: {(equippedItem?.ItemName ?? "EMPTY")}");
+        }
+
+        // 2. ตรวจสอบ EquipmentSlotManager
+        var equipmentManager = character.GetComponent<EquipmentSlotManager>();
+        Debug.Log($"📱 EQUIPMENT MANAGER: {(equipmentManager != null ? "Found" : "Not Found")}");
+        if (equipmentManager != null)
+        {
+            Debug.Log($"  - Connected: {equipmentManager.IsConnected()}");
+        }
+
+        // 3. ตรวจสอบ CombatUIManager
+        var combatUI = FindObjectOfType<CombatUIManager>();
+        Debug.Log($"🖥️ COMBAT UI: {(combatUI != null ? "Found" : "Not Found")}");
+        if (combatUI?.equipmentSlotManager != null)
+        {
+            Debug.Log($"  - Equipment Manager: Found");
+            Debug.Log($"  - Connected: {combatUI.equipmentSlotManager.IsConnected()}");
+        }
+
+        Debug.Log("==============================");
+    }
+
+    [ContextMenu("🔧 Force Fix Equipment Load")]
+    private void ForceFixEquipmentLoad()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("🔧 FORCE FIXING EQUIPMENT LOAD...");
+
+        // 1. ตรวจสอบและ fix character type matching
+        if (multiCharacterData != null)
+        {
+            string currentActive = multiCharacterData.currentActiveCharacter;
+            string characterName = character.CharacterName;
+
+            Debug.Log($"Active Character: {currentActive}");
+            Debug.Log($"Character Name: {characterName}");
+
+            // ถ้าไม่ตรงกัน ให้แก้ไข
+            if (currentActive != characterName)
+            {
+                Debug.LogWarning($"Character type mismatch! Fixing: {characterName}");
+                multiCharacterData.currentActiveCharacter = characterName;
+            }
+        }
+
+        // 2. Force โหลดข้อมูล equipment
+        LoadInventoryData(character);
+
+        // 3. รอแล้ว force refresh UI
+        StartCoroutine(DelayedForceRefresh(character));
+    }
+
+    private System.Collections.IEnumerator DelayedForceRefresh(Character character)
+    {
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log("🔄 Force refreshing equipment UI...");
+
+        // Force refresh ทุกอย่าง
+        var equipmentManager = character.GetComponent<EquipmentSlotManager>();
+        if (equipmentManager != null && equipmentManager.IsConnected())
+        {
+            equipmentManager.ForceRefreshFromCharacter();
+            Debug.Log("✅ Character EquipmentSlotManager refreshed");
+        }
+
+        var combatUI = FindObjectOfType<CombatUIManager>();
+        if (combatUI?.equipmentSlotManager != null)
+        {
+            combatUI.equipmentSlotManager.ForceRefreshFromCharacter();
+            Debug.Log("✅ CombatUI EquipmentSlotManager refreshed");
+        }
+
+        Character.RaiseOnStatsChanged();
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("🎉 Force fix complete!");
+
+        // ตรวจสอบผลลัพธ์
+        yield return new WaitForSeconds(0.5f);
+        character.DebugCurrentEquippedItems();
+    }
+
+    // 🆕 เพิ่ม helper method
+    private ItemType GetItemTypeFromSlotIndex(int slotIndex)
+    {
+        switch (slotIndex)
+        {
+            case 0: return ItemType.Head;
+            case 1: return ItemType.Armor;
+            case 2: return ItemType.Weapon;
+            case 3: return ItemType.Pants;
+            case 4: return ItemType.Shoes;
+            case 5: return ItemType.Rune;
+            default: return ItemType.Weapon;
+        }
+    }
+
+    [ContextMenu("📋 Show Equipment Save Data")]
+    private void ShowEquipmentSaveData()
+    {
+        if (multiCharacterData == null)
+        {
+            Debug.Log("No multiCharacterData found");
+            return;
+        }
+
+        Debug.Log("=== EQUIPMENT SAVE DATA ===");
+        Debug.Log($"Active Character: {multiCharacterData.currentActiveCharacter}");
+
+        foreach (var character in multiCharacterData.characters)
+        {
+            if (character?.characterEquipment != null)
+            {
+                Debug.Log($"\n📋 Character: {character.characterType}");
+                Debug.Log($"Has Equipment: {character.HasEquipmentData()}");
+
+                var eq = character.characterEquipment.equipment;
+                Debug.Log($"Equipment Data:");
+                Debug.Log($"  Head: {eq.headItemId}");
+                Debug.Log($"  Armor: {eq.armorItemId}");
+                Debug.Log($"  Weapon: {eq.weaponItemId}");
+                Debug.Log($"  Pants: {eq.pantsItemId}");
+                Debug.Log($"  Shoes: {eq.shoesItemId}");
+                Debug.Log($"  Rune: {eq.runeItemId}");
+                Debug.Log($"  Count: {eq.equippedCount}");
+
+                // Potion data
+                Debug.Log($"Potions:");
+                for (int i = 0; i < character.characterEquipment.potionSlots.Count; i++)
+                {
+                    var potion = character.characterEquipment.potionSlots[i];
+                    if (!potion.IsEmpty())
+                    {
+                        Debug.Log($"  Slot {i}: {potion.itemName} x{potion.stackCount}");
+                    }
+                }
+            }
+        }
+        Debug.Log("==========================");
+    }
+
+    [ContextMenu("🔄 Test Force Refresh Equipment UI")]
+    private void TestForceRefreshEquipmentUI()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found in scene!");
+            return;
+        }
+
+        Debug.Log("🧪 Testing force refresh equipment UI...");
+        ForceRefreshEquipmentUIOnly(character);
+    }
     #endregion
     // Note: This method is not implemented - consider implementing or removing
     internal void CheckFirebaseStatus()
