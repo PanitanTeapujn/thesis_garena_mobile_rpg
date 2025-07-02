@@ -529,6 +529,132 @@ public static class InventoryDataConverter
         return sharedData;
     }
 }
+
+// เพิ่มใน Saved Inventory Data Classes section
+#region Currency Data Classes
+/// <summary>
+/// ข้อมูลเงินและเพชรที่ใช้ร่วมกันทุกตัวละคร
+/// </summary>
+[System.Serializable]
+public class SharedCurrencyData
+{
+    [Header("Currency Amounts")]
+    public long gold = 0;                // เงิน (ใช้ long เพื่อรองรับจำนวนมาก)
+    public int gems = 0;                 // เพชร
+
+    [Header("Currency Limits")]
+    public long maxGold = 999999999;     // จำนวนเงินสูงสุด
+    public int maxGems = 999999;         // จำนวนเพชรสูงสุด
+
+    [Header("Debug Info")]
+    public string lastUpdateTime = "";   // เวลาที่อัปเดตล่าสุด
+    public int totalTransactions = 0;    // จำนวน transaction ทั้งหมด
+
+    // Constructor
+    public SharedCurrencyData()
+    {
+        gold = 1000;  // เงินเริ่มต้น
+        gems = 50;    // เพชรเริ่มต้น
+        maxGold = 999999999;
+        maxGems = 999999;
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        totalTransactions = 0;
+    }
+
+    // ตรวจสอบว่าข้อมูลถูกต้อง
+    public bool IsValid()
+    {
+        return gold >= 0 &&
+               gems >= 0 &&
+               gold <= maxGold &&
+               gems <= maxGems;
+    }
+
+    // อัปเดตข้อมูล debug
+    public void UpdateDebugInfo()
+    {
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        totalTransactions++;
+    }
+
+    // เพิ่มเงิน
+    public bool AddGold(long amount)
+    {
+        if (amount <= 0) return false;
+
+        long newAmount = gold + amount;
+        if (newAmount > maxGold) newAmount = maxGold;
+
+        gold = newAmount;
+        UpdateDebugInfo();
+        return true;
+    }
+
+    // ใช้เงิน
+    public bool SpendGold(long amount)
+    {
+        if (amount <= 0 || gold < amount) return false;
+
+        gold -= amount;
+        UpdateDebugInfo();
+        return true;
+    }
+
+    // เพิ่มเพชร
+    public bool AddGems(int amount)
+    {
+        if (amount <= 0) return false;
+
+        int newAmount = gems + amount;
+        if (newAmount > maxGems) newAmount = maxGems;
+
+        gems = newAmount;
+        UpdateDebugInfo();
+        return true;
+    }
+
+    // ใช้เพชร
+    public bool SpendGems(int amount)
+    {
+        if (amount <= 0 || gems < amount) return false;
+
+        gems -= amount;
+        UpdateDebugInfo();
+        return true;
+    }
+
+    // ตรวจสอบว่ามีเงินเพียงพอ
+    public bool HasEnoughGold(long amount)
+    {
+        return gold >= amount;
+    }
+
+    // ตรวจสอบว่ามีเพชรเพียงพอ
+    public bool HasEnoughGems(int amount)
+    {
+        return gems >= amount;
+    }
+}
+
+/// <summary>
+/// ประเภทของสกุลเงิน
+/// </summary>
+public enum CurrencyType
+{
+    Gold,
+    Gems
+}
+
+/// <summary>
+/// ประเภทของ transaction
+/// </summary>
+public enum TransactionType
+{
+    Earn,     // ได้รับ
+    Spend,    // ใช้จ่าย
+    Admin     // Admin adjustment
+}
+#endregion
 #endregion
 [System.Serializable]
 public class MultiCharacterPlayerData
@@ -560,6 +686,53 @@ public class MultiCharacterPlayerData
     public string inventoryLastSaveTime = "";    // เวลาที่ save inventory ล่าสุด
     public int totalSharedItems = 0;             // จำนวนไอเทมใน shared inventory
     #endregion
+
+    // เพิ่มใน MultiCharacterPlayerData class หลัง Inventory System
+    #region 🆕 Currency System
+    [Header("💰 Shared Currency System")]
+    public SharedCurrencyData sharedCurrency = new SharedCurrencyData();
+
+    [Header("🔍 Currency Debug Info")]
+    public bool hasCurrencyData = false;        // มีข้อมูลเงินหรือไม่
+    public string currencyLastSaveTime = "";    // เวลาที่ save เงินล่าสุด
+    #endregion
+
+    // เพิ่ม methods ใน MultiCharacterPlayerData
+    public void UpdateCurrencyDebugInfo()
+    {
+        if (sharedCurrency != null)
+        {
+            currencyLastSaveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            hasCurrencyData = true;
+            sharedCurrency.UpdateDebugInfo();
+        }
+    }
+
+    public bool HasCurrencyData()
+    {
+        return hasCurrencyData &&
+               sharedCurrency != null &&
+               sharedCurrency.IsValid();
+    }
+
+    // เพิ่มใน InitializeInventorySystem method
+    private void InitializeCurrencySystem()
+    {
+        // สร้าง shared currency ใหม่
+        sharedCurrency = new SharedCurrencyData();
+
+        // ตั้งค่าเริ่มต้น
+        hasCurrencyData = false;
+        currencyLastSaveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log("✅ Currency system initialized for new player data");
+    }
+
+    // เพิ่มใน HasAnyInventoryOrEquipmentData method
+    public bool HasAnyData()
+    {
+        return HasInventoryData() || HasCurrencyData() || HasAnyInventoryOrEquipmentData();
+    }
     #endregion
 
     #region Constructor and Initialization Constructor และฟังก์ชันสร้างตัวละครเริ่มต้น
@@ -573,7 +746,7 @@ public class MultiCharacterPlayerData
         currentActiveCharacter = "Assassin";
         stageProgress = new StageProgressData();
         InitializeInventorySystem();
-
+        InitializeCurrencySystem();
         InitializeDefaultCharacter();
     }
     private void InitializeInventorySystem()

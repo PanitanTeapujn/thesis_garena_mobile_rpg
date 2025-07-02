@@ -179,6 +179,11 @@ public class PersistentPlayerData : MonoBehaviour
             {
                 CreateDefaultMultiCharacterData();
             }
+            else
+            {
+                // 🆕 โหลดข้อมูลเงินหลังจากโหลดข้อมูลหลักเสร็จ
+                LoadCurrencyData();
+            }
         }
         else
         {
@@ -194,13 +199,23 @@ public class PersistentPlayerData : MonoBehaviour
         multiCharacterData = new MultiCharacterPlayerData();
         multiCharacterData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
         multiCharacterData.currentActiveCharacter = "Assassin";
-
+        InitializeCurrencyForNewPlayer();
         isDataLoaded = true;
         SaveToPlayerPrefs();
 
         Debug.Log($"✅ Created default multi-character data with Assassin for {multiCharacterData.playerName}");
     }
+    private void InitializeCurrencyForNewPlayer()
+    {
+        if (multiCharacterData != null)
+        {
+            multiCharacterData.sharedCurrency = new SharedCurrencyData();
+            multiCharacterData.hasCurrencyData = true;
+            multiCharacterData.currencyLastSaveTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
+            Debug.Log("✅ Currency system initialized for new player");
+        }
+    }
     public void SavePlayerDataAsync()
     {
         if (multiCharacterData == null || auth?.CurrentUser == null)
@@ -2744,6 +2759,152 @@ public class PersistentPlayerData : MonoBehaviour
         {
             return null;
         }
+    }
+
+    #endregion
+
+    #region 🆕 Currency Save/Load Methods
+
+    /// <summary>
+    /// บันทึกข้อมูลเงินและเพชรทั้งหมด
+    /// </summary>
+    public void SaveCurrencyData()
+    {
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("[SaveCurrencyData] MultiCharacterData is null!");
+            return;
+        }
+
+        try
+        {
+            Debug.Log($"[SaveCurrencyData] 💰 Saving currency data...");
+            Debug.Log($"  Gold: {multiCharacterData.sharedCurrency.gold}");
+            Debug.Log($"  Gems: {multiCharacterData.sharedCurrency.gems}");
+
+            // อัปเดตข้อมูล debug
+            multiCharacterData.UpdateCurrencyDebugInfo();
+
+            // Auto save to Firebase
+            SavePlayerDataAsync();
+
+            Debug.Log("[SaveCurrencyData] ✅ Currency data saved successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveCurrencyData] ❌ Error: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// โหลดข้อมูลเงินและเพชร
+    /// </summary>
+    public void LoadCurrencyData()
+    {
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("[LoadCurrencyData] MultiCharacterData is null!");
+            return;
+        }
+
+        try
+        {
+            Debug.Log("[LoadCurrencyData] 💰 Loading currency data...");
+
+            if (multiCharacterData.sharedCurrency == null)
+            {
+                Debug.LogWarning("[LoadCurrencyData] No currency data found, creating default");
+                multiCharacterData.sharedCurrency = new SharedCurrencyData();
+            }
+
+            if (multiCharacterData.sharedCurrency.IsValid())
+            {
+                Debug.Log($"[LoadCurrencyData] ✅ Currency loaded - Gold: {multiCharacterData.sharedCurrency.gold}, Gems: {multiCharacterData.sharedCurrency.gems}");
+
+                // บันทึกลง PlayerPrefs เป็น backup
+                SaveCurrencyToPlayerPrefs();
+            }
+            else
+            {
+                Debug.LogWarning("[LoadCurrencyData] Invalid currency data, using defaults");
+                multiCharacterData.sharedCurrency = new SharedCurrencyData();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadCurrencyData] ❌ Error: {e.Message}");
+            // ใช้ default ถ้า error
+            multiCharacterData.sharedCurrency = new SharedCurrencyData();
+        }
+    }
+
+    /// <summary>
+    /// บันทึกข้อมูลเงินลง PlayerPrefs (เป็น backup)
+    /// </summary>
+    private void SaveCurrencyToPlayerPrefs()
+    {
+        try
+        {
+            if (multiCharacterData?.sharedCurrency != null)
+            {
+                PlayerPrefs.SetString("PlayerGold", multiCharacterData.sharedCurrency.gold.ToString());
+                PlayerPrefs.SetInt("PlayerGems", multiCharacterData.sharedCurrency.gems);
+                PlayerPrefs.SetString("CurrencyLastSave", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                PlayerPrefs.Save();
+
+                Debug.Log("[SaveCurrencyToPlayerPrefs] ✅ Currency backup saved to PlayerPrefs");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveCurrencyToPlayerPrefs] ❌ Error: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// โหลดข้อมูลเงินจาก PlayerPrefs (fallback)
+    /// </summary>
+    private void LoadCurrencyFromPlayerPrefs()
+    {
+        try
+        {
+            if (multiCharacterData?.sharedCurrency == null)
+                multiCharacterData.sharedCurrency = new SharedCurrencyData();
+
+            string goldStr = PlayerPrefs.GetString("PlayerGold", "1000");
+            if (long.TryParse(goldStr, out long gold))
+            {
+                multiCharacterData.sharedCurrency.gold = gold;
+            }
+
+            multiCharacterData.sharedCurrency.gems = PlayerPrefs.GetInt("PlayerGems", 50);
+
+            Debug.Log("[LoadCurrencyFromPlayerPrefs] ✅ Currency loaded from PlayerPrefs backup");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadCurrencyFromPlayerPrefs] ❌ Error: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// บังคับบันทึกเงินทันที
+    /// </summary>
+    public void ForceImmediateSaveCurrency()
+    {
+        Debug.Log("[ForceImmediateSaveCurrency] 🚀 Force saving currency data...");
+        SaveCurrencyData();
+        SaveCurrencyToPlayerPrefs();
+    }
+
+    /// <summary>
+    /// ตรวจสอบว่าควรโหลดข้อมูลเงินจาก Firebase หรือไม่
+    /// </summary>
+    public bool ShouldLoadCurrencyFromFirebase()
+    {
+        return multiCharacterData != null &&
+               multiCharacterData.sharedCurrency != null &&
+               multiCharacterData.hasCurrencyData;
     }
 
     #endregion
