@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 477e21091d74cdf439b1d59cedffb93c, type: 3}
+  m_Name: slime
+  m_EditorClassIdentifier: 
+  minGoldDrop: 10
+  maxGoldDrop: 50
+  goldDropChance: 80
+  minGemsDrop: 0
+  maxGemsDrop: 3
+  gemsDropChance: 5
+  itemDrops:
+  - itemData: {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
+    dropChance: 48.4
+    minQuantity: 0
+    maxQuantity: 0
+  maxItemsPerDrop: 3
+  goldLevelBonus: 10
+  dropChanceLevelBonus: 2
+  rareDrops:
+  - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
+    dropChance: 0
+    minQuantity: 0
+    maxQuantity: 0
+    rareDropMessage: 
+    effectColor: {r: 0, g: 0, b: 0, a: 0}
+  showDropLogs: 1
+  guaranteedDropsForTesting: 0

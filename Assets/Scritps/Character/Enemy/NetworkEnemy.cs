@@ -79,6 +79,9 @@ public class NetworkEnemy : Character
     protected float nextAttackTime = 0f;
     private float totalPatrolTime = 0f;      // 🆕 เวลา patrol รวม
 
+    [Header("💰 Drop System")]
+    public EnemyDropManager dropManager;
+
     // Check if properly spawned
     public bool IsSpawned => Object != null && Object.IsValid;
 
@@ -87,7 +90,8 @@ public class NetworkEnemy : Character
     {
         base.Start();
         Debug.Log($"Enemy Start - HasStateAuthority: {HasStateAuthority}");
-
+        if (dropManager == null)
+            dropManager = GetComponent<EnemyDropManager>();
         // ตั้งค่า enemy layer
         if (enemyLayer == 0)
         {
@@ -830,11 +834,16 @@ public class NetworkEnemy : Character
 
         IsDead = true;
 
-        // 🆕 Enemy drop exp ให้ heroes ใกล้เคียงก่อนตาย
+        // 🆕 เรียกใช้ Drop System ก่อน
+        if (HasStateAuthority && dropManager != null)
+        {
+            dropManager.TriggerDrops();
+        }
+
+        // 🆕 Enemy drop exp และ track kills
         if (HasStateAuthority)
         {
             EnemyKillTracker.OnEnemyKilled();
-
             DropExpToNearbyHeroes();
         }
 
