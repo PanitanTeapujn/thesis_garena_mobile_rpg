@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using System.Collections;
 using System.Collections.Generic;
+using Fusion;
 
 public class LobbyManager : MonoBehaviour
 {
@@ -164,6 +165,8 @@ public class LobbyManager : MonoBehaviour
     void HandleSoloGameSelected(string sceneToLoad)
     {
         PlayerPrefs.SetString("GameMode", "Solo");
+        CleanupNetworkComponents(); // ✅ เพิ่มบรรทัดนี้
+
         SceneManager.LoadScene(sceneToLoad);
     }
 
@@ -228,6 +231,8 @@ public class LobbyManager : MonoBehaviour
     private void OpenCharacterSelection()
     {
         PlayerPrefs.SetString("LastScene", "Lobby");
+        CleanupNetworkComponents(); // ✅ เพิ่มบรรทัดนี้
+
         SceneManager.LoadScene("CharacterSelection");
     }
 
@@ -258,6 +263,8 @@ public class LobbyManager : MonoBehaviour
         PlayerPrefs.SetString("GameMode", "Party");
         PlayerPrefs.SetString("IsHost", "true");
         PlayerPrefs.SetString("GameMode", "Coop");
+        CleanupNetworkComponents(); // ✅ เพิ่มบรรทัดนี้
+
         SceneManager.LoadScene("WaitingRoom");
     }
 
@@ -274,11 +281,15 @@ public class LobbyManager : MonoBehaviour
         PlayerPrefs.SetString("IsHost", "false");
         PlayerPrefs.SetString("RoomCode", roomCode);
         PlayerPrefs.SetString("GameMode", "Coop");
+        CleanupNetworkComponents(); // ✅ เพิ่มบรรทัดนี้
+
         SceneManager.LoadScene("WaitingRoom");
     }
 
     void Logout()
     {
+        CleanupNetworkComponents(); // ✅ เพิ่มบรรทัดนี้
+
         SceneManager.LoadScene("CharacterSelection");
     }
     #endregion
@@ -758,5 +769,34 @@ public class LobbyManager : MonoBehaviour
             lastRefreshTimeText.text = $"Last updated: {lastRefreshTime:HH:mm:ss}";
         }
     }
+    #region Network Cleanup - การทำความสะอาด Network Components
+    private void CleanupNetworkComponents()
+    {
+        // Shutdown NetworkRunner
+        NetworkRunner runner = FindObjectOfType<NetworkRunner>();
+        if (runner != null)
+        {
+            Debug.Log("Shutting down NetworkRunner from LobbyManager");
+            runner.Shutdown();
+        }
+
+        // Cleanup PlayerSpawner
+        PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
+        if (spawner != null)
+        {
+            spawner.CleanupOnGameExit();
+        }
+
+        // ลบ NetworkObjects ที่เหลืออยู่
+        NetworkObject[] networkObjects = FindObjectsOfType<NetworkObject>();
+        foreach (var obj in networkObjects)
+        {
+            if (obj != null)
+            {
+                Destroy(obj.gameObject);
+            }
+        }
+    }
+    #endregion
     #endregion
 }
