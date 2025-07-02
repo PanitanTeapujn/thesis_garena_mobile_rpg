@@ -580,7 +580,7 @@ Transform:
   m_GameObject: {fileID: 46675064}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -411, y: 0, z: -455}
+  m_LocalPosition: {x: -591, y: 0, z: -584}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6715,6 +6715,37 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 776807864}
   m_CullTransparentMesh: 1
+--- !u!1 &791997352
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 791997353}
+  m_Layer: 0
+  m_Name: GameObject
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &791997353
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 791997352}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 70.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &805786474
 GameObject:
   m_ObjectHideFlags: 0
@@ -11605,6 +11636,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2739373631496783188, guid: 732aec40fccf56748aadf952bf456077,
         type: 3}
+      propertyPath: spawnHeight
+      value: 20
+      objectReference: {fileID: 0}
+    - target: {fileID: 2739373631496783188, guid: 732aec40fccf56748aadf952bf456077,
+        type: 3}
       propertyPath: worldSpaceUIPrefab
       value: 
       objectReference: {fileID: 4192131042866125905, guid: 1f3d86d5b7852074cbc231c30a4b8165,
@@ -11614,6 +11650,16 @@ PrefabInstance:
       propertyPath: combatUIManagerPrefab
       value: 
       objectReference: {fileID: 1439071263}
+    - target: {fileID: 2739373631496783188, guid: 732aec40fccf56748aadf952bf456077,
+        type: 3}
+      propertyPath: spawnPoints.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2739373631496783188, guid: 732aec40fccf56748aadf952bf456077,
+        type: 3}
+      propertyPath: spawnPoints.Array.data[0]
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 4665137723371551355, guid: 732aec40fccf56748aadf952bf456077,
         type: 3}
       propertyPath: m_Name
@@ -11627,7 +11673,7 @@ PrefabInstance:
     - target: {fileID: 5922742798777716565, guid: 732aec40fccf56748aadf952bf456077,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 15.3
+      value: 52.6
       objectReference: {fileID: 0}
     - target: {fileID: 5922742798777716565, guid: 732aec40fccf56748aadf952bf456077,
         type: 3}
@@ -22161,3 +22207,4 @@ SceneRoots:
   - {fileID: 1173905423}
   - {fileID: 935676390}
   - {fileID: 1943175802}
+  - {fileID: 791997353}
