@@ -145,7 +145,7 @@ public class Character : NetworkBehaviour
     }
     private System.Collections.IEnumerator DelayedLoadPlayerDataStart()
     {
-        // 🆕 ไม่ใช้ method นี้แล้ว เพราะจะใช้ PostSpawnStatsLoading แทน
+        // 🆕 ไม่ใช้ method นี้แล้ว เพราะจะใช้  แทน
         yield break;
     }
     public bool IsStatsLoadingComplete()
@@ -228,7 +228,6 @@ public class Character : NetworkBehaviour
         yield return null;
 
         Debug.Log("[Character] Verifying loaded equipment...");
-        DebugLoadedEquipment();
     }
 
     private void ForceRefreshAllEquipmentUI()
@@ -467,35 +466,623 @@ public class Character : NetworkBehaviour
         if (HasInputAuthority)
         {
             StartCoroutine(PostSpawnStatsLoading());
+
+            // 🆕 เริ่ม auto-check equipment หลังจาก loading เสร็จ
+            StartCoroutine(AutoFixEquipmentIfNeeded());
         }
     }
-    private System.Collections.IEnumerator PostSpawnStatsLoading()
-    {
-        Debug.Log($"[Character] 📥 Starting post-spawn stats loading for {CharacterName}...");
 
-        // รอให้ network state พร้อม
-        yield return new WaitUntil(() => IsNetworkStateReady);
-        yield return new WaitForSeconds(0.5f); // รอเพิ่มเติมเพื่อความมั่นใจ
+    private IEnumerator PostSpawnStatsLoading()
+    {
+        Debug.Log($"[Character] 🚀 Starting simple post-spawn loading for {CharacterName}...");
 
         // รอให้ PersistentPlayerData พร้อม
-        int waitCount = 0;
-        while (PersistentPlayerData.Instance == null && waitCount < 30)
+        yield return new WaitUntil(() => PersistentPlayerData.Instance != null);
+        yield return new WaitUntil(() => PersistentPlayerData.Instance.isDataLoaded);
+
+        Debug.Log($"[Character] 📊 PersistentPlayerData ready");
+
+        if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
         {
-            yield return new WaitForSeconds(0.1f);
-            waitCount++;
+            Debug.Log($"[Character] 💾 Found saved data, using simple approach...");
+
+            // ให้ LevelManager จัดการ stats loading ตามปกติ
+            var levelManager = GetComponent<LevelManager>();
+            if (levelManager != null)
+            {
+                levelManager.RefreshCharacterData();
+                yield return new WaitForSeconds(0.5f);
+            }
+
+            // โหลด equipment แยกต่างหาก (ไม่แตะ stats)
+            yield return StartCoroutine(SimpleLoadEquipmentOnly());
+        }
+        else
+        {
+            Debug.Log($"[Character] 🆕 No saved data, using defaults");
         }
 
-        if (PersistentPlayerData.Instance == null)
+        isStatsLoaded = true;
+        IsStatsReady = true;
+
+        Debug.Log($"[Character] ✅ Simple loading completed for {CharacterName}");
+    }
+    private IEnumerator SimpleLoadEquipmentOnly()
+    {
+        Debug.Log($"[Character] ⚔️ Loading equipment only (no stats changes)...");
+
+        bool shouldHaveEquipment = false;
+        try
         {
-            Debug.LogError($"[Character] PersistentPlayerData not available after spawn!");
+            // ตรวจสอบว่าควรมี equipment หรือไม่
+            shouldHaveEquipment = PersistentPlayerData.Instance?.multiCharacterData
+                ?.GetActiveCharacterData()?.HasEquipmentData() ?? false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error while checking equipment data: {e.Message}");
             yield break;
         }
 
-        Debug.Log($"[Character] PersistentPlayerData ready after {waitCount} frames");
+        if (shouldHaveEquipment)
+        {
+            Debug.Log($"[Character] 🔧 Equipment data found, loading...");
 
-        // 🆕 โหลดข้อมูลจาก Firebase
-        yield return StartCoroutine(LoadStatsFromFirebase());
+            try
+            {
+                // เคลียร์ equipment ปัจจุบัน
+                ClearAllEquipmentForLoad();
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Character] ❌ Error while clearing equipment: {e.Message}");
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.2f);
+
+            try
+            {
+                // โหลด equipment จาก Firebase (ไม่แตะ stats)
+                PersistentPlayerData.Instance.LoadInventoryData(this);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Character] ❌ Error while loading inventory data: {e.Message}");
+                yield break;
+            }
+
+            yield return new WaitForSeconds(0.5f);
+
+            int equipmentCount = 0;
+            try
+            {
+                // ตรวจสอบผลลัพธ์
+                equipmentCount = GetAllEquippedItems().Count;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Character] ❌ Error while counting equipped items: {e.Message}");
+                yield break;
+            }
+
+            Debug.Log($"[Character] Equipment loading result: {equipmentCount} items");
+
+            if (equipmentCount > 0)
+            {
+                ForceUpdateEquipmentSlotsNow();
+                Debug.Log($"[Character] ✅ Equipment loaded successfully (stats unchanged)");
+            }
+            else
+            {
+                Debug.LogWarning($"[Character] ⚠️ Equipment loading failed, will retry later");
+                StartCoroutine(RetryEquipmentLoadingLater());
+            }
+        }
+        else
+        {
+            Debug.Log($"[Character] ✅ No equipment data to load");
+        }
     }
+
+
+
+    private IEnumerator RetryEquipmentLoadingLater()
+    {
+        Debug.Log($"[Character] ⏰ Will retry equipment loading in 3 seconds...");
+        yield return new WaitForSeconds(3f);
+
+        bool shouldHaveEquipment = PersistentPlayerData.Instance?.multiCharacterData
+            ?.GetActiveCharacterData()?.HasEquipmentData() ?? false;
+
+        int currentEquipmentCount = GetAllEquippedItems().Count;
+
+        if (shouldHaveEquipment && currentEquipmentCount == 0)
+        {
+            Debug.Log($"[Character] 🔄 Retrying equipment loading...");
+            yield return StartCoroutine(SimpleLoadEquipmentOnly());
+        }
+    }
+
+
+
+    public void ApplyLoadedEquipmentStats()
+    {
+        Debug.Log($"[Character] ⚠️ ApplyLoadedEquipmentStats is DISABLED to prevent stats bugs");
+        Debug.Log($"[Character] ✅ Equipment stats are already included in Firebase total stats");
+
+        // เฉพาะ refresh UI
+        ForceUpdateEquipmentSlotsNow();
+        OnStatsChanged?.Invoke();
+
+        // ไม่ทำการคำนวณ stats ใหม่
+    }
+    /// </summary>
+    public void ApplyLoadedEquipmentStatsWithReset()
+    {
+        Debug.Log($"[Character] ⚠️ ApplyLoadedEquipmentStatsWithReset is DISABLED to prevent stats bugs");
+        Debug.Log($"[Character] ✅ Using Firebase total stats as-is (no reset needed)");
+
+        // เฉพาะ refresh UI
+        ForceUpdateEquipmentSlotsNow();
+        OnStatsChanged?.Invoke();
+
+        // ไม่ทำการ reset หรือคำนวณ stats ใหม่
+    }
+    private IEnumerator SimpleLoadPlayerData()
+    {
+        Debug.Log($"[Character] 📊 Simple player data loading...");
+
+        // ให้ LevelManager จัดการ stats ตามปกติ
+        var levelManager = GetComponent<LevelManager>();
+        if (levelManager != null)
+        {
+            // ใช้ระบบเดิมของ LevelManager
+            levelManager.RefreshCharacterData();
+
+            yield return new WaitForSeconds(0.5f);
+
+            Debug.Log($"[Character] ✅ LevelManager handled stats loading");
+        }
+
+        yield return null;
+    }
+
+    private IEnumerator SimpleEquipmentAutoCheck()
+    {
+        Debug.Log($"[Character] ⚔️ Starting simple equipment auto-check...");
+
+        // รอให้ stats loading เสร็จก่อน
+        yield return new WaitForSeconds(1f);
+
+        bool shouldHaveEquipment = false;
+        int currentEquipmentCount = 0;
+
+        try
+        {
+            shouldHaveEquipment = PersistentPlayerData.Instance?.multiCharacterData
+                ?.GetActiveCharacterData()?.HasEquipmentData() ?? false;
+
+            currentEquipmentCount = GetAllEquippedItems().Count;
+
+            Debug.Log($"[Character] Equipment check: Should have={shouldHaveEquipment}, Current={currentEquipmentCount}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Equipment auto-check error: {e.Message}");
+            yield break;
+        }
+
+        if (shouldHaveEquipment && currentEquipmentCount == 0)
+        {
+            Debug.Log($"[Character] 🔧 Equipment missing, auto-loading...");
+            yield return StartCoroutine(SimpleEquipmentReload());
+        }
+        else
+        {
+            Debug.Log($"[Character] ✅ Equipment status OK");
+        }
+    }
+
+    private IEnumerator SimpleEquipmentReload()
+    {
+        Debug.Log($"[Character] 🔄 Simple equipment reload...");
+
+        try
+        {
+            ClearAllEquipmentForLoad();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error clearing equipment: {e.Message}");
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        try
+        {
+            PersistentPlayerData.Instance?.LoadInventoryData(this);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error loading inventory data: {e.Message}");
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        int equipmentCount = 0;
+        try
+        {
+            equipmentCount = GetAllEquippedItems().Count;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error getting equipped items: {e.Message}");
+        }
+
+        Debug.Log($"[Character] Equipment reload result: {equipmentCount} items");
+
+        if (equipmentCount > 0)
+        {
+            ForceUpdateEquipmentSlotsNow();
+            Debug.Log($"[Character] ✅ Equipment reload successful");
+        }
+        else
+        {
+            Debug.LogWarning($"[Character] ⚠️ Equipment reload failed");
+        }
+    }
+
+    private IEnumerator LoadPlayerDataComprehensive()
+    {
+        Debug.Log($"[Character] 🔄 Starting comprehensive data loading...");
+
+        // STEP 1
+        Debug.Log($"[Character] 📊 STEP 1: Loading base stats and level...");
+        IEnumerator step1 = LoadBaseStatsAndLevel();
+        try
+        {
+            // ไม่มี yield ใน try
+            step1.MoveNext();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ STEP 1 failed: {e.Message}");
+            InitializeStats();
+            yield break;
+        }
+        // yield แยก
+        yield return step1;
+
+        // STEP 2
+        Debug.Log($"[Character] ⚔️ STEP 2: Loading equipment and inventory...");
+        IEnumerator step2 = LoadEquipmentAndInventory();
+        try
+        {
+            step2.MoveNext();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ STEP 2 failed: {e.Message}");
+            InitializeStats();
+            yield break;
+        }
+        yield return step2;
+
+        // STEP 3
+        Debug.Log($"[Character] 🔧 STEP 3: Applying total stats and validating...");
+        IEnumerator step3 = ApplyTotalStatsAndValidate();
+        try
+        {
+            step3.MoveNext();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ STEP 3 failed: {e.Message}");
+            InitializeStats();
+            yield break;
+        }
+        yield return step3;
+
+        // STEP 4
+        Debug.Log($"[Character] 🔄 STEP 4: Force refreshing UI...");
+        yield return StartCoroutine(DelayedUIRefresh());
+
+        // STEP 5
+        Debug.Log($"[Character] 💾 STEP 5: Auto-saving to ensure data integrity...");
+        yield return StartCoroutine(AutoSaveLoadedData());
+
+        Debug.Log($"[Character] 🎉 Comprehensive loading completed successfully!");
+    }
+
+
+    private IEnumerator LoadBaseStatsAndLevel()
+    {
+        var levelManager = GetComponent<LevelManager>();
+        if (levelManager != null && PersistentPlayerData.Instance != null)
+        {
+            Debug.Log($"[Character] Loading base stats and level data...");
+
+            // ใช้ method ที่มีอยู่แล้วแต่ปรับปรุง
+            PersistentPlayerData.Instance.LoadStatsForCharacter(this, levelManager);
+
+            Debug.Log($"[Character] ✅ Base stats loaded: Level {levelManager.CurrentLevel}, HP={MaxHp}, ATK={AttackDamage}");
+        }
+        else
+        {
+            Debug.LogWarning($"[Character] No LevelManager or PersistentPlayerData, using ScriptableObject stats");
+            InitializeStats();
+        }
+
+        yield return null;
+    }
+
+    private IEnumerator LoadEquipmentAndInventory()
+    {
+        Debug.Log($"[Character] Loading equipment and inventory...");
+
+        // เก็บ stats ก่อน load equipment เพื่อเปรียบเทียบ
+        int statsBeforeEquipment_HP = MaxHp;
+        int statsBeforeEquipment_ATK = AttackDamage;
+        int statsBeforeEquipment_ARM = Armor;
+
+        // เคลียร์ equipment ปัจจุบัน
+        ClearAllEquipmentForLoad();
+
+        // รอ 1 frame
+        yield return null;
+
+        // โหลด equipment จาก Firebase
+        if (PersistentPlayerData.Instance != null)
+        {
+            PersistentPlayerData.Instance.LoadInventoryData(this);
+
+            // รอให้ loading เสร็จ
+            yield return new WaitForSeconds(0.5f);
+
+            // ตรวจสอบผลลัพธ์
+            int equipmentCount = GetAllEquippedItems().Count;
+            Debug.Log($"[Character] Equipment loading result: {equipmentCount} items");
+
+            if (equipmentCount > 0)
+            {
+                // Apply equipment stats
+                ApplyLoadedEquipmentStats();
+
+                Debug.Log($"[Character] ✅ Equipment stats applied:");
+                Debug.Log($"  HP: {statsBeforeEquipment_HP} → {MaxHp} (+{MaxHp - statsBeforeEquipment_HP})");
+                Debug.Log($"  ATK: {statsBeforeEquipment_ATK} → {AttackDamage} (+{AttackDamage - statsBeforeEquipment_ATK})");
+                Debug.Log($"  ARM: {statsBeforeEquipment_ARM} → {Armor} (+{Armor - statsBeforeEquipment_ARM})");
+            }
+            else
+            {
+                Debug.LogWarning($"[Character] ⚠️ No equipment was loaded!");
+
+                // 🆕 ถ้าไม่มี equipment ให้ลอง retry
+                yield return StartCoroutine(RetryEquipmentLoading());
+            }
+        }
+
+        yield return null;
+    }
+
+    private IEnumerator AutoSaveLoadedData()
+    {
+        Debug.Log($"[Character] Auto-saving loaded data to ensure integrity...");
+
+        yield return new WaitForSeconds(0.2f);
+
+        try
+        {
+            // บันทึก inventory data
+            PersistentPlayerData.Instance?.SaveInventoryData(this);
+
+            // บันทึก total stats
+            var levelManager = GetComponent<LevelManager>();
+            if (levelManager != null)
+            {
+                PersistentPlayerData.Instance?.SaveBaseStats(this, levelManager);
+            }
+
+            Debug.Log($"[Character] ✅ Auto-save completed");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Auto-save failed: {e.Message}");
+        }
+
+        yield return null;
+    }
+    private IEnumerator DelayedUIRefresh()
+    {
+        Debug.Log($"[Character] Refreshing UI with delay...");
+
+        // รอให้ระบบต่างๆ settle
+        yield return new WaitForSeconds(0.3f);
+
+        // Force refresh equipment slots
+        ForceUpdateEquipmentSlotsNow();
+
+        // Force refresh inventory
+        var inventoryGrid = FindObjectOfType<InventoryGridManager>();
+        if (inventoryGrid != null)
+        {
+            inventoryGrid.ForceUpdateFromCharacter();
+            inventoryGrid.ForceSyncAllSlots();
+        }
+
+        // แจ้ง stats changed
+        OnStatsChanged?.Invoke();
+
+        // Force update Canvas
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log($"[Character] ✅ UI refresh completed");
+
+        yield return null;
+    }
+    #region 🆕 Auto-Fix System
+
+    /// <summary>
+    /// 🆕 ตรวจสอบและแก้ไขปัญหาอัตโนมัติ
+    /// </summary>
+    private IEnumerator AutoFixEquipmentIfNeeded()
+    {
+        yield return new WaitForSeconds(2f); // รอให้ loading เสร็จก่อน
+
+        Debug.Log($"[Character] 🔍 Auto-checking equipment status...");
+
+        // ตรวจสอบว่ามี equipment หรือไม่
+        int equipmentCount = GetAllEquippedItems().Count;
+        bool hasEquipmentInFirebase = PersistentPlayerData.Instance?.multiCharacterData
+            ?.GetCurrentCharacterData()?.HasEquipmentData() ?? false;
+
+        Debug.Log($"[Character] Equipment status: {equipmentCount} items in character, Firebase has data: {hasEquipmentInFirebase}");
+
+        if (hasEquipmentInFirebase && equipmentCount == 0)
+        {
+            Debug.LogWarning($"[Character] ⚠️ Equipment mismatch detected! Auto-fixing...");
+
+            // ทำ auto-fix
+            yield return StartCoroutine(AutoFixEquipmentMismatch());
+        }
+        else
+        {
+            Debug.Log($"[Character] ✅ Equipment status OK");
+        }
+    }
+
+    /// <summary>
+    /// 🆕 Auto-fix equipment mismatch
+    /// </summary>
+    private IEnumerator AutoFixEquipmentMismatch()
+    {
+        Debug.Log($"[Character] 🔧 Starting auto-fix for equipment mismatch...");
+
+        // Clear และ reload
+        ClearAllEquipmentForLoad();
+        yield return new WaitForSeconds(0.2f);
+
+        // Reload equipment
+        PersistentPlayerData.Instance?.LoadInventoryData(this);
+        yield return new WaitForSeconds(0.5f);
+
+        // Apply stats
+        ApplyLoadedEquipmentStats();
+        yield return new WaitForSeconds(0.2f);
+
+        // Refresh UI
+        ForceUpdateEquipmentSlotsNow();
+        OnStatsChanged?.Invoke();
+
+        int equipmentCountAfterFix = GetAllEquippedItems().Count;
+        Debug.Log($"[Character] Auto-fix result: {equipmentCountAfterFix} items loaded");
+
+        if (equipmentCountAfterFix > 0)
+        {
+            Debug.Log($"[Character] ✅ Auto-fix successful!");
+        }
+        else
+        {
+            Debug.LogError($"[Character] ❌ Auto-fix failed - manual intervention needed");
+        }
+    }
+
+    #endregion
+
+    private IEnumerator ApplyTotalStatsAndValidate()
+    {
+        Debug.Log($"[Character] Applying final stats and validating...");
+
+        // Force update network state
+        ForceUpdateNetworkState();
+
+        // แจ้ง stats changed
+        OnStatsChanged?.Invoke();
+
+        // Validate ว่า stats มีค่าที่สมเหตุสมผล
+        if (MaxHp < 50)
+        {
+            Debug.LogWarning($"[Character] ⚠️ HP too low ({MaxHp}), might be a loading issue");
+        }
+
+        if (AttackDamage < 10)
+        {
+            Debug.LogWarning($"[Character] ⚠️ Attack too low ({AttackDamage}), might be a loading issue");
+        }
+
+        Debug.Log($"[Character] ✅ Final stats: HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}, CRIT={CriticalChance:F1}%");
+
+        yield return null;
+    }
+
+    private IEnumerator RetryEquipmentLoading()
+    {
+        Debug.Log($"[Character] 🔄 Retrying equipment loading...");
+
+        yield return new WaitForSeconds(0.5f);
+
+        // ลองอีกครั้ง
+        if (PersistentPlayerData.Instance != null)
+        {
+            PersistentPlayerData.Instance.LoadInventoryData(this);
+
+            yield return new WaitForSeconds(0.5f);
+
+            int equipmentCount = GetAllEquippedItems().Count;
+            Debug.Log($"[Character] Retry result: {equipmentCount} items");
+
+            if (equipmentCount > 0)
+            {
+                ApplyLoadedEquipmentStats();
+                Debug.Log($"[Character] ✅ Equipment loaded successfully on retry!");
+            }
+            else
+            {
+                Debug.LogWarning($"[Character] ⚠️ Equipment loading failed even after retry");
+
+                // Debug Firebase data
+                DebugFirebaseEquipmentData();
+            }
+        }
+    }
+
+    private void DebugFirebaseEquipmentData()
+    {
+        if (PersistentPlayerData.Instance?.multiCharacterData == null) return;
+
+        Debug.Log("=== FIREBASE EQUIPMENT DEBUG ===");
+
+        string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+        var characterData = PersistentPlayerData.Instance.GetCharacterData(characterType);
+
+        if (characterData != null)
+        {
+            Debug.Log($"Character Type: {characterType}");
+            Debug.Log($"Has Equipment Data: {characterData.HasEquipmentData()}");
+            Debug.Log($"Total Equipped Items: {characterData.totalEquippedItems}");
+            Debug.Log($"Total Potions: {characterData.totalPotions}");
+
+            if (characterData.characterEquipment != null)
+            {
+                var eq = characterData.characterEquipment.equipment;
+                Debug.Log($"Equipment IDs:");
+                Debug.Log($"  Head: {eq.headItemId}");
+                Debug.Log($"  Armor: {eq.armorItemId}");
+                Debug.Log($"  Weapon: {eq.weaponItemId}");
+                Debug.Log($"  Pants: {eq.pantsItemId}");
+                Debug.Log($"  Shoes: {eq.shoesItemId}");
+                Debug.Log($"  Rune: {eq.runeItemId}");
+            }
+        }
+        else
+        {
+            Debug.LogError($"❌ No character data found for {characterType}");
+        }
+
+        Debug.Log("===============================");
+    }
+
     private System.Collections.IEnumerator LoadStatsFromFirebase()
     {
         Debug.Log($"[Character] 🔄 Loading stats from Firebase for {CharacterName}...");
@@ -510,7 +1097,7 @@ public class Character : NetworkBehaviour
                 yield break;
             }
 
-           
+
 
             isStatsLoaded = true;
             Debug.Log($"[Character] ✅ Stats loaded successfully for {CharacterName}");
@@ -979,7 +1566,7 @@ public class Character : NetworkBehaviour
     #endregion
 
     #region Equipment Methods การจัดการอุปกรณ์และ runes
-   
+
     #endregion
     #region Inventory Methods การจัดการ inventory และ items
     public Inventory GetInventory()
@@ -1953,28 +2540,23 @@ public class Character : NetworkBehaviour
     {
         try
         {
-            Debug.Log("[Character] 💾 Saving inventory and total stats...");
+            Debug.Log("[Character] 💾 Simple save: inventory only (stats handled by LevelManager)...");
 
-            // 1. บันทึก inventory data
+            // เฉพาะบันทึก inventory data
             PersistentPlayerData.Instance?.SaveInventoryData(this);
 
-            // 2. บันทึก total stats (รวม equipment bonuses)
+            // ให้ LevelManager จัดการ stats saving
             var levelManager = GetComponent<LevelManager>();
             if (levelManager != null)
             {
-                SaveTotalStatsToFirebase(levelManager);
-            }
-            else
-            {
-                Debug.LogWarning("[Character] No LevelManager found, saving stats directly");
-                SaveTotalStatsDirectly();
+                levelManager.ForceSaveToFirebase();
             }
 
-            Debug.Log("[Character] ✅ Inventory and total stats saved successfully");
+            Debug.Log("[Character] ✅ Simple save completed");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error saving inventory and stats: {e.Message}");
+            Debug.LogError($"[Character] ❌ Error in simple save: {e.Message}");
         }
     }
     private void SaveTotalStatsToFirebase(LevelManager levelManager)
@@ -2294,11 +2876,7 @@ public class Character : NetworkBehaviour
         Debug.Log($"[Character] ✅ All equipment cleared for load");
     }
 
-    public void ApplyLoadedEquipmentStats()
-    {
-        // เรียกใช้ version ที่มี reset
-        ApplyLoadedEquipmentStatsWithReset();
-    }
+
     public void SaveCurrentStatsAsBase()
     {
         if (characterStats == null)
@@ -2367,56 +2945,7 @@ public class Character : NetworkBehaviour
         }
     }
 
-    public void ApplyLoadedEquipmentStatsWithReset()
-    {
-        try
-        {
-            Debug.Log($"[Character] 🔄 Applying loaded equipment stats with reset for {CharacterName}...");
 
-            // 1. Reset กลับเป็น base stats ก่อน
-            ResetToBaseStats();
-
-            // 2. เก็บ base stats สำหรับ comparison
-            int baseMaxHp = MaxHp;
-            int baseAttackDamage = AttackDamage;
-            int baseArmor = Armor;
-            float baseCriticalChance = CriticalChance;
-
-            // 3. Apply equipment stats ใหม่
-            ApplyAllEquipmentStats();
-
-            // 4. Debug การเปลี่ยนแปลง
-            int hpBonus = MaxHp - baseMaxHp;
-            int atkBonus = AttackDamage - baseAttackDamage;
-            int armBonus = Armor - baseArmor;
-            float critBonus = CriticalChance - baseCriticalChance;
-
-            Debug.Log($"[Character] ✅ Equipment bonuses applied (with reset):");
-            Debug.Log($"  HP: +{hpBonus} (Base: {baseMaxHp} → Total: {MaxHp})");
-            Debug.Log($"  ATK: +{atkBonus} (Base: {baseAttackDamage} → Total: {AttackDamage})");
-            Debug.Log($"  ARM: +{armBonus} (Base: {baseArmor} → Total: {Armor})");
-            Debug.Log($"  CRIT: +{critBonus:F1}% (Base: {baseCriticalChance:F1}% → Total: {CriticalChance:F1}%)");
-
-            // 5. Force update network state
-            ForceUpdateNetworkState();
-
-            // 6. แจ้ง stats changed
-            OnStatsChanged?.Invoke();
-
-            // 🆕 7. บันทึก total stats ใหม่
-            var levelManager = GetComponent<LevelManager>();
-            if (levelManager != null)
-            {
-                SaveTotalStatsToFirebase(levelManager);
-            }
-
-            Debug.Log($"[Character] ✅ Applied loaded equipment stats with reset and saved total stats");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character] ❌ Error applying loaded equipment stats with reset: {e.Message}");
-        }
-    }
     /// <summary>
     /// Force refresh equipment UI หลัง load
     /// </summary>
@@ -2431,51 +2960,5 @@ public class Character : NetworkBehaviour
         OnStatsChanged?.Invoke();
 
         Debug.Log($"[Character] ✅ Equipment UI refreshed after load");
-    }
-    [ContextMenu("🔍 Debug Current Equipped Items")]
-    public void DebugCurrentEquippedItems()
-    {
-        Debug.Log($"=== EQUIPPED ITEMS DEBUG ({CharacterName}) ===");
-
-        // Equipment slots
-        for (int i = 0; i < 6; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData equippedItem = GetEquippedItem(itemType);
-            Debug.Log($"Slot {i} ({itemType}): {(equippedItem?.ItemName ?? "EMPTY")}");
-        }
-
-        // Potion slots
-        for (int i = 0; i < 5; i++)
-        {
-            ItemData potionItem = GetPotionInSlot(i);
-            int stackCount = GetPotionStackCount(i);
-            Debug.Log($"Potion {i}: {(potionItem?.ItemName ?? "EMPTY")} x{stackCount}");
-        }
-
-        Debug.Log("==========================================");
-    }
-    [ContextMenu("🔍 Debug Loaded Equipment")]
-    public void DebugLoadedEquipment()
-    {
-        Debug.Log($"=== LOADED EQUIPMENT DEBUG ({CharacterName}) ===");
-
-        Debug.Log("📦 Equipment Slots:");
-        for (int i = 0; i < 6; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData item = i < characterEquippedItems.Count ? characterEquippedItems[i] : null;
-            Debug.Log($"  Slot {i} ({itemType}): {(item?.ItemName ?? "EMPTY")}");
-        }
-
-        Debug.Log("🧪 Potion Slots:");
-        for (int i = 0; i < 5; i++)
-        {
-            ItemData potion = i < potionSlots.Count ? potionSlots[i] : null;
-            int stackCount = i < potionStackCounts.Count ? potionStackCounts[i] : 0;
-            Debug.Log($"  Slot {i}: {(potion?.ItemName ?? "EMPTY")} x{stackCount}");
-        }
-
-        Debug.Log("==========================================");
     }
 }

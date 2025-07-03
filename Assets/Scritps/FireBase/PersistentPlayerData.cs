@@ -1292,39 +1292,292 @@ public class PersistentPlayerData : MonoBehaviour
 
         try
         {
-            Debug.Log($"[LoadInventoryData] 📥 Starting inventory load for {character.CharacterName}");
+            Debug.Log($"[LoadInventoryData] 📥 Starting EQUIPMENT-ONLY load for {character.CharacterName} (no stats changes)");
 
-            // 1. Load Shared Inventory
-            bool inventoryLoaded = LoadSharedInventoryData(character);
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterProgressData = multiCharacterData.GetCharacterData(characterType);
 
-            // 2. Load Character Equipment
-            bool equipmentLoaded = LoadCharacterEquipmentData(character);
+            bool hasInventoryData = multiCharacterData.HasInventoryData();
+            bool hasEquipmentData = characterProgressData?.HasEquipmentData() ?? false;
+
+            Debug.Log($"[LoadInventoryData] 📊 Data check: Inventory={hasInventoryData}, Equipment={hasEquipmentData}");
+
+            if (!hasInventoryData && !hasEquipmentData)
+            {
+                Debug.LogWarning("[LoadInventoryData] ⚠️ No data to load");
+                return;
+            }
+
+            bool inventoryLoaded = false;
+            bool equipmentLoaded = false;
+
+            // 1. โหลด Shared Inventory (ไม่แตะ stats)
+            if (hasInventoryData)
+            {
+                Debug.Log("[LoadInventoryData] 📦 Loading shared inventory (items only)...");
+                inventoryLoaded = LoadSharedInventoryDataSimple(character);
+            }
+
+            // 2. โหลด Character Equipment (ไม่แตะ stats)
+            if (hasEquipmentData)
+            {
+                Debug.Log("[LoadInventoryData] ⚔️ Loading character equipment (items only)...");
+                equipmentLoaded = LoadCharacterEquipmentDataSimple(character);
+            }
 
             if (inventoryLoaded || equipmentLoaded)
             {
-                Debug.Log($"[LoadInventoryData] ✅ Inventory load completed for {character.CharacterName}");
+                Debug.Log($"[LoadInventoryData] ✅ Equipment loading completed - Inventory: {inventoryLoaded}, Equipment: {equipmentLoaded}");
 
-                // 3. Force refresh หลัง load เสร็จ
-                ForceRefreshInventoryUI(character);
+                // 🆕 เฉพาะ Force refresh UI - ไม่แตะ stats
+                ForceRefreshInventoryUIOnly(character);
 
-                // 🆕 4. แจ้ง LevelManager ให้คำนวณ stats ใหม่หลังโหลด equipment
-                NotifyLevelManagerEquipmentLoaded(character);
+                Debug.Log($"[LoadInventoryData] 🎉 Equipment loading success (stats unchanged)");
             }
             else
             {
-                Debug.LogWarning("[LoadInventoryData] ⚠️ No data was loaded - giving starter items");
-                GiveStarterItemsIfNeeded(character);
+                Debug.LogWarning("[LoadInventoryData] ⚠️ No equipment was loaded");
             }
+
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LoadInventoryData] ❌ Error loading inventory: {e.Message}");
-            Debug.LogError($"[LoadInventoryData] Stack trace: {e.StackTrace}");
-
-            // ถ้า load ไม่ได้ ให้ starter items
-            GiveStarterItemsIfNeeded(character);
+            Debug.LogError($"[LoadInventoryData] ❌ Error loading equipment: {e.Message}");
         }
     }
+    private void ForceRefreshInventoryUIOnly(Character character)
+    {
+        try
+        {
+            Debug.Log("[ForceRefreshInventoryUIOnly] 🔄 Refreshing UI only (no stats changes)...");
+
+            // 1. Force refresh equipment slots UI
+            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
+            if (equipmentSlotManager?.IsConnected() == true)
+            {
+                equipmentSlotManager.ForceRefreshFromCharacter();
+            }
+
+            // 2. Force refresh CombatUI equipment slots
+            var combatUIManager = FindObjectOfType<CombatUIManager>();
+            if (combatUIManager?.equipmentSlotManager?.IsConnected() == true)
+            {
+                combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
+            }
+
+            // 3. Force refresh inventory grid
+            var inventoryGrid = FindObjectOfType<InventoryGridManager>();
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.ForceUpdateFromCharacter();
+                inventoryGrid.ForceSyncAllSlots();
+            }
+
+            // 4. Force update Canvas
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log("[ForceRefreshInventoryUIOnly] ✅ UI refresh completed (stats unchanged)");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ForceRefreshInventoryUIOnly] ❌ Error: {e.Message}");
+        }
+    }
+    private void NotifyCharacterEquipmentLoaded(Character character)
+    {
+        Debug.Log("[NotifyCharacterEquipmentLoaded] ⚠️ DISABLED - no longer notifying Character to recalculate stats");
+        Debug.Log("[NotifyCharacterEquipmentLoaded] ✅ Equipment loaded without stats interference");
+
+        // ไม่เรียก character.ApplyLoadedEquipmentStats() เพื่อไม่ให้ stats บัค
+        // เฉพาะ refresh UI
+        ForceRefreshInventoryUIOnly(character);
+    }
+    private bool LoadCharacterEquipmentDataSimple(Character character)
+    {
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterProgressData = multiCharacterData.GetCharacterData(characterType);
+
+            if (characterProgressData?.characterEquipment == null)
+            {
+                Debug.LogWarning($"[LoadCharacterEquipmentDataSimple] No equipment data for {characterType}");
+                return false;
+            }
+
+            var equipmentData = characterProgressData.characterEquipment;
+            Debug.Log($"[LoadCharacterEquipmentDataSimple] Loading equipment for {characterType}...");
+
+            // 1. โหลด Equipment Slots (6 ช่อง) - ไม่แตะ stats
+            bool equipmentLoaded = LoadEquipmentSlotsSimple(character, equipmentData);
+
+            // 2. โหลด Potion Slots (5 ช่อง) - ไม่แตะ stats
+            bool potionsLoaded = LoadPotionSlotsSimple(character, equipmentData);
+
+            if (equipmentLoaded || potionsLoaded)
+            {
+                Debug.Log($"[LoadCharacterEquipmentDataSimple] ✅ Equipment loaded: Eq={equipmentLoaded}, Pot={potionsLoaded}");
+                return true;
+            }
+
+            return false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadCharacterEquipmentDataSimple] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private bool LoadEquipmentSlotsSimple(Character character, CharacterEquipmentData equipmentData)
+    {
+        try
+        {
+            int loadedCount = 0;
+            var equipment = equipmentData.equipment;
+
+            Debug.Log("[LoadEquipmentSlotsSimple] Loading 6 equipment slots (no stats application)...");
+
+            // เคลียร์ equipment ก่อน
+            character.ClearAllEquipmentForLoad();
+
+            // โหลดแต่ละ slot โดยไม่ apply stats
+            if (LoadSingleEquipmentSlotSimple(character, ItemType.Head, equipment.headItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotSimple(character, ItemType.Armor, equipment.armorItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotSimple(character, ItemType.Weapon, equipment.weaponItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotSimple(character, ItemType.Pants, equipment.pantsItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotSimple(character, ItemType.Shoes, equipment.shoesItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotSimple(character, ItemType.Rune, equipment.runeItemId))
+                loadedCount++;
+
+            Debug.Log($"[LoadEquipmentSlotsSimple] ✅ Loaded {loadedCount}/6 equipment items (no stats changes)");
+            return loadedCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadEquipmentSlotsSimple] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private bool LoadSingleEquipmentSlotSimple(Character character, ItemType itemType, string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId))
+            return false;
+
+        try
+        {
+            // หา ItemData จาก ID
+            ItemData itemData = GetItemDataById(itemId);
+            if (itemData == null)
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotSimple] Item not found: {itemId} for {itemType}");
+                return false;
+            }
+
+            // ตรวจสอบ item type
+            if (itemData.ItemType != itemType)
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotSimple] Item type mismatch: {itemData.ItemType} != {itemType}");
+                return false;
+            }
+
+            // โหลด item ลง character โดยไม่ apply stats
+            bool success = character.LoadEquipmentDirectly(itemData);
+            if (success)
+            {
+                Debug.Log($"[LoadSingleEquipmentSlotSimple] ✅ Loaded {itemData.ItemName} (no stats applied)");
+                return true;
+            }
+
+            return false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSingleEquipmentSlotSimple] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    private bool LoadSharedInventoryDataSimple(Character character)
+    {
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogWarning("[LoadSharedInventoryDataSimple] No inventory component");
+                return false;
+            }
+
+            var sharedData = multiCharacterData.sharedInventory;
+            if (sharedData?.items?.Count == 0)
+            {
+                Debug.LogWarning("[LoadSharedInventoryDataSimple] No shared inventory items");
+                return false;
+            }
+
+            Debug.Log($"[LoadSharedInventoryDataSimple] Loading {sharedData.items.Count} inventory items...");
+
+            // เคลียร์และโหลด items
+            inventory.ClearInventory();
+
+            int successCount = 0;
+            foreach (var savedItem in sharedData.items)
+            {
+                if (savedItem?.IsValid() == true)
+                {
+                    ItemData itemData = GetItemDataById(savedItem.itemId);
+                    if (itemData != null)
+                    {
+                        bool added = inventory.AddItem(itemData, savedItem.stackCount);
+                        if (added) successCount++;
+                    }
+                }
+            }
+
+            Debug.Log($"[LoadSharedInventoryDataSimple] ✅ Loaded {successCount} inventory items");
+            return successCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSharedInventoryDataSimple] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private bool LoadPotionSlotsSimple(Character character, CharacterEquipmentData equipmentData)
+    {
+        try
+        {
+            int loadedCount = 0;
+
+            for (int i = 0; i < 5; i++)
+            {
+                var potionSlot = equipmentData.GetPotionSlot(i);
+                if (potionSlot?.IsValid() == true)
+                {
+                    ItemData potionData = GetItemDataById(potionSlot.itemId);
+                    if (potionData?.ItemType == ItemType.Potion)
+                    {
+                        bool loaded = character.LoadPotionDirectly(potionData, i, potionSlot.stackCount);
+                        if (loaded) loadedCount++;
+                    }
+                }
+            }
+
+            Debug.Log($"[LoadPotionSlotsSimple] ✅ Loaded {loadedCount}/5 potion slots");
+            return loadedCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadPotionSlotsSimple] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
     /// </summary>
     private void NotifyLevelManagerEquipmentLoaded(Character character)
     {
@@ -3062,8 +3315,9 @@ public class PersistentPlayerData : MonoBehaviour
 
             if (characterData == null)
             {
-                Debug.LogWarning($"[PersistentPlayerData] No data found for {characterType}");
-                return;
+                Debug.LogWarning($"[PersistentPlayerData] No data found for {characterType}, creating default");
+                characterData = CreateDefaultCharacterData(characterType);
+                multiCharacterData.characters.Add(characterData);
             }
 
             Debug.Log($"[PersistentPlayerData] 📥 Loading stats for {characterType}...");
@@ -3073,96 +3327,211 @@ public class PersistentPlayerData : MonoBehaviour
             levelManager.CurrentExp = characterData.currentExp;
             levelManager.ExpToNextLevel = characterData.expToNextLevel;
 
-            // 🆕 ตรวจสอบว่ามี base stats หรือไม่
-            bool hasBaseStats = characterData.baseMaxHp > 0;
-            bool hasTotalStats = characterData.totalMaxHp > 0;
+            // 🆕 โหลด base stats เท่านั้น (ไม่รวม equipment bonuses)
+            LoadBaseStatsOnly(character, levelManager, characterData);
 
-            Debug.Log($"[PersistentPlayerData] Has base stats: {hasBaseStats}, Has total stats: {hasTotalStats}");
+            // Mark as initialized
+            levelManager.IsInitialized = true;
 
-            if (hasBaseStats && hasTotalStats)
-            {
-                // 🆕 กรณีมี base stats และ total stats ให้ใช้ total stats เลย (เร็วกว่า)
-                Debug.Log("[PersistentPlayerData] 🚀 Using total stats (fastest method)");
+            Debug.Log($"[PersistentPlayerData] ✅ Base stats loaded for {characterType}: Level {levelManager.CurrentLevel}, HP={character.MaxHp}, ATK={character.AttackDamage}");
 
-                character.MaxHp = characterData.totalMaxHp;
-                character.CurrentHp = characterData.totalMaxHp;
-                character.MaxMana = characterData.totalMaxMana;
-                character.CurrentMana = characterData.totalMaxMana;
-                character.AttackDamage = characterData.totalAttackDamage;
-                character.MagicDamage = characterData.totalMagicDamage;
-                character.Armor = characterData.totalArmor;
-                character.CriticalChance = characterData.totalCriticalChance;
-                character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, true);
-                character.MoveSpeed = characterData.totalMoveSpeed;
-                character.HitRate = characterData.totalHitRate;
-                character.EvasionRate = characterData.totalEvasionRate;
-                character.AttackSpeed = characterData.totalAttackSpeed;
-                character.ReductionCoolDown = characterData.totalReductionCoolDown;
+            // 🆕 บันทึก base stats เพื่อใช้ในอนาคต
+            SaveBaseStatsToCharacterData(character, levelManager, characterData);
 
-                character.ForceUpdateNetworkState();
-                levelManager.IsInitialized = true;
-
-                Debug.Log($"[PersistentPlayerData] ✅ Loaded total stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
-            }
-            else if (hasBaseStats)
-            {
-                // 🆕 กรณีมี base stats แต่ไม่มี total stats ให้คำนวณ equipment bonuses
-                Debug.Log("[PersistentPlayerData] 🔧 Using base stats + equipment calculation");
-
-                // Load base stats ก่อน
-                character.MaxHp = characterData.baseMaxHp;
-                character.CurrentHp = characterData.baseMaxHp;
-                character.MaxMana = characterData.baseMaxMana;
-                character.CurrentMana = characterData.baseMaxMana;
-                character.AttackDamage = characterData.baseAttackDamage;
-                character.MagicDamage = characterData.baseMagicDamage;
-                character.Armor = characterData.baseArmor;
-                character.CriticalChance = characterData.baseCriticalChance;
-                character.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
-                character.MoveSpeed = characterData.baseMoveSpeed;
-                character.HitRate = characterData.baseHitRate;
-                character.EvasionRate = characterData.baseEvasionRate;
-                character.AttackSpeed = characterData.baseAttackSpeed;
-                character.ReductionCoolDown = characterData.baseReductionCoolDown;
-
-                character.ForceUpdateNetworkState();
-                levelManager.IsInitialized = true;
-
-                // แล้วค่อย apply equipment bonuses
-                StartCoroutine(DelayedApplyEquipmentBonuses(character));
-
-                Debug.Log($"[PersistentPlayerData] ✅ Loaded base stats: HP={character.MaxHp}, ATK={character.AttackDamage}, will apply equipment...");
-            }
-            else
-            {
-                // 🆕 กรณีไม่มี base stats ให้ใช้ total stats (backward compatibility)
-                Debug.Log("[PersistentPlayerData] 📊 Using total stats (legacy mode)");
-
-                character.MaxHp = characterData.totalMaxHp;
-                character.CurrentHp = characterData.totalMaxHp;
-                character.MaxMana = characterData.totalMaxMana;
-                character.CurrentMana = characterData.totalMaxMana;
-                character.AttackDamage = characterData.totalAttackDamage;
-                character.MagicDamage = characterData.totalMagicDamage;
-                character.Armor = characterData.totalArmor;
-                character.CriticalChance = characterData.totalCriticalChance;
-                character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, true);
-                character.MoveSpeed = characterData.totalMoveSpeed;
-                character.HitRate = characterData.totalHitRate;
-                character.EvasionRate = characterData.totalEvasionRate;
-                character.AttackSpeed = characterData.totalAttackSpeed;
-                character.ReductionCoolDown = characterData.totalReductionCoolDown;
-
-                character.ForceUpdateNetworkState();
-                levelManager.IsInitialized = true;
-
-                Debug.Log($"[PersistentPlayerData] ✅ Loaded legacy stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
-            }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[PersistentPlayerData] ❌ Error loading stats: {e.Message}");
         }
+    }
+    private void SaveBaseStatsToCharacterData(Character character, LevelManager levelManager, CharacterProgressData characterData)
+    {
+        try
+        {
+            Debug.Log($"[SaveBaseStatsToCharacterData] Saving base stats for {characterData.characterType}...");
+
+            characterData.UpdateBaseStats(
+                character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
+                character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
+                character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown
+            );
+
+            Debug.Log($"[SaveBaseStatsToCharacterData] ✅ Base stats saved: HP={character.MaxHp}, ATK={character.AttackDamage}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveBaseStatsToCharacterData] ❌ Error: {e.Message}");
+        }
+    }
+    public bool ValidateAndFixEquipmentLoading(Character character)
+    {
+        if (character == null || multiCharacterData == null) return false;
+
+        try
+        {
+            Debug.Log($"[ValidateAndFixEquipmentLoading] Validating equipment for {character.CharacterName}...");
+
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterData = GetCharacterData(characterType);
+
+            if (characterData?.HasEquipmentData() != true)
+            {
+                Debug.Log($"[ValidateAndFixEquipmentLoading] No equipment data in Firebase for {characterType}");
+                return false;
+            }
+
+            // ตรวจสอบ equipment ใน character
+            int currentEquipmentCount = character.GetAllEquippedItems().Count;
+            int expectedEquipmentCount = characterData.totalEquippedItems;
+
+            Debug.Log($"[ValidateAndFixEquipmentLoading] Equipment count: Current={currentEquipmentCount}, Expected={expectedEquipmentCount}");
+
+            if (currentEquipmentCount < expectedEquipmentCount)
+            {
+                Debug.LogWarning($"[ValidateAndFixEquipmentLoading] Equipment mismatch detected! Attempting auto-fix...");
+
+                // ลอง reload equipment
+                LoadInventoryData(character);
+
+                // ตรวจสอบอีกครั้ง
+                int newEquipmentCount = character.GetAllEquippedItems().Count;
+                Debug.Log($"[ValidateAndFixEquipmentLoading] After reload: {newEquipmentCount} equipment items");
+
+                return newEquipmentCount > currentEquipmentCount;
+            }
+
+            Debug.Log($"[ValidateAndFixEquipmentLoading] ✅ Equipment validation passed");
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ValidateAndFixEquipmentLoading] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    public bool ForceReloadEquipment(Character character)
+    {
+        if (character == null || multiCharacterData == null) return false;
+
+        try
+        {
+            Debug.Log($"[ForceReloadEquipment] Force reloading equipment for {character.CharacterName}...");
+
+            // เคลียร์ equipment ปัจจุบัน
+            character.ClearAllEquipmentForLoad();
+
+            // รอ 1 frame (จำลอง)
+            System.Threading.Thread.Sleep(50);
+
+            // โหลด equipment ใหม่
+            LoadInventoryData(character);
+
+            // ตรวจสอบผลลัพธ์
+            int equipmentCount = character.GetAllEquippedItems().Count;
+            Debug.Log($"[ForceReloadEquipment] ✅ Force reload result: {equipmentCount} equipment items");
+
+            return equipmentCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ForceReloadEquipment] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private void LoadBaseStatsOnly(Character character, LevelManager levelManager, CharacterProgressData characterData)
+    {
+        Debug.Log($"[LoadBaseStatsOnly] Loading base stats for {characterData.characterType}...");
+
+        // 🆕 ถ้ามี base stats ที่บันทึกไว้ ให้ใช้ตัวนั้น
+        if (characterData.HasValidBaseStats())
+        {
+            Debug.Log($"[LoadBaseStatsOnly] Using saved base stats");
+
+            character.MaxHp = characterData.baseMaxHp;
+            character.CurrentHp = characterData.baseMaxHp;
+            character.MaxMana = characterData.baseMaxMana;
+            character.CurrentMana = characterData.baseMaxMana;
+            character.AttackDamage = characterData.baseAttackDamage;
+            character.MagicDamage = characterData.baseMagicDamage;
+            character.Armor = characterData.baseArmor;
+            character.CriticalChance = characterData.baseCriticalChance;
+            character.CriticalDamageBonus = characterData.baseCriticalDamageBonus;
+            character.MoveSpeed = characterData.baseMoveSpeed;
+            character.HitRate = characterData.baseHitRate;
+            character.EvasionRate = characterData.baseEvasionRate;
+            character.AttackSpeed = characterData.baseAttackSpeed;
+            character.ReductionCoolDown = characterData.baseReductionCoolDown;
+        }
+        else
+        {
+            Debug.Log($"[LoadBaseStatsOnly] Calculating base stats from ScriptableObject + level");
+
+            // คำนวณจาก ScriptableObject + level bonuses
+            CalculateBaseStatsFromScriptableObject(character, levelManager);
+
+            // บันทึก base stats ที่คำนวณได้
+            SaveBaseStatsToCharacterData(character, levelManager, characterData);
+        }
+
+        // Force update network state
+        character.ForceUpdateNetworkState();
+
+        Debug.Log($"[LoadBaseStatsOnly] ✅ Base stats loaded: HP={character.MaxHp}, ATK={character.AttackDamage}, ARM={character.Armor}");
+    }
+
+    private void CalculateBaseStatsFromScriptableObject(Character character, LevelManager levelManager)
+    {
+        if (character.characterStats == null)
+        {
+            Debug.LogError($"[CalculateBaseStatsFromScriptableObject] No characterStats ScriptableObject!");
+            return;
+        }
+
+        // ใช้ stats จาก ScriptableObject เป็น base
+        int baseHp = character.characterStats.maxHp;
+        int baseMana = character.characterStats.maxMana;
+        int baseAttack = character.characterStats.attackDamage;
+        int baseMagic = character.characterStats.magicDamage;
+        int baseArmor = character.characterStats.arrmor;
+        float baseCrit = character.characterStats.criticalChance;
+        float baseCritDamage = character.characterStats.criticalDamageBonus;
+        float baseSpeed = character.characterStats.moveSpeed;
+        float baseHit = character.characterStats.hitRate;
+        float baseEvasion = character.characterStats.evasionRate;
+        float baseAttackSpeed = character.characterStats.attackSpeed;
+        float baseCDR = character.characterStats.reductionCoolDown;
+
+        // เพิ่ม level bonuses
+        if (levelManager?.levelUpStats != null)
+        {
+            int levelBonus = levelManager.CurrentLevel - 1;
+
+            baseHp += levelBonus * levelManager.levelUpStats.hpBonusPerLevel;
+            baseMana += levelBonus * levelManager.levelUpStats.manaBonusPerLevel;
+            baseAttack += levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel;
+            baseMagic += levelBonus * levelManager.levelUpStats.magicDamageBonusPerLevel;
+            baseArmor += levelBonus * levelManager.levelUpStats.armorBonusPerLevel;
+            baseCrit += levelBonus * levelManager.levelUpStats.criticalChanceBonusPerLevel;
+            baseSpeed += levelBonus * levelManager.levelUpStats.moveSpeedBonusPerLevel;
+        }
+
+        // Apply ลง character
+        character.MaxHp = baseHp;
+        character.CurrentHp = baseHp;
+        character.MaxMana = baseMana;
+        character.CurrentMana = baseMana;
+        character.AttackDamage = baseAttack;
+        character.MagicDamage = baseMagic;
+        character.Armor = baseArmor;
+        character.CriticalChance = baseCrit;
+        character.CriticalDamageBonus = baseCritDamage;
+        character.MoveSpeed = baseSpeed;
+        character.HitRate = baseHit;
+        character.EvasionRate = baseEvasion;
+        character.AttackSpeed = baseAttackSpeed;
+        character.ReductionCoolDown = baseCDR;
+
+        Debug.Log($"[CalculateBaseStatsFromScriptableObject] ✅ Calculated base stats: Level {levelManager.CurrentLevel}, HP={baseHp}, ATK={baseAttack}, ARM={baseArmor}");
     }
 
 

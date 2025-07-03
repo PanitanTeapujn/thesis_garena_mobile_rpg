@@ -728,7 +728,10 @@ public class MultiCharacterPlayerData
 
         Debug.Log("✅ Currency system initialized for new player data");
     }
-
+    public CharacterProgressData GetCurrentCharacterData()
+    {
+        return GetActiveCharacterData();
+    }
     // เพิ่มใน HasAnyInventoryOrEquipmentData method
     public bool HasAnyData()
     {
