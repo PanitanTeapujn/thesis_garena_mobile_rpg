@@ -18,20 +18,10 @@ MonoBehaviour:
   minGemsDrop: 0
   maxGemsDrop: 3
   gemsDropChance: 5
-  itemDrops:
-  - itemData: {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
-    dropChance: 48.4
-    minQuantity: 0
-    maxQuantity: 0
+  itemDrops: []
   maxItemsPerDrop: 3
   goldLevelBonus: 10
   dropChanceLevelBonus: 2
-  rareDrops:
-  - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
-    dropChance: 0
-    minQuantity: 0
-    maxQuantity: 0
-    rareDropMessage: 
-    effectColor: {r: 0, g: 0, b: 0, a: 0}
+  rareDrops: []
   showDropLogs: 1
   guaranteedDropsForTesting: 0

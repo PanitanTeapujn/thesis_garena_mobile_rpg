@@ -242,9 +242,17 @@ MonoBehaviour:
   isCollidingWithPlayer: 0
   showDebugInfo: 0
   showPatrolGizmos: 1
+  itemDropChance: 15
+  maxItemDrops: 2
+  itemDropLevelBonus: 1
+  weaponDropChance: 20
+  armorDropChance: 15
+  potionDropChance: 30
+  runeDropChance: 10
+  rareItemChance: 2
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
-  dropManager: {fileID: 0}
+  dropManager: {fileID: -400204652379301390}
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -407,11 +415,9 @@ MonoBehaviour:
   dropSettings: {fileID: 11400000, guid: e4b96738aa5e9b747bccf12d2a9365c2, type: 2}
   goldDropEffectPrefab: {fileID: 0}
   gemsDropEffectPrefab: {fileID: 0}
-  itemDropEffectPrefab: {fileID: 0}
-  rareItemDropEffectPrefab: {fileID: 0}
   dropScatterRadius: 2
   dropForce: 3
   collectRange: 3
   dropDelay: 0.5
   dropLifetime: 60
-  showDropLogs: 1
+  showDropLogs: 0
