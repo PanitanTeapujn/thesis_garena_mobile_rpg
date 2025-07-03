@@ -84,6 +84,13 @@ public class Character : NetworkBehaviour
     [Networked] public int NetworkedCurrentMana { get; set; }
     [Networked] public int NetworkedMaxMana { get; set; }
     [Networked] public bool IsNetworkStateReady { get; set; }
+    [Networked] public bool IsStatsReady { get; set; } = false;
+
+    [Header("🆕 Spawn State Management")]
+    [SerializeField] private bool isStatsLoaded = false;
+    [SerializeField] private bool isSpawnComplete = false;
+    private bool hasTriedLoadStats = false;
+
     #endregion
 
     #region Regeneration Settings การตั้งค่าการฟื้นฟู HP/Mana
@@ -138,43 +145,33 @@ public class Character : NetworkBehaviour
     }
     private System.Collections.IEnumerator DelayedLoadPlayerDataStart()
     {
-        Debug.Log($"[Character] Starting delayed player data load for {CharacterName}...");
+        // 🆕 ไม่ใช้ method นี้แล้ว เพราะจะใช้ PostSpawnStatsLoading แทน
+        yield break;
+    }
+    public bool IsStatsLoadingComplete()
+    {
+        return isStatsLoaded && isSpawnComplete;
+    }
 
-        // รอ 5 frames เพื่อให้ UI systems และ managers setup เสร็จ
-        for (int i = 0; i < 5; i++)
+    public void WaitForStatsLoaded(System.Action callback)
+    {
+        if (IsStatsLoadingComplete())
         {
-            yield return null;
-        }
-
-        // ตรวจสอบว่า PersistentPlayerData พร้อมหรือยัง
-        int waitCount = 0;
-        while (PersistentPlayerData.Instance == null && waitCount < 30) // รอสูงสุด 30 frames
-        {
-            yield return null;
-            waitCount++;
-        }
-
-        if (PersistentPlayerData.Instance == null)
-        {
-            Debug.LogWarning($"[Character] PersistentPlayerData not ready after {waitCount} frames");
-            yield break;
-        }
-
-        Debug.Log($"[Character] PersistentPlayerData ready after {waitCount} frames");
-
-        // ตรวจสอบว่ามีข้อมูลใน Firebase หรือไม่
-        if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
-        {
-            Debug.Log($"[Character] Found saved data, loading inventory for {CharacterName}...");
-
-            // โหลดข้อมูล
-            yield return StartCoroutine(DelayedLoadPlayerData());
+            callback?.Invoke();
         }
         else
         {
-            Debug.Log($"[Character] No saved data found for {CharacterName}");
+            StartCoroutine(WaitForStatsCoroutine(callback));
         }
     }
+
+    private System.Collections.IEnumerator WaitForStatsCoroutine(System.Action callback)
+    {
+        yield return new WaitUntil(() => IsStatsLoadingComplete());
+        callback?.Invoke();
+    }
+
+
     private void LoadPlayerDataIfAvailable()
     {
         if (PersistentPlayerData.Instance == null)
@@ -452,6 +449,8 @@ public class Character : NetworkBehaviour
     {
         base.Spawned();
 
+        Debug.Log($"[Character] {CharacterName} spawned - Authority: Input={HasInputAuthority}, State={HasStateAuthority}");
+
         if (HasStateAuthority)
         {
             NetworkedMaxHp = maxHp;
@@ -460,7 +459,216 @@ public class Character : NetworkBehaviour
             NetworkedCurrentMana = currentMana;
             IsNetworkStateReady = true;
         }
+
+        // 🆕 เริ่มการโหลด stats หลัง spawn
+        isSpawnComplete = true;
+
+        // 🆕 เฉพาะ InputAuthority ที่จะโหลดข้อมูลจาก Firebase
+        if (HasInputAuthority)
+        {
+            StartCoroutine(PostSpawnStatsLoading());
+        }
     }
+    private System.Collections.IEnumerator PostSpawnStatsLoading()
+    {
+        Debug.Log($"[Character] 📥 Starting post-spawn stats loading for {CharacterName}...");
+
+        // รอให้ network state พร้อม
+        yield return new WaitUntil(() => IsNetworkStateReady);
+        yield return new WaitForSeconds(0.5f); // รอเพิ่มเติมเพื่อความมั่นใจ
+
+        // รอให้ PersistentPlayerData พร้อม
+        int waitCount = 0;
+        while (PersistentPlayerData.Instance == null && waitCount < 30)
+        {
+            yield return new WaitForSeconds(0.1f);
+            waitCount++;
+        }
+
+        if (PersistentPlayerData.Instance == null)
+        {
+            Debug.LogError($"[Character] PersistentPlayerData not available after spawn!");
+            yield break;
+        }
+
+        Debug.Log($"[Character] PersistentPlayerData ready after {waitCount} frames");
+
+        // 🆕 โหลดข้อมูลจาก Firebase
+        yield return StartCoroutine(LoadStatsFromFirebase());
+    }
+    private System.Collections.IEnumerator LoadStatsFromFirebase()
+    {
+        Debug.Log($"[Character] 🔄 Loading stats from Firebase for {CharacterName}...");
+
+        try
+        {
+            // ตรวจสอบว่าควรโหลดจาก Firebase หรือไม่
+            if (!PersistentPlayerData.Instance.ShouldLoadFromFirebase())
+            {
+                Debug.Log($"[Character] No Firebase data available, using default stats");
+                isStatsLoaded = true;
+                yield break;
+            }
+
+           
+
+            isStatsLoaded = true;
+            Debug.Log($"[Character] ✅ Stats loaded successfully for {CharacterName}");
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error loading stats from Firebase: {e.Message}");
+            isStatsLoaded = true; // ให้ใช้ default stats
+        }
+
+        yield return StartCoroutine(LoadTotalStatsCoroutine());
+
+        // 🆕 แจ้งให้ network รู้ว่า stats พร้อมแล้ว
+        if (HasStateAuthority)
+        {
+            IsStatsReady = true;
+            RPC_NotifyStatsLoaded();
+        }
+        else if (HasInputAuthority)
+        {
+            RPC_RequestStatsSync();
+        }
+    }
+    private System.Collections.IEnumerator LoadTotalStatsCoroutine()
+    {
+        Debug.Log($"[Character] 📊 Loading total stats for {CharacterName}...");
+
+        string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+        // ตรวจสอบว่าเป็น character ที่ถูกต้อง
+        if (activeCharacterType != CharacterName)
+        {
+            Debug.LogWarning($"[Character] Character mismatch: Active={activeCharacterType}, Current={CharacterName}");
+            yield break;
+        }
+
+        var characterData = PersistentPlayerData.Instance.GetCharacterData(activeCharacterType);
+        if (characterData == null)
+        {
+            Debug.LogWarning($"[Character] No character data found for {activeCharacterType}");
+            yield break;
+        }
+
+        // 🆕 ใช้ total stats จาก Firebase (รวม equipment bonuses แล้ว)
+        if (characterData.HasValidTotalStats())
+        {
+            Debug.Log($"[Character] 📈 Applying total stats from Firebase...");
+            Debug.Log($"  Firebase stats: HP={characterData.totalMaxHp}, ATK={characterData.totalAttackDamage}, ARM={characterData.totalArmor}");
+
+            // Apply total stats ที่โหลดจาก Firebase
+            ApplyTotalStatsFromFirebase(characterData);
+
+            // 🆕 โหลด equipment data (สำหรับ visual และ UI)
+            PersistentPlayerData.Instance.LoadInventoryData(this);
+
+            Debug.Log($"[Character] ✅ Total stats applied: HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
+        }
+        else
+        {
+            Debug.LogWarning($"[Character] No valid total stats found, using defaults");
+        }
+
+        yield return null;
+    }
+    private void ApplyTotalStatsFromFirebase(CharacterProgressData characterData)
+    {
+        try
+        {
+            Debug.Log($"[Character] 🔧 Applying total stats from Firebase...");
+
+            // เก็บ current HP/Mana percentage
+            float hpPercentage = maxHp > 0 ? (float)currentHp / maxHp : 1f;
+            float manaPercentage = maxMana > 0 ? (float)currentMana / maxMana : 1f;
+
+            // Apply total stats จาก Firebase (รวม equipment bonuses แล้ว)
+            maxHp = characterData.totalMaxHp;
+            maxMana = characterData.totalMaxMana;
+            attackDamage = characterData.totalAttackDamage;
+            magicDamage = characterData.totalMagicDamage;
+            armor = characterData.totalArmor;
+            criticalChance = characterData.totalCriticalChance;
+            criticalDamageBonus = characterData.totalCriticalDamageBonus;
+            moveSpeed = characterData.totalMoveSpeed;
+            hitRate = characterData.totalHitRate;
+            evasionRate = characterData.totalEvasionRate;
+            attackSpeed = characterData.totalAttackSpeed;
+            reductionCoolDown = characterData.totalReductionCoolDown;
+
+            // คำนวณ current HP/Mana ตาม percentage เดิม
+            currentHp = Mathf.RoundToInt(maxHp * hpPercentage);
+            currentMana = Mathf.RoundToInt(maxMana * manaPercentage);
+
+            // Force update network state
+            ForceUpdateNetworkState();
+
+            // แจ้ง stats changed
+            OnStatsChanged?.Invoke();
+
+            Debug.Log($"[Character] ✅ Total stats applied from Firebase: HP={maxHp}, ATK={attackDamage}, ARM={armor}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying total stats: {e.Message}");
+        }
+    }
+
+    // 🆕 Network RPCs สำหรับ sync stats
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestStatsSync()
+    {
+        Debug.Log($"[Character] 📡 InputAuthority requesting stats sync for {CharacterName}");
+
+        // StateAuthority ส่ง stats ไปให้ทุกคน
+        RPC_SyncStatsToAll(
+            maxHp, maxMana, attackDamage, magicDamage, armor,
+            criticalChance, criticalDamageBonus, moveSpeed,
+            hitRate, evasionRate, attackSpeed, reductionCoolDown
+        );
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SyncStatsToAll(int hp, int mana, int atk, int magic, int arm,
+        float crit, float critDmg, float speed, float hit, float eva, float atkSpeed, float cdr)
+    {
+        Debug.Log($"[Character] 📡 Syncing stats to all clients for {CharacterName}");
+
+        // Apply synced stats
+        maxHp = hp;
+        maxMana = mana;
+        attackDamage = atk;
+        magicDamage = magic;
+        armor = arm;
+        criticalChance = crit;
+        criticalDamageBonus = critDmg;
+        moveSpeed = speed;
+        hitRate = hit;
+        evasionRate = eva;
+        attackSpeed = atkSpeed;
+        reductionCoolDown = cdr;
+
+        // Update current HP/Mana accordingly
+        currentHp = Mathf.Min(currentHp, maxHp);
+        currentMana = Mathf.Min(currentMana, maxMana);
+
+        ForceUpdateNetworkState();
+        OnStatsChanged?.Invoke();
+
+        Debug.Log($"[Character] ✅ Stats synced: HP={maxHp}, ATK={attackDamage}, ARM={armor}");
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_NotifyStatsLoaded()
+    {
+        Debug.Log($"[Character] ✅ Stats loading completed for {CharacterName}");
+        isStatsLoaded = true;
+    }
+
 
     public override void FixedUpdateNetwork()
     {
@@ -1019,9 +1227,6 @@ public class Character : NetworkBehaviour
 
     public bool IsSpawned => Object != null && Object.IsValid;
     #endregion
-    #region Equipment Methods (ปรับปรุงใหม่)
-    // เพิ่ม method ใหม่สำหรับ equip ItemData
-
     public void EquipItem(EquipmentData equipment)
     {
         if (equipmentManager == null) return;
@@ -1068,7 +1273,7 @@ public class Character : NetworkBehaviour
 
         Debug.Log($"[Character] EquipItemData called: {itemData.ItemName} ({itemData.ItemType})");
 
-        // 🆕 ตรวจสอบ characterEquippedItems และ potionSlots lists ก่อน
+        // ตรวจสอบ lists
         if (characterEquippedItems.Count < 6)
         {
             Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
@@ -1081,47 +1286,57 @@ public class Character : NetworkBehaviour
             InitializeEquipmentSlots();
         }
 
+        bool equipSuccess = false;
+
         // สำหรับ potion: ใช้ logic แยกต่างหาก
         if (itemData.ItemType == ItemType.Potion)
         {
-            return EquipPotionToSlot(itemData);
+            equipSuccess = EquipPotionToSlot(itemData);
         }
-
-        // สำหรับ equipment อื่นๆ: ใช้ logic เดิม
-        int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
-        if (slotIndex == -1)
+        else
         {
-            Debug.LogWarning($"[Character] No slot available for item type: {itemData.ItemType}");
-            return false;
-        }
-
-        // Unequip item เก่าถ้ามี (และเพิ่มกลับไป inventory)
-        if (characterEquippedItems[slotIndex] != null)
-        {
-            ItemData oldItem = characterEquippedItems[slotIndex];
-
-            if (inventory != null)
+            // สำหรับ equipment อื่นๆ
+            int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
+            if (slotIndex == -1)
             {
-                inventory.AddItem(oldItem, 1);
-                Debug.Log($"[Character] Added old item back to inventory: {oldItem.ItemName}");
+                Debug.LogWarning($"[Character] No slot available for item type: {itemData.ItemType}");
+                return false;
             }
+
+            // Unequip item เก่าถ้ามี
+            if (characterEquippedItems[slotIndex] != null)
+            {
+                ItemData oldItem = characterEquippedItems[slotIndex];
+                if (inventory != null)
+                {
+                    inventory.AddItem(oldItem, 1);
+                    Debug.Log($"[Character] Added old item back to inventory: {oldItem.ItemName}");
+                }
+            }
+
+            // Equip item ใหม่
+            characterEquippedItems[slotIndex] = itemData;
+            Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
+
+            // คำนวณ total stats จาก equipment ทั้งหมด
+            ApplyAllEquipmentStats();
+
+            // แจ้ง Event สำหรับ UI
+            OnItemEquippedToSlot?.Invoke(this, itemData.ItemType, itemData);
+
+            equipSuccess = true;
         }
 
-        // Equip item ใหม่
-        characterEquippedItems[slotIndex] = itemData;
-        Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
+        if (equipSuccess)
+        {
+            // Force update equipment slots ทันที
+            ForceUpdateEquipmentSlotsNow();
 
-        // คำนวณ total stats จาก equipment ทั้งหมด
-        ApplyAllEquipmentStats();
+            // 🆕 บันทึก inventory และ total stats
+            SaveInventoryAndTotalStats();
+        }
 
-        // แจ้ง Event สำหรับ UI
-        OnItemEquippedToSlot?.Invoke(this, itemData.ItemType, itemData);
-
-        // Force update equipment slots ทันที
-        ForceUpdateEquipmentSlotsNow();
-        PersistentPlayerData.Instance?.SaveInventoryData(this);
-
-        return true;
+        return equipSuccess;
     }
 
     // 🆕 เพิ่ม method ใหม่สำหรับ equip potion
@@ -1368,7 +1583,7 @@ public class Character : NetworkBehaviour
     }
 
     // เพิ่ม method สำหรับ potion
-   
+
     // เพิ่ม helper methods
     private int GetSlotIndexForItemType(ItemType itemType)
     {
@@ -1515,7 +1730,7 @@ public class Character : NetworkBehaviour
     {
         return equipmentSlotManager;
     }
-   
+
     private ItemType GetItemTypeFromSlotIndex(int slotIndex)
     {
         switch (slotIndex)
@@ -1562,7 +1777,9 @@ public class Character : NetworkBehaviour
 
         // Force update equipment slots
         ForceUpdateEquipmentSlotsNow();
-        PersistentPlayerData.Instance?.SaveInventoryData(this);
+
+        // 🆕 บันทึก inventory และ total stats
+        SaveInventoryAndTotalStats();
 
         return true;
     }
@@ -1667,21 +1884,20 @@ public class Character : NetworkBehaviour
 
     public bool UsePotion(int potionSlotIndex)
     {
-        // ตรวจสอบ slot index
+        // ... existing potion use logic ...
+
         if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlotIndex >= 5)
         {
             Debug.LogWarning($"[Character] Invalid potion slot index: {potionSlotIndex}");
             return false;
         }
 
-        // ตรวจสอบ cooldown แยกแต่ละ slot
         if (Time.time - lastPotionUseTime[potionSlotIndex] < potionCooldown)
         {
-            Debug.LogWarning($"[Character] Potion slot {potionSlotIndex} cooldown not ready! ({Time.time - lastPotionUseTime[potionSlotIndex]:F1}s / {potionCooldown}s)");
+            Debug.LogWarning($"[Character] Potion slot {potionSlotIndex} cooldown not ready!");
             return false;
         }
 
-        // ตรวจสอบว่ามี potion ใน slot หรือไม่
         ItemData potionData = GetPotionInSlot(potionSlotIndex);
         if (potionData == null)
         {
@@ -1689,18 +1905,15 @@ public class Character : NetworkBehaviour
             return false;
         }
 
-        // ตรวจสอบ stack count
         int currentStackCount = GetPotionStackCount(potionSlotIndex);
         if (currentStackCount <= 0)
         {
             Debug.LogWarning($"[Character] Potion stack depleted in slot {potionSlotIndex}");
-            // ล้าง slot ถ้า stack หมด
             potionSlots[potionSlotIndex] = null;
             SetPotionStackCount(potionSlotIndex, 0);
             return false;
         }
 
-        // 🆕 Debug ก่อนใช้ potion
         Debug.Log($"[Character] 🧪 Using {potionData.ItemName} from slot {potionSlotIndex}. Current stack: {currentStackCount}");
 
         // ใช้ potion
@@ -1723,17 +1936,115 @@ public class Character : NetworkBehaviour
 
             Debug.Log($"[Character] ✅ Used {potionData.ItemName} from slot {potionSlotIndex}. Remaining: {newStackCount}");
 
-            // 🆕 แจ้ง UI ให้อัปเดตทันที
+            // แจ้ง UI ให้อัปเดตทันที
             ForceUpdatePotionUI(potionSlotIndex);
 
-            // 🆕 บันทึกข้อมูลทันที (ย้ายเข้ามาใน if success block)
-            SavePotionDataAfterUse();
+            // 🆕 บันทึกข้อมูลทันที (รวม total stats)
+            SaveInventoryAndTotalStats();
 
             return true;
         }
 
         Debug.LogWarning($"[Character] Failed to apply potion effects for {potionData.ItemName}");
         return false;
+    }
+
+    private void SaveInventoryAndTotalStats()
+    {
+        try
+        {
+            Debug.Log("[Character] 💾 Saving inventory and total stats...");
+
+            // 1. บันทึก inventory data
+            PersistentPlayerData.Instance?.SaveInventoryData(this);
+
+            // 2. บันทึก total stats (รวม equipment bonuses)
+            var levelManager = GetComponent<LevelManager>();
+            if (levelManager != null)
+            {
+                SaveTotalStatsToFirebase(levelManager);
+            }
+            else
+            {
+                Debug.LogWarning("[Character] No LevelManager found, saving stats directly");
+                SaveTotalStatsDirectly();
+            }
+
+            Debug.Log("[Character] ✅ Inventory and total stats saved successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error saving inventory and stats: {e.Message}");
+        }
+    }
+    private void SaveTotalStatsToFirebase(LevelManager levelManager)
+    {
+        try
+        {
+            Debug.Log($"[Character] 💾 Saving total stats via LevelManager...");
+            Debug.Log($"  Current stats: HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
+
+            // ใช้ LevelManager.UpdateLevelAndStats เพื่อบันทึก total stats
+            PersistentPlayerData.Instance.UpdateLevelAndStats(
+                levelManager.CurrentLevel,
+                levelManager.CurrentExp,
+                levelManager.ExpToNextLevel,
+                MaxHp,                    // total HP (รวม equipment)
+                MaxMana,                  // total Mana (รวม equipment)
+                AttackDamage,            // total Attack (รวม equipment)
+                MagicDamage,             // total Magic (รวม equipment)
+                Armor,                   // total Armor (รวม equipment)
+                CriticalChance,          // total Crit (รวม equipment)
+                CriticalDamageBonus,     // total Crit Damage (รวม equipment)
+                MoveSpeed,               // total Move Speed (รวม equipment)
+                HitRate,                 // total Hit Rate (รวม equipment)
+                EvasionRate,             // total Evasion (รวม equipment)
+                AttackSpeed,             // total Attack Speed (รวม equipment)
+                ReductionCoolDown        // total CDR (รวม equipment)
+            );
+
+            Debug.Log($"[Character] ✅ Total stats saved to Firebase: HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error saving total stats via LevelManager: {e.Message}");
+        }
+    }
+
+    private void SaveTotalStatsDirectly()
+    {
+        try
+        {
+            if (PersistentPlayerData.Instance?.multiCharacterData == null)
+            {
+                Debug.LogError("[Character] No PersistentPlayerData available");
+                return;
+            }
+
+            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
+
+            if (characterData != null)
+            {
+                Debug.Log($"[Character] 💾 Saving total stats directly for {characterType}...");
+
+                // บันทึก total stats (รวม equipment bonuses)
+                characterData.UpdateTotalStats(
+                    MaxHp, MaxMana, AttackDamage, MagicDamage, Armor,
+                    CriticalChance, CriticalDamageBonus, MoveSpeed,
+                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown
+                );
+
+                // บันทึกลง Firebase
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                Debug.Log($"[Character] ✅ Total stats saved directly: HP={MaxHp}, ATK={AttackDamage}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error saving total stats directly: {e.Message}");
+        }
     }
 
     private void ForceUpdatePotionUI(int potionSlotIndex)
@@ -2092,7 +2403,14 @@ public class Character : NetworkBehaviour
             // 6. แจ้ง stats changed
             OnStatsChanged?.Invoke();
 
-            Debug.Log($"[Character] ✅ Applied loaded equipment stats with reset for {CharacterName}");
+            // 🆕 7. บันทึก total stats ใหม่
+            var levelManager = GetComponent<LevelManager>();
+            if (levelManager != null)
+            {
+                SaveTotalStatsToFirebase(levelManager);
+            }
+
+            Debug.Log($"[Character] ✅ Applied loaded equipment stats with reset and saved total stats");
         }
         catch (System.Exception e)
         {
@@ -2114,9 +2432,6 @@ public class Character : NetworkBehaviour
 
         Debug.Log($"[Character] ✅ Equipment UI refreshed after load");
     }
-
-    #endregion
-
     [ContextMenu("🔍 Debug Current Equipped Items")]
     public void DebugCurrentEquippedItems()
     {

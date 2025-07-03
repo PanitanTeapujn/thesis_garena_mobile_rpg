@@ -74,7 +74,21 @@ public class PersistentPlayerData : MonoBehaviour
         return true;
     }
     #endregion
+    [ContextMenu("🔍 Debug Character Stats")]
+    private void DebugCharacterStats()
+    {
+        if (multiCharacterData?.characters == null) return;
 
+        foreach (var character in multiCharacterData.characters)
+        {
+            Debug.Log($"=== {character.characterType} STATS ===");
+            Debug.Log($"Level: {character.currentLevel}");
+            Debug.Log($"Base HP: {character.baseMaxHp} | Total HP: {character.totalMaxHp}");
+            Debug.Log($"Base ATK: {character.baseAttackDamage} | Total ATK: {character.totalAttackDamage}");
+            Debug.Log($"Base ARM: {character.baseArmor} | Total ARM: {character.totalArmor}");
+            Debug.Log("============================");
+        }
+    }
     #region Helper Methods & Getters ฟังก์ชันช่วยต่างๆ สำหรับดึงข้อมูล
     public CharacterProgressData GetCurrentCharacterData()
     {
@@ -104,11 +118,9 @@ public class PersistentPlayerData : MonoBehaviour
         if (multiCharacterData == null) return "Assassin";
         return multiCharacterData.currentActiveCharacter;
     }
-
     public CharacterProgressData GetCharacterData(string characterType)
     {
-        if (multiCharacterData == null) return null;
-        return multiCharacterData.GetCharacterData(characterType);
+        return multiCharacterData.characters.Find(c => c.characterType == characterType);
     }
 
     public List<CharacterProgressData> GetAllCharacterData()
@@ -116,6 +128,7 @@ public class PersistentPlayerData : MonoBehaviour
         if (multiCharacterData == null) return new List<CharacterProgressData>();
         return multiCharacterData.characters;
     }
+
 
     public bool HasValidData()
     {
@@ -287,7 +300,11 @@ public class PersistentPlayerData : MonoBehaviour
     #region Character Management การจัดการตัวละคร
     public void SwitchCharacter(string characterType)
     {
-        if (multiCharacterData == null) return;
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("[PersistentPlayerData] MultiCharacterData is null!");
+            return;
+        }
 
         multiCharacterData.SwitchActiveCharacter(characterType);
         SaveToPlayerPrefs();
@@ -297,19 +314,56 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-     int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus, float moveSpeed,
-     float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
+       int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
+       float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
-        if (multiCharacterData == null) return;
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("[PersistentPlayerData] MultiCharacterData is null!");
+            return;
+        }
 
-        multiCharacterData.UpdateCharacterStats(
-            multiCharacterData.currentActiveCharacter,
-            level, exp, expToNext, maxHp, maxMana, attackDamage, magicDamage, armor,
-            critChance, critDamageBonus, moveSpeed, hitRate, evasionRate, attackSpeed, reductionCoolDown);
+        string characterType = multiCharacterData.currentActiveCharacter;
+        CharacterProgressData character = GetOrCreateCharacterData(characterType);
 
-        SaveToPlayerPrefs();
-        SavePlayerDataAsync();
+        if (character != null)
+        {
+            // เก็บค่าเก่าเพื่อ debug
+            int oldHp = character.totalMaxHp;
+            int oldAtk = character.totalAttackDamage;
+            int oldArm = character.totalArmor;
+
+            character.currentLevel = level;
+            character.currentExp = exp;
+            character.expToNextLevel = expToNext;
+            character.totalMaxHp = maxHp;
+            character.totalMaxMana = maxMana;
+            character.totalAttackDamage = attackDamage;
+            character.totalMagicDamage = magicDamage;
+            character.totalArmor = armor;
+            character.totalCriticalChance = critChance;
+            character.totalCriticalDamageBonus = critDamageBonus;
+            character.totalMoveSpeed = moveSpeed;
+            character.totalHitRate = hitRate;
+            character.totalEvasionRate = evasionRate;
+            character.totalAttackSpeed = attackSpeed;
+            character.totalReductionCoolDown = reductionCoolDown;
+
+            // Mark ว่ามี total stats
+            character.hasTotalStats = true;
+            character.statsLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            Debug.Log($"[PersistentPlayerData] 💾 Updated total stats for {characterType}:");
+            Debug.Log($"  HP: {oldHp} → {maxHp} (change: {maxHp - oldHp:+#;-#;0})");
+            Debug.Log($"  ATK: {oldAtk} → {attackDamage} (change: {attackDamage - oldAtk:+#;-#;0})");
+            Debug.Log($"  ARM: {oldArm} → {armor} (change: {armor - oldArm:+#;-#;0})");
+            Debug.Log($"  Level: {level}, CRIT: {critChance:F1}%");
+
+            // 🆕 บันทึกลง Firebase ทันที
+            SavePlayerDataAsync();
+        }
     }
+
 
     // Note: This method appears to be a duplicate with different parameters - consider removing or renaming
     internal void UpdateLevelAndStats(int currentLevel, int currentExp, int expToNextLevel, int maxHp, int maxMana,
@@ -1476,7 +1530,6 @@ public class PersistentPlayerData : MonoBehaviour
                 Debug.Log($"[LoadCharacterEquipmentData] Equipment loaded: {equipmentLoaded}, Potions loaded: {potionsLoaded}");
 
                 // Debug ผลลัพธ์หลัง load
-                character.DebugLoadedEquipment();
 
                 // 🆕 ไม่ต้อง Force refresh equipment UI ที่นี่ เพราะจะทำใน NotifyLevelManagerEquipmentLoaded
 
@@ -1623,8 +1676,8 @@ public class PersistentPlayerData : MonoBehaviour
         }// รออีก 1 frame แล้วทำซ้ำเพื่อให้แน่ใจ
         yield return null;
 
-       
-           
+
+
     }
 
     private void DebugEquipmentManagerStatus(Character character)
@@ -2762,12 +2815,72 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     #endregion
+    public CharacterProgressData GetOrCreateCharacterData(string characterType)
+    {
+        CharacterProgressData existing = GetCharacterData(characterType);
+        if (existing != null)
+            return existing;
 
+        CharacterProgressData newCharacter = CreateDefaultCharacterData(characterType);
+        multiCharacterData.characters.Add(newCharacter);
+        return newCharacter;
+    }
+
+    public CharacterProgressData CreateDefaultCharacterData(string characterType)
+    {
+        CharacterProgressData newCharacter = new CharacterProgressData(characterType);
+        newCharacter.currentLevel = 1;
+        newCharacter.currentExp = 0;
+        newCharacter.expToNextLevel = 100;
+
+        CharacterStats characterStats = null;
+
+        switch (characterType)
+        {
+            case "BloodKnight":
+                characterStats = Resources.Load<CharacterStats>("Characters/BloodKnightStats");
+                break;
+            case "Archer":
+                characterStats = Resources.Load<CharacterStats>("Characters/ArcherStats");
+                break;
+            case "Assassin":
+                characterStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
+                break;
+            case "IronJuggernaut":
+                characterStats = Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
+                break;
+        }
+
+        if (characterStats != null)
+        {
+            newCharacter.totalMaxHp = characterStats.maxHp;
+            newCharacter.totalMaxMana = characterStats.maxMana;
+            newCharacter.totalAttackDamage = characterStats.attackDamage;
+            newCharacter.totalMagicDamage = characterStats.magicDamage;
+            newCharacter.totalArmor = characterStats.arrmor;
+            newCharacter.totalCriticalChance = characterStats.criticalChance;
+            newCharacter.totalCriticalDamageBonus = characterStats.criticalDamageBonus;
+            newCharacter.totalMoveSpeed = characterStats.moveSpeed;
+            newCharacter.totalAttackRange = characterStats.attackRange;
+            newCharacter.totalAttackCooldown = characterStats.attackCoolDown;
+            newCharacter.totalHitRate = characterStats.hitRate;
+            newCharacter.totalEvasionRate = characterStats.evasionRate;
+            newCharacter.totalAttackSpeed = characterStats.attackSpeed;
+            newCharacter.totalReductionCoolDown = characterStats.reductionCoolDown;
+
+            Debug.Log($"✅ Created {characterType} with stats from ScriptableObject");
+        }
+        return newCharacter;
+    }
     #region 🆕 Currency Save/Load Methods
 
     /// <summary>
     /// บันทึกข้อมูลเงินและเพชรทั้งหมด
     /// </summary>
+    /// 
+
+
+
     public void SaveCurrencyData()
     {
         if (multiCharacterData == null)
@@ -2860,7 +2973,223 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[SaveCurrencyToPlayerPrefs] ❌ Error: {e.Message}");
         }
     }
+    public void SaveBaseStats(Character character, LevelManager levelManager)
+    {
+        if (multiCharacterData == null || character == null || levelManager == null)
+        {
+            Debug.LogError("[PersistentPlayerData] Cannot save base stats - missing components");
+            return;
+        }
 
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterData = GetOrCreateCharacterData(characterType);
+
+            // บันทึก level และ exp
+            characterData.currentLevel = levelManager.CurrentLevel;
+            characterData.currentExp = levelManager.CurrentExp;
+            characterData.expToNextLevel = levelManager.ExpToNextLevel;
+
+            Debug.Log($"[PersistentPlayerData] 💾 Saving base stats for {characterType} Level {levelManager.CurrentLevel}");
+
+            // 🆕 คำนวณ base stats (ScriptableObject + Level bonuses)
+            if (character.characterStats != null)
+            {
+                int levelBonusHp = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.hpBonusPerLevel;
+                int levelBonusMana = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.manaBonusPerLevel;
+                int levelBonusAttack = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.attackDamageBonusPerLevel;
+                int levelBonusMagic = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.magicDamageBonusPerLevel;
+                int levelBonusArmor = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.armorBonusPerLevel;
+                float levelBonusCrit = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.criticalChanceBonusPerLevel;
+                float levelBonusSpeed = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.moveSpeedBonusPerLevel;
+
+                // 🆕 เก็บ base stats ใน characterData (ชื่อใหม่เพื่อแยกจาก total stats)
+                characterData.baseMaxHp = character.characterStats.maxHp + levelBonusHp;
+                characterData.baseMaxMana = character.characterStats.maxMana + levelBonusMana;
+                characterData.baseAttackDamage = character.characterStats.attackDamage + levelBonusAttack;
+                characterData.baseMagicDamage = character.characterStats.magicDamage + levelBonusMagic;
+                characterData.baseArmor = character.characterStats.arrmor + levelBonusArmor;
+                characterData.baseCriticalChance = character.characterStats.criticalChance + levelBonusCrit;
+                characterData.baseCriticalDamageBonus = character.characterStats.criticalDamageBonus;
+                characterData.baseMoveSpeed = character.characterStats.moveSpeed + levelBonusSpeed;
+                characterData.baseHitRate = character.characterStats.hitRate;
+                characterData.baseEvasionRate = character.characterStats.evasionRate;
+                characterData.baseAttackSpeed = character.characterStats.attackSpeed;
+                characterData.baseReductionCoolDown = character.characterStats.reductionCoolDown;
+
+                Debug.Log($"[PersistentPlayerData] Base stats calculated: HP={characterData.baseMaxHp}, ATK={characterData.baseAttackDamage}");
+            }
+
+            // 🆕 เก็บ total stats (base + equipment) สำหรับแสดงใน UI
+            characterData.totalMaxHp = character.MaxHp;
+            characterData.totalMaxMana = character.MaxMana;
+            characterData.totalAttackDamage = character.AttackDamage;
+            characterData.totalMagicDamage = character.MagicDamage;
+            characterData.totalArmor = character.Armor;
+            characterData.totalCriticalChance = character.CriticalChance;
+            characterData.totalCriticalDamageBonus = character.CriticalDamageBonus;
+            characterData.totalMoveSpeed = character.MoveSpeed;
+            characterData.totalHitRate = character.HitRate;
+            characterData.totalEvasionRate = character.EvasionRate;
+            characterData.totalAttackSpeed = character.AttackSpeed;
+            characterData.totalReductionCoolDown = character.ReductionCoolDown;
+
+            Debug.Log($"[PersistentPlayerData] Total stats saved: HP={characterData.totalMaxHp}, ATK={characterData.totalAttackDamage}");
+
+            // บันทึกลง Firebase
+            SavePlayerDataAsync();
+
+            Debug.Log($"[PersistentPlayerData] ✅ Saved both base and total stats for {characterType}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error saving base stats: {e.Message}");
+        }
+    }
+    public void LoadStatsForCharacter(Character character, LevelManager levelManager)
+    {
+        if (multiCharacterData == null || character == null || levelManager == null)
+        {
+            Debug.LogError("[PersistentPlayerData] Cannot load stats - missing components");
+            return;
+        }
+
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterData = GetCharacterData(characterType);
+
+            if (characterData == null)
+            {
+                Debug.LogWarning($"[PersistentPlayerData] No data found for {characterType}");
+                return;
+            }
+
+            Debug.Log($"[PersistentPlayerData] 📥 Loading stats for {characterType}...");
+
+            // โหลด level และ exp
+            levelManager.CurrentLevel = characterData.currentLevel;
+            levelManager.CurrentExp = characterData.currentExp;
+            levelManager.ExpToNextLevel = characterData.expToNextLevel;
+
+            // 🆕 ตรวจสอบว่ามี base stats หรือไม่
+            bool hasBaseStats = characterData.baseMaxHp > 0;
+            bool hasTotalStats = characterData.totalMaxHp > 0;
+
+            Debug.Log($"[PersistentPlayerData] Has base stats: {hasBaseStats}, Has total stats: {hasTotalStats}");
+
+            if (hasBaseStats && hasTotalStats)
+            {
+                // 🆕 กรณีมี base stats และ total stats ให้ใช้ total stats เลย (เร็วกว่า)
+                Debug.Log("[PersistentPlayerData] 🚀 Using total stats (fastest method)");
+
+                character.MaxHp = characterData.totalMaxHp;
+                character.CurrentHp = characterData.totalMaxHp;
+                character.MaxMana = characterData.totalMaxMana;
+                character.CurrentMana = characterData.totalMaxMana;
+                character.AttackDamage = characterData.totalAttackDamage;
+                character.MagicDamage = characterData.totalMagicDamage;
+                character.Armor = characterData.totalArmor;
+                character.CriticalChance = characterData.totalCriticalChance;
+                character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, true);
+                character.MoveSpeed = characterData.totalMoveSpeed;
+                character.HitRate = characterData.totalHitRate;
+                character.EvasionRate = characterData.totalEvasionRate;
+                character.AttackSpeed = characterData.totalAttackSpeed;
+                character.ReductionCoolDown = characterData.totalReductionCoolDown;
+
+                character.ForceUpdateNetworkState();
+                levelManager.IsInitialized = true;
+
+                Debug.Log($"[PersistentPlayerData] ✅ Loaded total stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
+            }
+            else if (hasBaseStats)
+            {
+                // 🆕 กรณีมี base stats แต่ไม่มี total stats ให้คำนวณ equipment bonuses
+                Debug.Log("[PersistentPlayerData] 🔧 Using base stats + equipment calculation");
+
+                // Load base stats ก่อน
+                character.MaxHp = characterData.baseMaxHp;
+                character.CurrentHp = characterData.baseMaxHp;
+                character.MaxMana = characterData.baseMaxMana;
+                character.CurrentMana = characterData.baseMaxMana;
+                character.AttackDamage = characterData.baseAttackDamage;
+                character.MagicDamage = characterData.baseMagicDamage;
+                character.Armor = characterData.baseArmor;
+                character.CriticalChance = characterData.baseCriticalChance;
+                character.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+                character.MoveSpeed = characterData.baseMoveSpeed;
+                character.HitRate = characterData.baseHitRate;
+                character.EvasionRate = characterData.baseEvasionRate;
+                character.AttackSpeed = characterData.baseAttackSpeed;
+                character.ReductionCoolDown = characterData.baseReductionCoolDown;
+
+                character.ForceUpdateNetworkState();
+                levelManager.IsInitialized = true;
+
+                // แล้วค่อย apply equipment bonuses
+                StartCoroutine(DelayedApplyEquipmentBonuses(character));
+
+                Debug.Log($"[PersistentPlayerData] ✅ Loaded base stats: HP={character.MaxHp}, ATK={character.AttackDamage}, will apply equipment...");
+            }
+            else
+            {
+                // 🆕 กรณีไม่มี base stats ให้ใช้ total stats (backward compatibility)
+                Debug.Log("[PersistentPlayerData] 📊 Using total stats (legacy mode)");
+
+                character.MaxHp = characterData.totalMaxHp;
+                character.CurrentHp = characterData.totalMaxHp;
+                character.MaxMana = characterData.totalMaxMana;
+                character.CurrentMana = characterData.totalMaxMana;
+                character.AttackDamage = characterData.totalAttackDamage;
+                character.MagicDamage = characterData.totalMagicDamage;
+                character.Armor = characterData.totalArmor;
+                character.CriticalChance = characterData.totalCriticalChance;
+                character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, true);
+                character.MoveSpeed = characterData.totalMoveSpeed;
+                character.HitRate = characterData.totalHitRate;
+                character.EvasionRate = characterData.totalEvasionRate;
+                character.AttackSpeed = characterData.totalAttackSpeed;
+                character.ReductionCoolDown = characterData.totalReductionCoolDown;
+
+                character.ForceUpdateNetworkState();
+                levelManager.IsInitialized = true;
+
+                Debug.Log($"[PersistentPlayerData] ✅ Loaded legacy stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error loading stats: {e.Message}");
+        }
+    }
+
+
+    private System.Collections.IEnumerator DelayedApplyEquipmentBonuses(Character character)
+    {
+        Debug.Log("[PersistentPlayerData] 🔄 Applying equipment bonuses after loading base stats...");
+
+        // รอ 3 frames เพื่อให้ระบบพร้อม
+        yield return null;
+        yield return null;
+        yield return null;
+
+        // โหลด equipment
+        LoadInventoryData(character);
+
+        // รออีก 2 frames เพื่อให้ equipment load เสร็จ
+        yield return null;
+        yield return null;
+
+        // Apply equipment bonuses
+        character.ApplyLoadedEquipmentStats();
+
+        Debug.Log($"[PersistentPlayerData] ✅ Equipment bonuses applied: HP={character.MaxHp}, ATK={character.AttackDamage}");
+
+        // บันทึก total stats ใหม่
+        SaveCurrentStatsAsTotal(character);
+    }
     /// <summary>
     /// โหลดข้อมูลเงินจาก PlayerPrefs (fallback)
     /// </summary>
@@ -2886,7 +3215,35 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[LoadCurrencyFromPlayerPrefs] ❌ Error: {e.Message}");
         }
     }
+    private void SaveCurrentStatsAsTotal(Character character)
+    {
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterData = GetOrCreateCharacterData(characterType);
 
+            characterData.totalMaxHp = character.MaxHp;
+            characterData.totalMaxMana = character.MaxMana;
+            characterData.totalAttackDamage = character.AttackDamage;
+            characterData.totalMagicDamage = character.MagicDamage;
+            characterData.totalArmor = character.Armor;
+            characterData.totalCriticalChance = character.CriticalChance;
+            characterData.totalCriticalDamageBonus = character.CriticalDamageBonus;
+            characterData.totalMoveSpeed = character.MoveSpeed;
+            characterData.totalHitRate = character.HitRate;
+            characterData.totalEvasionRate = character.EvasionRate;
+            characterData.totalAttackSpeed = character.AttackSpeed;
+            characterData.totalReductionCoolDown = character.ReductionCoolDown;
+
+            SavePlayerDataAsync();
+
+            Debug.Log($"[PersistentPlayerData] 💾 Updated total stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error saving total stats: {e.Message}");
+        }
+    }
     /// <summary>
     /// บังคับบันทึกเงินทันที
     /// </summary>
@@ -3092,7 +3449,6 @@ public class PersistentPlayerData : MonoBehaviour
         LoadInventoryData(character);
 
         // ตรวจสอบผลลัพธ์
-        character.DebugCurrentEquippedItems();
     }
 
     [ContextMenu("🔍 Debug: Equipment vs UI Status")]
@@ -3200,7 +3556,6 @@ public class PersistentPlayerData : MonoBehaviour
 
         // ตรวจสอบผลลัพธ์
         yield return new WaitForSeconds(0.5f);
-        character.DebugCurrentEquippedItems();
     }
 
     // 🆕 เพิ่ม helper method
@@ -3218,63 +3573,7 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
-    [ContextMenu("📋 Show Equipment Save Data")]
-    private void ShowEquipmentSaveData()
-    {
-        if (multiCharacterData == null)
-        {
-            Debug.Log("No multiCharacterData found");
-            return;
-        }
 
-        Debug.Log("=== EQUIPMENT SAVE DATA ===");
-        Debug.Log($"Active Character: {multiCharacterData.currentActiveCharacter}");
-
-        foreach (var character in multiCharacterData.characters)
-        {
-            if (character?.characterEquipment != null)
-            {
-                Debug.Log($"\n📋 Character: {character.characterType}");
-                Debug.Log($"Has Equipment: {character.HasEquipmentData()}");
-
-                var eq = character.characterEquipment.equipment;
-                Debug.Log($"Equipment Data:");
-                Debug.Log($"  Head: {eq.headItemId}");
-                Debug.Log($"  Armor: {eq.armorItemId}");
-                Debug.Log($"  Weapon: {eq.weaponItemId}");
-                Debug.Log($"  Pants: {eq.pantsItemId}");
-                Debug.Log($"  Shoes: {eq.shoesItemId}");
-                Debug.Log($"  Rune: {eq.runeItemId}");
-                Debug.Log($"  Count: {eq.equippedCount}");
-
-                // Potion data
-                Debug.Log($"Potions:");
-                for (int i = 0; i < character.characterEquipment.potionSlots.Count; i++)
-                {
-                    var potion = character.characterEquipment.potionSlots[i];
-                    if (!potion.IsEmpty())
-                    {
-                        Debug.Log($"  Slot {i}: {potion.itemName} x{potion.stackCount}");
-                    }
-                }
-            }
-        }
-        Debug.Log("==========================");
-    }
-
-    [ContextMenu("🔄 Test Force Refresh Equipment UI")]
-    private void TestForceRefreshEquipmentUI()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character == null)
-        {
-            Debug.LogError("No Character found in scene!");
-            return;
-        }
-
-        Debug.Log("🧪 Testing force refresh equipment UI...");
-        ForceRefreshEquipmentUIOnly(character);
-    }
     #endregion
     // Note: This method is not implemented - consider implementing or removing
     internal void CheckFirebaseStatus()

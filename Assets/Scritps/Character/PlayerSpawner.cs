@@ -20,6 +20,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public LayerMask groundLayerMask = 1; // Layer ของพื้น
     [SerializeField] private bool autoCreateSpawnPoints = true; // ✅ สร้างอัตโนมัติ
     [SerializeField] private bool showSpawnPointDebug = true; // ✅ แสดง debug
+    private Dictionary<Hero, bool> heroStatsReady = new Dictionary<Hero, bool>();
 
     private NetworkRunner _runner;
 
@@ -79,8 +80,92 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         Hero hero = playerObject.GetComponent<Hero>();
         if (hero == null) return;
 
-        StartCoroutine(SetupCombatUIWithDelay(hero, playerObject));
+        // 🆕 รอ stats โหลดเสร็จก่อน setup UI
+        StartCoroutine(SetupCombatUIWithStatsWait(hero, playerObject));
     }
+
+    private IEnumerator SetupCombatUIWithStatsWait(Hero hero, NetworkObject playerObject)
+    {
+        Debug.Log($"[PlayerSpawner] 🔄 Setting up combat UI for {hero.CharacterName}, waiting for stats...");
+
+        yield return new WaitForSeconds(0.5f);
+
+        // รอให้ hero spawn เสร็จ
+        while (!hero.IsSpawned)
+        {
+            yield return null;
+        }
+
+        // 🆕 รอให้ stats โหลดเสร็จ (เฉพาะ local player)
+        if (hero.HasInputAuthority)
+        {
+            yield return StartCoroutine(WaitForHeroStatsReady(hero));
+        }
+
+        // Setup Screen Space UI (เฉพาะ local player)
+        if (hero.HasInputAuthority)
+        {
+            Debug.Log($"[PlayerSpawner] 🖥️ Setting up Combat UI for local player: {hero.CharacterName}");
+
+            CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
+
+            if (combatUI == null && combatUIManagerPrefab != null)
+            {
+                combatUI = Instantiate(combatUIManagerPrefab);
+                Debug.Log("[PlayerSpawner] Created new CombatUIManager from prefab");
+            }
+
+            if (combatUI != null)
+            {
+                yield return new WaitForEndOfFrame();
+                combatUI.SetLocalHero(hero);
+                Debug.Log($"[PlayerSpawner] ✅ Combat UI setup complete for {hero.CharacterName}");
+            }
+        }
+
+        // 🆕 แจ้งว่า hero พร้อมใช้งานแล้ว (หลัง stats โหลดเสร็จ)
+        OnHeroSpawnComplete(hero);
+    }
+    private IEnumerator WaitForHeroStatsReady(Hero hero)
+    {
+        Debug.Log($"[PlayerSpawner] ⏳ Waiting for {hero.CharacterName} stats to be ready...");
+
+        Character character = hero.GetComponent<Character>();
+        if (character == null)
+        {
+            Debug.LogError($"[PlayerSpawner] No Character component found on {hero.CharacterName}!");
+            yield break;
+        }
+
+        // รอให้ Character โหลด stats เสร็จ
+        int maxWaitTime = 30; // 30 วินาที
+        float waitTime = 0f;
+
+        while (!character.IsStatsLoadingComplete() && waitTime < maxWaitTime)
+        {
+            yield return new WaitForSeconds(0.1f);
+            waitTime += 0.1f;
+
+            // Debug ทุก 3 วินาที
+            if (Mathf.RoundToInt(waitTime) % 3 == 0 && waitTime % 1f < 0.1f)
+            {
+                Debug.Log($"[PlayerSpawner] Still waiting for {hero.CharacterName} stats... ({waitTime:F1}s)");
+            }
+        }
+
+        if (character.IsStatsLoadingComplete())
+        {
+            heroStatsReady[hero] = true;
+            Debug.Log($"[PlayerSpawner] ✅ {hero.CharacterName} stats ready! Final stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
+        }
+        else
+        {
+            Debug.LogWarning($"[PlayerSpawner] ⚠️ Timeout waiting for {hero.CharacterName} stats after {maxWaitTime}s");
+            heroStatsReady[hero] = false;
+        }
+    }
+
+
     private IEnumerator SetupCombatUIWithDelay(Hero hero, NetworkObject playerObject)
     {
         yield return new WaitForSeconds(0.5f);
@@ -134,16 +219,27 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     }
     public void OnHeroSpawnComplete(Hero hero)
     {
-        Debug.Log($"Hero spawn complete: {hero.CharacterName}, HasInput: {hero.HasInputAuthority}");
+        Debug.Log($"[PlayerSpawner] 🎉 Hero spawn complete: {hero.CharacterName}, HasInput: {hero.HasInputAuthority}");
 
-        // Setup UI สำหรับ local player
-        if (hero.HasInputAuthority)
+        // ตรวจสอบว่า stats พร้อมหรือไม่
+        bool statsReady = heroStatsReady.ContainsKey(hero) ? heroStatsReady[hero] : false;
+        Debug.Log($"[PlayerSpawner] Stats ready for {hero.CharacterName}: {statsReady}");
+
+        // Setup UI สำหรับ local player (ถ้า stats พร้อมแล้ว)
+        if (hero.HasInputAuthority && statsReady)
         {
             StartCoroutine(EnsureUISetup(hero));
         }
 
-        // สร้าง WorldSpaceUI สำหรับ hero นี้ (หลังจากที่ network state พร้อมแล้ว)
+        // สร้าง WorldSpaceUI สำหรับ hero นี้
         StartCoroutine(DelayedWorldUISetup(hero));
+
+        // 🆕 Debug final stats
+        Character character = hero.GetComponent<Character>();
+        if (character != null)
+        {
+            Debug.Log($"[PlayerSpawner] 📊 Final spawned stats for {hero.CharacterName}: HP={character.MaxHp}, ATK={character.AttackDamage}, ARM={character.Armor}");
+        }
     }
     private IEnumerator DelayedWorldUISetup(Hero hero)
     {
@@ -151,6 +247,13 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         while (!hero.IsNetworkStateReady)
         {
             yield return new WaitForSeconds(0.1f);
+        }
+
+        // 🆕 รอให้ stats พร้อม (สำหรับ UI display)
+        Character character = hero.GetComponent<Character>();
+        if (character != null)
+        {
+            yield return new WaitUntil(() => character.IsStatsLoadingComplete());
         }
 
         // รอเพิ่มอีกนิดเพื่อให้แน่ใจ
@@ -391,34 +494,39 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     // เพิ่ม callback สำหรับเมื่อผู้เล่นออกจากเกม
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
-        Debug.Log($"Player {player} left the game");
+        Debug.Log($"[PlayerSpawner] Player {player} left the game");
+
         if (spawnedCharacters.ContainsKey(player))
         {
             NetworkObject playerObj = spawnedCharacters[player];
             if (playerObj != null)
             {
                 Hero hero = playerObj.GetComponent<Hero>();
-                if (hero != null && heroWorldUIs.ContainsKey(hero))
+                if (hero != null)
                 {
-                    Destroy(heroWorldUIs[hero]);
-                    heroWorldUIs.Remove(hero);
+                    // 🆕 ลบ hero stats tracking
+                    if (heroStatsReady.ContainsKey(hero))
+                    {
+                        heroStatsReady.Remove(hero);
+                    }
+
+                    // ลบ WorldUI
+                    if (heroWorldUIs.ContainsKey(hero))
+                    {
+                        Destroy(heroWorldUIs[hero]);
+                        heroWorldUIs.Remove(hero);
+                    }
                 }
             }
             spawnedCharacters.Remove(player);
         }
-        // ลบข้อมูลตัวละครของ player ที่ออกไป
+
+        // ลบข้อมูลอื่นๆ
         if (playerCharacters.ContainsKey(player))
         {
             playerCharacters.Remove(player);
         }
 
-        // ลบ spawned character reference
-        if (spawnedCharacters.ContainsKey(player))
-        {
-            spawnedCharacters.Remove(player);
-        }
-
-        // ลบ NetworkPlayerManager reference
         if (playerManagers.ContainsKey(player))
         {
             playerManagers.Remove(player);
@@ -426,13 +534,14 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     }
     public void CleanupOnGameExit()
     {
-        Debug.Log("Cleaning up PlayerSpawner data");
+        Debug.Log("[PlayerSpawner] Cleaning up PlayerSpawner data");
 
         // Clear ข้อมูลทั้งหมด
         playerCharacters.Clear();
         playerManagers.Clear();
         spawnedCharacters.Clear();
         spawnRequests.Clear();
+        heroStatsReady.Clear(); // 🆕 เพิ่มบรรทัดนี้
 
         // Remove callbacks
         if (_runner != null)

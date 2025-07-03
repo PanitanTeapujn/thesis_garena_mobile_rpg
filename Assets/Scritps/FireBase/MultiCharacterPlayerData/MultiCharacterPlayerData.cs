@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿
+using UnityEngine;
 using System.Collections.Generic;
 using System;
 
@@ -1029,76 +1030,79 @@ public class MultiCharacterPlayerData
     }
     #endregion
 }
-
 [System.Serializable]
 public class CharacterProgressData
 {
     #region Character Identity
     public string characterType;
-    #endregion ชื่อประเภทตัวละคร
+    #endregion
 
-    #region Level and Experience เลเวลและประสบการณ์
+    #region Level and Experience
     [Header("Level Progress")]
     public int currentLevel = 1;
     public int currentExp = 0;
     public int expToNextLevel = 100;
     #endregion
 
-    #region Basic Combat Stats สถานะพื้นฐาน (HP, Mana, Attack, Magic, Armor)
-    [Header("Basic Stats")]
+    #region 🆕 Base Stats (ScriptableObject + Level Bonuses Only)
+    [Header("🆕 Base Stats (SO + Level)")]
+    public int baseMaxHp = 0;
+    public int baseMaxMana = 0;
+    public int baseAttackDamage = 0;
+    public int baseMagicDamage = 0;
+    public int baseArmor = 0;
+    public float baseCriticalChance = 0f;
+    public float baseCriticalDamageBonus = 0f;
+    public float baseMoveSpeed = 0f;
+    public float baseHitRate = 0f;
+    public float baseEvasionRate = 0f;
+    public float baseAttackSpeed = 0f;
+    public float baseReductionCoolDown = 0f;
+    #endregion
+
+    #region Total Stats (Base + Equipment Bonuses) - เก็บไว้เพื่อ backward compatibility
+    [Header("📊 Total Stats (Base + Equipment)")]
     public int totalMaxHp;
     public int totalMaxMana;
     public int totalAttackDamage;
     public int totalMagicDamage;
     public int totalArmor;
-    #endregion
-
-    #region Critical Strike Stats สถานะ Critical Strike
-    [Header("Critical Strike")]
     public float totalCriticalChance;
     public float totalCriticalDamageBonus;
-    #endregion
-
-    #region Movement and Attack Stats ความเร็ว, ระยะโจมตี, คูลดาวน์
-    [Header("Movement & Attack")]
     public float totalMoveSpeed;
     public float totalAttackRange;
     public float totalAttackCooldown;
     public float totalAttackSpeed;
-    #endregion
-
-    #region Accuracy and Defense Stats  Hit Rate และ Evasion Rate
-    [Header("Accuracy & Defense")]
     public float totalHitRate;
     public float totalEvasionRate;
-    #endregion
-
-    #region Special Stats สถานะพิเศษอื่นๆ
-    [Header("Special Stats")]
     public float totalReductionCoolDown;
     #endregion
 
-
-    #region 🆕 Character Equipment System
+    #region Character Equipment System
     [Header("🎯 Character Equipment & Potions")]
     public CharacterEquipmentData characterEquipment = new CharacterEquipmentData();
 
     [Header("🔍 Equipment Debug Info")]
-    public bool hasEquipmentData = false;        // มีข้อมูลอุปกรณ์หรือไม่
-    public string equipmentLastSaveTime = "";    // เวลาที่ save อุปกรณ์ล่าสุด
-    public int totalEquippedItems = 0;           // จำนวนอุปกรณ์ที่สวมใส่
-    public int totalPotions = 0;                 // จำนวนยาทั้งหมด
+    public bool hasEquipmentData = false;
+    public string equipmentLastSaveTime = "";
+    public int totalEquippedItems = 0;
+    public int totalPotions = 0;
     #endregion
 
-    // 🆕 เพิ่ม Constructor หรือ method สำหรับ initialize equipment (ถ้ายังไม่มี constructor ให้เพิ่มทั้งหมด)
+    #region 🆕 Debug Info
+    [Header("🔍 Stats Debug Info")]
+    public bool hasBaseStats = false;        // มี base stats หรือไม่
+    public bool hasTotalStats = false;       // มี total stats หรือไม่
+    public string statsLastUpdateTime = "";  // เวลาที่อัปเดต stats ล่าสุด
+    #endregion
 
     /// <summary>
     /// 🆕 Constructor สำหรับ CharacterProgressData
     /// </summary>
     public CharacterProgressData()
     {
-        // Initialize equipment system
         InitializeEquipmentSystem();
+        InitializeStatsSystem();
     }
 
     /// <summary>
@@ -1111,25 +1115,140 @@ public class CharacterProgressData
     }
 
     /// <summary>
-    /// 🆕 เริ่มต้นระบบอุปกรณ์
+    /// 🆕 เริ่มต้นระบบ stats
     /// </summary>
+    private void InitializeStatsSystem()
+    {
+        hasBaseStats = false;
+        hasTotalStats = false;
+        statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"✅ Stats system initialized for {characterType}");
+    }
+
+    /// <summary>
+    /// 🆕 อัปเดต base stats
+    /// </summary>
+    public void UpdateBaseStats(int hp, int mana, int atk, int magic, int armor,
+        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr)
+    {
+        baseMaxHp = hp;
+        baseMaxMana = mana;
+        baseAttackDamage = atk;
+        baseMagicDamage = magic;
+        baseArmor = armor;
+        baseCriticalChance = crit;
+        baseCriticalDamageBonus = critDmg;
+        baseMoveSpeed = speed;
+        baseHitRate = hit;
+        baseEvasionRate = evasion;
+        baseAttackSpeed = atkSpeed;
+        baseReductionCoolDown = cdr;
+
+        hasBaseStats = true;
+        statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[{characterType}] 📊 Base stats updated: HP={hp}, ATK={atk}, ARM={armor}");
+    }
+
+    /// <summary>
+    /// 🆕 อัปเดต total stats
+    /// </summary>
+    public void UpdateTotalStats(int hp, int mana, int atk, int magic, int armor,
+        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr)
+    {
+        totalMaxHp = hp;
+        totalMaxMana = mana;
+        totalAttackDamage = atk;
+        totalMagicDamage = magic;
+        totalArmor = armor;
+        totalCriticalChance = crit;
+        totalCriticalDamageBonus = critDmg;
+        totalMoveSpeed = speed;
+        totalHitRate = hit;
+        totalEvasionRate = evasion;
+        totalAttackSpeed = atkSpeed;
+        totalReductionCoolDown = cdr;
+
+        hasTotalStats = true;
+        statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[{characterType}] 📈 Total stats updated: HP={hp}, ATK={atk}, ARM={armor}");
+    }
+
+    /// <summary>
+    /// 🆕 ตรวจสอบว่ามี base stats หรือไม่
+    /// </summary>
+    public bool HasValidBaseStats()
+    {
+        return hasBaseStats && baseMaxHp > 0 && baseAttackDamage > 0;
+    }
+
+    /// <summary>
+    /// 🆕 ตรวจสอบว่ามี total stats หรือไม่
+    /// </summary>
+    public bool HasValidTotalStats()
+    {
+        return hasTotalStats && totalMaxHp > 0 && totalAttackDamage > 0;
+    }
+
+    /// <summary>
+    /// 🆕 คำนวณ equipment bonuses
+    /// </summary>
+    public void CalculateEquipmentBonuses(out int hpBonus, out int atkBonus, out int armBonus)
+    {
+        if (HasValidBaseStats() && HasValidTotalStats())
+        {
+            hpBonus = totalMaxHp - baseMaxHp;
+            atkBonus = totalAttackDamage - baseAttackDamage;
+            armBonus = totalArmor - baseArmor;
+        }
+        else
+        {
+            hpBonus = 0;
+            atkBonus = 0;
+            armBonus = 0;
+        }
+    }
+
+    /// <summary>
+    /// 🆕 Debug stats comparison
+    /// </summary>
+    public void LogStatsComparison()
+    {
+        Debug.Log($"=== {characterType} STATS COMPARISON ===");
+        Debug.Log($"Has Base Stats: {HasValidBaseStats()}");
+        Debug.Log($"Has Total Stats: {HasValidTotalStats()}");
+
+        if (HasValidBaseStats())
+        {
+            Debug.Log($"Base: HP={baseMaxHp}, ATK={baseAttackDamage}, ARM={baseArmor}");
+        }
+
+        if (HasValidTotalStats())
+        {
+            Debug.Log($"Total: HP={totalMaxHp}, ATK={totalAttackDamage}, ARM={totalArmor}");
+        }
+
+        if (HasValidBaseStats() && HasValidTotalStats())
+        {
+            CalculateEquipmentBonuses(out int hpBonus, out int atkBonus, out int armBonus);
+            Debug.Log($"Equipment Bonuses: HP+{hpBonus}, ATK+{atkBonus}, ARM+{armBonus}");
+        }
+
+        Debug.Log("=====================================");
+    }
+
+    // เก็บ methods เดิมไว้เพื่อ backward compatibility
     private void InitializeEquipmentSystem()
     {
-        // สร้างข้อมูลอุปกรณ์ใหม่
         characterEquipment = new CharacterEquipmentData(characterType);
-
-        // ตั้งค่าเริ่มต้น
         hasEquipmentData = false;
         equipmentLastSaveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         totalEquippedItems = 0;
         totalPotions = 0;
-
-        Debug.Log($"✅ Equipment system initialized for {characterType}");
     }
 
-    /// <summary>
-    /// 🆕 อัปเดตข้อมูล debug ของอุปกรณ์
-    /// </summary>
     public void UpdateEquipmentDebugInfo()
     {
         if (characterEquipment != null)
@@ -1143,9 +1262,6 @@ public class CharacterProgressData
         }
     }
 
-    /// <summary>
-    /// 🆕 ตรวจสอบว่ามีข้อมูลอุปกรณ์หรือไม่
-    /// </summary>
     public bool HasEquipmentData()
     {
         return hasEquipmentData &&
@@ -1153,9 +1269,6 @@ public class CharacterProgressData
                characterEquipment.IsValid();
     }
 
-    /// <summary>
-    /// 🆕 ตั้งค่า character type และอัปเดต equipment data
-    /// </summary>
     public void SetCharacterType(string charType)
     {
         characterType = charType;
