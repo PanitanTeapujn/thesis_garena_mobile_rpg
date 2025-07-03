@@ -18,10 +18,7 @@ MonoBehaviour:
   minGemsDrop: 0
   maxGemsDrop: 3
   gemsDropChance: 5
-  itemDrops: []
-  maxItemsPerDrop: 3
   goldLevelBonus: 10
   dropChanceLevelBonus: 2
-  rareDrops: []
   showDropLogs: 1
   guaranteedDropsForTesting: 0

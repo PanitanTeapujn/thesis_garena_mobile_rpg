@@ -98,3 +98,4 @@ public class EnemyDropSettings : ScriptableObject
         goldLevelBonus = 25f; dropChanceLevelBonus = 5f;
     }
 }
+

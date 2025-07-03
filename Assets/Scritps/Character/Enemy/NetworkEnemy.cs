@@ -128,49 +128,7 @@ public class NetworkEnemy : Character
     public bool showPatrolGizmos = true;     // 🆕 แสดง patrol area ใน Scene view
 
 
-    [Header("🎁 Item Drop System")]
-    [Tooltip("โอกาสที่จะ drop item (0-100%)")]
-    [Range(0f, 100f)]
-    public float itemDropChance = 15f;
-
-    [Tooltip("จำนวนไอเท็มสูงสุดที่จะ drop")]
-    [Range(1, 5)]
-    public int maxItemDrops = 2;
-
-    [Tooltip("เพิ่มโอกาส drop item ตาม level (% per level)")]
-    [Range(0f, 5f)]
-    public float itemDropLevelBonus = 1f;
-
-    [Header("🎯 Item Drop Preferences")]
-    [Tooltip("โอกาสที่จะ drop weapon")]
-    [Range(0f, 100f)]
-    public float weaponDropChance = 20f;
-
-    [Tooltip("โอกาสที่จะ drop armor")]
-    [Range(0f, 100f)]
-    public float armorDropChance = 15f;
-
-    [Tooltip("โอกาสที่จะ drop potion")]
-    [Range(0f, 100f)]
-    public float potionDropChance = 30f;
-
-    [Tooltip("โอกาสที่จะ drop rune")]
-    [Range(0f, 100f)]
-    public float runeDropChance = 10f;
-
-    [Tooltip("โอกาสที่จะ drop rare item (Epic/Legendary)")]
-    [Range(0f, 10f)]
-    public float rareItemChance = 2f;
-
-
-
-    [Header("🎁 Specific Item Drop System")]
-    [Tooltip("รายการไอเท็มที่จะ drop เมื่อตาย")]
-    public List<SpecificItemDrop> specificItemDrops = new List<SpecificItemDrop>();
-
-    [Tooltip("โอกาสที่จะ drop item โดยรวม (0-100%)")]
-    [Range(0f, 100f)]
-    public float overallItemDropChance = 20f;
+   
 
     
 
@@ -186,7 +144,7 @@ public class NetworkEnemy : Character
 
     [Header("💰 Drop System")]
     public EnemyDropManager dropManager;
-
+    public ItemDropManager ItemDrop;
     // Check if properly spawned
     public bool IsSpawned => Object != null && Object.IsValid;
 
@@ -197,6 +155,8 @@ public class NetworkEnemy : Character
         Debug.Log($"Enemy Start - HasStateAuthority: {HasStateAuthority}");
         if (dropManager == null)
             dropManager = GetComponent<EnemyDropManager>();
+        if (ItemDrop == null)
+            ItemDrop = GetComponent<ItemDropManager>();
         // ตั้งค่า enemy layer
         if (enemyLayer == 0)
         {
@@ -235,6 +195,37 @@ public class NetworkEnemy : Character
                 enemyLevel.GainExp(enemyLevel.ExpToNextLevel);
             }
             Debug.Log($"Enemy {CharacterName} spawned at level {randomLevel}");
+        }
+    }
+
+    // ใน NetworkEnemy.cs - override InitializeStats เพื่อไม่ให้เรียก equipment methods
+
+    protected override void InitializeStats()
+    {
+        if (characterStats != null)
+        {
+            // ✅ ใช้ ScriptableObject เป็นหลักสำหรับ enemy (ไม่ต้องใช้ equipment)
+            CharacterName = characterStats.characterName;
+            MaxHp = characterStats.maxHp;
+            CurrentHp = MaxHp;
+            MaxMana = characterStats.maxMana;
+            CurrentMana = MaxMana;
+            AttackDamage = characterStats.attackDamage;
+            MagicDamage = characterStats.magicDamage;
+            Armor = characterStats.arrmor;
+            MoveSpeed = characterStats.moveSpeed;
+            AttackRange = characterStats.attackRange;
+            AttackCooldown = characterStats.attackCoolDown;
+            CriticalChance = characterStats.criticalChance;
+            CriticalDamageBonus = characterStats.criticalDamageBonus;
+            HitRate = characterStats.hitRate;
+            EvasionRate = characterStats.evasionRate;
+            AttackSpeed = characterStats.attackSpeed;
+            ReductionCoolDown = characterStats.reductionCoolDown;
+            AttackType = characterStats.attackType;
+
+            // 🆕 Enemy ไม่ต้องใช้ InitializeEquipmentSlots()
+            Debug.Log($"[NetworkEnemy] Stats initialized for {CharacterName} (no equipment)");
         }
     }
 
@@ -942,13 +933,18 @@ public class NetworkEnemy : Character
         if (HasStateAuthority)
         {
             // 1. Currency drops (เงิน + เพชร)
-            if (dropManager != null)
+            EnemyDropManager currencyDropManager = GetComponent<EnemyDropManager>();
+            if (currencyDropManager != null)
             {
-                dropManager.TriggerDrops();
+                currencyDropManager.TriggerDrops();
             }
 
             // 2. Item drops (ใหม่!)
-            DropItemsToNearbyPlayers();
+            ItemDropManager itemDropManager = GetComponent<ItemDropManager>();
+            if (itemDropManager != null)
+            {
+                itemDropManager.TriggerItemDrops();
+            }
 
             // 3. Experience drops
             EnemyKillTracker.OnEnemyKilled();
@@ -974,202 +970,16 @@ public class NetworkEnemy : Character
         StartCoroutine(DestroyAfterDelay());
     }
     // 🆕 เพิ่ม method ใหม่สำหรับ drop items
-    private void DropItemsToNearbyPlayers()
-    {
-        // หา players ใกล้เคียง
-        List<Character> nearbyPlayers = FindNearbyPlayersForItems();
-        if (nearbyPlayers.Count == 0)
-        {
-            Debug.Log("[NetworkEnemy] No players nearby for item drops");
-            return;
-        }
-
-        // ตรวจสอบว่ามี specific items ที่ตั้งไว้หรือไม่
-        if (specificItemDrops.Count == 0)
-        {
-            Debug.Log("[NetworkEnemy] No specific item drops configured");
-            return;
-        }
-
-        // คำนวณโอกาส drop item โดยรวม
-        int enemyLevel = GetEnemyLevel();
-        float effectiveDropChance = overallItemDropChance + (itemDropLevelBonus * (enemyLevel - 1));
-        effectiveDropChance = Mathf.Min(100f, effectiveDropChance);
-
-        Debug.Log($"[ItemDrop] {CharacterName} Level {enemyLevel}: {effectiveDropChance:F1}% overall drop chance");
-
-        // สุ่มว่าจะ drop item หรือไม่
-        if (Random.Range(0f, 100f) > effectiveDropChance)
-        {
-            Debug.Log("[ItemDrop] No items dropped this time (failed overall chance)");
-            return;
-        }
-
-        // เลือก player ที่จะได้ item
-        Character targetPlayer = nearbyPlayers[Random.Range(0, nearbyPlayers.Count)];
-
-        // หา items ที่สามารถ drop ได้ในระดับนี้
-        List<SpecificItemDrop> availableDrops = GetAvailableDropsForLevel(enemyLevel);
-
-        if (availableDrops.Count == 0)
-        {
-            Debug.Log($"[ItemDrop] No items available for level {enemyLevel}");
-            return;
-        }
-
-        Debug.Log($"[ItemDrop] {availableDrops.Count} items available for level {enemyLevel}");
-
-        // สุ่ม items ที่จะ drop
-        List<SpecificItemDrop> itemsToRoll = new List<SpecificItemDrop>(availableDrops);
-        int maxDropsThisTime = Random.Range(1, maxItemDrops + 1);
-        int droppedCount = 0;
-
-        for (int attempt = 0; attempt < itemsToRoll.Count && droppedCount < maxDropsThisTime; attempt++)
-        {
-            SpecificItemDrop dropItem = itemsToRoll[Random.Range(0, itemsToRoll.Count)];
-
-            // สุ่มว่า item นี้จะ drop หรือไม่
-            if (Random.Range(0f, 100f) <= dropItem.dropChance)
-            {
-                int dropQuantity = Random.Range(dropItem.minQuantity, dropItem.maxQuantity + 1);
-                DropSpecificItemToPlayer(targetPlayer, dropItem, dropQuantity);
-                droppedCount++;
-
-                // ลบออกจาก list เพื่อไม่ให้ drop ซ้ำ
-                itemsToRoll.Remove(dropItem);
-            }
-        }
-
-        if (droppedCount == 0)
-        {
-            Debug.Log("[ItemDrop] No items passed individual drop chances");
-        }
-        else
-        {
-            Debug.Log($"[ItemDrop] Successfully dropped {droppedCount} items to {targetPlayer.CharacterName}");
-        }
-    }
-
-    private List<SpecificItemDrop> GetAvailableDropsForLevel(int enemyLevel)
-    {
-        List<SpecificItemDrop> available = new List<SpecificItemDrop>();
-
-        foreach (var drop in specificItemDrops)
-        {
-            if (drop.IsValid() && drop.CanDropAtLevel(enemyLevel))
-            {
-                available.Add(drop);
-            }
-        }
-
-        return available;
-    }
-
-    private void DropSpecificItemToPlayer(Character player, SpecificItemDrop dropItem, int quantity)
-    {
-        if (player?.GetInventory() == null)
-        {
-            Debug.LogWarning("[ItemDrop] Player has no inventory!");
-            return;
-        }
-
-        if (dropItem.itemData == null)
-        {
-            Debug.LogWarning("[ItemDrop] DropItem has no ItemData!");
-            return;
-        }
-
-        bool success = player.GetInventory().AddItem(dropItem.itemData, quantity);
-
-        if (success)
-        {
-            string itemText = quantity > 1 ? $"{dropItem.itemData.ItemName} x{quantity}" : dropItem.itemData.ItemName;
-
-            // กำหนดสีและ prefix ตาม tier
-            bool isRare = dropItem.itemData.Tier >= ItemTier.Rare;
-            Color messageColor = isRare ? dropItem.itemData.GetTierColor() : Color.white;
-            string prefix = GetDropPrefix(dropItem.itemData.Tier);
-
-            RPC_ShowItemPickup(player.Object, $"{prefix} {itemText}", messageColor);
-
-            Debug.Log($"[ItemDrop] ✅ Gave {itemText} ({dropItem.itemData.GetTierText()}) to {player.CharacterName}");
-        }
-        else
-        {
-            Debug.LogWarning($"[ItemDrop] Failed to add {dropItem.itemData.ItemName} to {player.CharacterName}'s inventory");
-        }
-    }
-
-    private string GetDropPrefix(ItemTier tier)
-    {
-        switch (tier)
-        {
-            case ItemTier.Common: return "🎁";
-            case ItemTier.Uncommon: return "💚";
-            case ItemTier.Rare: return "💙";
-            case ItemTier.Epic: return "💜";
-            case ItemTier.Legendary: return "💛";
-            default: return "🎁";
-        }
-    }
-
-    private List<Character> FindNearbyPlayersForItems()
-    {
-        List<Character> nearbyPlayers = new List<Character>();
-        Collider[] playerColliders = Physics.OverlapSphere(transform.position, 15f, LayerMask.GetMask("Player"));
-
-        foreach (Collider col in playerColliders)
-        {
-            Character character = col.GetComponent<Character>();
-            if (character != null && character.IsSpawned && character.CurrentHp > 0)
-            {
-                nearbyPlayers.Add(character);
-            }
-        }
-        return nearbyPlayers;
-    }
+   
+  
+   
 
    
 
-    private void DropItemToPlayer(Character player, ItemData itemData)
-    {
-        if (player?.GetInventory() == null)
-        {
-            Debug.LogWarning("[ItemDrop] Player has no inventory!");
-            return;
-        }
+   
+   
 
-        // กำหนดจำนวนตาม item type
-        int dropCount = 1;
-        if (itemData.ItemType == ItemType.Potion)
-        {
-            dropCount = Random.Range(1, 4); // Potion 1-3 ขวด
-        }
-        else if (itemData.ItemType == ItemType.Rune)
-        {
-            dropCount = Random.Range(1, 3); // Rune 1-2 ชิ้น
-        }
-
-        bool success = player.GetInventory().AddItem(itemData, dropCount);
-
-        if (success)
-        {
-            string itemText = dropCount > 1 ? $"{itemData.ItemName} x{dropCount}" : itemData.ItemName;
-
-            // แสดง pickup message
-            bool isRare = itemData.Tier >= ItemTier.Rare;
-            Color messageColor = isRare ? itemData.GetTierColor() : Color.white;
-            string prefix = isRare ? "✨" : "🎁";
-
-            RPC_ShowItemPickup(player.Object, $"{prefix} {itemText}", messageColor);
-
-            Debug.Log($"[ItemDrop] ✅ Gave {itemText} to {player.CharacterName}");
-        }
-        else
-        {
-            Debug.LogWarning($"[ItemDrop] Failed to add {itemData.ItemName} to {player.CharacterName}'s inventory");
-        }
-    }
+   
 
     private int GetEnemyLevel()
     {
@@ -1177,38 +987,9 @@ public class NetworkEnemy : Character
         return enemyLevel?.CurrentLevel ?? 1;
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowItemPickup(NetworkObject playerObject, string message, Color color)
-    {
-        if (playerObject != null)
-        {
-            Character character = playerObject.GetComponent<Character>();
-            if (character != null)
-            {
-                // หา EnemyDropManager เพื่อใช้ ShowPickupMessage
-                EnemyDropManager dropManager = GetComponent<EnemyDropManager>();
-                if (dropManager != null)
-                {
-                    // เรียกใช้ method ผ่าน reflection หรือ ทำ public
-                    dropManager.ShowPickupMessage(message, color, character.transform.position);
-                }
-                else
-                {
-                    Debug.Log($"💝 {character.CharacterName} received: {message}");
-                }
-            }
-        }
-    }
+   
 
-    // 🆕 เพิ่ม context menu สำหรับทดสอบ
-    [ContextMenu("🎁 Test Item Drop")]
-    public void TestItemDrop()
-    {
-        if (!Application.isPlaying) return;
-
-        Debug.Log("=== TESTING ITEM DROP ===");
-        DropItemsToNearbyPlayers();
-    }
+   
 
     private void DropExpToNearbyHeroes()
     {

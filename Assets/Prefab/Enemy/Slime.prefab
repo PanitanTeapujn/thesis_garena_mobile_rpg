@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: 4927847923645176864}
   - component: {fileID: 4266108146747291927}
   - component: {fileID: -400204652379301390}
+  - component: {fileID: 8283572041256556508}
   m_Layer: 7
   m_Name: Slime
   m_TagString: Enemy
@@ -164,6 +165,7 @@ MonoBehaviour:
   - {fileID: 4927847923645176864}
   - {fileID: 4266108146747291927}
   - {fileID: -400204652379301390}
+  - {fileID: 8283572041256556508}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &2102208964661930907
 MonoBehaviour:
@@ -242,22 +244,6 @@ MonoBehaviour:
   isCollidingWithPlayer: 0
   showDebugInfo: 0
   showPatrolGizmos: 1
-  itemDropChance: 15
-  maxItemDrops: 2
-  itemDropLevelBonus: 1
-  weaponDropChance: 20
-  armorDropChance: 15
-  potionDropChance: 30
-  runeDropChance: 10
-  rareItemChance: 2
-  specificItemDrops:
-  - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
-    dropChance: 54.9
-    minQuantity: 1
-    maxQuantity: 1
-    minEnemyLevel: 0
-    maxEnemyLevel: 0
-  overallItemDropChance: 20
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: -400204652379301390}
@@ -429,3 +415,19 @@ MonoBehaviour:
   dropDelay: 0.5
   dropLifetime: 60
   showDropLogs: 0
+--- !u!114 &8283572041256556508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  itemDropSettings: {fileID: 11400000, guid: f66943f869bb3fb46b655dec6739abf5, type: 2}
+  collectRange: 10
+  dropDelay: 0
+  showDropLogs: 1

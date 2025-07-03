@@ -22,7 +22,7 @@ public class Character : NetworkBehaviour
     public CharacterStats characterStats;
 
     [SerializeField] private string characterName;
-    public string CharacterName { get { return characterName; } }
+    public string CharacterName { get { return characterName; } set { characterName = value; } }
 
     [SerializeField] private int currentHp;
     public int CurrentHp { get { return currentHp; } set { currentHp = value; } }
@@ -356,6 +356,8 @@ public class Character : NetworkBehaviour
             Debug.LogWarning("[Character] ⚠️ Failed to refresh equipment UI after max retries");
         }
     }
+    // ใน Character.cs - แก้ไข InitializeComponents()
+
     private void InitializeComponents()
     {
         // Get or add components
@@ -367,10 +369,6 @@ public class Character : NetworkBehaviour
         if (combatManager == null)
             combatManager = gameObject.AddComponent<CombatManager>();
 
-        equipmentManager = GetComponent<EquipmentManager>();
-        if (equipmentManager == null)
-            equipmentManager = gameObject.AddComponent<EquipmentManager>();
-
         visualManager = GetComponent<CharacterVisualManager>();
         if (visualManager == null)
             visualManager = gameObject.AddComponent<CharacterVisualManager>();
@@ -378,12 +376,31 @@ public class Character : NetworkBehaviour
         levelManager = GetComponent<LevelManager>();
         if (levelManager == null)
             levelManager = gameObject.AddComponent<LevelManager>();
-        inventory = GetComponent<Inventory>();
-        if (inventory == null)
-            inventory = gameObject.AddComponent<Inventory>();
-        equipmentSlotManager = GetComponent<EquipmentSlotManager>();
-        if (equipmentSlotManager == null)
-            equipmentSlotManager = gameObject.AddComponent<EquipmentSlotManager>();
+
+        // 🆕 เพิ่มการตรวจสอบว่าเป็น Enemy หรือไม่
+        bool isEnemy = GetComponent<NetworkEnemy>() != null;
+
+        // ✅ Components ที่ Player เท่านั้นที่ต้องการ
+        if (!isEnemy)
+        {
+            equipmentManager = GetComponent<EquipmentManager>();
+            if (equipmentManager == null)
+                equipmentManager = gameObject.AddComponent<EquipmentManager>();
+
+            inventory = GetComponent<Inventory>();
+            if (inventory == null)
+                inventory = gameObject.AddComponent<Inventory>();
+
+            equipmentSlotManager = GetComponent<EquipmentSlotManager>();
+            if (equipmentSlotManager == null)
+                equipmentSlotManager = gameObject.AddComponent<EquipmentSlotManager>();
+
+            Debug.Log($"[Character] Player components initialized for {CharacterName}");
+        }
+        else
+        {
+            Debug.Log($"[Character] Enemy components initialized for {CharacterName} (skipped inventory/equipment)");
+        }
     }
 
     private void InitializePhysics()
@@ -1043,6 +1060,11 @@ public class Character : NetworkBehaviour
             Debug.LogWarning($"[Character] Cannot equip null item");
             return false;
         }
+        if (GetComponent<NetworkEnemy>() != null)
+        {
+            Debug.LogWarning($"[Character] Enemy {CharacterName} cannot equip items");
+            return false;
+        }
 
         Debug.Log($"[Character] EquipItemData called: {itemData.ItemName} ({itemData.ItemType})");
 
@@ -1512,6 +1534,11 @@ public class Character : NetworkBehaviour
         if (itemType == ItemType.Potion)
         {
             Debug.LogWarning($"[Character] Use UnequipPotion() for potion slots");
+            return false;
+        }
+        if (GetComponent<NetworkEnemy>() != null)
+        {
+            Debug.LogWarning($"[Character] Enemy {CharacterName} cannot unequip items");
             return false;
         }
 
