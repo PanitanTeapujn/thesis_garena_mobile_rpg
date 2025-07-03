@@ -2,7 +2,65 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
+[System.Serializable]
+public class SpecificItemDrop
+{
+    [Header("📦 Item Settings")]
+    public ItemData itemData;
 
+    [Header("🎯 Drop Settings")]
+    [Tooltip("โอกาสที่จะ drop item นี้ (0-100%)")]
+    [Range(0f, 100f)]
+    public float dropChance = 15f;
+
+    [Tooltip("จำนวนขั้นต่ำที่จะ drop")]
+    [Range(1, 10)]
+    public int minQuantity = 1;
+
+    [Tooltip("จำนวนสูงสุดที่จะ drop")]
+    [Range(1, 10)]
+    public int maxQuantity = 1;
+
+    [Header("🎯 Level Requirements")]
+    [Tooltip("Level ขั้นต่ำของ enemy ที่จะ drop item นี้")]
+    [Range(1, 50)]
+    public int minEnemyLevel = 1;
+
+    [Tooltip("Level สูงสุดของ enemy ที่จะ drop item นี้ (0 = ไม่จำกัด)")]
+    [Range(0, 50)]
+    public int maxEnemyLevel = 0;
+
+    public SpecificItemDrop()
+    {
+        dropChance = 15f;
+        minQuantity = 1;
+        maxQuantity = 1;
+        minEnemyLevel = 1;
+        maxEnemyLevel = 0;
+    }
+
+    public SpecificItemDrop(ItemData item, float chance, int minQty = 1, int maxQty = 1)
+    {
+        itemData = item;
+        dropChance = chance;
+        minQuantity = minQty;
+        maxQuantity = maxQty;
+        minEnemyLevel = 1;
+        maxEnemyLevel = 0;
+    }
+
+    public bool CanDropAtLevel(int enemyLevel)
+    {
+        if (enemyLevel < minEnemyLevel) return false;
+        if (maxEnemyLevel > 0 && enemyLevel > maxEnemyLevel) return false;
+        return true;
+    }
+
+    public bool IsValid()
+    {
+        return itemData != null && dropChance > 0f;
+    }
+}
 public enum EnemyState
 {
     Patrolling,    // 🆕 เพิ่ม state การสุ่มเดิน
@@ -103,6 +161,18 @@ public class NetworkEnemy : Character
     [Tooltip("โอกาสที่จะ drop rare item (Epic/Legendary)")]
     [Range(0f, 10f)]
     public float rareItemChance = 2f;
+
+
+
+    [Header("🎁 Specific Item Drop System")]
+    [Tooltip("รายการไอเท็มที่จะ drop เมื่อตาย")]
+    public List<SpecificItemDrop> specificItemDrops = new List<SpecificItemDrop>();
+
+    [Tooltip("โอกาสที่จะ drop item โดยรวม (0-100%)")]
+    [Range(0f, 100f)]
+    public float overallItemDropChance = 20f;
+
+    
 
     [Header("💥 Proximity Damage")]
     public float collisionDamageCooldown = 2.0f;
@@ -906,13 +976,6 @@ public class NetworkEnemy : Character
     // 🆕 เพิ่ม method ใหม่สำหรับ drop items
     private void DropItemsToNearbyPlayers()
     {
-        // ตรวจสอบ ItemDatabase
-        if (ItemDatabase.Instance == null)
-        {
-            Debug.LogWarning("[NetworkEnemy] ItemDatabase not found! Cannot drop items.");
-            return;
-        }
-
         // หา players ใกล้เคียง
         List<Character> nearbyPlayers = FindNearbyPlayersForItems();
         if (nearbyPlayers.Count == 0)
@@ -921,34 +984,132 @@ public class NetworkEnemy : Character
             return;
         }
 
-        // คำนวณโอกาส drop item
-        int enemyLevel = GetEnemyLevel();
-        float effectiveItemDropChance = itemDropChance + (itemDropLevelBonus * (enemyLevel - 1));
-        effectiveItemDropChance = Mathf.Min(100f, effectiveItemDropChance);
-
-        Debug.Log($"[ItemDrop] {CharacterName} Level {enemyLevel}: {effectiveItemDropChance:F1}% item drop chance");
-
-        // สุ่มว่าจะ drop item หรือไม่
-        if (Random.Range(0f, 100f) > effectiveItemDropChance)
+        // ตรวจสอบว่ามี specific items ที่ตั้งไว้หรือไม่
+        if (specificItemDrops.Count == 0)
         {
-            Debug.Log("[ItemDrop] No items dropped this time");
+            Debug.Log("[NetworkEnemy] No specific item drops configured");
             return;
         }
 
-        // สุ่มจำนวน items ที่จะ drop
-        int itemsToDrop = Random.Range(1, maxItemDrops + 1); // ✅ แก้ไขชื่อตัวแปร
+        // คำนวณโอกาส drop item โดยรวม
+        int enemyLevel = GetEnemyLevel();
+        float effectiveDropChance = overallItemDropChance + (itemDropLevelBonus * (enemyLevel - 1));
+        effectiveDropChance = Mathf.Min(100f, effectiveDropChance);
+
+        Debug.Log($"[ItemDrop] {CharacterName} Level {enemyLevel}: {effectiveDropChance:F1}% overall drop chance");
+
+        // สุ่มว่าจะ drop item หรือไม่
+        if (Random.Range(0f, 100f) > effectiveDropChance)
+        {
+            Debug.Log("[ItemDrop] No items dropped this time (failed overall chance)");
+            return;
+        }
+
+        // เลือก player ที่จะได้ item
         Character targetPlayer = nearbyPlayers[Random.Range(0, nearbyPlayers.Count)];
 
-        Debug.Log($"[ItemDrop] Dropping {itemsToDrop} items to {targetPlayer.CharacterName}");
+        // หา items ที่สามารถ drop ได้ในระดับนี้
+        List<SpecificItemDrop> availableDrops = GetAvailableDropsForLevel(enemyLevel);
 
-        // Drop items
-        for (int i = 0; i < itemsToDrop; i++) // ✅ ใช้ชื่อเดียวกัน
+        if (availableDrops.Count == 0)
         {
-            ItemData droppedItem = SelectRandomItem(enemyLevel);
-            if (droppedItem != null)
+            Debug.Log($"[ItemDrop] No items available for level {enemyLevel}");
+            return;
+        }
+
+        Debug.Log($"[ItemDrop] {availableDrops.Count} items available for level {enemyLevel}");
+
+        // สุ่ม items ที่จะ drop
+        List<SpecificItemDrop> itemsToRoll = new List<SpecificItemDrop>(availableDrops);
+        int maxDropsThisTime = Random.Range(1, maxItemDrops + 1);
+        int droppedCount = 0;
+
+        for (int attempt = 0; attempt < itemsToRoll.Count && droppedCount < maxDropsThisTime; attempt++)
+        {
+            SpecificItemDrop dropItem = itemsToRoll[Random.Range(0, itemsToRoll.Count)];
+
+            // สุ่มว่า item นี้จะ drop หรือไม่
+            if (Random.Range(0f, 100f) <= dropItem.dropChance)
             {
-                DropItemToPlayer(targetPlayer, droppedItem);
+                int dropQuantity = Random.Range(dropItem.minQuantity, dropItem.maxQuantity + 1);
+                DropSpecificItemToPlayer(targetPlayer, dropItem, dropQuantity);
+                droppedCount++;
+
+                // ลบออกจาก list เพื่อไม่ให้ drop ซ้ำ
+                itemsToRoll.Remove(dropItem);
             }
+        }
+
+        if (droppedCount == 0)
+        {
+            Debug.Log("[ItemDrop] No items passed individual drop chances");
+        }
+        else
+        {
+            Debug.Log($"[ItemDrop] Successfully dropped {droppedCount} items to {targetPlayer.CharacterName}");
+        }
+    }
+
+    private List<SpecificItemDrop> GetAvailableDropsForLevel(int enemyLevel)
+    {
+        List<SpecificItemDrop> available = new List<SpecificItemDrop>();
+
+        foreach (var drop in specificItemDrops)
+        {
+            if (drop.IsValid() && drop.CanDropAtLevel(enemyLevel))
+            {
+                available.Add(drop);
+            }
+        }
+
+        return available;
+    }
+
+    private void DropSpecificItemToPlayer(Character player, SpecificItemDrop dropItem, int quantity)
+    {
+        if (player?.GetInventory() == null)
+        {
+            Debug.LogWarning("[ItemDrop] Player has no inventory!");
+            return;
+        }
+
+        if (dropItem.itemData == null)
+        {
+            Debug.LogWarning("[ItemDrop] DropItem has no ItemData!");
+            return;
+        }
+
+        bool success = player.GetInventory().AddItem(dropItem.itemData, quantity);
+
+        if (success)
+        {
+            string itemText = quantity > 1 ? $"{dropItem.itemData.ItemName} x{quantity}" : dropItem.itemData.ItemName;
+
+            // กำหนดสีและ prefix ตาม tier
+            bool isRare = dropItem.itemData.Tier >= ItemTier.Rare;
+            Color messageColor = isRare ? dropItem.itemData.GetTierColor() : Color.white;
+            string prefix = GetDropPrefix(dropItem.itemData.Tier);
+
+            RPC_ShowItemPickup(player.Object, $"{prefix} {itemText}", messageColor);
+
+            Debug.Log($"[ItemDrop] ✅ Gave {itemText} ({dropItem.itemData.GetTierText()}) to {player.CharacterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"[ItemDrop] Failed to add {dropItem.itemData.ItemName} to {player.CharacterName}'s inventory");
+        }
+    }
+
+    private string GetDropPrefix(ItemTier tier)
+    {
+        switch (tier)
+        {
+            case ItemTier.Common: return "🎁";
+            case ItemTier.Uncommon: return "💚";
+            case ItemTier.Rare: return "💙";
+            case ItemTier.Epic: return "💜";
+            case ItemTier.Legendary: return "💛";
+            default: return "🎁";
         }
     }
 
@@ -968,61 +1129,7 @@ public class NetworkEnemy : Character
         return nearbyPlayers;
     }
 
-    private ItemData SelectRandomItem(int enemyLevel)
-    {
-        // สุ่มประเภท item ที่จะ drop
-        List<ItemType> possibleTypes = new List<ItemType>();
-
-        if (Random.Range(0f, 100f) <= weaponDropChance) possibleTypes.Add(ItemType.Weapon);
-        if (Random.Range(0f, 100f) <= armorDropChance) possibleTypes.Add(ItemType.Armor);
-        if (Random.Range(0f, 100f) <= potionDropChance) possibleTypes.Add(ItemType.Potion);
-        if (Random.Range(0f, 100f) <= runeDropChance) possibleTypes.Add(ItemType.Rune);
-
-        // เพิ่ม head, pants, shoes ด้วยโอกาสเท่า armor
-        if (Random.Range(0f, 100f) <= armorDropChance) possibleTypes.Add(ItemType.Head);
-        if (Random.Range(0f, 100f) <= armorDropChance) possibleTypes.Add(ItemType.Pants);
-        if (Random.Range(0f, 100f) <= armorDropChance) possibleTypes.Add(ItemType.Shoes);
-
-        if (possibleTypes.Count == 0)
-        {
-            Debug.Log("[ItemDrop] No item types passed the drop chance");
-            return null;
-        }
-
-        // เลือก type สุ่ม
-        ItemType selectedType = possibleTypes[Random.Range(0, possibleTypes.Count)];
-
-        // ตรวจสอบ rare item chance
-        bool isRareItem = Random.Range(0f, 100f) <= rareItemChance;
-
-        ItemData selectedItem = null;
-
-        if (isRareItem)
-        {
-            // สุ่ม rare item (Epic หรือ Legendary)
-            ItemTier rareTier = Random.Range(0f, 100f) <= 70f ? ItemTier.Epic : ItemTier.Legendary;
-            var rareItems = ItemDatabase.Instance.GetItemsByTier(rareTier);
-            var rareItemsOfType = rareItems.FindAll(item => item.ItemType == selectedType);
-
-            if (rareItemsOfType.Count > 0)
-            {
-                selectedItem = rareItemsOfType[Random.Range(0, rareItemsOfType.Count)];
-                Debug.Log($"[ItemDrop] ✨ RARE ITEM: {selectedItem.ItemName} ({selectedItem.GetTierText()})");
-            }
-        }
-
-        // ถ้าไม่ได้ rare item หรือไม่มี rare item ประเภทนั้น ให้สุ่มปกติ
-        if (selectedItem == null)
-        {
-            selectedItem = ItemDatabase.Instance.GetRandomItemByType(selectedType);
-            if (selectedItem != null)
-            {
-                Debug.Log($"[ItemDrop] Normal item: {selectedItem.ItemName} ({selectedItem.GetTierText()})");
-            }
-        }
-
-        return selectedItem;
-    }
+   
 
     private void DropItemToPlayer(Character player, ItemData itemData)
     {
@@ -1103,30 +1210,6 @@ public class NetworkEnemy : Character
         DropItemsToNearbyPlayers();
     }
 
-    [ContextMenu("🎲 Test Random Item Selection")]
-    public void TestRandomItemSelection()
-    {
-        if (ItemDatabase.Instance == null)
-        {
-            Debug.LogError("ItemDatabase not found!");
-            return;
-        }
-
-        Debug.Log("=== TESTING RANDOM ITEM SELECTION ===");
-
-        for (int i = 0; i < 10; i++)
-        {
-            ItemData item = SelectRandomItem(GetEnemyLevel());
-            if (item != null)
-            {
-                Debug.Log($"Test {i + 1}: {item.ItemName} ({item.ItemType}, {item.GetTierText()})");
-            }
-            else
-            {
-                Debug.Log($"Test {i + 1}: No item selected");
-            }
-        }
-    }
     private void DropExpToNearbyHeroes()
     {
         // หา Characters ในระยะ 15 เมตร

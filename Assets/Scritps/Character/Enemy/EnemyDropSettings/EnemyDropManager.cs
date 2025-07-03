@@ -278,7 +278,7 @@ public class EnemyDropManager : NetworkBehaviour
         Camera mainCamera = Camera.main;
         if (mainCamera != null)
         {
-            Vector3 worldPos = position + Vector3.up * 3f; // ยกสูงขึ้นเล็กน้อย
+            Vector3 worldPos = position + Vector3.up * 6f; // ยกสูงขึ้นเล็กน้อย
             Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos);
             rectTransform.position = screenPos;
         }
@@ -350,17 +350,17 @@ public class EnemyDropManager : NetworkBehaviour
 
         float duration = 3f; // เพิ่มเวลาให้เห็นนานขึ้น
         Vector3 startPos = rectTransform.position;
-        Vector3 endPos = startPos + Vector3.up * 120f; // ขยับสูงขึ้น
+        Vector3 endPos = startPos + Vector3.up * 200f; // ขยับสูงขึ้น
         float startTime = Time.time;
 
         Debug.Log($"[PickupText] Starting animation for {textObj.name}");
 
         // Phase 1: แสดงเต็มที่ 1 วินาทีแรก
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(0.5f);
 
         // Phase 2: เริ่ม fade out และขยับขึ้น
         float fadeStartTime = Time.time;
-        float fadeDuration = 2f;
+        float fadeDuration = 1f;
 
         while (Time.time - fadeStartTime < fadeDuration)
         {

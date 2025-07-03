@@ -250,6 +250,14 @@ MonoBehaviour:
   potionDropChance: 30
   runeDropChance: 10
   rareItemChance: 2
+  specificItemDrops:
+  - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
+    dropChance: 54.9
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 0
+    maxEnemyLevel: 0
+  overallItemDropChance: 20
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: -400204652379301390}
