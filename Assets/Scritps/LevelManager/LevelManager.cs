@@ -415,12 +415,16 @@ public class LevelManager : NetworkBehaviour
     /// </summary>
     // 🆕 แก้ไข ApplyBaseStatsOnly ให้คำนวณ base stats ก่อน
     private void ApplyBaseStatsOnly(int level, int exp, int expToNext, int maxHp, int maxMana,
-     int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
-     float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
+  int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
+  float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
         CurrentLevel = level;
         CurrentExp = exp;
         ExpToNextLevel = expToNext;
+
+        // 🆕 เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+        float hpPercentage = character.MaxHp > 0 ? (float)character.CurrentHp / character.MaxHp : 1f;
+        float manaPercentage = character.MaxMana > 0 ? (float)character.CurrentMana / character.MaxMana : 1f;
 
         // 🆕 คำนวณ base stats จาก ScriptableObject + Level bonuses
         CalculateBaseStatsFromLevel();
@@ -430,9 +434,7 @@ public class LevelManager : NetworkBehaviour
 
         // ใช้ total stats จาก Firebase (รวม equipment แล้ว)
         character.MaxHp = maxHp;
-        character.CurrentHp = maxHp;
         character.MaxMana = maxMana;
-        character.CurrentMana = maxMana;
         character.AttackDamage = attackDamage;
         character.MagicDamage = magicDamage;
         character.Armor = armor;
@@ -444,10 +446,16 @@ public class LevelManager : NetworkBehaviour
         character.AttackSpeed = attackSpeed;
         character.ReductionCoolDown = reductionCoolDown;
 
+        // 🆕 ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
+        character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
+        character.CurrentMana = Mathf.RoundToInt(character.MaxMana * manaPercentage);
+        character.CurrentHp = Mathf.Clamp(character.CurrentHp, 1, character.MaxHp);
+        character.CurrentMana = Mathf.Clamp(character.CurrentMana, 0, character.MaxMana);
+
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
-        Debug.Log($"[LevelManager] ✅ Applied stats: Base calculated, Total from Firebase");
+        Debug.Log($"[LevelManager] ✅ Applied stats: Base calculated, Total from Firebase, HP/Mana percentage preserved");
     }
     private void SaveBaseStatsToFirebase()
     {

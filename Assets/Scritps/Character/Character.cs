@@ -636,6 +636,10 @@ public class Character : NetworkBehaviour
         {
             Debug.Log($"[Character] 🔄 Applying loaded equipment stats with reset for {CharacterName}...");
 
+            // 🆕 เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+            float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
             // 1. Reset กลับเป็น base stats ก่อน
 
             // 2. เก็บ base stats สำหรับ comparison
@@ -647,6 +651,12 @@ public class Character : NetworkBehaviour
             // 3. Apply equipment stats ใหม่
             ApplyAllEquipmentStats();
 
+            // 🆕 ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม (ทำซ้ำเพื่อความแน่ใจ)
+            CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+            CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+            CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+            CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
             // 4. Debug การเปลี่ยนแปลง
             int hpBonus = MaxHp - baseMaxHp;
             int atkBonus = AttackDamage - baseAttackDamage;
@@ -654,7 +664,7 @@ public class Character : NetworkBehaviour
             float critBonus = CriticalChance - baseCriticalChance;
 
             Debug.Log($"[Character] ✅ Equipment bonuses applied (with reset):");
-            Debug.Log($"  HP: +{hpBonus} (Base: {baseMaxHp} → Total: {MaxHp})");
+            Debug.Log($"  HP: +{hpBonus} (Base: {baseMaxHp} → Total: {MaxHp}) | Current: {CurrentHp}");
             Debug.Log($"  ATK: +{atkBonus} (Base: {baseAttackDamage} → Total: {AttackDamage})");
             Debug.Log($"  ARM: +{armBonus} (Base: {baseArmor} → Total: {Armor})");
             Debug.Log($"  CRIT: +{critBonus:F1}% (Base: {baseCriticalChance:F1}% → Total: {CriticalChance:F1}%)");
@@ -2120,8 +2130,12 @@ public class Character : NetworkBehaviour
             return;
         }
 
+        // 🆕 เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+        float hpPercentage = maxHp > 0 ? (float)currentHp / maxHp : 1f;
+        float manaPercentage = maxMana > 0 ? (float)currentMana / maxMana : 1f;
+
         // 🆕 Debug stats ก่อน apply
-        Debug.Log($"[Character] 📈 STATS BEFORE APPLY: ATK={AttackDamage}, ARM={Armor}, CRIT={CriticalChance:F1}%, CRIT_DMG={CriticalDamageBonus:F1}%");
+        Debug.Log($"[Character] 📈 STATS BEFORE APPLY: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}, CurrentHP={CurrentHp} ({hpPercentage:P1})");
 
         // คำนวณ total stats จาก characterEquippedItems ทั้งหมด
         EquipmentStats totalStats = CalculateTotalEquipmentStats();
@@ -2137,12 +2151,20 @@ public class Character : NetworkBehaviour
         // ส่ง total stats ไปให้ EquipmentManager ครั้งเดียว
         equipmentManager.EquipItem(totalEquipmentData);
 
+        // 🆕 ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
+        currentHp = Mathf.RoundToInt(maxHp * hpPercentage);
+        currentMana = Mathf.RoundToInt(maxMana * manaPercentage);
+
+        // 🆕 ตรวจสอบไม่ให้เกินขีดจำกัด
+        currentHp = Mathf.Clamp(currentHp, 1, maxHp); // อย่างน้อย 1 HP
+        currentMana = Mathf.Clamp(currentMana, 0, maxMana);
+
         // 🆕 Debug stats หลัง apply
-        Debug.Log($"[Character] 📈 STATS AFTER APPLY: ATK={AttackDamage}, ARM={Armor}, CRIT={CriticalChance:F1}%, CRIT_DMG={GetEffectiveCriticalDamageBonus():F1}%");
+        Debug.Log($"[Character] 📈 STATS AFTER APPLY: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}, CurrentHP={CurrentHp} ({(float)CurrentHp / MaxHp:P1})");
+        Debug.Log($"[Character] 💙 Mana: {CurrentMana}/{MaxMana} ({(float)CurrentMana / MaxMana:P1})");
 
-        Debug.Log($"[Character] ✅ Applied total equipment stats to EquipmentManager");
+        Debug.Log($"[Character] ✅ Applied total equipment stats with HP/Mana percentage preserved");
     }
-
     private EquipmentStats CalculateTotalEquipmentStats()
     {
         EquipmentStats totalStats = new EquipmentStats();
@@ -2906,7 +2928,7 @@ public class Character : NetworkBehaviour
     }
 
 
-    public void SaveCurrentStatsAsBase()
+    /*public void SaveCurrentStatsAsBase()
     {
         if (characterStats == null)
         {
@@ -2931,7 +2953,7 @@ public class Character : NetworkBehaviour
         characterStats.reductionCoolDown = ReductionCoolDown;
 
         Debug.Log($"[Character] ✅ Current stats saved as base: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}");
-    }
+    }*/
     public void ResetToBaseStats()
     {
         try
