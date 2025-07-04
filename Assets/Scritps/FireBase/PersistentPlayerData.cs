@@ -1278,73 +1278,90 @@ public class PersistentPlayerData : MonoBehaviour
     /// </summary>
     public void LoadInventoryData(Character character)
     {
-        if (character == null)
-        {
-            Debug.LogError("[LoadInventoryData] Character is null!");
-            return;
-        }
-
-        if (multiCharacterData == null)
-        {
-            Debug.LogError("[LoadInventoryData] MultiCharacterData is null!");
-            return;
-        }
+        if (character == null || multiCharacterData == null) return;
 
         try
         {
-            Debug.Log($"[LoadInventoryData] 📥 Starting EQUIPMENT-ONLY load for {character.CharacterName} (no stats changes)");
+            Debug.Log($"[LoadInventoryData] 📥 Loading data for {character.CharacterName}...");
 
-            string characterType = multiCharacterData.currentActiveCharacter;
-            var characterProgressData = multiCharacterData.GetCharacterData(characterType);
+            // 1. โหลด shared inventory
+            LoadSharedInventoryDataSimple(character);
 
-            bool hasInventoryData = multiCharacterData.HasInventoryData();
-            bool hasEquipmentData = characterProgressData?.HasEquipmentData() ?? false;
+            // 2. โหลด equipment และ force refresh UI
+            bool equipmentLoaded = LoadCharacterEquipmentWithUI(character);
 
-            Debug.Log($"[LoadInventoryData] 📊 Data check: Inventory={hasInventoryData}, Equipment={hasEquipmentData}");
-
-            if (!hasInventoryData && !hasEquipmentData)
+            if (equipmentLoaded)
             {
-                Debug.LogWarning("[LoadInventoryData] ⚠️ No data to load");
-                return;
+                Debug.Log($"[LoadInventoryData] ✅ Equipment loaded and UI refreshed");
             }
-
-            bool inventoryLoaded = false;
-            bool equipmentLoaded = false;
-
-            // 1. โหลด Shared Inventory (ไม่แตะ stats)
-            if (hasInventoryData)
-            {
-                Debug.Log("[LoadInventoryData] 📦 Loading shared inventory (items only)...");
-                inventoryLoaded = LoadSharedInventoryDataSimple(character);
-            }
-
-            // 2. โหลด Character Equipment (ไม่แตะ stats)
-            if (hasEquipmentData)
-            {
-                Debug.Log("[LoadInventoryData] ⚔️ Loading character equipment (items only)...");
-                equipmentLoaded = LoadCharacterEquipmentDataSimple(character);
-            }
-
-            if (inventoryLoaded || equipmentLoaded)
-            {
-                Debug.Log($"[LoadInventoryData] ✅ Equipment loading completed - Inventory: {inventoryLoaded}, Equipment: {equipmentLoaded}");
-
-                // 🆕 เฉพาะ Force refresh UI - ไม่แตะ stats
-                ForceRefreshInventoryUIOnly(character);
-
-                Debug.Log($"[LoadInventoryData] 🎉 Equipment loading success (stats unchanged)");
-            }
-            else
-            {
-                Debug.LogWarning("[LoadInventoryData] ⚠️ No equipment was loaded");
-            }
-
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LoadInventoryData] ❌ Error loading equipment: {e.Message}");
+            Debug.LogError($"[LoadInventoryData] ❌ Error: {e.Message}");
         }
     }
+
+    private bool LoadCharacterEquipmentWithUI(Character character)
+    {
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterData = GetCharacterData(characterType);
+
+            if (characterData?.HasEquipmentData() != true)
+            {
+                Debug.Log($"[LoadCharacterEquipmentWithUI] No equipment data for {characterType}");
+                return false;
+            }
+
+            // Clear character equipment ก่อน
+            character.ClearAllEquipmentForLoad();
+
+            // โหลด equipment
+            var equipmentData = characterData.characterEquipment;
+            bool equipmentLoaded = LoadEquipmentSlotsSimple(character, equipmentData);
+            bool potionsLoaded = LoadPotionSlotsSimple(character, equipmentData);
+
+            if (equipmentLoaded || potionsLoaded)
+            {
+                // Force refresh UI ทันที
+                StartCoroutine(DelayedUIRefresh(character));
+                return true;
+            }
+
+            return false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadCharacterEquipmentWithUI] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private System.Collections.IEnumerator DelayedUIRefresh(Character character)
+    {
+        yield return new WaitForSeconds(0.2f);
+
+        // Force refresh EquipmentSlotManager
+        var equipmentManager = character.GetComponent<EquipmentSlotManager>();
+        if (equipmentManager?.IsConnected() == true)
+        {
+            equipmentManager.ForceRefreshFromCharacter();
+        }
+
+        // Force refresh CombatUIManager
+        var combatUI = FindObjectOfType<CombatUIManager>();
+        if (combatUI?.equipmentSlotManager?.IsConnected() == true)
+        {
+            combatUI.equipmentSlotManager.ForceRefreshFromCharacter();
+        }
+
+        // แจ้ง stats changed
+        Character.RaiseOnStatsChanged();
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[DelayedUIRefresh] ✅ UI refreshed after equipment load");
+    }
+
     private void ForceRefreshInventoryUIOnly(Character character)
     {
         try
@@ -3584,6 +3601,33 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[LoadCurrencyFromPlayerPrefs] ❌ Error: {e.Message}");
         }
     }
+    public void SaveEquippedItemsOnly(Character character)
+    {
+        if (character == null || multiCharacterData == null) return;
+
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            var characterData = GetOrCreateCharacterData(characterType);
+
+            Debug.Log($"[SaveEquippedItemsOnly] 💾 Saving equipped items for {characterType}...");
+
+            // บันทึก equipped items โดยตรง
+            var equipmentData = InventoryDataConverter.ToCharacterEquipmentData(character);
+            characterData.characterEquipment = equipmentData;
+            characterData.UpdateEquipmentDebugInfo();
+
+            // บันทึกลง Firebase ทันที
+            SavePlayerDataAsync();
+
+            Debug.Log($"[SaveEquippedItemsOnly] ✅ Equipped items saved successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveEquippedItemsOnly] ❌ Error: {e.Message}");
+        }
+    }
+
     private void SaveCurrentStatsAsTotal(Character character)
     {
         try

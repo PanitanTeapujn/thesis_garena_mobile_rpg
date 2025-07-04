@@ -406,16 +406,22 @@ public class LevelManager : NetworkBehaviour
     /// <summary>
     /// 🆕 Apply เฉพาะ base stats (ไม่รวม equipment bonuses)
     /// </summary>
-   // 🆕 แก้ไข ApplyBaseStatsOnly ให้คำนวณ base stats ก่อน
+    // 🆕 แก้ไข ApplyBaseStatsOnly ให้คำนวณ base stats ก่อน
     private void ApplyBaseStatsOnly(int level, int exp, int expToNext, int maxHp, int maxMana,
-    int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus, float moveSpeed,
-    float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
+     int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
+     float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
     {
         CurrentLevel = level;
         CurrentExp = exp;
         ExpToNextLevel = expToNext;
 
-        // 🆕 ใช้ total stats จาก Firebase โดยตรง (ไม่ต้องคำนวณ base stats)
+        // 🆕 คำนวณ base stats จาก ScriptableObject + Level bonuses
+        CalculateBaseStatsFromLevel();
+
+        // 🆕 บันทึก base stats ใน CharacterProgressData
+        SaveBaseStatsToFirebase();
+
+        // ใช้ total stats จาก Firebase (รวม equipment แล้ว)
         character.MaxHp = maxHp;
         character.CurrentHp = maxHp;
         character.MaxMana = maxMana;
@@ -434,9 +440,53 @@ public class LevelManager : NetworkBehaviour
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
-        Debug.Log($"[LevelManager] ✅ Applied total stats from Firebase (no base/equipment separation):");
-        Debug.Log($"  HP={maxHp}, ATK={attackDamage}, MAG={magicDamage}, ARM={armor}");
+        Debug.Log($"[LevelManager] ✅ Applied stats: Base calculated, Total from Firebase");
     }
+    private void SaveBaseStatsToFirebase()
+    {
+        try
+        {
+            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
+
+            // บันทึก base stats
+            characterData.UpdateBaseStats(
+                baseMaxHp, baseMaxMana, baseAttackDamage, baseMagicDamage, baseArmor,
+                baseCriticalChance, baseCriticalDamageBonus, baseMoveSpeed,
+                baseHitRate, baseEvasionRate, baseAttackSpeed, baseReductionCoolDown
+            );
+
+            Debug.Log($"[LevelManager] 💾 Base stats saved to Firebase");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LevelManager] ❌ Error saving base stats: {e.Message}");
+        }
+    }
+    private void CalculateBaseStatsFromLevel()
+    {
+        if (character?.characterStats == null) return;
+
+        // คำนวณ base stats = ScriptableObject + Level bonuses
+        int levelBonus = CurrentLevel - 1;
+
+        baseMaxHp = character.characterStats.maxHp + (levelBonus * levelUpStats.hpBonusPerLevel);
+        baseMaxMana = character.characterStats.maxMana + (levelBonus * levelUpStats.manaBonusPerLevel);
+        baseAttackDamage = character.characterStats.attackDamage + (levelBonus * levelUpStats.attackDamageBonusPerLevel);
+        baseMagicDamage = character.characterStats.magicDamage + (levelBonus * levelUpStats.magicDamageBonusPerLevel);
+        baseArmor = character.characterStats.arrmor + (levelBonus * levelUpStats.armorBonusPerLevel);
+        baseCriticalChance = character.characterStats.criticalChance + (levelBonus * levelUpStats.criticalChanceBonusPerLevel);
+        baseCriticalDamageBonus = character.characterStats.criticalDamageBonus;
+        baseMoveSpeed = character.characterStats.moveSpeed + (levelBonus * levelUpStats.moveSpeedBonusPerLevel);
+        baseHitRate = character.characterStats.hitRate;
+        baseEvasionRate = character.characterStats.evasionRate;
+        baseAttackSpeed = character.characterStats.attackSpeed;
+        baseReductionCoolDown = character.characterStats.reductionCoolDown;
+
+        Debug.Log($"[LevelManager] 📊 Calculated base stats: HP={baseMaxHp}, ATK={baseAttackDamage}, ARM={baseArmor}");
+    }
+
+
     private void InitializeBasicLevelSystem()
     {
         if (IsInitialized) return;

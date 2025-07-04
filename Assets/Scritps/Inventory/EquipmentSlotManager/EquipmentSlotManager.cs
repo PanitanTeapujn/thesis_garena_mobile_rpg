@@ -407,17 +407,65 @@ public class EquipmentSlotManager : MonoBehaviour
 
         Debug.Log($"[EquipmentSlotManager] 🔄 Force refreshing from character {ownerCharacter.CharacterName}...");
 
-        // ตรวจสอบการเชื่อมต่อ slots
         if (!IsConnected())
         {
-            Debug.LogWarning("[EquipmentSlotManager] ⚠️ Equipment slots not connected!");
+            Debug.LogWarning("[EquipmentSlotManager] ⚠️ Equipment slots not connected! Retrying...");
+
+            // ลองรอแล้ว retry
+            StartCoroutine(RetryRefresh());
             return;
         }
 
-        // 🆕 ใช้ RefreshAllSlots แทน LoadEquippedItemsToSlots
+        // Debug character equipment ก่อน refresh
+        DebugCharacterEquipment();
+
+        // Refresh all slots
         RefreshAllSlots();
 
         Debug.Log("[EquipmentSlotManager] ✅ Force refresh completed");
+    }
+    public bool ValidateEquipmentData()
+    {
+        if (ownerCharacter == null) return false;
+
+        Debug.Log("[EquipmentSlotManager] 🔍 Validating equipment data...");
+
+        int equipmentCount = 0;
+        int potionCount = 0;
+
+        // ตรวจสอบ equipment
+        for (int i = 0; i < 6; i++)
+        {
+            ItemType itemType = GetItemTypeFromSlotIndex(i);
+            ItemData item = ownerCharacter.GetEquippedItem(itemType);
+            if (item != null) equipmentCount++;
+        }
+
+        // ตรวจสอบ potions
+        for (int i = 0; i < 5; i++)
+        {
+            ItemData potion = ownerCharacter.GetPotionInSlot(i);
+            if (potion != null) potionCount++;
+        }
+
+        Debug.Log($"[EquipmentSlotManager] Found: {equipmentCount} equipment, {potionCount} potions");
+
+        return equipmentCount > 0 || potionCount > 0;
+    }
+
+    private System.Collections.IEnumerator RetryRefresh()
+    {
+        yield return new WaitForSeconds(0.5f);
+
+        if (IsConnected())
+        {
+            RefreshAllSlots();
+            Debug.Log("[EquipmentSlotManager] ✅ Retry refresh successful");
+        }
+        else
+        {
+            Debug.LogError("[EquipmentSlotManager] ❌ Retry refresh failed - slots still not connected");
+        }
     }
     public void LogStatus()
     {

@@ -1920,7 +1920,7 @@ public class Character : NetworkBehaviour
             ForceUpdateEquipmentSlotsNow();
 
             // 🆕 บันทึก inventory และ total stats
-            SaveInventoryAndTotalStats();
+            SaveEquipmentImmediately();
         }
 
         return equipSuccess;
@@ -2365,8 +2365,8 @@ public class Character : NetworkBehaviour
         // Force update equipment slots
         ForceUpdateEquipmentSlotsNow();
 
-        // 🆕 บันทึก inventory และ total stats
-        SaveInventoryAndTotalStats();
+        // 🆕 บันทึก equipped items ทันที
+        SaveEquipmentImmediately();
 
         return true;
     }
@@ -2540,25 +2540,41 @@ public class Character : NetworkBehaviour
     {
         try
         {
-            Debug.Log("[Character] 💾 Simple save: inventory only (stats handled by LevelManager)...");
+            Debug.Log("[Character] 💾 Saving inventory and equipped items...");
 
-            // เฉพาะบันทึก inventory data
+            // บันทึก inventory และ equipped items
             PersistentPlayerData.Instance?.SaveInventoryData(this);
 
-            // ให้ LevelManager จัดการ stats saving
+            // บันทึก equipped items แยกต่างหาก เพื่อความมั่นใจ
+            PersistentPlayerData.Instance?.SaveEquippedItemsOnly(this);
+
+            // ให้ LevelManager จัดการ stats
             var levelManager = GetComponent<LevelManager>();
             if (levelManager != null)
             {
                 levelManager.ForceSaveToFirebase();
             }
 
-            Debug.Log("[Character] ✅ Simple save completed");
+            Debug.Log("[Character] ✅ Save completed");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error in simple save: {e.Message}");
+            Debug.LogError($"[Character] ❌ Save error: {e.Message}");
         }
     }
+    private void SaveEquipmentImmediately()
+    {
+        try
+        {
+            Debug.Log("[Character] 🚀 Immediate save after equipment change...");
+            PersistentPlayerData.Instance?.SaveEquippedItemsOnly(this);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Immediate save error: {e.Message}");
+        }
+    }
+
     private void SaveTotalStatsToFirebase(LevelManager levelManager)
     {
         try
