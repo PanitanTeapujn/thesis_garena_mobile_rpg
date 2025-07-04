@@ -14,13 +14,91 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   overallDropChance: 20
   maxItemDrops: 2
-  dropChanceLevelBonus: 1.01
+  dropChanceLevelBonus: 0
   itemDrops:
-  - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
-    dropChance: 50.8
-    minQuantity: 0
-    maxQuantity: 0
-    minEnemyLevel: 0
-    maxEnemyLevel: 0
+  - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
+    dropChance: 30
+    minQuantity: 1
+    maxQuantity: 3
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 9b5571c5ab683e54dad5b51909377e8a, type: 2}
+    dropChance: 30
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 8e0db883a5c8fab4bb6b7bf1439dc926, type: 2}
+    dropChance: 15
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
+    dropChance: 7
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
+    dropChance: 3
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 2bb99274bb5f1fc4db2fdd638ee5bbe2, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 31d5441768d79c54faee54144fed1476, type: 2}
+    dropChance: 30
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 94e5eb846f0b54342b9273e0834b8e93, type: 2}
+    dropChance: 15
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 35c7ad69d3c8d024c8bb42ebde12a3fd, type: 2}
+    dropChance: 7
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
+    dropChance: 3
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
+    dropChance: 38.3
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
+    dropChance: 40
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
+    dropChance: 30
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
   showDropLogs: 1
   guaranteedDropsForTesting: 0

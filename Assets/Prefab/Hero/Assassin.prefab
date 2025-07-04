@@ -232,6 +232,9 @@ MonoBehaviour:
   _NetworkedCurrentMana: 0
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
+  _IsStatsReady: 0
+  isStatsLoaded: 0
+  isSpawnComplete: 0
   healthRegenPerSecond: 1
   manaRegenPerSecond: 1
   rb: {fileID: 0}
@@ -239,6 +242,9 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  enableAutoFixInventory: 1
+  autoFixCompleted: 0
+  autoFixDelay: 3
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
@@ -501,16 +507,30 @@ MonoBehaviour:
   maxSlots: 500
   currentSlots: 80
   items: []
+  giveStarterItems: 1
+  starterItemsGiven: 0
+  starterItemsList:
+  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: db622234496cdd6488025fdca056b20a, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
+    quantity: 20
+    note: 
+  - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
+    quantity: 20
+    note: 
+  useFallbackItems: 1
+  fallbackToTestItems: 1
   testSword: {fileID: 0}
   testStaff: {fileID: 0}
   testArmor: {fileID: 0}
   testBoots: {fileID: 0}
   testRune: {fileID: 0}
   testItems: []
-  giveStarterItems: 1
-  starterItemsGiven: 0
   useItemDatabase: 1
-  fallbackToTestItems: 1
   gridWidth: 10
   gridHeight: 13
   _NetworkedCurrentSlots: 0

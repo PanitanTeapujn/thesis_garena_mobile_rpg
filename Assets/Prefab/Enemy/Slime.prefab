@@ -203,6 +203,9 @@ MonoBehaviour:
   _NetworkedCurrentMana: 0
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
+  _IsStatsReady: 0
+  isStatsLoaded: 0
+  isSpawnComplete: 0
   healthRegenPerSecond: 2
   manaRegenPerSecond: 3
   rb: {fileID: 0}
@@ -210,6 +213,9 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  enableAutoFixInventory: 1
+  autoFixCompleted: 0
+  autoFixDelay: 3
   _IsDead:
     _value: 0
   _NetworkedPosition: {x: 0, y: 0, z: 0}
@@ -247,6 +253,7 @@ MonoBehaviour:
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: -400204652379301390}
+  ItemDrop: {fileID: 0}
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -377,11 +384,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   levelUpStats:
-    hpBonusPerLevel: 10
-    manaBonusPerLevel: 5
-    attackDamageBonusPerLevel: 2
-    magicDamageBonusPerLevel: 2
-    armorBonusPerLevel: 1
+    hpBonusPerLevel: 20
+    manaBonusPerLevel: 0
+    attackDamageBonusPerLevel: 1
+    magicDamageBonusPerLevel: 1
+    armorBonusPerLevel: 2
     criticalChanceBonusPerLevel: 0.5
     moveSpeedBonusPerLevel: 0.1
   expSettings:

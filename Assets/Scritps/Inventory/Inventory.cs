@@ -4,6 +4,36 @@ using UnityEngine;
 using Fusion;
 using System;
 using System.Linq;
+
+// ✅ เพิ่ม StarterItemEntry class สำหรับจัดการ starter items
+[System.Serializable]
+public class StarterItemEntry
+{
+    [Header("Starter Item Configuration")]
+    public ItemData itemData;
+    [Range(1, 999)]
+    public int quantity = 1;
+    [Tooltip("Optional description for this starter item")]
+    public string note = "";
+
+    public StarterItemEntry()
+    {
+        quantity = 1;
+    }
+
+    public StarterItemEntry(ItemData item, int count = 1, string itemNote = "")
+    {
+        itemData = item;
+        quantity = count;
+        note = itemNote;
+    }
+
+    public bool IsValid()
+    {
+        return itemData != null && quantity > 0;
+    }
+}
+
 [System.Serializable]
 public class InventoryItem
 {
@@ -24,7 +54,6 @@ public class InventoryItem
     public int GetMaxStackSize() => itemData?.MaxStackSize ?? 1;
 }
 
-
 public class Inventory : NetworkBehaviour
 {
     #region Events
@@ -38,19 +67,26 @@ public class Inventory : NetworkBehaviour
     [SerializeField] private int maxSlots = 48; // 8x6 = 48 slots เริ่มต้น
     [SerializeField] private int currentSlots = 24; // เริ่มต้นที่ 24 ช่อง (6x4)
     [SerializeField] private List<InventoryItem> items = new List<InventoryItem>();
-    [Header("🎯 Test Items (ScriptableObjects)")]
+
+    [Header("🎁 Starter Items Configuration")]
+    [SerializeField] private bool giveStarterItems = true;
+    [SerializeField] private bool starterItemsGiven = false; // ป้องกันการให้ซ้ำ
+    [SerializeField] private List<StarterItemEntry> starterItemsList = new List<StarterItemEntry>();
+
+    [Header("🔄 Fallback Options")]
+    [SerializeField] private bool useFallbackItems = true; // เปิด/ปิดการใช้ fallback items
+    [SerializeField] private bool fallbackToTestItems = true; // ใช้ test items ถ้า database ไม่มี
+
+    [Header("🎯 Test Items (ScriptableObjects) - For Fallback")]
     [SerializeField] private ItemData testSword;
     [SerializeField] private ItemData testStaff;
     [SerializeField] private ItemData testArmor;
     [SerializeField] private ItemData testBoots;
     [SerializeField] private ItemData testRune;
     [SerializeField] private List<ItemData> testItems = new List<ItemData>();
-    [Header("🎁 Starter Items")]
-    [SerializeField] private bool giveStarterItems = true;
-    [SerializeField] private bool starterItemsGiven = false; // ป้องกันการให้ซ้ำ
+
     [Header("🎯 Item Database")]
     [SerializeField] private bool useItemDatabase = true; // เปิด/ปิดการใช้ database
-    [SerializeField] private bool fallbackToTestItems = true; // ใช้ test items ถ้า database ไม่มี
 
     [Header("🎯 Grid Layout")]
     [SerializeField] private int gridWidth = 6;   // จำนวน columns
@@ -67,7 +103,6 @@ public class Inventory : NetworkBehaviour
     #endregion
 
     #region Properties
-
     public int GridWidth { get { return gridWidth; } }
     public int GridHeight { get { return gridHeight; } }
     public int MaxSlots { get { return maxSlots; } }
@@ -209,6 +244,7 @@ public class Inventory : NetworkBehaviour
         OnInventorySlotCountChanged?.Invoke(character, newSlotCount);
     }
     #endregion
+
     private void CalculateGridDimensions()
     {
         // หา dimensions ที่เหมาะสมที่สุดตาม currentSlots
@@ -240,6 +276,7 @@ public class Inventory : NetworkBehaviour
 
         Debug.Log($"[Inventory] Grid dimensions: {gridWidth}x{gridHeight} for {currentSlots} slots");
     }
+
     #region Inventory Management
     public bool AddItem(ItemData itemData, int count = 1)
     {
@@ -380,6 +417,7 @@ public class Inventory : NetworkBehaviour
             }
         }
     }
+
     private IEnumerator VerifyGridCreation(InventoryGridManager gridManager)
     {
         yield return null; // รอ 1 frame
@@ -401,25 +439,6 @@ public class Inventory : NetworkBehaviour
         }
     }
 
-    private IEnumerator RequestGridCreation(InventoryGridManager gridManager)
-    {
-        yield return null; // รอ 1 frame
-
-        gridManager.ForceUpdateFromCharacter();
-
-        yield return null; // รออีก 1 frame
-
-        // ตรวจสอบว่าสร้างแล้วหรือยัง
-        if (gridManager.AllSlots.Count > 0)
-        {
-            Debug.Log("[Inventory] Grid creation successful");
-        }
-        else
-        {
-            Debug.LogWarning("[Inventory] Grid creation failed, retrying...");
-            gridManager.ForceUpdateFromCharacter();
-        }
-    }
     private IEnumerator RetryForceCreateGrid()
     {
         yield return null; // รอ 1 frame
@@ -432,6 +451,7 @@ public class Inventory : NetworkBehaviour
             Debug.Log("[Inventory] Retry grid creation successful");
         }
     }
+
     public bool RemoveItem(int slotIndex, int count = 1)
     {
         if (slotIndex < 0 || slotIndex >= currentSlots || count <= 0)
@@ -574,6 +594,7 @@ public class Inventory : NetworkBehaviour
 
         return true;
     }
+
     private void AutoSaveInventoryData(string action)
     {
         try
@@ -613,6 +634,7 @@ public class Inventory : NetworkBehaviour
         }
     }
 
+    // ✅ แก้ไข GiveStarterItems ให้ใช้ระบบใหม่
     private void GiveStarterItems()
     {
         if (!giveStarterItems || starterItemsGiven) return;
@@ -625,164 +647,125 @@ public class Inventory : NetworkBehaviour
             return;
         }
 
-        ItemDatabase database = GetDatabase();
-        if (database == null)
-        {
-            Debug.LogWarning("[Inventory] No ItemDatabase found for starter items");
-            return;
-        }
-
-        Debug.Log("🎁 Giving starter items...");
+        Debug.Log("🎁 Giving configurable starter items...");
 
         // รอ 1 frame เพื่อให้ระบบ setup เสร็จ
+        ItemDatabase database = GetDatabase(); // อาจจะ null ก็ได้
         StartCoroutine(GiveStarterItemsCoroutine(database));
     }
 
+    // ✅ แก้ไข GiveStarterItemsCoroutine ให้ใช้ระบบใหม่
     private IEnumerator GiveStarterItemsCoroutine(ItemDatabase database)
     {
         yield return null; // รอ 1 frame
 
         int totalItemsGiven = 0;
-        int totalItemTypesGiven = 0;
+        int totalEntries = 0;
 
-        Debug.Log("🎁 === GIVING ALL STARTER ITEMS FROM DATABASE ===");
+        Debug.Log("🎁 === GIVING CONFIGURABLE STARTER ITEMS ===");
 
-        // ✅ 1. ให้ Weapons ทุกชิ้นที่มี
-        var weapons = database.GetItemsByType(ItemType.Weapon);
-        if (weapons.Count > 0)
+        // ✅ วิธีที่ 1: ใช้ starter items list ที่กำหนดเอง
+        if (starterItemsList != null && starterItemsList.Count > 0)
         {
-            Debug.Log($"🗡️ Found {weapons.Count} weapons in database");
-            foreach (ItemData weapon in weapons)
+            Debug.Log($"📝 Found {starterItemsList.Count} starter item entries");
+
+            foreach (StarterItemEntry entry in starterItemsList)
             {
-                if (AddItem(weapon, 1))
+                if (!entry.IsValid())
                 {
-                    totalItemsGiven++;
-                    Debug.Log($"  ✅ Added: {weapon.ItemName} ({weapon.GetTierText()})");
+                    Debug.LogWarning($"⚠️ Invalid starter item entry: {entry.note}");
+                    continue;
                 }
-            }
-            totalItemTypesGiven++;
-        }
 
-        // ✅ 2. ให้ Potions ทุกชิ้นที่มี (จำนวนมาก)
-        var potions = database.GetItemsByType(ItemType.Potion);
-        if (potions.Count > 0)
-        {
-            Debug.Log($"🧪 Found {potions.Count} potions in database");
-            foreach (ItemData potion in potions)
-            {
-                // ให้ potion เยอะหน่อย เพื่อทดสอบ
-                int potionCount = UnityEngine.Random.Range(10, 21); // 10-20 ขวด
-                if (AddItem(potion, potionCount))
+                bool success = AddItem(entry.itemData, entry.quantity);
+                if (success)
                 {
-                    totalItemsGiven += potionCount;
-                    Debug.Log($"  ✅ Added: {potion.ItemName} x{potionCount} ({potion.GetTierText()})");
+                    totalItemsGiven += entry.quantity;
+                    totalEntries++;
 
-                    // แสดง potion stats
-                    if (potion.Stats.IsPotion())
+                    string logMessage = $"  ✅ Added: {entry.itemData.ItemName} x{entry.quantity} ({entry.itemData.GetTierText()})";
+                    if (!string.IsNullOrEmpty(entry.note))
+                    {
+                        logMessage += $" - {entry.note}";
+                    }
+
+                    Debug.Log(logMessage);
+
+                    // แสดง potion effects ถ้าเป็น potion
+                    if (entry.itemData.ItemType == ItemType.Potion && entry.itemData.Stats.IsPotion())
                     {
                         string effects = "";
-                        if (potion.Stats.healAmount > 0) effects += $"+{potion.Stats.healAmount}HP ";
-                        if (potion.Stats.manaAmount > 0) effects += $"+{potion.Stats.manaAmount}MP ";
-                        if (potion.Stats.healPercentage > 0) effects += $"+{potion.Stats.healPercentage:P0}HP ";
-                        if (potion.Stats.manaPercentage > 0) effects += $"+{potion.Stats.manaPercentage:P0}MP ";
+                        if (entry.itemData.Stats.healAmount > 0) effects += $"+{entry.itemData.Stats.healAmount}HP ";
+                        if (entry.itemData.Stats.manaAmount > 0) effects += $"+{entry.itemData.Stats.manaAmount}MP ";
+                        if (entry.itemData.Stats.healPercentage > 0) effects += $"+{entry.itemData.Stats.healPercentage:P0}HP ";
+                        if (entry.itemData.Stats.manaPercentage > 0) effects += $"+{entry.itemData.Stats.manaPercentage:P0}MP ";
                         Debug.Log($"    💊 Effects: {effects.Trim()}");
                     }
                 }
-            }
-            totalItemTypesGiven++;
-        }
-
-        // ✅ 3. ให้ Armors ทุกชิ้นที่มี
-        var armors = database.GetItemsByType(ItemType.Armor);
-        if (armors.Count > 0)
-        {
-            Debug.Log($"🛡️ Found {armors.Count} armors in database");
-            foreach (ItemData armor in armors)
-            {
-                if (AddItem(armor, 1))
+                else
                 {
-                    totalItemsGiven++;
-                    Debug.Log($"  ✅ Added: {armor.ItemName} ({armor.GetTierText()})");
+                    Debug.LogWarning($"❌ Failed to add: {entry.itemData.ItemName} x{entry.quantity}");
                 }
             }
-            totalItemTypesGiven++;
         }
-
-        // ✅ 4. ให้ Head Items ทุกชิ้นที่มี
-        var heads = database.GetItemsByType(ItemType.Head);
-        if (heads.Count > 0)
+        // ✅ วิธีที่ 2: Fallback ไปใช้ test items ถ้าไม่มี starter items list
+        else if (useFallbackItems && testItems != null && testItems.Count > 0)
         {
-            Debug.Log($"⛑️ Found {heads.Count} head items in database");
-            foreach (ItemData head in heads)
+            Debug.Log("📝 No starter items configured, using fallback test items");
+
+            foreach (ItemData testItem in testItems)
             {
-                if (AddItem(head, 1))
+                if (testItem == null) continue;
+
+                int quantity = testItem.ItemType == ItemType.Potion ? 10 : 1; // potion ให้ 10 ชิ้น
+                bool success = AddItem(testItem, quantity);
+
+                if (success)
                 {
-                    totalItemsGiven++;
-                    Debug.Log($"  ✅ Added: {head.ItemName} ({head.GetTierText()})");
+                    totalItemsGiven += quantity;
+                    totalEntries++;
+                    Debug.Log($"  ✅ Added (fallback): {testItem.ItemName} x{quantity} ({testItem.GetTierText()})");
                 }
             }
-            totalItemTypesGiven++;
-        }
 
-        // ✅ 5. ให้ Pants ทุกชิ้นที่มี
-        var pants = database.GetItemsByType(ItemType.Pants);
-        if (pants.Count > 0)
-        {
-            Debug.Log($"👖 Found {pants.Count} pants in database");
-            foreach (ItemData pant in pants)
-            {
-                if (AddItem(pant, 1))
-                {
-                    totalItemsGiven++;
-                    Debug.Log($"  ✅ Added: {pant.ItemName} ({pant.GetTierText()})");
-                }
-            }
-            totalItemTypesGiven++;
+            // เพิ่ม individual test items
+            if (testSword != null) { AddItem(testSword, 1); totalItemsGiven++; totalEntries++; }
+            if (testStaff != null) { AddItem(testStaff, 1); totalItemsGiven++; totalEntries++; }
+            if (testArmor != null) { AddItem(testArmor, 1); totalItemsGiven++; totalEntries++; }
+            if (testBoots != null) { AddItem(testBoots, 1); totalItemsGiven++; totalEntries++; }
+            if (testRune != null) { AddItem(testRune, 5); totalItemsGiven += 5; totalEntries++; }
         }
-
-        // ✅ 6. ให้ Shoes ทุกชิ้นที่มี
-        var shoes = database.GetItemsByType(ItemType.Shoes);
-        if (shoes.Count > 0)
+        // ✅ วิธีที่ 3: Fallback ไปใช้ database แบบเก่า
+        else if (fallbackToTestItems && useItemDatabase && database != null)
         {
-            Debug.Log($"👟 Found {shoes.Count} shoes in database");
-            foreach (ItemData shoe in shoes)
-            {
-                if (AddItem(shoe, 1))
-                {
-                    totalItemsGiven++;
-                    Debug.Log($"  ✅ Added: {shoe.ItemName} ({shoe.GetTierText()})");
-                }
-            }
-            totalItemTypesGiven++;
+            Debug.Log("📝 No starter items or fallback items, using database fallback");
+
+            // ให้ของแต่ละประเภทนิดหน่อย
+            var weapons = database.GetItemsByType(ItemType.Weapon);
+            if (weapons.Count > 0) { AddItem(weapons[0], 1); totalItemsGiven++; totalEntries++; }
+
+            var potions = database.GetItemsByType(ItemType.Potion);
+            if (potions.Count > 0) { AddItem(potions[0], 10); totalItemsGiven += 10; totalEntries++; }
+
+            var armors = database.GetItemsByType(ItemType.Armor);
+            if (armors.Count > 0) { AddItem(armors[0], 1); totalItemsGiven++; totalEntries++; }
         }
-
-        // ✅ 7. ให้ Runes ทุกชิ้นที่มี (จำนวนปานกลาง)
-        var runes = database.GetItemsByType(ItemType.Rune);
-        if (runes.Count > 0)
+        else
         {
-            Debug.Log($"💎 Found {runes.Count} runes in database");
-            foreach (ItemData rune in runes)
-            {
-                int runeCount = UnityEngine.Random.Range(3, 8); // 3-7 ชิ้น
-                if (AddItem(rune, runeCount))
-                {
-                    totalItemsGiven += runeCount;
-                    Debug.Log($"  ✅ Added: {rune.ItemName} x{runeCount} ({rune.GetTierText()})");
-                }
-            }
-            totalItemTypesGiven++;
+            Debug.LogWarning("⚠️ No starter items configured and fallback disabled!");
         }
 
         starterItemsGiven = true;
 
-        Debug.Log($"🎉 === STARTER ITEMS COMPLETE ===");
-        Debug.Log($"📊 Total Item Types: {totalItemTypesGiven}");
+        Debug.Log($"🎉 === CONFIGURABLE STARTER ITEMS COMPLETE ===");
+        Debug.Log($"📊 Total Entries: {totalEntries}");
         Debug.Log($"📊 Total Items Given: {totalItemsGiven}");
         Debug.Log($"💼 Inventory Status: {UsedSlots}/{CurrentSlots} slots used");
 
         // แสดงสรุป inventory
         LogInventorySummary();
     }
+
     public ItemDatabase GetDatabase()
     {
         if (!useItemDatabase) return null;
@@ -798,6 +781,7 @@ public class Inventory : NetworkBehaviour
     }
 
     #endregion
+
     private void LogInventorySummary()
     {
         Debug.Log("=== INVENTORY SUMMARY ===");
@@ -826,6 +810,7 @@ public class Inventory : NetworkBehaviour
             }
         }
     }
+
     #region Inventory Expansion
     public void ExpandInventory(int additionalSlots)
     {
@@ -851,6 +836,7 @@ public class Inventory : NetworkBehaviour
             Debug.LogWarning($"[Inventory] Cannot expand beyond max slots ({maxSlots})");
         }
     }
+
     public (int row, int col) SlotIndexToRowCol(int slotIndex)
     {
         if (slotIndex < 0 || slotIndex >= currentSlots)
@@ -975,23 +961,6 @@ public class Inventory : NetworkBehaviour
     }
 
     #region Context Menu for Testing
-
-
-    // เพิ่ม method สำหรับใช้ database
-
-
-    // เพิ่ม method สำหรับ test items แบบเก่า
-
-    // เพิ่ม Context Menu ใหม่ๆ สำหรับ database
-
-
-
-
-
-
-
-
-
-
+    // เพิ่ม Context Menu functions ได้ที่นี่ถ้าต้องการ
     #endregion
 }

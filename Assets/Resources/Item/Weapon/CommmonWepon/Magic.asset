@@ -10,29 +10,29 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Staff
+  m_Name: Magic
   m_EditorClassIdentifier: 
-  itemId: Staff
-  itemName: Staff
-  itemIcon: {fileID: 21300000, guid: ed0a32aeeb2bf0f40ad22e944d930018, type: 3}
+  itemId: Magic
+  itemName: Magic
+  itemIcon: {fileID: 21300000, guid: 3fa53af4c50543b469421a6895537de8, type: 3}
   itemType: 0
-  tier: 4
+  tier: 1
   description: 
   maxStackSize: 1
   isStackable: 0
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: 50
+    magicDamageBonus: 5
     armorBonus: 0
-    criticalChanceBonus: 2
+    criticalChanceBonus: 0
     criticalDamageBonus: 0
     maxHpBonus: 0
-    maxManaBonus: 20
+    maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0
-    reductionCoolDownBonus: 10
+    reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     healAmount: 0

@@ -16,7 +16,7 @@ MonoBehaviour:
   itemName: Shadowsteel Armor
   itemIcon: {fileID: 21300000, guid: 465a559bdfa55bd4daa55ba2dccc5240, type: 3}
   itemType: 2
-  tier: 5
+  tier: 4
   description: 
   maxStackSize: 1
   isStackable: 0
