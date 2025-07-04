@@ -157,27 +157,34 @@ public class LevelManager : NetworkBehaviour
 
     public void OnEquipmentLoadedRecalculateStats()
     {
-        if (!IsInitialized)
-        {
-            Debug.LogWarning("[LevelManager] Character not initialized yet, skipping stats recalculation");
-            return;
-        }
-
         try
         {
-            Debug.Log("[LevelManager] 📢 Equipment loaded notification received");
+            Debug.Log($"[LevelManager] 🔄 Recalculating stats after equipment loaded...");
 
-            // 🆕 ไม่ทำ complex recalculation แล้ว - ให้ Character จัดการเอง
-            Debug.Log("[LevelManager] ✅ Letting Character handle its own equipment stats (no LevelManager interference)");
+            if (character == null)
+            {
+                Debug.LogError("[LevelManager] Character is null!");
+                return;
+            }
 
-            // เฉพาะแจ้ง stats changed เท่านั้น
-            Character.RaiseOnStatsChanged();
+            // อัปเดต stats จาก Firebase (base stats + level bonuses)
+            RefreshCharacterData();
+
+            // ให้ Character apply equipment stats ทับ
+            character.ApplyLoadedEquipmentStatsWithReset();
+
+            // บันทึก total stats ใหม่
+            ForceSaveToFirebase();
+
+            Debug.Log($"[LevelManager] ✅ Stats recalculated after equipment loaded");
+            Debug.Log($"[LevelManager] Final stats: HP={character.MaxHp}, ATK={character.AttackDamage}, ARM={character.Armor}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LevelManager] ❌ Error in OnEquipmentLoadedRecalculateStats: {e.Message}");
+            Debug.LogError($"[LevelManager] ❌ Error recalculating stats: {e.Message}");
         }
     }
+
 
     // ========== Lightweight Initialization ==========
     private void TryInitialize()
@@ -781,7 +788,28 @@ public class LevelManager : NetworkBehaviour
     // ========== Public Methods ==========
     public float GetExpProgress() => ExpToNextLevel == 0 ? 1f : (float)CurrentExp / ExpToNextLevel;
     public bool IsMaxLevel() => CurrentLevel >= expSettings.maxLevel;
-    public void ForceSaveToFirebase() => QuickSave();
+    public void ForceSaveToFirebase()
+    {
+        try
+        {
+            Debug.Log($"[LevelManager] 💾 Force saving to Firebase...");
+
+            if (character == null || PersistentPlayerData.Instance == null)
+            {
+                Debug.LogError("[LevelManager] Cannot save - missing components");
+                return;
+            }
+
+            // บันทึก base stats และ total stats
+            PersistentPlayerData.Instance.SaveBaseStats(character, this);
+
+            Debug.Log($"[LevelManager] ✅ Force save completed");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LevelManager] ❌ Error force saving: {e.Message}");
+        }
+    }
     public void ForceLoadFromFirebase() => TryLoadFromFirebase();
 
     // ========== Debug Methods ==========

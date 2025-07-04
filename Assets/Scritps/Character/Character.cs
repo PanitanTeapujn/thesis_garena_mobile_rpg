@@ -608,26 +608,69 @@ public class Character : NetworkBehaviour
 
     public void ApplyLoadedEquipmentStats()
     {
-        Debug.Log($"[Character] ⚠️ ApplyLoadedEquipmentStats is DISABLED to prevent stats bugs");
-        Debug.Log($"[Character] ✅ Equipment stats are already included in Firebase total stats");
+        // ✅ เปิดใช้งานอีกครั้ง แต่ใช้วิธีที่ปลอดภัย
+        try
+        {
+            Debug.Log($"[Character] 🔄 Applying loaded equipment stats for {CharacterName}...");
 
-        // เฉพาะ refresh UI
-        ForceUpdateEquipmentSlotsNow();
-        OnStatsChanged?.Invoke();
+            // คำนวณ total stats จาก equipment ทั้งหมด
+            ApplyAllEquipmentStats();
 
-        // ไม่ทำการคำนวณ stats ใหม่
+            // Force update network state
+            ForceUpdateNetworkState();
+
+            // แจ้ง stats changed
+            OnStatsChanged?.Invoke();
+
+            Debug.Log($"[Character] ✅ Equipment stats applied successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying equipment stats: {e.Message}");
+        }
     }
     /// </summary>
     public void ApplyLoadedEquipmentStatsWithReset()
     {
-        Debug.Log($"[Character] ⚠️ ApplyLoadedEquipmentStatsWithReset is DISABLED to prevent stats bugs");
-        Debug.Log($"[Character] ✅ Using Firebase total stats as-is (no reset needed)");
+        try
+        {
+            Debug.Log($"[Character] 🔄 Applying loaded equipment stats with reset for {CharacterName}...");
 
-        // เฉพาะ refresh UI
-        ForceUpdateEquipmentSlotsNow();
-        OnStatsChanged?.Invoke();
+            // 1. Reset กลับเป็น base stats ก่อน
 
-        // ไม่ทำการ reset หรือคำนวณ stats ใหม่
+            // 2. เก็บ base stats สำหรับ comparison
+            int baseMaxHp = MaxHp;
+            int baseAttackDamage = AttackDamage;
+            int baseArmor = Armor;
+            float baseCriticalChance = CriticalChance;
+
+            // 3. Apply equipment stats ใหม่
+            ApplyAllEquipmentStats();
+
+            // 4. Debug การเปลี่ยนแปลง
+            int hpBonus = MaxHp - baseMaxHp;
+            int atkBonus = AttackDamage - baseAttackDamage;
+            int armBonus = Armor - baseArmor;
+            float critBonus = CriticalChance - baseCriticalChance;
+
+            Debug.Log($"[Character] ✅ Equipment bonuses applied (with reset):");
+            Debug.Log($"  HP: +{hpBonus} (Base: {baseMaxHp} → Total: {MaxHp})");
+            Debug.Log($"  ATK: +{atkBonus} (Base: {baseAttackDamage} → Total: {AttackDamage})");
+            Debug.Log($"  ARM: +{armBonus} (Base: {baseArmor} → Total: {Armor})");
+            Debug.Log($"  CRIT: +{critBonus:F1}% (Base: {baseCriticalChance:F1}% → Total: {CriticalChance:F1}%)");
+
+            // 5. Force update network state
+            ForceUpdateNetworkState();
+
+            // 6. แจ้ง stats changed
+            OnStatsChanged?.Invoke();
+
+            Debug.Log($"[Character] ✅ Applied loaded equipment stats with reset for {CharacterName}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying loaded equipment stats with reset: {e.Message}");
+        }
     }
     private IEnumerator SimpleLoadPlayerData()
     {
@@ -1918,6 +1961,7 @@ public class Character : NetworkBehaviour
         {
             // Force update equipment slots ทันที
             ForceUpdateEquipmentSlotsNow();
+            SaveTotalStatsDirectly();
 
             // 🆕 บันทึก inventory และ total stats
             SaveEquipmentImmediately();
@@ -2364,6 +2408,7 @@ public class Character : NetworkBehaviour
 
         // Force update equipment slots
         ForceUpdateEquipmentSlotsNow();
+        SaveTotalStatsDirectly();
 
         // 🆕 บันทึก equipped items ทันที
         SaveEquipmentImmediately();
@@ -2575,39 +2620,7 @@ public class Character : NetworkBehaviour
         }
     }
 
-    private void SaveTotalStatsToFirebase(LevelManager levelManager)
-    {
-        try
-        {
-            Debug.Log($"[Character] 💾 Saving total stats via LevelManager...");
-            Debug.Log($"  Current stats: HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
-
-            // ใช้ LevelManager.UpdateLevelAndStats เพื่อบันทึก total stats
-            PersistentPlayerData.Instance.UpdateLevelAndStats(
-                levelManager.CurrentLevel,
-                levelManager.CurrentExp,
-                levelManager.ExpToNextLevel,
-                MaxHp,                    // total HP (รวม equipment)
-                MaxMana,                  // total Mana (รวม equipment)
-                AttackDamage,            // total Attack (รวม equipment)
-                MagicDamage,             // total Magic (รวม equipment)
-                Armor,                   // total Armor (รวม equipment)
-                CriticalChance,          // total Crit (รวม equipment)
-                CriticalDamageBonus,     // total Crit Damage (รวม equipment)
-                MoveSpeed,               // total Move Speed (รวม equipment)
-                HitRate,                 // total Hit Rate (รวม equipment)
-                EvasionRate,             // total Evasion (รวม equipment)
-                AttackSpeed,             // total Attack Speed (รวม equipment)
-                ReductionCoolDown        // total CDR (รวม equipment)
-            );
-
-            Debug.Log($"[Character] ✅ Total stats saved to Firebase: HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character] ❌ Error saving total stats via LevelManager: {e.Message}");
-        }
-    }
+   
 
     private void SaveTotalStatsDirectly()
     {
