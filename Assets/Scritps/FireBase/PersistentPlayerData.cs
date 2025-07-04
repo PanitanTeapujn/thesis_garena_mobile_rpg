@@ -100,7 +100,14 @@ public class PersistentPlayerData : MonoBehaviour
     {
         return multiCharacterData?.playerName ?? "Player";
     }
-
+    [System.Serializable]
+    private class InventoryBackupData
+    {
+        public int totalItems = 0;
+        public int currentSlots = 0;
+        public System.DateTime timestamp;
+        public List<string> itemNames = new List<string>();
+    }
     public int GetCurrentLevel()
     {
         var characterData = GetCurrentCharacterData();
@@ -870,8 +877,27 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.Log($"[SaveInventoryData] 💾 Starting inventory save for {character.CharacterName}");
 
-            // 1. Save Shared Inventory
-            bool inventorySaved = SaveSharedInventoryData(character);
+            // 🔧 แก้ไข: ตรวจสอบ inventory ก่อน save
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogError("[SaveInventoryData] ❌ Character has no inventory to save!");
+                return;
+            }
+
+            // 🆕 เพิ่ม validation check
+            int itemsInInventory = inventory.UsedSlots;
+            Debug.Log($"[SaveInventoryData] Current inventory: {itemsInInventory}/{inventory.CurrentSlots} slots used");
+
+            // 🔧 แก้ไข: ถ้าไม่มี items ใน inventory เลย ให้ warning
+            if (itemsInInventory == 0)
+            {
+                Debug.LogWarning("[SaveInventoryData] ⚠️ No items in inventory to save!");
+                // ไม่ return false เพื่อให้ยังคง save equipment
+            }
+
+            // 1. Save Shared Inventory (แม้ว่าจะว่างก็ตาม)
+            bool inventorySaved = SaveSharedInventoryDataSafe(character);
 
             // 2. Save Character Equipment
             bool equipmentSaved = SaveCharacterEquipmentData(character);
@@ -879,9 +905,12 @@ public class PersistentPlayerData : MonoBehaviour
             // 3. Update debug info
             multiCharacterData.UpdateAllInventoryDebugInfo();
 
+            // 🔧 แก้ไข: Save แม้ว่าจะไม่มี inventory items
             if (inventorySaved || equipmentSaved)
             {
-                Debug.Log($"[SaveInventoryData] ✅ Inventory save completed for {character.CharacterName}");
+                Debug.Log($"[SaveInventoryData] ✅ Save completed for {character.CharacterName}");
+                Debug.Log($"  - Inventory saved: {inventorySaved}");
+                Debug.Log($"  - Equipment saved: {equipmentSaved}");
 
                 // Auto save to Firebase
                 SavePlayerDataAsync();
@@ -889,12 +918,122 @@ public class PersistentPlayerData : MonoBehaviour
             else
             {
                 Debug.LogWarning("[SaveInventoryData] ⚠️ No data was saved");
+
+                // 🆕 ลอง save อีกครั้งถ้าไม่สำเร็จ
+                Debug.Log("[SaveInventoryData] 🔄 Retrying save...");
+                StartCoroutine(RetrySaveInventoryData(character));
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[SaveInventoryData] ❌ Error saving inventory: {e.Message}");
             Debug.LogError($"[SaveInventoryData] Stack trace: {e.StackTrace}");
+        }
+    }
+
+    private bool SaveSharedInventoryDataSafe(Character character)
+    {
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogWarning("[SaveSharedInventoryDataSafe] Character has no inventory");
+                return false;
+            }
+
+            Debug.Log($"[SaveSharedInventoryDataSafe] 📦 Saving inventory: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
+
+            // แปลง Inventory เป็น SharedInventoryData
+            var sharedData = InventoryDataConverter.ToSharedInventoryData(inventory);
+            if (sharedData == null)
+            {
+                Debug.LogError("[SaveSharedInventoryDataSafe] Failed to convert inventory data");
+                return false;
+            }
+
+            // บันทึกลง multiCharacterData
+            multiCharacterData.sharedInventory = sharedData;
+
+            // 🆕 เพิ่ม validation หลัง save
+            bool saveSuccess = ValidateSharedInventorySave(inventory, sharedData);
+
+            if (saveSuccess)
+            {
+                Debug.Log($"[SaveSharedInventoryDataSafe] ✅ Saved {sharedData.items.Count} items to shared inventory");
+                LogSavedInventoryItems(sharedData);
+            }
+            else
+            {
+                Debug.LogError("[SaveSharedInventoryDataSafe] ❌ Save validation failed!");
+            }
+
+            return saveSuccess;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveSharedInventoryDataSafe] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    // 🆕 เพิ่ม validation หลัง save
+    private bool ValidateSharedInventorySave(Inventory inventory, SharedInventoryData sharedData)
+    {
+        try
+        {
+            int inventoryItemCount = inventory.UsedSlots;
+            int savedItemCount = sharedData?.items?.Count ?? 0;
+
+            Debug.Log($"[ValidateSharedInventorySave] Inventory items: {inventoryItemCount}, Saved items: {savedItemCount}");
+
+            // ตรวจสอบว่าจำนวน items ตรงกันหรือไม่
+            if (inventoryItemCount != savedItemCount)
+            {
+                Debug.LogWarning($"[ValidateSharedInventorySave] ⚠️ Item count mismatch: {inventoryItemCount} vs {savedItemCount}");
+
+                // ถ้า inventory ว่างแต่มี saved data แปลว่าอาจมีปัญหา
+                if (inventoryItemCount == 0 && savedItemCount > 0)
+                {
+                    Debug.LogError("[ValidateSharedInventorySave] ❌ Inventory is empty but saved data exists!");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ValidateSharedInventorySave] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    // 🆕 เพิ่ม retry mechanism
+    private System.Collections.IEnumerator RetrySaveInventoryData(Character character)
+    {
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log("[RetrySaveInventoryData] 🔄 Retrying inventory save...");
+
+        try
+        {
+            bool inventorySaved = SaveSharedInventoryDataSafe(character);
+            bool equipmentSaved = SaveCharacterEquipmentData(character);
+
+            if (inventorySaved || equipmentSaved)
+            {
+                Debug.Log("[RetrySaveInventoryData] ✅ Retry save successful");
+                SavePlayerDataAsync();
+            }
+            else
+            {
+                Debug.LogError("[RetrySaveInventoryData] ❌ Retry save failed");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[RetrySaveInventoryData] ❌ Error: {e.Message}");
         }
     }
 
@@ -1671,7 +1810,40 @@ public class PersistentPlayerData : MonoBehaviour
 
             Debug.Log($"[LoadSharedInventoryData] 📦 Loading {sharedData.items.Count} items from shared inventory");
 
-            // เคลียร์ inventory ก่อน
+            // 🆕 ตรวจสอบว่ามี items ใน inventory ปัจจุบันหรือไม่
+            int currentItems = inventory.UsedSlots;
+            Debug.Log($"[LoadSharedInventoryData] Current inventory has {currentItems} items");
+
+            // 🆕 ถ้ามี items อยู่แล้วและจำนวนตรงกับ Firebase ให้ skip การ load
+            if (currentItems > 0 && currentItems == sharedData.items.Count)
+            {
+                Debug.Log("[LoadSharedInventoryData] ✅ Inventory already has correct items, skipping load");
+                return true;
+            }
+
+            // 🆕 ถ้ามี items อยู่แล้วแต่จำนวนไม่ตรง ให้เก็บ backup ก่อน
+            List<InventoryItem> backupItems = null;
+            if (currentItems > 0)
+            {
+                Debug.LogWarning($"[LoadSharedInventoryData] ⚠️ Item count mismatch: Current={currentItems}, Firebase={sharedData.items.Count}");
+                backupItems = BackupCurrentInventory(inventory);
+            }
+
+            // 🔧 แก้ไข: ตรวจสอบข้อมูล Firebase อย่างละเอียด
+            if (!ValidateFirebaseInventoryData(sharedData))
+            {
+                Debug.LogError("[LoadSharedInventoryData] ❌ Firebase data validation failed!");
+
+                if (backupItems != null)
+                {
+                    Debug.Log("[LoadSharedInventoryData] 🔄 Keeping current inventory due to invalid Firebase data");
+                    return false; // ไม่ clear inventory ถ้าข้อมูล Firebase ไม่ถูกต้อง
+                }
+                return false;
+            }
+
+            // เคลียร์ inventory เฉพาะเมื่อแน่ใจว่าข้อมูล Firebase ถูกต้อง
+            Debug.Log("[LoadSharedInventoryData] 🧹 Clearing current inventory...");
             inventory.ClearInventory();
 
             // ตั้งค่า grid settings
@@ -1697,7 +1869,7 @@ public class PersistentPlayerData : MonoBehaviour
                     continue;
                 }
 
-                bool loaded = LoadSingleInventoryItem(inventory, savedItem);
+                bool loaded = LoadSingleInventoryItemSafe(inventory, savedItem);
                 if (loaded)
                 {
                     successCount++;
@@ -1708,23 +1880,360 @@ public class PersistentPlayerData : MonoBehaviour
                 }
             }
 
-            Debug.Log($"[LoadSharedInventoryData] ✅ Loaded: {successCount} items, Failed: {failCount} items");
+            Debug.Log($"[LoadSharedInventoryData] Load result: {successCount} success, {failCount} failed");
 
-            if (successCount > 0)
+            // 🆕 ตรวจสอบผลลัพธ์และ restore backup ถ้าจำเป็น
+            if (successCount == 0)
             {
-                // 🆕 แทนที่ LogLoadedInventoryItems() ด้วย debug ง่ายๆ
-                Debug.Log($"[LoadSharedInventoryData] ✅ Successfully loaded {successCount} items to inventory");
-                Debug.Log($"[LoadSharedInventoryData] Inventory usage: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
-                return true;
+                Debug.LogError("[LoadSharedInventoryData] ❌ Failed to load any items!");
+
+                if (backupItems != null && backupItems.Count > 0)
+                {
+                    Debug.Log("[LoadSharedInventoryData] 🔄 Restoring backup inventory...");
+                    RestoreInventoryBackup(inventory, backupItems);
+                    return false;
+                }
+                else
+                {
+                    Debug.LogWarning("[LoadSharedInventoryData] ⚠️ No backup available, inventory is now empty");
+                    return false;
+                }
             }
 
-            return false;
+            // 🆕 ตรวจสอบว่าโหลดครบถ้วนหรือไม่
+            if (successCount < sharedData.items.Count)
+            {
+                Debug.LogWarning($"[LoadSharedInventoryData] ⚠️ Partial load: {successCount}/{sharedData.items.Count} items");
+            }
+
+            Debug.Log($"[LoadSharedInventoryData] ✅ Successfully loaded {successCount} items to inventory");
+            Debug.Log($"[LoadSharedInventoryData] Final inventory usage: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
+
+            return successCount > 0;
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[LoadSharedInventoryData] ❌ Error: {e.Message}");
+            Debug.LogError($"[LoadSharedInventoryData] Stack trace: {e.StackTrace}");
             return false;
         }
+    }
+    private bool ValidateFirebaseInventoryData(SharedInventoryData sharedData)
+    {
+        try
+        {
+            if (sharedData?.items == null)
+            {
+                Debug.LogError("[ValidateFirebaseInventoryData] SharedData or items is null");
+                return false;
+            }
+
+            if (sharedData.items.Count == 0)
+            {
+                Debug.LogWarning("[ValidateFirebaseInventoryData] No items in Firebase data");
+                return false;
+            }
+
+            int validItems = 0;
+            int invalidItems = 0;
+
+            foreach (var item in sharedData.items)
+            {
+                if (item?.IsValid() == true)
+                {
+                    // ตรวจสอบว่าหา ItemData ได้หรือไม่
+                    ItemData itemData = GetItemDataById(item.itemId);
+                    if (itemData != null)
+                    {
+                        validItems++;
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[ValidateFirebaseInventoryData] Item not found in database: {item.itemId} ({item.itemName})");
+                        invalidItems++;
+                    }
+                }
+                else
+                {
+                    invalidItems++;
+                }
+            }
+
+            Debug.Log($"[ValidateFirebaseInventoryData] Validation result: {validItems} valid, {invalidItems} invalid");
+
+            // ต้องมี valid items อย่างน้อย 50% ถึงจะ load
+            bool isValid = validItems > 0 && (validItems >= invalidItems);
+
+            if (!isValid)
+            {
+                Debug.LogError($"[ValidateFirebaseInventoryData] ❌ Too many invalid items: {invalidItems}/{validItems + invalidItems}");
+            }
+
+            return isValid;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ValidateFirebaseInventoryData] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    public void SafeAutoSaveInventory(Character character, string action = "Auto-Save")
+    {
+        if (character == null || multiCharacterData == null)
+        {
+            Debug.LogWarning($"[SafeAutoSaveInventory] Cannot save - missing components");
+            return;
+        }
+
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogWarning($"[SafeAutoSaveInventory] Character has no inventory");
+                return;
+            }
+
+            int currentItems = inventory.UsedSlots;
+
+            // 🛡️ ป้องกันการ save inventory ว่าง (ยกเว้นกรณีที่ clear จริงๆ)
+            if (currentItems == 0 && action != "Clear Inventory")
+            {
+                Debug.LogWarning($"[SafeAutoSaveInventory] ⚠️ Preventing save of empty inventory for action: {action}");
+
+                // ตรวจสอบว่ามีข้อมูลใน Firebase หรือไม่
+                bool hasFirebaseData = multiCharacterData.sharedInventory?.items?.Count > 0;
+                if (hasFirebaseData)
+                {
+                    Debug.LogError($"[SafeAutoSaveInventory] ❌ BLOCKED: Attempt to save empty inventory when Firebase has data!");
+
+                    // ลอง reload จาก Firebase
+                    Debug.Log($"[SafeAutoSaveInventory] 🔄 Attempting to reload from Firebase...");
+                    LoadInventoryData(character);
+                    return;
+                }
+            }
+
+            Debug.Log($"[SafeAutoSaveInventory] 💾 Safe saving inventory with {currentItems} items (Action: {action})");
+
+            // เก็บ backup ก่อน save
+            var backupData = CreateInventoryBackupData(inventory);
+
+            // Save ปกติ
+            SaveInventoryData(character);
+
+            // Validate ว่า save สำเร็จ
+            StartCoroutine(ValidateSaveSuccess(character, backupData, currentItems));
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SafeAutoSaveInventory] ❌ Error: {e.Message}");
+        }
+    }
+
+    // 🆕 สร้าง backup data สำหรับ validation
+    private InventoryBackupData CreateInventoryBackupData(Inventory inventory)
+    {
+        var backup = new InventoryBackupData();
+        backup.totalItems = inventory.UsedSlots;
+        backup.currentSlots = inventory.CurrentSlots;
+        backup.timestamp = System.DateTime.Now;
+
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            var item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty)
+            {
+                backup.itemNames.Add($"{item.itemData.ItemName} x{item.stackCount}");
+            }
+        }
+
+        return backup;
+    }
+
+    // 🆕 Validate save success
+    private System.Collections.IEnumerator ValidateSaveSuccess(Character character, InventoryBackupData backup, int expectedItems)
+    {
+        yield return new WaitForSeconds(1f); // รอให้ save เสร็จ
+
+        try
+        {
+            Debug.Log($"[ValidateSaveSuccess] Validating save success...");
+
+            // ตรวจสอบข้อมูลใน multiCharacterData
+            int savedItems = multiCharacterData.sharedInventory?.items?.Count ?? 0;
+
+            Debug.Log($"[ValidateSaveSuccess] Expected: {expectedItems}, Saved: {savedItems}");
+
+            if (savedItems != expectedItems)
+            {
+                Debug.LogError($"[ValidateSaveSuccess] ❌ SAVE VALIDATION FAILED!");
+                Debug.LogError($"  Expected items: {expectedItems}");
+                Debug.LogError($"  Saved items: {savedItems}");
+                Debug.LogError($"  Backup had: {backup.totalItems} items");
+
+                // แสดง backup info เพื่อ debug
+                Debug.Log($"[ValidateSaveSuccess] Backup items were:");
+                foreach (var itemName in backup.itemNames)
+                {
+                    Debug.Log($"  - {itemName}");
+                }
+
+                // ลอง save อีกครั้ง
+                Debug.Log($"[ValidateSaveSuccess] 🔄 Retrying save...");
+                SaveInventoryData(character);
+            }
+            else
+            {
+                Debug.Log($"[ValidateSaveSuccess] ✅ Save validation successful");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ValidateSaveSuccess] ❌ Validation error: {e.Message}");
+        }
+    }
+    public void SaveInventoryDataSafe(Character character, string action = "Manual Save")
+    {
+        if (character == null)
+        {
+            Debug.LogError("[SaveInventoryDataSafe] Character is null!");
+            return;
+        }
+
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("[SaveInventoryDataSafe] MultiCharacterData is null!");
+            return;
+        }
+
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogError("[SaveInventoryDataSafe] Character has no inventory to save!");
+                return;
+            }
+
+            int itemsInInventory = inventory.UsedSlots;
+            Debug.Log($"[SaveInventoryDataSafe] 💾 Starting safe save for {character.CharacterName}");
+            Debug.Log($"[SaveInventoryDataSafe] Current inventory: {itemsInInventory}/{inventory.CurrentSlots} slots (Action: {action})");
+
+            // 🛡️ Double-check ป้องกันการ save inventory ว่าง
+            if (itemsInInventory == 0 && action != "Clear Inventory" && action != "Emergency Clear")
+            {
+                bool hasFirebaseData = multiCharacterData.sharedInventory?.items?.Count > 0;
+                if (hasFirebaseData)
+                {
+                    Debug.LogError("[SaveInventoryDataSafe] ❌ CRITICAL: Blocking save of empty inventory when Firebase has data!");
+                    Debug.LogError($"[SaveInventoryDataSafe] Firebase has {multiCharacterData.sharedInventory.items.Count} items");
+
+                    // แสดง Firebase items
+                    Debug.Log("[SaveInventoryDataSafe] Firebase items:");
+                    foreach (var item in multiCharacterData.sharedInventory.items)
+                    {
+                        Debug.Log($"  - {item.itemName} x{item.stackCount}");
+                    }
+
+                    return; // ไม่ save
+                }
+            }
+
+            // Save ปกติ
+            bool inventorySaved = SaveSharedInventoryDataSafe(character);
+            bool equipmentSaved = SaveCharacterEquipmentData(character);
+
+            if (inventorySaved || equipmentSaved)
+            {
+                multiCharacterData.UpdateAllInventoryDebugInfo();
+                SavePlayerDataAsync();
+
+                Debug.Log($"[SaveInventoryDataSafe] ✅ Safe save completed");
+                Debug.Log($"  - Inventory saved: {inventorySaved}");
+                Debug.Log($"  - Equipment saved: {equipmentSaved}");
+            }
+            else
+            {
+                Debug.LogWarning("[SaveInventoryDataSafe] ⚠️ No data was saved");
+            }
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveInventoryDataSafe] ❌ Error: {e.Message}");
+        }
+    }
+
+    // 🆕 Safe version ของ LoadSingleInventoryItem
+    private bool LoadSingleInventoryItemSafe(Inventory inventory, SavedInventoryItem savedItem)
+    {
+        try
+        {
+            // หา ItemData จาก ID
+            ItemData itemData = GetItemDataById(savedItem.itemId);
+            if (itemData == null)
+            {
+                Debug.LogError($"[LoadSingleInventoryItemSafe] Item not found: {savedItem.itemId} ({savedItem.itemName})");
+                return false;
+            }
+
+            // ใช้ AddItem แทนการ set ตำแหน่งโดยตรง (ปลอดภัยกว่า)
+            bool added = inventory.AddItem(itemData, savedItem.stackCount);
+
+            if (added)
+            {
+                Debug.Log($"[LoadSingleInventoryItemSafe] ✅ Added {itemData.ItemName} x{savedItem.stackCount}");
+            }
+            else
+            {
+                Debug.LogWarning($"[LoadSingleInventoryItemSafe] ⚠️ Failed to add {itemData.ItemName}");
+            }
+
+            return added;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSingleInventoryItemSafe] ❌ Error loading {savedItem.itemName}: {e.Message}");
+            return false;
+        }
+    }
+
+    // 🆕 เพิ่ม method สำหรับ backup inventory
+    private List<InventoryItem> BackupCurrentInventory(Inventory inventory)
+    {
+        var backup = new List<InventoryItem>();
+
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            var item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty)
+            {
+                backup.Add(new InventoryItem(item.itemData, item.stackCount, item.slotIndex));
+            }
+        }
+
+        Debug.Log($"[BackupCurrentInventory] Backed up {backup.Count} items");
+        return backup;
+    }
+
+    // 🆕 เพิ่ม method สำหรับ restore inventory
+    private void RestoreInventoryBackup(Inventory inventory, List<InventoryItem> backup)
+    {
+        if (backup == null || backup.Count == 0) return;
+
+        Debug.Log($"[RestoreInventoryBackup] Restoring {backup.Count} items...");
+
+        foreach (var item in backup)
+        {
+            if (item != null && !item.IsEmpty)
+            {
+                inventory.AddItem(item.itemData, item.stackCount);
+            }
+        }
+
+        Debug.Log($"[RestoreInventoryBackup] ✅ Restored backup inventory");
     }
 
     /// <summary>
@@ -3955,6 +4464,572 @@ public class PersistentPlayerData : MonoBehaviour
 
     #endregion
     // Note: This method is not implemented - consider implementing or removing
+
+    [ContextMenu("🔍 Debug: Check Inventory Status")]
+    private void DebugCheckInventoryStatus()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found in scene!");
+            return;
+        }
+
+        var inventory = character.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogError("Character has no inventory!");
+            return;
+        }
+
+        Debug.Log("=== INVENTORY STATUS DEBUG ===");
+        Debug.Log($"Character: {character.CharacterName}");
+        Debug.Log($"Inventory Slots: {inventory.UsedSlots}/{inventory.CurrentSlots}");
+        Debug.Log($"Grid Size: {inventory.GridWidth}x{inventory.GridHeight}");
+
+        // แสดงรายการ items ทั้งหมด
+        Debug.Log("📦 INVENTORY ITEMS:");
+        int totalItems = 0;
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            var item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty)
+            {
+                string stackInfo = item.stackCount > 1 ? $" x{item.stackCount}" : "";
+                Debug.Log($"  Slot {i}: {item.itemData.ItemName}{stackInfo} ({item.itemData.ItemType})");
+                totalItems += item.stackCount;
+            }
+        }
+
+        if (totalItems == 0)
+        {
+            Debug.LogWarning("❌ NO ITEMS FOUND IN INVENTORY!");
+        }
+        else
+        {
+            Debug.Log($"✅ Total items: {totalItems}");
+        }
+
+        // ตรวจสอบข้อมูลใน Firebase
+        Debug.Log("💾 FIREBASE DATA:");
+        if (multiCharacterData?.sharedInventory != null)
+        {
+            int savedItems = multiCharacterData.sharedInventory.items?.Count ?? 0;
+            Debug.Log($"  Saved items: {savedItems}");
+            Debug.Log($"  Should load from Firebase: {ShouldLoadFromFirebase()}");
+        }
+        else
+        {
+            Debug.LogWarning("  No Firebase inventory data found!");
+        }
+
+        Debug.Log("==============================");
+    }
+
+    [ContextMenu("🔧 Fix: Force Save Inventory")]
+    private void DebugForceSaveInventory()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("🔧 FORCE SAVING INVENTORY...");
+        SaveInventoryData(character);
+
+        // ตรวจสอบผลลัพธ์
+        var inventory = character.GetInventory();
+        if (inventory != null)
+        {
+            Debug.Log($"✅ Force save completed. Items in inventory: {inventory.UsedSlots}");
+        }
+    }
+
+    [ContextMenu("🔧 Fix: Force Load Inventory")]
+    private void DebugForceLoadInventory()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("🔧 FORCE LOADING INVENTORY...");
+        LoadInventoryData(character);
+
+        // ตรวจสอบผลลัพธ์
+        var inventory = character.GetInventory();
+        if (inventory != null)
+        {
+            Debug.Log($"✅ Force load completed. Items in inventory: {inventory.UsedSlots}");
+        }
+    }
+
+    [ContextMenu("🔧 Fix: Restore Inventory from Backup")]
+    private void DebugRestoreInventoryFromBackup()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("🔧 ATTEMPTING TO RESTORE INVENTORY...");
+
+        // ลองโหลดจาก PlayerPrefs backup
+        RestoreInventoryFromPlayerPrefs(character);
+    }
+
+    // 🆕 เพิ่ม method สำหรับ restore จาก PlayerPrefs
+    private void RestoreInventoryFromPlayerPrefs(Character character)
+    {
+        try
+        {
+            Debug.Log("[RestoreInventoryFromPlayerPrefs] 🔄 Attempting to restore from PlayerPrefs...");
+
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogError("Character has no inventory!");
+                return;
+            }
+
+            // ตรวจสอบว่ามี backup data ใน PlayerPrefs หรือไม่
+            int backupSlots = PlayerPrefs.GetInt("InventoryCurrentSlots", 0);
+            string lastSave = PlayerPrefs.GetString("InventoryLastSave", "");
+
+            Debug.Log($"PlayerPrefs backup info: Slots={backupSlots}, LastSave={lastSave}");
+
+            if (backupSlots > 0)
+            {
+                Debug.Log($"✅ Found PlayerPrefs backup with {backupSlots} slots");
+
+                // ขยาย inventory ถ้าจำเป็น
+                if (backupSlots > inventory.CurrentSlots)
+                {
+                    int expandSlots = backupSlots - inventory.CurrentSlots;
+                    if (inventory.CanExpandInventory(expandSlots))
+                    {
+                        inventory.ExpandInventory(expandSlots);
+                        Debug.Log($"Expanded inventory to {backupSlots} slots");
+                    }
+                }
+
+                Debug.Log("PlayerPrefs restore completed. You may need to give starter items manually.");
+            }
+            else
+            {
+                Debug.LogWarning("No PlayerPrefs backup found");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error restoring from PlayerPrefs: {e.Message}");
+        }
+    }
+
+    // 🆕 เพิ่ม method สำหรับตรวจสอบ data consistency
+    [ContextMenu("🔍 Debug: Validate Data Consistency")]
+    private void DebugValidateDataConsistency()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("=== DATA CONSISTENCY CHECK ===");
+
+        var inventory = character.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogError("❌ Character has no inventory!");
+            return;
+        }
+
+        // ตรวจสอบ inventory vs Firebase data
+        int currentItems = inventory.UsedSlots;
+        int savedItems = multiCharacterData?.sharedInventory?.items?.Count ?? 0;
+
+        Debug.Log($"Current inventory items: {currentItems}");
+        Debug.Log($"Saved Firebase items: {savedItems}");
+
+        if (currentItems == 0 && savedItems > 0)
+        {
+            Debug.LogError("❌ INCONSISTENCY DETECTED: Inventory is empty but Firebase has data!");
+            Debug.Log("💡 Suggested fix: Use 'Force Load Inventory' context menu");
+        }
+        else if (currentItems > 0 && savedItems == 0)
+        {
+            Debug.LogWarning("⚠️ WARNING: Inventory has items but Firebase is empty!");
+            Debug.Log("💡 Suggested fix: Use 'Force Save Inventory' context menu");
+        }
+        else if (currentItems == savedItems)
+        {
+            Debug.Log("✅ Data consistency looks good");
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ WARNING: Item count mismatch ({currentItems} vs {savedItems})");
+        }
+
+        Debug.Log("=============================");
+    }
+
+    // 🆕 เพิ่ม method สำหรับให้ starter items ใหม่
+    [ContextMenu("🎁 Give Starter Items")]
+    private void DebugGiveStarterItems()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        var inventory = character.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogError("Character has no inventory!");
+            return;
+        }
+
+        Debug.Log("🎁 GIVING STARTER ITEMS...");
+
+        try
+        {
+            // ใช้ reflection เพื่อเรียก GiveStarterItems
+            var method = inventory.GetType().GetMethod("GiveStarterItems",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (method != null)
+            {
+                // Reset starterItemsGiven flag
+                var field = inventory.GetType().GetField("starterItemsGiven",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null)
+                {
+                    field.SetValue(inventory, false);
+                }
+
+                method.Invoke(inventory, null);
+                Debug.Log("✅ Starter items given successfully");
+            }
+            else
+            {
+                Debug.LogError("❌ Could not find GiveStarterItems method");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error giving starter items: {e.Message}");
+        }
+    }
+    // 🛡️ Context Menu สำหรับทดสอบ safe save
+    [ContextMenu("🛡️ Test: Safe Save Current Inventory")]
+    private void TestSafeSaveInventory()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character != null)
+        {
+            SaveInventoryDataSafe(character, "Manual Test");
+        }
+        else
+        {
+            Debug.LogError("No Character found!");
+        }
+    }
+
+    [ContextMenu("🚨 EMERGENCY: Fix Lost Inventory")]
+    private void EmergencyFixLostInventory()
+    {
+        var character = FindObjectOfType<Character>();
+        if (character == null)
+        {
+            Debug.LogError("No Character found!");
+            return;
+        }
+
+        Debug.Log("🚨 EMERGENCY: Attempting to fix lost inventory...");
+
+        var inventory = character.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogError("Character has no inventory!");
+            return;
+        }
+
+        // 1. ตรวจสอบข้อมูลใน Firebase
+        Debug.Log("📊 Checking Firebase data...");
+        if (multiCharacterData?.sharedInventory?.items != null)
+        {
+            int savedItemCount = multiCharacterData.sharedInventory.items.Count;
+            Debug.Log($"✅ Found {savedItemCount} items in Firebase");
+
+            if (savedItemCount > 0)
+            {
+                Debug.Log("🔄 Force loading items from Firebase...");
+
+                // 2. Force load โดยไม่ clear inventory
+                bool success = EmergencyLoadInventoryItems(character);
+
+                if (success)
+                {
+                    Debug.Log("🎉 EMERGENCY FIX SUCCESSFUL!");
+
+                    // 3. Force refresh UI
+                    ForceRefreshInventoryUIEmergency(character);
+
+                    // 4. ตรวจสอบผลลัพธ์
+                    int currentItems = inventory.UsedSlots;
+                    Debug.Log($"📈 Result: {currentItems} items loaded into inventory");
+
+                    if (currentItems > 0)
+                    {
+                        Debug.Log("✅ Inventory restored successfully!");
+
+                        // 5. Save เพื่อป้องกันปัญหาซ้ำ
+                        SaveInventoryData(character);
+                    }
+                    else
+                    {
+                        Debug.LogError("❌ Emergency fix failed - still no items");
+
+                        // ลองวิธีอื่น
+                        Debug.Log("🔄 Trying alternative fix...");
+                        EmergencyAlternativeFix(character);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("❌ Emergency load failed");
+                    EmergencyAlternativeFix(character);
+                }
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Firebase data is also empty - giving starter items");
+                EmergencyGiveStarterItems(character);
+            }
+        }
+        else
+        {
+            Debug.LogError("❌ No Firebase data found");
+            EmergencyGiveStarterItems(character);
+        }
+    }
+
+    // 🆕 Emergency load method ที่ไม่ clear inventory
+    private bool EmergencyLoadInventoryItems(Character character)
+    {
+        try
+        {
+            var inventory = character.GetInventory();
+            var sharedData = multiCharacterData.sharedInventory;
+
+            if (inventory == null || sharedData?.items == null)
+            {
+                Debug.LogError("[EmergencyLoadInventoryItems] Missing inventory or data");
+                return false;
+            }
+
+            Debug.Log($"[EmergencyLoadInventoryItems] Loading {sharedData.items.Count} items without clearing...");
+
+            int successCount = 0;
+            int failCount = 0;
+
+            // โหลดแต่ละ item โดยไม่ clear inventory ก่อน
+            foreach (var savedItem in sharedData.items)
+            {
+                if (savedItem?.IsValid() != true)
+                {
+                    failCount++;
+                    continue;
+                }
+
+                try
+                {
+                    // หา ItemData จาก ID
+                    ItemData itemData = GetItemDataById(savedItem.itemId);
+                    if (itemData == null)
+                    {
+                        Debug.LogError($"[EmergencyLoadInventoryItems] Item not found: {savedItem.itemId}");
+                        failCount++;
+                        continue;
+                    }
+
+                    // เพิ่ม item ลง inventory (แทนที่จะ set ตำแหน่งเฉพาะ)
+                    bool added = inventory.AddItem(itemData, savedItem.stackCount);
+                    if (added)
+                    {
+                        successCount++;
+                        Debug.Log($"[EmergencyLoadInventoryItems] ✅ Added {itemData.ItemName} x{savedItem.stackCount}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[EmergencyLoadInventoryItems] ⚠️ Failed to add {itemData.ItemName}");
+                        failCount++;
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[EmergencyLoadInventoryItems] Error loading {savedItem.itemName}: {e.Message}");
+                    failCount++;
+                }
+            }
+
+            Debug.Log($"[EmergencyLoadInventoryItems] Result: {successCount} success, {failCount} failed");
+            return successCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[EmergencyLoadInventoryItems] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    // 🆕 Emergency UI refresh
+    private void ForceRefreshInventoryUIEmergency(Character character)
+    {
+        try
+        {
+            Debug.Log("[ForceRefreshInventoryUIEmergency] 🔄 Emergency UI refresh...");
+
+            // 1. Force refresh inventory grid
+            var inventoryGridManager = FindObjectOfType<InventoryGridManager>();
+            if (inventoryGridManager != null)
+            {
+                inventoryGridManager.ForceUpdateFromCharacter();
+                inventoryGridManager.ForceSyncAllSlots();
+                Debug.Log("[ForceRefreshInventoryUIEmergency] ✅ Inventory grid refreshed");
+            }
+
+            // 2. แจ้ง stats changed
+            Character.RaiseOnStatsChanged();
+
+            // 3. Force update Canvas หลายครั้ง
+            Canvas.ForceUpdateCanvases();
+
+            // รอแล้วทำอีกครั้ง
+            StartCoroutine(DelayedCanvasUpdate());
+
+            Debug.Log("[ForceRefreshInventoryUIEmergency] ✅ Emergency UI refresh completed");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ForceRefreshInventoryUIEmergency] ❌ Error: {e.Message}");
+        }
+    }
+
+    private System.Collections.IEnumerator DelayedCanvasUpdate()
+    {
+        yield return new WaitForSeconds(0.1f);
+        Canvas.ForceUpdateCanvases();
+
+        yield return new WaitForSeconds(0.1f);
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[DelayedCanvasUpdate] ✅ Delayed canvas updates completed");
+    }
+
+    // 🆕 Alternative fix method
+    private void EmergencyAlternativeFix(Character character)
+    {
+        Debug.Log("🔄 Trying alternative emergency fix...");
+
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null) return;
+
+            // ลองขยาย inventory slots ก่อน
+            int currentSlots = inventory.CurrentSlots;
+            int maxSlots = inventory.MaxSlots;
+
+            if (currentSlots < maxSlots)
+            {
+                Debug.Log($"📈 Expanding inventory: {currentSlots} → {maxSlots}");
+                inventory.ExpandInventory(maxSlots - currentSlots);
+            }
+
+            // ลองโหลดอีกครั้ง
+            LoadSharedInventoryData(character);
+
+            // Force refresh UI อีกครั้ง
+            ForceRefreshInventoryUIEmergency(character);
+
+            // ตรวจสอบผลลัพธ์
+            int itemsAfterFix = inventory.UsedSlots;
+            if (itemsAfterFix > 0)
+            {
+                Debug.Log($"✅ Alternative fix successful: {itemsAfterFix} items");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ Alternative fix failed, giving starter items");
+                EmergencyGiveStarterItems(character);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Alternative fix error: {e.Message}");
+            EmergencyGiveStarterItems(character);
+        }
+    }
+
+    // 🆕 Emergency starter items
+    private void EmergencyGiveStarterItems(Character character)
+    {
+        Debug.Log("🎁 Emergency: Giving starter items...");
+
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null) return;
+
+            // ใช้ reflection เพื่อเรียก GiveStarterItems แบบบังคับ
+            var method = inventory.GetType().GetMethod("GiveStarterItems",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (method != null)
+            {
+                // Reset flag ก่อน
+                var field = inventory.GetType().GetField("starterItemsGiven",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null)
+                {
+                    field.SetValue(inventory, false);
+                }
+
+                method.Invoke(inventory, null);
+                Debug.Log("✅ Emergency starter items given");
+
+                // Force save เพื่อป้องกันปัญหาซ้ำ
+                StartCoroutine(DelayedEmergencySave(character));
+            }
+            else
+            {
+                Debug.LogError("❌ Could not find GiveStarterItems method");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Emergency starter items error: {e.Message}");
+        }
+    }
+
+    private System.Collections.IEnumerator DelayedEmergencySave(Character character)
+    {
+        yield return new WaitForSeconds(2f);
+
+        Debug.Log("💾 Emergency saving after starter items...");
+        SaveInventoryData(character);
+    }
     internal void CheckFirebaseStatus()
     {
         throw new System.NotImplementedException();

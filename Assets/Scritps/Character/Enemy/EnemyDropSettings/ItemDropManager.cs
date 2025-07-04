@@ -292,55 +292,7 @@ public class ItemDropManager : NetworkBehaviour
     #endregion
 
     #region Debug & Testing
-    [ContextMenu("🎁 Test Item Drop")]
-    public void TestItemDrop()
-    {
-        if (!Application.isPlaying) return;
-
-        Debug.Log("=== TESTING ITEM DROP ===");
-        Debug.Log($"Configured drops: {itemDropSettings?.itemDrops.Count ?? 0}");
-
-        if (itemDropSettings != null)
-        {
-            for (int i = 0; i < itemDropSettings.itemDrops.Count; i++)
-            {
-                var drop = itemDropSettings.itemDrops[i];
-                string itemName = drop.itemData?.ItemName ?? "NULL";
-                Debug.Log($"  Drop {i}: {itemName} ({drop.dropChance}% chance, Level {drop.minEnemyLevel}-{(drop.maxEnemyLevel == 0 ? "∞" : drop.maxEnemyLevel.ToString())})");
-            }
-        }
-
-        ExecuteItemDrops();
-    }
-
-    [ContextMenu("📊 Debug Available Drops")]
-    public void DebugAvailableDrops()
-    {
-        if (itemDropSettings == null)
-        {
-            Debug.LogWarning("No item drop settings assigned!");
-            return;
-        }
-
-        int enemyLevel = GetEnemyLevel();
-        var available = itemDropSettings.GetAvailableDropsForLevel(enemyLevel);
-
-        Debug.Log($"=== AVAILABLE ITEM DROPS FOR LEVEL {enemyLevel} ===");
-        Debug.Log($"Total configured: {itemDropSettings.itemDrops.Count}");
-        Debug.Log($"Available at this level: {available.Count}");
-        Debug.Log($"Overall drop chance: {itemDropSettings.GetEffectiveDropChance(enemyLevel):F1}%");
-
-        foreach (var drop in available)
-        {
-            string itemName = drop.itemData?.ItemName ?? "NULL";
-            Debug.Log($"  ✅ {itemName} ({drop.dropChance}% chance, Qty: {drop.minQuantity}-{drop.maxQuantity})");
-        }
-
-        if (available.Count == 0)
-        {
-            Debug.LogWarning("No items available to drop at this level!");
-        }
-    }
+   
     #endregion
 }
 

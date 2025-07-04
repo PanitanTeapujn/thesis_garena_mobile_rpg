@@ -252,6 +252,9 @@ public class Inventory : NetworkBehaviour
         // ✅ Force สร้าง inventory grid ก่อนเพิ่ม item
         ForceCreateInventoryGridIfNeeded();
 
+        // เก็บสถานะก่อนเพิ่ม item สำหรับ validation
+        int usedSlotsBefore = UsedSlots;
+
         // ถ้า item สามารถ stack ได้ ลองหา slot ที่มี item เดียวกันแล้วยังไม่เต็ม
         if (itemData.CanStack())
         {
@@ -274,7 +277,12 @@ public class Inventory : NetworkBehaviour
                         RPC_NotifyInventoryChanged(i, true, slot.stackCount);
                     }
 
-                    if (count <= 0) return true; // เพิ่มครบแล้ว
+                    if (count <= 0)
+                    {
+                        // 🆕 Auto-save หลังจากเพิ่ม item สำเร็จ
+                        AutoSaveInventoryData("AddItem - Stack");
+                        return true; // เพิ่มครบแล้ว
+                    }
                 }
             }
         }
@@ -304,10 +312,26 @@ public class Inventory : NetworkBehaviour
                 RPC_NotifyInventoryChanged(emptySlot, true, addCount);
             }
         }
-        PersistentPlayerData.Instance?.SaveInventoryData(character);
 
-        return true;
+        // 🆕 ตรวจสอบว่าเพิ่ม item สำเร็จหรือไม่
+        int usedSlotsAfter = UsedSlots;
+        bool addSuccess = usedSlotsAfter > usedSlotsBefore;
+
+        if (addSuccess)
+        {
+            Debug.Log($"[Inventory] ✅ Successfully added {itemData.ItemName}. Slots: {usedSlotsBefore} → {usedSlotsAfter}");
+
+            // 🆕 Auto-save หลังจากเพิ่ม item สำเร็จ
+            AutoSaveInventoryData("AddItem - New Slot");
+        }
+        else
+        {
+            Debug.LogWarning($"[Inventory] ⚠️ AddItem may have failed for {itemData.ItemName}");
+        }
+
+        return addSuccess;
     }
+
     private void ForceCreateInventoryGridIfNeeded()
     {
         // หา InventoryGridManager
@@ -429,13 +453,19 @@ public class Inventory : NetworkBehaviour
             return false;
         }
 
+        // เก็บข้อมูลก่อนลบ
+        string itemName = slot.itemData.ItemName;
+        int stackBefore = slot.stackCount;
+
         slot.stackCount -= count;
 
+        bool itemRemoved = false;
         if (slot.stackCount <= 0)
         {
             // ลบ item ออกจาก slot
             slot.itemData = null;
             slot.stackCount = 0;
+            itemRemoved = true;
             Debug.Log($"[Inventory] Removed item from slot {slotIndex}");
         }
         else
@@ -443,11 +473,16 @@ public class Inventory : NetworkBehaviour
             Debug.Log($"[Inventory] Removed {count} items from slot {slotIndex}. Remaining: {slot.stackCount}");
         }
 
+        // แจ้ง UI
+        OnInventoryItemChanged?.Invoke(character, slotIndex, slot);
+
         if (HasStateAuthority)
         {
             RPC_NotifyInventoryChanged(slotIndex, !slot.IsEmpty, slot.stackCount);
         }
-        PersistentPlayerData.Instance?.SaveInventoryData(character);
+
+        // 🆕 Auto-save หลังจากลบ item
+        AutoSaveInventoryData($"RemoveItem - {itemName} from slot {slotIndex}");
 
         return true;
     }
@@ -527,15 +562,57 @@ public class Inventory : NetworkBehaviour
 
         Debug.Log($"[Inventory] Moved item from slot {fromSlot} to slot {toSlot}");
 
+        // แจ้ง UI
         if (HasStateAuthority)
         {
             RPC_NotifyInventoryChanged(fromSlot, !items[fromSlot].IsEmpty, items[fromSlot].stackCount);
             RPC_NotifyInventoryChanged(toSlot, !items[toSlot].IsEmpty, items[toSlot].stackCount);
         }
-        PersistentPlayerData.Instance?.SaveInventoryData(character);
+
+        // 🆕 Auto-save หลังจากย้าย item
+        AutoSaveInventoryData($"MoveItem - slot {fromSlot} to {toSlot}");
 
         return true;
     }
+    private void AutoSaveInventoryData(string action)
+    {
+        try
+        {
+            if (PersistentPlayerData.Instance != null && character != null)
+            {
+                Debug.Log($"[Inventory] 💾 Auto-saving after: {action}");
+
+                // ใช้ Coroutine เพื่อไม่ให้ block การทำงาน
+                StartCoroutine(DelayedAutoSave(action));
+            }
+            else
+            {
+                Debug.LogWarning($"[Inventory] Cannot auto-save: PersistentPlayerData={PersistentPlayerData.Instance != null}, Character={character != null}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Inventory] ❌ Auto-save error: {e.Message}");
+        }
+    }
+
+    // 🆕 เพิ่ม Delayed Auto-Save
+    private IEnumerator DelayedAutoSave(string action)
+    {
+        // รอ 0.5 วินาที เพื่อให้ UI update เสร็จก่อน
+        yield return new WaitForSeconds(0.5f);
+
+        try
+        {
+            PersistentPlayerData.Instance?.SafeAutoSaveInventory(character, "AddItem");
+            Debug.Log($"[Inventory] ✅ Auto-save completed for: {action}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Inventory] ❌ Delayed auto-save error: {e.Message}");
+        }
+    }
+
     private void GiveStarterItems()
     {
         if (!giveStarterItems || starterItemsGiven) return;
