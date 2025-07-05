@@ -154,7 +154,22 @@ MonoBehaviour:
     spawnCooldown: 1
     lastSpawnTime: 0
     currentCount: 0
-  bossConditions: []
+  bossConditions:
+  - bossPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
+      type: 3}
+    bossName: 
+    enemiesToKill: 20
+    includeSpecificEnemies: 1
+    specificEnemyNames:
+    - Slime
+    bossRespawnCooldown: 0
+    maxBossInstances: 0
+    announceSpawn: 1
+    spawnWarningTime: 0
+    currentKillCount: 0
+    lastBossDeathTime: 0
+    currentBossCount: 0
+    isSpawningBoss: 0
   enableBossSpawning: 1
   bossSpawnPoints:
   - {fileID: 6608536978320820854}
