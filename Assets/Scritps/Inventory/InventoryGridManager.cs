@@ -758,14 +758,14 @@ public class InventoryGridManager : MonoBehaviour
 
             slot.SetFilledState(itemIcon, showStackCount ? stackCount : 0);
 
-            // เพิ่ม tier color
+            // 🆕 เปลี่ยนจาก SetRarityColor เป็น SetTierBackground
             Color tierColor = item.itemData.GetTierColor();
-            slot.SetRarityColor(tierColor);
+            slot.SetTierBackground(tierColor);
 
             Debug.Log($"[InventoryGrid] Updated slot {slotIndex}: {item.itemData.ItemName} x{stackCount}, isEmpty after update: {slot.IsEmpty}");
         }
 
-        // ✅ Force refresh canvas หลังจาก update
+        // Force refresh canvas หลังจาก update
         StartCoroutine(DelayedCanvasRefresh());
     }
     private IEnumerator DelayedCanvasRefresh()

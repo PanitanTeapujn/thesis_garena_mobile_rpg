@@ -190,11 +190,10 @@ public class CombatManager : NetworkBehaviour
         SyncHealthUpdate();
 
         // ✅ แสดง Damage Text ผ่าน RPC
-        if (HasStateAuthority)
-        {
-            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-            RPC_ShowDamageText(textPosition, totalDamage, damageType, isCritical, false, false);
-        }
+       
+
+        // 🆕 ✅ Fire damage event สำหรับ visual flash
+        OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)
@@ -217,11 +216,10 @@ public class CombatManager : NetworkBehaviour
         SyncHealthUpdate();
 
         // ✅ แสดง Damage Text ผ่าน RPC
-        if (HasStateAuthority)
-        {
-            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-            RPC_ShowDamageText(textPosition, finalDamage, damageType, isCritical, false, false);
-        }
+       
+
+        // 🆕 ✅ Fire damage event สำหรับ visual flash
+        OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)
@@ -546,37 +544,6 @@ public class CombatManager : NetworkBehaviour
     #endregion
 
     #region Debug Methods - Methods สำหรับ Debug และทดสอบระบบ Combat
-    public void DebugCriticalStats()
-    {
-        if (character == null) return;
-
-        float baseCrit = character.CriticalDamageBonus;
-        float equipmentBonus = equipmentManager?.GetCriticalMultiplierBonus() ?? 0f;
-        float totalCrit = character.GetEffectiveCriticalDamageBonus();
-
-        Debug.Log($"=== {character.CharacterName} Critical Stats Debug (New System) ===");
-        Debug.Log($"Base Critical Damage Bonus: {baseCrit}");
-        Debug.Log($"Equipment Bonus: {equipmentBonus}");
-        Debug.Log($"Total Effective: {totalCrit}");
-        Debug.Log($"Expected Damage with Crit: Base × (1 + {totalCrit}) = Base × {1f + totalCrit:F2}");
-    }
-
-    [System.Diagnostics.Conditional("UNITY_EDITOR")]
-    public void TestCriticalDamage(int testBaseDamage = 55)
-    {
-        Debug.Log($"=== Testing Critical Damage Calculation ===");
-        Debug.Log($"Test Base Damage: {testBaseDamage}");
-
-        // Test normal damage
-        int normalDamage = CalculateFinalDamage(testBaseDamage, false, DamageType.Normal);
-        Debug.Log($"Normal Damage Result: {normalDamage}");
-
-        // Test critical damage
-        int criticalDamage = CalculateFinalDamage(testBaseDamage, true, DamageType.Normal);
-        Debug.Log($"Critical Damage Result: {criticalDamage}");
-
-        // Show stats
-        DebugCriticalStats();
-    }
+   
     #endregion
 }

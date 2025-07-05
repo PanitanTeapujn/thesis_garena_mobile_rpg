@@ -189,7 +189,7 @@ public class NetworkEnemy : Character
         if (enemyLevel != null && HasStateAuthority)
         {
             // Set random level 1-5 for enemy
-            int randomLevel = Random.Range(1, 50);
+            int randomLevel = Random.Range(1, 10);
             while (enemyLevel.CurrentLevel < randomLevel)
             {
                 enemyLevel.GainExp(enemyLevel.ExpToNextLevel);

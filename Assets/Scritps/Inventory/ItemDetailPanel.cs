@@ -13,6 +13,7 @@ public class ItemDetailPanel : MonoBehaviour
     public TextMeshProUGUI itemStatsText;   // สถิติไอเทม
     public TextMeshProUGUI stackCountText;  // จำนวนไอเทม
     public Button closeButton;              // ปุ่มปิด panel
+    public Image itemTierBackground;        // พื้นหลังแสดงสี tier ของ item icon
 
     [Header("🆕 Equip/Unequip Buttons")]
     public Button equipButton;              // ปุ่ม Equip
@@ -33,23 +34,63 @@ public class ItemDetailPanel : MonoBehaviour
             closeButton.onClick.AddListener(HideItemDetail);
         }
 
-        // 🆕 Setup equip button
+        // Setup equip button
         if (equipButton != null)
         {
             equipButton.onClick.RemoveAllListeners();
             equipButton.onClick.AddListener(OnEquipButtonClicked);
         }
 
-        // 🆕 Setup unequip button
+        // Setup unequip button
         if (unequipButton != null)
         {
             unequipButton.onClick.RemoveAllListeners();
             unequipButton.onClick.AddListener(OnUnequipButtonClicked);
         }
+
         combatUIManager = GetComponentInParent<CombatUIManager>();
+
+        // 🆕 Setup tier background for itemIconImage (ใช้ background แทน outline)
+        SetupItemIconTierBackground();
 
         // ซ่อน panel ตั้งแต่เริ่มต้น
         HideItemDetail();
+    }
+
+    private void SetupItemIconTierBackground()
+    {
+        // หา tier background ถ้าไม่ได้ assign ใน inspector
+        if (itemTierBackground == null && itemIconImage != null)
+        {
+            // หาใน children ของ itemIconImage
+            Transform tierBgTransform = itemIconImage.transform.Find("TierBackground");
+            if (tierBgTransform != null)
+            {
+                itemTierBackground = tierBgTransform.GetComponent<Image>();
+            }
+            else
+            {
+                // สร้างใหม่ถ้าไม่มี
+                GameObject tierBgObj = new GameObject("TierBackground");
+                tierBgObj.transform.SetParent(itemIconImage.transform, false);
+                itemTierBackground = tierBgObj.AddComponent<Image>();
+
+                // ตั้งค่า RectTransform ให้อยู่ข้างหลัง itemIconImage
+                RectTransform tierRect = itemTierBackground.GetComponent<RectTransform>();
+                tierRect.anchorMin = Vector2.zero;
+                tierRect.anchorMax = Vector2.one;
+                tierRect.offsetMin = Vector2.one * -5f;  // ขยายออกมาเล็กน้อย
+                tierRect.offsetMax = Vector2.one * 5f;
+
+                // ตั้งค่าให้เป็น background layer
+                tierBgObj.transform.SetSiblingIndex(0); // อยู่ด้านหลัง itemIconImage
+                itemTierBackground.raycastTarget = false;
+                itemTierBackground.color = Color.white;
+                itemTierBackground.enabled = false; // ปิดไว้ก่อน
+
+                Debug.Log("[ItemDetailPanel] Created TierBackground for itemIconImage");
+            }
+        }
     }
 
     public void ShowItemDetail(InventoryItem item)
@@ -74,14 +115,17 @@ public class ItemDetailPanel : MonoBehaviour
         if (itemIconImage != null)
         {
             itemIconImage.sprite = itemData.ItemIcon;
-            itemIconImage.color = itemData.GetTierColor();
+            itemIconImage.color = Color.white; // 🆕 ใช้สีขาวแทนการเปลี่ยนสี
+
+            // 🆕 เซ็ต tier border แทนการเปลี่ยนสี
+            SetItemIconTierBackground(itemData.GetTierColor());
         }
 
         // แสดงชื่อไอเทม
         if (itemNameText != null)
         {
             itemNameText.text = itemData.ItemName;
-            itemNameText.color = itemData.GetTierColor();
+            itemNameText.color = itemData.GetTierColor(); // ชื่อยังคงใช้สี tier
         }
 
         // แสดงประเภทไอเทม
@@ -117,7 +161,7 @@ public class ItemDetailPanel : MonoBehaviour
         {
             if (item.stackCount > 1)
             {
-                stackCountText.text = $"Quantity: {item.stackCount}";
+                stackCountText.text = $"{item.stackCount}x";
                 stackCountText.gameObject.SetActive(true);
             }
             else
@@ -126,14 +170,72 @@ public class ItemDetailPanel : MonoBehaviour
             }
         }
 
-        // 🆕 จัดการปุ่ม Equip/Unequip
+        // จัดการปุ่ม Equip/Unequip
         UpdateEquipButtons(itemData);
 
         Debug.Log($"[ItemDetailPanel] Showing details for: {itemData.ItemName}");
     }
+    private void SetItemIconTierBackground(Color tierColor)
+    {
+        if (itemTierBackground != null)
+        {
+            itemTierBackground.color = tierColor;
+            itemTierBackground.enabled = true;
+            Debug.Log($"[ItemDetailPanel] Set item icon tier background to {tierColor}");
+        }
+        else
+        {
+            Debug.LogWarning("[ItemDetailPanel] itemTierBackground is null! Please assign it in Inspector");
+        }
+    }
+
+    // 🆕 method สำหรับปิด tier background
+    private void DisableItemIconTierBackground()
+    {
+        if (itemTierBackground != null)
+        {
+            itemTierBackground.enabled = false;
+            Debug.Log("[ItemDetailPanel] Disabled item icon tier background");
+        }
+    }
+
+    private void SetItemIconTierBorder(Color tierColor)
+    {
+        if (itemIconImage != null)
+        {
+            var outline = itemIconImage.GetComponent<UnityEngine.UI.Outline>();
+            if (outline != null)
+            {
+                outline.effectColor = tierColor;
+                outline.enabled = true;
+                Debug.Log($"[ItemDetailPanel] Set item icon tier border to {tierColor}");
+            }
+            else
+            {
+                Debug.LogWarning("[ItemDetailPanel] No Outline component found on itemIconImage");
+            }
+        }
+    }
+
+    // 🆕 method สำหรับปิด tier border
+    private void DisableItemIconTierBorder()
+    {
+        if (itemIconImage != null)
+        {
+            var outline = itemIconImage.GetComponent<UnityEngine.UI.Outline>();
+            if (outline != null)
+            {
+                outline.enabled = false;
+                Debug.Log("[ItemDetailPanel] Disabled item icon tier border");
+            }
+        }
+    }
+
 
     public void HideItemDetail()
     {
+        DisableItemIconTierBackground();
+
         gameObject.SetActive(false);
         Debug.Log("[ItemDetailPanel] Item detail panel hidden");
     }
@@ -218,7 +320,7 @@ public class ItemDetailPanel : MonoBehaviour
 
         Debug.Log($"[ItemDetailPanel] Found target slot: {targetSlot.SlotType} (Potion Index: {targetSlot.PotionSlotIndex})");
 
-        // 🆕 สำหรับ potion: ใส่ทั้ง stack
+        // สำหรับ potion: ใส่ทั้ง stack
         if (itemType == ItemType.Potion)
         {
             bool success = EquipFullPotionStack();
@@ -234,7 +336,11 @@ public class ItemDetailPanel : MonoBehaviour
 
             if (equipSuccess)
             {
+                // 🆕 เปลี่ยนจาก SetFilledState ให้ใช้ SetTierBorder
                 targetSlot.SetFilledState(currentItem.itemData.ItemIcon, currentItem.itemData.GetTierColor());
+                // หรือถ้า EquipmentSlot มี method SetTierBorder แล้ว:
+                // targetSlot.SetTierBorder(currentItem.itemData.GetTierColor());
+
                 RemoveItemFromInventory(1); // ลบ 1 ชิ้น
                 UpdateEquipButtons(currentItem.itemData);
                 HideItemDetail();
@@ -791,7 +897,23 @@ public class ItemDetailPanel : MonoBehaviour
 
         return null;
     }
-
+    private void SetupItemIconBorder()
+    {
+        if (itemIconImage != null)
+        {
+            // ตรวจสอบว่ามี Outline component หรือยัง
+            var outline = itemIconImage.GetComponent<UnityEngine.UI.Outline>();
+            if (outline == null)
+            {
+                // เพิ่ม Outline component
+                outline = itemIconImage.gameObject.AddComponent<UnityEngine.UI.Outline>();
+                outline.effectColor = Color.white;
+                outline.effectDistance = new Vector2(3f, -3f); // ขนาดใหญ่กว่าใน inventory slot เล็กน้อย
+                outline.enabled = false; // ปิดไว้ก่อน
+                Debug.Log("[ItemDetailPanel] Added Outline component to itemIconImage");
+            }
+        }
+    }
     // 🆕 สร้าง EquipmentData จาก ItemData
     private EquipmentData CreateEquipmentDataFromItem(ItemData itemData)
     {
