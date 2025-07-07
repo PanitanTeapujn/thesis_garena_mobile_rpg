@@ -1070,7 +1070,6 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.Log($"[SaveCharacterEquipmentData] Potion count: {equipmentData.totalPotionCount}");
 
             // 🆕 Debug: แสดงข้อมูล character ทั้งหมด
-            LogCharacterDataStatus();
 
             return true;
         }
@@ -1081,37 +1080,7 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
-    private void LogCharacterDataStatus()
-    {
-        if (multiCharacterData?.characters == null)
-        {
-            Debug.Log("[LogCharacterDataStatus] No character data");
-            return;
-        }
-
-        Debug.Log("=== CHARACTER DATA STATUS ===");
-        Debug.Log($"Active Character: {multiCharacterData.currentActiveCharacter}");
-        Debug.Log($"Total Characters: {multiCharacterData.characters.Count}");
-
-        for (int i = 0; i < multiCharacterData.characters.Count; i++)
-        {
-            var character = multiCharacterData.characters[i];
-            if (character != null)
-            {
-                bool hasStats = character.totalMaxHp > 0;
-                bool hasEquipment = character.HasEquipmentData();
-
-                Debug.Log($"Character {i}: Type='{character.characterType}', HasStats={hasStats}, HasEquipment={hasEquipment}");
-                Debug.Log($"  Stats: HP={character.totalMaxHp}, ATK={character.totalAttackDamage}");
-                Debug.Log($"  Equipment: Eq={character.totalEquippedItems}, Pot={character.totalPotions}");
-            }
-            else
-            {
-                Debug.Log($"Character {i}: NULL");
-            }
-        }
-        Debug.Log("=============================");
-    }
+    
     /// <summary>
     /// บันทึกเฉพาะ potion slots ของ character
     /// </summary>
@@ -1297,29 +1266,7 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// แสดงสถิติการบันทึกทั้งหมด
     /// </summary>
-    public void LogSaveStats()
-    {
-        if (multiCharacterData == null)
-        {
-            Debug.Log("[LogSaveStats] No data to show");
-            return;
-        }
-
-        Debug.Log("=== INVENTORY SAVE STATS ===");
-        Debug.Log($"Player: {multiCharacterData.playerName}");
-        Debug.Log($"Last Save: {multiCharacterData.inventoryLastSaveTime}");
-        Debug.Log($"Shared Items: {multiCharacterData.totalSharedItems}");
-        Debug.Log($"Has Data: {multiCharacterData.HasAnyInventoryOrEquipmentData()}");
-
-        foreach (var character in multiCharacterData.characters)
-        {
-            if (character?.characterEquipment != null)
-            {
-                Debug.Log($"{character.characterType}: Eq={character.totalEquippedItems}, Pot={character.totalPotions}");
-            }
-        }
-        Debug.Log("===========================");
-    }
+   
 
     #endregion
     #region 🆕 Inventory Load Methods
@@ -1992,7 +1939,6 @@ public class PersistentPlayerData : MonoBehaviour
             if (characterProgressData?.characterEquipment == null)
             {
                 Debug.LogWarning($"[LoadCharacterEquipmentData] No equipment data for {characterType}");
-                DebugShowAllCharacterEquipmentData();
                 return false;
             }
 
@@ -2039,42 +1985,7 @@ public class PersistentPlayerData : MonoBehaviour
   
 
 
-    private void DebugShowAllCharacterEquipmentData()
-    {
-        Debug.Log("=== ALL CHARACTER EQUIPMENT DATA ===");
-
-        if (multiCharacterData?.characters == null)
-        {
-            Debug.Log("No characters found");
-            return;
-        }
-
-        foreach (var character in multiCharacterData.characters)
-        {
-            if (character != null)
-            {
-                bool hasEquipment = character.HasEquipmentData();
-                Debug.Log($"Character: {character.characterType}");
-                Debug.Log($"  - Has Equipment: {hasEquipment}");
-
-                if (hasEquipment && character.characterEquipment != null)
-                {
-                    Debug.Log($"  - Equipment Count: {character.characterEquipment.equipment.equippedCount}");
-                    Debug.Log($"  - Potion Count: {character.characterEquipment.totalPotionCount}");
-
-                    // แสดงรายละเอียด equipment
-                    var eq = character.characterEquipment.equipment;
-                    if (!string.IsNullOrEmpty(eq.headItemId)) Debug.Log($"    Head: {eq.headItemId}");
-                    if (!string.IsNullOrEmpty(eq.armorItemId)) Debug.Log($"    Armor: {eq.armorItemId}");
-                    if (!string.IsNullOrEmpty(eq.weaponItemId)) Debug.Log($"    Weapon: {eq.weaponItemId}");
-                    if (!string.IsNullOrEmpty(eq.pantsItemId)) Debug.Log($"    Pants: {eq.pantsItemId}");
-                    if (!string.IsNullOrEmpty(eq.shoesItemId)) Debug.Log($"    Shoes: {eq.shoesItemId}");
-                    if (!string.IsNullOrEmpty(eq.runeItemId)) Debug.Log($"    Rune: {eq.runeItemId}");
-                }
-            }
-        }
-        Debug.Log("===================================");
-    }
+  
 
     private System.Collections.IEnumerator ForceRefreshEquipmentUICoroutine(Character character)
     {
@@ -2155,7 +2066,6 @@ public class PersistentPlayerData : MonoBehaviour
                 Debug.LogError("[ForceRefreshEquipmentUICoroutine] ❌ No equipment managers were refreshed!");
 
                 // ลอง debug สถานะ managers
-                DebugEquipmentManagerStatus(character);
             }
 
         }
@@ -2169,41 +2079,7 @@ public class PersistentPlayerData : MonoBehaviour
 
     }
 
-    private void DebugEquipmentManagerStatus(Character character)
-    {
-        Debug.Log("=== EQUIPMENT MANAGER STATUS DEBUG ===");
-
-        // Character EquipmentSlotManager
-        var charEquipmentManager = character.GetComponent<EquipmentSlotManager>();
-        Debug.Log($"Character EquipmentSlotManager: {(charEquipmentManager != null ? "Found" : "Not Found")}");
-        if (charEquipmentManager != null)
-        {
-            Debug.Log($"  - Is Connected: {charEquipmentManager.IsConnected()}");
-        }
-
-        // CombatUIManager
-        var combatUIManager = FindObjectOfType<CombatUIManager>();
-        Debug.Log($"CombatUIManager: {(combatUIManager != null ? "Found" : "Not Found")}");
-        if (combatUIManager != null)
-        {
-            Debug.Log($"  - Has Equipment Manager: {(combatUIManager.equipmentSlotManager != null)}");
-            if (combatUIManager.equipmentSlotManager != null)
-            {
-                Debug.Log($"  - Equipment Manager Connected: {combatUIManager.equipmentSlotManager.IsConnected()}");
-            }
-        }
-
-        // ทุก EquipmentSlotManager ใน scene
-        var allEquipmentManagers = FindObjectsOfType<EquipmentSlotManager>();
-        Debug.Log($"Total EquipmentSlotManagers in scene: {allEquipmentManagers.Length}");
-        for (int i = 0; i < allEquipmentManagers.Length; i++)
-        {
-            var manager = allEquipmentManagers[i];
-            Debug.Log($"  Manager {i}: {manager.gameObject.name} - Connected: {manager.IsConnected()}");
-        }
-
-        Debug.Log("=====================================");
-    }
+  
     
     // 🆕 เพิ่ม Debug & Logging Methods สำหรับ Load ใน PersistentPlayerData class
     public void FixSplitCharacterData()
@@ -2265,7 +2141,6 @@ public class PersistentPlayerData : MonoBehaviour
             // บันทึกข้อมูลที่แก้ไขแล้ว
             SavePlayerDataAsync();
 
-            LogCharacterDataStatus();
         }
         else
         {
@@ -2344,190 +2219,25 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// แสดงสถิติการโหลดทั้งหมด
     /// </summary>
-    public void LogLoadStats()
-    {
-        if (multiCharacterData == null)
-        {
-            Debug.Log("[LogLoadStats] No data to show");
-            return;
-        }
-
-        Debug.Log("=== INVENTORY LOAD STATS ===");
-        Debug.Log($"Player: {multiCharacterData.playerName}");
-        Debug.Log($"Has Inventory Data: {multiCharacterData.HasInventoryData()}");
-        Debug.Log($"Has Any Data: {multiCharacterData.HasAnyInventoryOrEquipmentData()}");
-        Debug.Log($"Shared Items: {multiCharacterData.sharedInventory?.items?.Count ?? 0}");
-
-        foreach (var character in multiCharacterData.characters)
-        {
-            if (character?.characterEquipment != null)
-            {
-                bool hasEquipment = character.HasEquipmentData();
-                Debug.Log($"{character.characterType}: Has Data={hasEquipment}, Eq={character.totalEquippedItems}, Pot={character.totalPotions}");
-            }
-        }
-        Debug.Log("===========================");
-    }
+   
 
     /// <summary>
     /// ตรวจสอบสถานะ ItemDatabase
     /// </summary>
-    public void LogItemDatabaseStatus()
-    {
-        Debug.Log("=== ITEM DATABASE STATUS ===");
-
-        try
-        {
-            var database = ItemDatabase.Instance;
-            if (database == null)
-            {
-                Debug.LogError("❌ ItemDatabase.Instance is null!");
-                return;
-            }
-
-            var allItems = database.GetAllItems();
-            if (allItems == null)
-            {
-                Debug.LogError("❌ GetAllItems() returned null!");
-                return;
-            }
-
-            Debug.Log($"✅ ItemDatabase found with {allItems.Count} items");
-
-            // แสดงสถิติตาม item type
-            var typeCounts = new Dictionary<ItemType, int>();
-            foreach (var item in allItems)
-            {
-                if (item != null)
-                {
-                    if (!typeCounts.ContainsKey(item.ItemType))
-                        typeCounts[item.ItemType] = 0;
-                    typeCounts[item.ItemType]++;
-                }
-            }
-
-            foreach (var kvp in typeCounts)
-            {
-                Debug.Log($"  {kvp.Key}: {kvp.Value} items");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"❌ Error checking ItemDatabase: {e.Message}");
-        }
-
-        Debug.Log("============================");
-    }
-
+ 
     /// <summary>
     /// ทดสอบการหา item โดยใช้ ID
     /// </summary>
-    public void TestItemLookup(string itemId)
-    {
-        Debug.Log($"=== TESTING ITEM LOOKUP: {itemId} ===");
-
-        var itemData = GetItemDataById(itemId);
-        if (itemData != null)
-        {
-            Debug.Log($"✅ Found: {itemData.ItemName} ({itemData.ItemType}, {itemData.GetTierText()})");
-            Debug.Log($"   ID: {itemData.ItemId}");
-            Debug.Log($"   Stackable: {itemData.CanStack()}, Max Stack: {itemData.MaxStackSize}");
-        }
-        else
-        {
-            Debug.LogError($"❌ Item not found: {itemId}");
-
-            // Debug: แสดงรายการ ID ทั้งหมดใน database
-            LogAllItemIds();
-        }
-
-        Debug.Log("=======================================");
-    }
-
+   
     /// <summary>
     /// แสดงรายการ ItemID ทั้งหมดใน database (สำหรับ debug)
     /// </summary>
-    private void LogAllItemIds()
-    {
-        try
-        {
-            var database = ItemDatabase.Instance;
-            if (database?.GetAllItems() == null) return;
-
-            Debug.Log("=== ALL ITEM IDs IN DATABASE ===");
-            int count = 0;
-            foreach (var item in database.GetAllItems())
-            {
-                if (item != null)
-                {
-                    Debug.Log($"{count}: {item.ItemId} - {item.ItemName} ({item.ItemType})");
-                    count++;
-
-                    // จำกัดแสดงแค่ 20 ตัวแรก เพื่อไม่ให้ log ยาวเกินไป
-                    if (count >= 20)
-                    {
-                        Debug.Log($"... and {database.GetAllItems().Count - count} more items");
-                        break;
-                    }
-                }
-            }
-            Debug.Log("================================");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Error logging item IDs: {e.Message}");
-        }
-    }
+ 
 
     /// <summary>
     /// แสดงข้อมูลการโหลดสำหรับ character ปัจจุบัน
     /// </summary>
-    public void LogCurrentCharacterLoadStatus(Character character)
-    {
-        if (character == null)
-        {
-            Debug.Log("[LogCurrentCharacterLoadStatus] Character is null");
-            return;
-        }
-
-        Debug.Log($"=== LOAD STATUS: {character.CharacterName} ===");
-
-        // Inventory status
-        var inventory = character.GetInventory();
-        if (inventory != null)
-        {
-            Debug.Log($"Inventory: {inventory.UsedSlots}/{inventory.CurrentSlots} slots used");
-            Debug.Log($"Grid: {inventory.GridWidth}x{inventory.GridHeight}");
-        }
-        else
-        {
-            Debug.Log("❌ No inventory found");
-        }
-
-        // Equipment status
-        var equippedItems = character.GetAllEquippedItems();
-        Debug.Log($"Equipped items: {equippedItems.Count}");
-
-        // Potion status
-        int potionCount = 0;
-        for (int i = 0; i < 5; i++)
-        {
-            var potion = character.GetPotionInSlot(i);
-            if (potion != null)
-            {
-                int stackCount = character.GetPotionStackCount(i);
-                Debug.Log($"Potion {i}: {potion.ItemName} x{stackCount}");
-                potionCount++;
-            }
-        }
-
-        if (potionCount == 0)
-        {
-            Debug.Log("No potions equipped");
-        }
-
-        Debug.Log("=====================================");
-    }
+    
 
     #endregion
     /// <summary>
