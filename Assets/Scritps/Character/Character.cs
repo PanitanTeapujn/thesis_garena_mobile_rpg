@@ -147,10 +147,7 @@ public class Character : NetworkBehaviour
     {
         StartCoroutine(DelayedLoadPlayerDataStart());
         InitializeStats();
-        if (enableAutoFixInventory && HasInputAuthority)
-        {
-            StartCoroutine(AutoFixInventorySystem());
-        }
+       
     }
     private System.Collections.IEnumerator DelayedLoadPlayerDataStart()
     {
@@ -585,7 +582,6 @@ public class Character : NetworkBehaviour
             else
             {
                 Debug.LogWarning($"[Character] ⚠️ Equipment loading failed, will retry later");
-                StartCoroutine(RetryEquipmentLoadingLater());
             }
         }
         else
@@ -596,22 +592,7 @@ public class Character : NetworkBehaviour
 
 
 
-    private IEnumerator RetryEquipmentLoadingLater()
-    {
-        Debug.Log($"[Character] ⏰ Will retry equipment loading in 3 seconds...");
-        yield return new WaitForSeconds(3f);
-
-        bool shouldHaveEquipment = PersistentPlayerData.Instance?.multiCharacterData
-            ?.GetActiveCharacterData()?.HasEquipmentData() ?? false;
-
-        int currentEquipmentCount = GetAllEquippedItems().Count;
-
-        if (shouldHaveEquipment && currentEquipmentCount == 0)
-        {
-            Debug.Log($"[Character] 🔄 Retrying equipment loading...");
-            yield return StartCoroutine(SimpleLoadEquipmentOnly());
-        }
-    }
+  
 
 
 
@@ -921,7 +902,6 @@ public class Character : NetworkBehaviour
                 Debug.LogWarning($"[Character] ⚠️ No equipment was loaded!");
 
                 // 🆕 ถ้าไม่มี equipment ให้ลอง retry
-                yield return StartCoroutine(RetryEquipmentLoading());
             }
         }
 
@@ -1078,36 +1058,7 @@ public class Character : NetworkBehaviour
         yield return null;
     }
 
-    private IEnumerator RetryEquipmentLoading()
-    {
-        Debug.Log($"[Character] 🔄 Retrying equipment loading...");
-
-        yield return new WaitForSeconds(0.5f);
-
-        // ลองอีกครั้ง
-        if (PersistentPlayerData.Instance != null)
-        {
-            PersistentPlayerData.Instance.LoadInventoryData(this);
-
-            yield return new WaitForSeconds(0.5f);
-
-            int equipmentCount = GetAllEquippedItems().Count;
-            Debug.Log($"[Character] Retry result: {equipmentCount} items");
-
-            if (equipmentCount > 0)
-            {
-                ApplyLoadedEquipmentStats();
-                Debug.Log($"[Character] ✅ Equipment loaded successfully on retry!");
-            }
-            else
-            {
-                Debug.LogWarning($"[Character] ⚠️ Equipment loading failed even after retry");
-
-                // Debug Firebase data
-                DebugFirebaseEquipmentData();
-            }
-        }
-    }
+ 
 
     private void DebugFirebaseEquipmentData()
     {
@@ -3052,251 +3003,7 @@ public class Character : NetworkBehaviour
         Debug.Log($"[Character] ✅ Equipment UI refreshed after load");
     }
 
-    private IEnumerator AutoFixInventorySystem()
-    {
-        Debug.Log($"[Character AutoFix] 🔧 Starting auto-fix system for {CharacterName}...");
-
-        // รอให้ระบบต่างๆ พร้อม
-        yield return new WaitForSeconds(autoFixDelay);
-
-        // ตรวจสอบว่าจำเป็นต้อง fix หรือไม่
-        bool needsFix = CheckIfInventoryNeedsFix();
-
-        if (needsFix && !autoFixCompleted)
-        {
-            Debug.Log($"[Character AutoFix] 🚨 Inventory issue detected, starting auto-fix...");
-            yield return StartCoroutine(AutoFixInventoryIssues());
-            autoFixCompleted = true;
-        }
-        else if (!needsFix)
-        {
-            Debug.Log($"[Character AutoFix] ✅ Inventory looks good, no fix needed");
-        }
-        else
-        {
-            Debug.Log($"[Character AutoFix] ✅ Auto-fix already completed");
-        }
-    }
-
-    // 🆕 ตรวจสอบว่า inventory ต้องการ fix หรือไม่
-    private bool CheckIfInventoryNeedsFix()
-    {
-        try
-        {
-            // รอให้ PersistentPlayerData พร้อม
-            if (PersistentPlayerData.Instance == null)
-            {
-                Debug.LogWarning("[Character AutoFix] PersistentPlayerData not ready");
-                return false;
-            }
-
-            // ตรวจสอบ inventory
-            var inventory = GetInventory();
-            if (inventory == null)
-            {
-                Debug.LogWarning("[Character AutoFix] No inventory found");
-                return false;
-            }
-
-            int currentItems = inventory.UsedSlots;
-            int firebaseItems = PersistentPlayerData.Instance.multiCharacterData?.sharedInventory?.items?.Count ?? 0;
-            bool shouldLoadFromFirebase = PersistentPlayerData.Instance.ShouldLoadFromFirebase();
-
-            Debug.Log($"[Character AutoFix] Inventory check:");
-            Debug.Log($"  - Current items: {currentItems}");
-            Debug.Log($"  - Firebase items: {firebaseItems}");
-            Debug.Log($"  - Should load from Firebase: {shouldLoadFromFirebase}");
-
-            // ตรวจจับปัญหา: inventory ว่างแต่ Firebase มีข้อมูล
-            bool hasInconsistency = (currentItems == 0 && firebaseItems > 0 && shouldLoadFromFirebase);
-
-            if (hasInconsistency)
-            {
-                Debug.LogWarning($"[Character AutoFix] 🚨 INCONSISTENCY DETECTED!");
-                Debug.LogWarning($"  - Inventory is empty but Firebase has {firebaseItems} items");
-                return true;
-            }
-
-            return false;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character AutoFix] ❌ Error checking inventory: {e.Message}");
-            return false;
-        }
-    }
-
-    // 🆕 Auto-fix inventory issues
-    private IEnumerator AutoFixInventoryIssues()
-    {
-        Debug.Log($"[Character AutoFix] 🔧 Starting inventory auto-fix process...");
-
-        try
-        {
-            var inventory = GetInventory();
-            if (inventory == null)
-            {
-                Debug.LogError("[Character AutoFix] No inventory to fix");
-                yield break;
-            }
-
-            // Step 1: ลองโหลดจาก Firebase
-            Debug.Log("[Character AutoFix] 🔄 Step 1: Loading from Firebase...");
-            bool loadSuccess = TryAutoLoadFromFirebase();
-
-            if (loadSuccess)
-            {
-
-                int itemsAfterLoad = inventory.UsedSlots;
-                Debug.Log($"[Character AutoFix] Load result: {itemsAfterLoad} items");
-
-                if (itemsAfterLoad > 0)
-                {
-                    Debug.Log("[Character AutoFix] ✅ Auto-fix successful via Firebase load!");
-
-                    // Force refresh UI
-                    ForceRefreshInventoryUIAutoFix();
-                    yield break;
-                }
-            }
-
-            // Step 2: ถ้า Firebase load ไม่สำเร็จ ลองใช้ Emergency method
-            Debug.Log("[Character AutoFix] 🔄 Step 2: Using emergency load method...");
-            bool emergencySuccess = TryEmergencyLoadInventory();
-
-            if (emergencySuccess)
-            {
-
-                int itemsAfterEmergency = inventory.UsedSlots;
-                Debug.Log($"[Character AutoFix] Emergency result: {itemsAfterEmergency} items");
-
-                if (itemsAfterEmergency > 0)
-                {
-                    Debug.Log("[Character AutoFix] ✅ Auto-fix successful via emergency load!");
-                    ForceRefreshInventoryUIAutoFix();
-                    yield break;
-                }
-            }
-
-            // Step 3: ถ้ายังไม่ได้ ให้ starter items
-            Debug.Log("[Character AutoFix] 🔄 Step 3: Giving starter items as fallback...");
-            TryGiveStarterItemsAutoFix();
-
-
-            int finalItems = inventory.UsedSlots;
-            if (finalItems > 0)
-            {
-                Debug.Log($"[Character AutoFix] ✅ Auto-fix completed with starter items: {finalItems} items");
-                ForceRefreshInventoryUIAutoFix();
-
-                // Save เพื่อป้องกันปัญหาซ้ำ
-                PersistentPlayerData.Instance?.SaveInventoryData(this);
-            }
-            else
-            {
-                Debug.LogError("[Character AutoFix] ❌ All auto-fix attempts failed");
-            }
-
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character AutoFix] ❌ Auto-fix error: {e.Message}");
-        }
-    }
-
-    // 🆕 ลองโหลดจาก Firebase
-    private bool TryAutoLoadFromFirebase()
-    {
-        try
-        {
-            if (PersistentPlayerData.Instance != null)
-            {
-                Debug.Log("[Character AutoFix] Attempting Firebase load...");
-                PersistentPlayerData.Instance.LoadInventoryData(this);
-                return true;
-            }
-            return false;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character AutoFix] Firebase load error: {e.Message}");
-            return false;
-        }
-    }
-
-    // 🆕 ลองใช้ Emergency load method
-    private bool TryEmergencyLoadInventory()
-    {
-        try
-        {
-            var inventory = GetInventory();
-            if (inventory == null || PersistentPlayerData.Instance?.multiCharacterData?.sharedInventory?.items == null)
-            {
-                return false;
-            }
-
-            Debug.Log("[Character AutoFix] Attempting emergency load...");
-
-            var sharedData = PersistentPlayerData.Instance.multiCharacterData.sharedInventory;
-            int successCount = 0;
-
-            foreach (var savedItem in sharedData.items)
-            {
-                if (savedItem?.IsValid() == true)
-                {
-                    // หา ItemData จาก ID
-                    ItemData itemData = FindItemDataById(savedItem.itemId);
-                    if (itemData != null)
-                    {
-                        bool added = inventory.AddItem(itemData, savedItem.stackCount);
-                        if (added) successCount++;
-                    }
-                }
-            }
-
-            Debug.Log($"[Character AutoFix] Emergency load result: {successCount} items added");
-            return successCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character AutoFix] Emergency load error: {e.Message}");
-            return false;
-        }
-    }
-
-    // 🆕 ให้ starter items สำหรับ auto-fix
-    private void TryGiveStarterItemsAutoFix()
-    {
-        try
-        {
-            var inventory = GetInventory();
-            if (inventory == null) return;
-
-            Debug.Log("[Character AutoFix] Giving starter items...");
-
-            // ใช้ reflection เพื่อเรียก GiveStarterItems
-            var method = inventory.GetType().GetMethod("GiveStarterItems",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (method != null)
-            {
-                // Reset flag ก่อน
-                var field = inventory.GetType().GetField("starterItemsGiven",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field != null)
-                {
-                    field.SetValue(inventory, false);
-                }
-
-                method.Invoke(inventory, null);
-                Debug.Log("[Character AutoFix] ✅ Starter items given");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character AutoFix] Starter items error: {e.Message}");
-        }
-    }
+    
 
     // 🆕 หา ItemData จาก ID
     private ItemData FindItemDataById(string itemId)

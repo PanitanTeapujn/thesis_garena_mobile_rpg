@@ -942,19 +942,9 @@ public class PersistentPlayerData : MonoBehaviour
             multiCharacterData.sharedInventory = sharedData;
 
             // 🆕 เพิ่ม validation หลัง save
-            bool saveSuccess = ValidateSharedInventorySave(inventory, sharedData);
+           
 
-            if (saveSuccess)
-            {
-                Debug.Log($"[SaveSharedInventoryDataSafe] ✅ Saved {sharedData.items.Count} items to shared inventory");
-                LogSavedInventoryItems(sharedData);
-            }
-            else
-            {
-                Debug.LogError("[SaveSharedInventoryDataSafe] ❌ Save validation failed!");
-            }
-
-            return saveSuccess;
+            return true;
         }
         catch (System.Exception e)
         {
@@ -964,36 +954,7 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // 🆕 เพิ่ม validation หลัง save
-    private bool ValidateSharedInventorySave(Inventory inventory, SharedInventoryData sharedData)
-    {
-        try
-        {
-            int inventoryItemCount = inventory.UsedSlots;
-            int savedItemCount = sharedData?.items?.Count ?? 0;
-
-            Debug.Log($"[ValidateSharedInventorySave] Inventory items: {inventoryItemCount}, Saved items: {savedItemCount}");
-
-            // ตรวจสอบว่าจำนวน items ตรงกันหรือไม่
-            if (inventoryItemCount != savedItemCount)
-            {
-                Debug.LogWarning($"[ValidateSharedInventorySave] ⚠️ Item count mismatch: {inventoryItemCount} vs {savedItemCount}");
-
-                // ถ้า inventory ว่างแต่มี saved data แปลว่าอาจมีปัญหา
-                if (inventoryItemCount == 0 && savedItemCount > 0)
-                {
-                    Debug.LogError("[ValidateSharedInventorySave] ❌ Inventory is empty but saved data exists!");
-                    return false;
-                }
-            }
-
-            return true;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ValidateSharedInventorySave] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
+  
 
     // 🆕 เพิ่ม retry mechanism
     private System.Collections.IEnumerator RetrySaveInventoryData(Character character)
@@ -1665,18 +1626,7 @@ public class PersistentPlayerData : MonoBehaviour
                 backupItems = BackupCurrentInventory(inventory);
             }
 
-            // 🔧 แก้ไข: ตรวจสอบข้อมูล Firebase อย่างละเอียด
-            if (!ValidateFirebaseInventoryData(sharedData))
-            {
-                Debug.LogError("[LoadSharedInventoryData] ❌ Firebase data validation failed!");
-
-                if (backupItems != null)
-                {
-                    Debug.Log("[LoadSharedInventoryData] 🔄 Keeping current inventory due to invalid Firebase data");
-                    return false; // ไม่ clear inventory ถ้าข้อมูล Firebase ไม่ถูกต้อง
-                }
-                return false;
-            }
+           
 
             // เคลียร์ inventory เฉพาะเมื่อแน่ใจว่าข้อมูล Firebase ถูกต้อง
             Debug.Log("[LoadSharedInventoryData] 🧹 Clearing current inventory...");
@@ -1754,65 +1704,7 @@ public class PersistentPlayerData : MonoBehaviour
             return false;
         }
     }
-    private bool ValidateFirebaseInventoryData(SharedInventoryData sharedData)
-    {
-        try
-        {
-            if (sharedData?.items == null)
-            {
-                Debug.LogError("[ValidateFirebaseInventoryData] SharedData or items is null");
-                return false;
-            }
-
-            if (sharedData.items.Count == 0)
-            {
-                Debug.LogWarning("[ValidateFirebaseInventoryData] No items in Firebase data");
-                return false;
-            }
-
-            int validItems = 0;
-            int invalidItems = 0;
-
-            foreach (var item in sharedData.items)
-            {
-                if (item?.IsValid() == true)
-                {
-                    // ตรวจสอบว่าหา ItemData ได้หรือไม่
-                    ItemData itemData = GetItemDataById(item.itemId);
-                    if (itemData != null)
-                    {
-                        validItems++;
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"[ValidateFirebaseInventoryData] Item not found in database: {item.itemId} ({item.itemName})");
-                        invalidItems++;
-                    }
-                }
-                else
-                {
-                    invalidItems++;
-                }
-            }
-
-            Debug.Log($"[ValidateFirebaseInventoryData] Validation result: {validItems} valid, {invalidItems} invalid");
-
-            // ต้องมี valid items อย่างน้อย 50% ถึงจะ load
-            bool isValid = validItems > 0 && (validItems >= invalidItems);
-
-            if (!isValid)
-            {
-                Debug.LogError($"[ValidateFirebaseInventoryData] ❌ Too many invalid items: {invalidItems}/{validItems + invalidItems}");
-            }
-
-            return isValid;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ValidateFirebaseInventoryData] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
+ 
     // ใน PersistentPlayerData.cs - แก้ไข SafeAutoSaveInventory method
     public void SafeAutoSaveInventory(Character character, string action = "Auto-Save")
     {
@@ -1856,7 +1748,6 @@ public class PersistentPlayerData : MonoBehaviour
             SaveInventoryData(character);
 
             // Validate ว่า save สำเร็จ
-            StartCoroutine(ValidateSaveSuccess(character, backupData, currentItems));
 
         }
         catch (System.Exception e)
@@ -1909,47 +1800,7 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // 🆕 Validate save success
-    private System.Collections.IEnumerator ValidateSaveSuccess(Character character, InventoryBackupData backup, int expectedItems)
-    {
-        yield return new WaitForSeconds(1f); // รอให้ save เสร็จ
 
-        try
-        {
-            Debug.Log($"[ValidateSaveSuccess] Validating save success...");
-
-            // ตรวจสอบข้อมูลใน multiCharacterData
-            int savedItems = multiCharacterData.sharedInventory?.items?.Count ?? 0;
-
-            Debug.Log($"[ValidateSaveSuccess] Expected: {expectedItems}, Saved: {savedItems}");
-
-            if (savedItems != expectedItems)
-            {
-                Debug.LogError($"[ValidateSaveSuccess] ❌ SAVE VALIDATION FAILED!");
-                Debug.LogError($"  Expected items: {expectedItems}");
-                Debug.LogError($"  Saved items: {savedItems}");
-                Debug.LogError($"  Backup had: {backup.totalItems} items");
-
-                // แสดง backup info เพื่อ debug
-                Debug.Log($"[ValidateSaveSuccess] Backup items were:");
-                foreach (var itemName in backup.itemNames)
-                {
-                    Debug.Log($"  - {itemName}");
-                }
-
-                // ลอง save อีกครั้ง
-                Debug.Log($"[ValidateSaveSuccess] 🔄 Retrying save...");
-                SaveInventoryData(character);
-            }
-            else
-            {
-                Debug.Log($"[ValidateSaveSuccess] ✅ Save validation successful");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ValidateSaveSuccess] ❌ Validation error: {e.Message}");
-        }
-    }
     public void SaveInventoryDataSafe(Character character, string action = "Manual Save")
     {
         if (character == null || multiCharacterData == null)
@@ -3542,81 +3393,8 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[SaveBaseStatsToCharacterData] ❌ Error: {e.Message}");
         }
     }
-    public bool ValidateAndFixEquipmentLoading(Character character)
-    {
-        if (character == null || multiCharacterData == null) return false;
-
-        try
-        {
-            Debug.Log($"[ValidateAndFixEquipmentLoading] Validating equipment for {character.CharacterName}...");
-
-            string characterType = multiCharacterData.currentActiveCharacter;
-            var characterData = GetCharacterData(characterType);
-
-            if (characterData?.HasEquipmentData() != true)
-            {
-                Debug.Log($"[ValidateAndFixEquipmentLoading] No equipment data in Firebase for {characterType}");
-                return false;
-            }
-
-            // ตรวจสอบ equipment ใน character
-            int currentEquipmentCount = character.GetAllEquippedItems().Count;
-            int expectedEquipmentCount = characterData.totalEquippedItems;
-
-            Debug.Log($"[ValidateAndFixEquipmentLoading] Equipment count: Current={currentEquipmentCount}, Expected={expectedEquipmentCount}");
-
-            if (currentEquipmentCount < expectedEquipmentCount)
-            {
-                Debug.LogWarning($"[ValidateAndFixEquipmentLoading] Equipment mismatch detected! Attempting auto-fix...");
-
-                // ลอง reload equipment
-                LoadInventoryData(character);
-
-                // ตรวจสอบอีกครั้ง
-                int newEquipmentCount = character.GetAllEquippedItems().Count;
-                Debug.Log($"[ValidateAndFixEquipmentLoading] After reload: {newEquipmentCount} equipment items");
-
-                return newEquipmentCount > currentEquipmentCount;
-            }
-
-            Debug.Log($"[ValidateAndFixEquipmentLoading] ✅ Equipment validation passed");
-            return true;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ValidateAndFixEquipmentLoading] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
-    public bool ForceReloadEquipment(Character character)
-    {
-        if (character == null || multiCharacterData == null) return false;
-
-        try
-        {
-            Debug.Log($"[ForceReloadEquipment] Force reloading equipment for {character.CharacterName}...");
-
-            // เคลียร์ equipment ปัจจุบัน
-            character.ClearAllEquipmentForLoad();
-
-            // รอ 1 frame (จำลอง)
-            System.Threading.Thread.Sleep(50);
-
-            // โหลด equipment ใหม่
-            LoadInventoryData(character);
-
-            // ตรวจสอบผลลัพธ์
-            int equipmentCount = character.GetAllEquippedItems().Count;
-            Debug.Log($"[ForceReloadEquipment] ✅ Force reload result: {equipmentCount} equipment items");
-
-            return equipmentCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ForceReloadEquipment] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
+   
+    
     private void LoadBaseStatsOnly(Character character, LevelManager levelManager, CharacterProgressData characterData)
     {
         Debug.Log($"[LoadBaseStatsOnly] Loading base stats for {characterData.characterType}...");
