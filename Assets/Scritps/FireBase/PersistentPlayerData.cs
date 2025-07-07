@@ -74,21 +74,7 @@ public class PersistentPlayerData : MonoBehaviour
         return true;
     }
     #endregion
-    [ContextMenu("🔍 Debug Character Stats")]
-    private void DebugCharacterStats()
-    {
-        if (multiCharacterData?.characters == null) return;
-
-        foreach (var character in multiCharacterData.characters)
-        {
-            Debug.Log($"=== {character.characterType} STATS ===");
-            Debug.Log($"Level: {character.currentLevel}");
-            Debug.Log($"Base HP: {character.baseMaxHp} | Total HP: {character.totalMaxHp}");
-            Debug.Log($"Base ATK: {character.baseAttackDamage} | Total ATK: {character.totalAttackDamage}");
-            Debug.Log($"Base ARM: {character.baseArmor} | Total ARM: {character.totalArmor}");
-            Debug.Log("============================");
-        }
-    }
+    
     #region Helper Methods & Getters ฟังก์ชันช่วยต่างๆ สำหรับดึงข้อมูล
     public CharacterProgressData GetCurrentCharacterData()
     {
@@ -1847,18 +1833,15 @@ public class PersistentPlayerData : MonoBehaviour
 
             int currentItems = inventory.UsedSlots;
 
-            // 🔧 แก้ไข: ไม่ต้อง reload จาก Firebase ใน auto-save
-            // การ auto-save ควรจะเป็นการบันทึกเท่านั้น ไม่ใช่การโหลด
-            if (currentItems == 0 && action != "Clear Inventory")
+            // 🆕 **FIX**: อนุญาตให้ save เมื่อเป็นการ equip item
+            bool isEquipAction = action.Contains("Equip") || action.Contains("Equipment");
+
+            if (currentItems == 0 && !isEquipAction && action != "Clear Inventory")
             {
                 bool hasFirebaseData = multiCharacterData.sharedInventory?.items?.Count > 0;
                 if (hasFirebaseData)
                 {
                     Debug.LogWarning($"[SafeAutoSaveInventory] ⚠️ Preventing save of empty inventory when Firebase has data!");
-
-                    // 🔧 แก้ไข: ไม่เรียก LoadInventoryData ที่นี่
-                    // LoadInventoryData(character); // ลบบรรทัดนี้
-
                     Debug.LogWarning($"[SafeAutoSaveInventory] ❌ BLOCKED: Attempt to save empty inventory when Firebase has data!");
                     return;
                 }
@@ -1869,7 +1852,7 @@ public class PersistentPlayerData : MonoBehaviour
             // เก็บ backup ก่อน save
             var backupData = CreateInventoryBackupData(inventory);
 
-            // Save ปกติ (ไม่มีการ load)
+            // Save ปกติ
             SaveInventoryData(character);
 
             // Validate ว่า save สำเร็จ
@@ -1879,6 +1862,29 @@ public class PersistentPlayerData : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"[SafeAutoSaveInventory] ❌ Error: {e.Message}");
+        }
+    }
+    public void ForceSaveAfterEquipItem(Character character)
+    {
+        if (character == null || multiCharacterData == null)
+        {
+            Debug.LogError("[ForceSaveAfterEquipItem] Cannot save - missing components");
+            return;
+        }
+
+        try
+        {
+            Debug.Log("[ForceSaveAfterEquipItem] 🚀 Force saving after equipment change...");
+
+            // บันทึก inventory และ equipment ทันที (ไม่ผ่าน safety check)
+            SaveInventoryData(character);
+            SaveEquippedItemsOnly(character);
+
+            Debug.Log("[ForceSaveAfterEquipItem] ✅ Force save completed");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ForceSaveAfterEquipItem] ❌ Error: {e.Message}");
         }
     }
 
@@ -1946,15 +1952,9 @@ public class PersistentPlayerData : MonoBehaviour
     }
     public void SaveInventoryDataSafe(Character character, string action = "Manual Save")
     {
-        if (character == null)
+        if (character == null || multiCharacterData == null)
         {
-            Debug.LogError("[SaveInventoryDataSafe] Character is null!");
-            return;
-        }
-
-        if (multiCharacterData == null)
-        {
-            Debug.LogError("[SaveInventoryDataSafe] MultiCharacterData is null!");
+            Debug.LogWarning($"[SaveInventoryDataSafe] Cannot save - missing components");
             return;
         }
 
@@ -1971,8 +1971,10 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.Log($"[SaveInventoryDataSafe] 💾 Starting safe save for {character.CharacterName}");
             Debug.Log($"[SaveInventoryDataSafe] Current inventory: {itemsInInventory}/{inventory.CurrentSlots} slots (Action: {action})");
 
-            // 🛡️ Double-check ป้องกันการ save inventory ว่าง
-            if (itemsInInventory == 0 && action != "Clear Inventory" && action != "Emergency Clear")
+            // 🆕 **ปรับปรุง safety check - อนุญาต save เมื่อ equip item**
+            bool isEquipAction = action.Contains("Equip") || action.Contains("Equipment") || action.Contains("Force Save");
+
+            if (itemsInInventory == 0 && !isEquipAction && action != "Clear Inventory" && action != "Emergency Clear")
             {
                 bool hasFirebaseData = multiCharacterData.sharedInventory?.items?.Count > 0;
                 if (hasFirebaseData)
@@ -2013,6 +2015,39 @@ public class PersistentPlayerData : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"[SaveInventoryDataSafe] ❌ Error: {e.Message}");
+        }
+    }
+    public void ForceSaveInventoryAfterEquip(Character character, string action = "Force Save After Equip")
+    {
+        if (character == null || multiCharacterData == null)
+        {
+            Debug.LogWarning($"[ForceSaveInventoryAfterEquip] Cannot save - missing components");
+            return;
+        }
+
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogWarning($"[ForceSaveInventoryAfterEquip] Character has no inventory");
+                return;
+            }
+
+            int currentItems = inventory.UsedSlots;
+
+            Debug.Log($"[ForceSaveInventoryAfterEquip] 🚀 FORCE saving inventory with {currentItems} items (Action: {action})");
+            Debug.Log($"[ForceSaveInventoryAfterEquip] ⚠️ BYPASSING all safety checks for equipment action");
+
+            // 🔑 **ไม่มี safety check - บังคับ save เลย**
+            SaveInventoryData(character);
+
+            Debug.Log($"[ForceSaveInventoryAfterEquip] ✅ Force save completed without safety checks");
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ForceSaveInventoryAfterEquip] ❌ Error: {e.Message}");
         }
     }
 
@@ -3810,264 +3845,7 @@ public class PersistentPlayerData : MonoBehaviour
 
     [ContextMenu("Debug: Show Character Data Status")]
 
-    [ContextMenu("Test: Check Should Load From Firebase")]
-    private void TestShouldLoadFromFirebase()
-    {
-        bool shouldLoad = ShouldLoadFromFirebase();
-        bool hasData = HasInventoryDataInFirebase();
-
-        Debug.Log("=== LOAD CHECK RESULT ===");
-        Debug.Log($"Should Load From Firebase: {shouldLoad}");
-        Debug.Log($"Has Inventory Data: {hasData}");
-        Debug.Log($"MultiCharacterData: {multiCharacterData != null}");
-
-        if (multiCharacterData != null)
-        {
-            var sharedItems = multiCharacterData.sharedInventory?.items?.Count ?? 0;
-            Debug.Log($"Shared Inventory Items: {sharedItems}");
-            Debug.Log($"Characters Count: {multiCharacterData.characters?.Count ?? 0}");
-        }
-        Debug.Log("========================");
-    }
-    private void DebugShowCharacterDataStatus()
-    {
-        LogCharacterDataStatus();
-
-        if (multiCharacterData != null)
-        {
-            Debug.Log($"Current Active Character: {multiCharacterData.currentActiveCharacter}");
-            Debug.Log($"Has Inventory Data: {multiCharacterData.HasInventoryData()}");
-            Debug.Log($"Has Any Data: {multiCharacterData.HasAnyInventoryOrEquipmentData()}");
-        }
-    }
-
-    [ContextMenu("Debug: Fix Split Character Data")]
-    private void DebugFixSplitCharacterData()
-    {
-        FixSplitCharacterData();
-    }
-
-    [ContextMenu("Debug: Force Save Current Character")]
-    private void DebugForceSaveCurrentCharacter()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character != null)
-        {
-            Debug.Log($"[DebugForceSave] Saving {character.CharacterName}...");
-            SaveInventoryData(character);
-            LogCharacterDataStatus();
-        }
-        else
-        {
-            Debug.LogError("No Character found in scene!");
-        }
-    }
-
-    [ContextMenu("Debug: Force Load Current Character")]
-    private void DebugForceLoadCurrentCharacter()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character != null)
-        {
-            Debug.Log($"[DebugForceLoad] Loading {character.CharacterName}...");
-            LoadInventoryData(character);
-        }
-        else
-        {
-            Debug.LogError("No Character found in scene!");
-        }
-    }
-
-    [ContextMenu("Debug: Clear All Character Equipment Data")]
-    private void DebugClearAllCharacterEquipmentData()
-    {
-        if (multiCharacterData?.characters == null) return;
-
-        Debug.Log("[DebugClearEquipment] Clearing all character equipment data...");
-
-        foreach (var character in multiCharacterData.characters)
-        {
-            if (character?.characterEquipment != null)
-            {
-                // เคลียร์เฉพาะ equipment ไม่ใช่ stats
-                character.characterEquipment = new CharacterEquipmentData(character.characterType);
-                character.hasEquipmentData = false;
-                character.totalEquippedItems = 0;
-                character.totalPotions = 0;
-            }
-        }
-
-        SavePlayerDataAsync();
-        Debug.Log("[DebugClearEquipment] ✅ Cleared all equipment data");
-    }
-
-    [ContextMenu("Debug: Show Firebase Raw Data")]
-    private void DebugShowFirebaseRawData()
-    {
-        if (multiCharacterData == null)
-        {
-            Debug.Log("No multiCharacterData");
-            return;
-        }
-
-        string json = JsonUtility.ToJson(multiCharacterData, true);
-        Debug.Log("=== FIREBASE RAW DATA ===");
-        Debug.Log(json);
-        Debug.Log("========================");
-    }
-
-    [ContextMenu("Debug: Test Character Identification")]
-    private void DebugTestCharacterIdentification()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character == null)
-        {
-            Debug.LogError("No Character found!");
-            return;
-        }
-
-        Debug.Log("=== CHARACTER IDENTIFICATION TEST ===");
-        Debug.Log($"Character.CharacterName: '{character.CharacterName}'");
-        Debug.Log($"PersistentPlayerData.currentActiveCharacter: '{multiCharacterData?.currentActiveCharacter}'");
-        Debug.Log($"PersistentPlayerData.GetCurrentActiveCharacter(): '{GetCurrentActiveCharacter()}'");
-
-        // ทดสอบการหา character data
-        string characterType = multiCharacterData?.currentActiveCharacter ?? "Unknown";
-        var characterData = multiCharacterData?.GetCharacterData(characterType);
-
-        Debug.Log($"Character data found: {characterData != null}");
-        if (characterData != null)
-        {
-            Debug.Log($"Character data type: '{characterData.characterType}'");
-            Debug.Log($"Has stats: {characterData.totalMaxHp > 0}");
-            Debug.Log($"Has equipment: {characterData.HasEquipmentData()}");
-        }
-
-        Debug.Log("====================================");
-    }
-
-    [ContextMenu("🔍 Debug: Check Load Status")]
-    private void DebugCheckLoadStatus()
-    {
-        Debug.Log("=== LOAD STATUS CHECK ===");
-        Debug.Log($"PersistentPlayerData Ready: {Instance != null}");
-        Debug.Log($"MultiCharacterData Ready: {multiCharacterData != null}");
-        Debug.Log($"Should Load From Firebase: {ShouldLoadFromFirebase()}");
-        Debug.Log($"Has Inventory Data: {HasInventoryDataInFirebase()}");
-
-        if (multiCharacterData != null)
-        {
-            Debug.Log($"Shared Items Count: {multiCharacterData.sharedInventory?.items?.Count ?? 0}");
-            Debug.Log($"Current Active Character: {multiCharacterData.currentActiveCharacter}");
-
-            var currentChar = multiCharacterData.GetActiveCharacterData();
-            if (currentChar != null)
-            {
-                Debug.Log($"Character Equipment: {currentChar.HasEquipmentData()}");
-                Debug.Log($"Equipped Items: {currentChar.totalEquippedItems}");
-                Debug.Log($"Potions: {currentChar.totalPotions}");
-            }
-        }
-        Debug.Log("========================");
-    }
-    [ContextMenu("🔍 Debug: Test Equipment Load")]
-    private void TestEquipmentLoad()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character == null)
-        {
-            Debug.LogError("No Character found in scene!");
-            return;
-        }
-
-        Debug.Log("=== TESTING EQUIPMENT LOAD ===");
-
-        // ตรวจสอบข้อมูลใน Firebase
-        DebugShowAllCharacterEquipmentData();
-
-        // ลองโหลดข้อมูล
-        LoadInventoryData(character);
-
-        // ตรวจสอบผลลัพธ์
-    }
-
-    [ContextMenu("🔍 Debug: Equipment vs UI Status")]
-    private void DebugEquipmentVsUIStatus()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character == null)
-        {
-            Debug.LogError("No Character found!");
-            return;
-        }
-
-        Debug.Log("=== EQUIPMENT vs UI STATUS ===");
-
-        // 1. ตรวจสอบข้อมูลใน Character
-        Debug.Log("📊 CHARACTER DATA:");
-        for (int i = 0; i < 6; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData equippedItem = character.GetEquippedItem(itemType);
-            Debug.Log($"  {itemType}: {(equippedItem?.ItemName ?? "EMPTY")}");
-        }
-
-        // 2. ตรวจสอบ EquipmentSlotManager
-        var equipmentManager = character.GetComponent<EquipmentSlotManager>();
-        Debug.Log($"📱 EQUIPMENT MANAGER: {(equipmentManager != null ? "Found" : "Not Found")}");
-        if (equipmentManager != null)
-        {
-            Debug.Log($"  - Connected: {equipmentManager.IsConnected()}");
-        }
-
-        // 3. ตรวจสอบ CombatUIManager
-        var combatUI = FindObjectOfType<CombatUIManager>();
-        Debug.Log($"🖥️ COMBAT UI: {(combatUI != null ? "Found" : "Not Found")}");
-        if (combatUI?.equipmentSlotManager != null)
-        {
-            Debug.Log($"  - Equipment Manager: Found");
-            Debug.Log($"  - Connected: {combatUI.equipmentSlotManager.IsConnected()}");
-        }
-
-        Debug.Log("==============================");
-    }
-
-    [ContextMenu("🔧 Force Fix Equipment Load")]
-    private void ForceFixEquipmentLoad()
-    {
-        var character = FindObjectOfType<Character>();
-        if (character == null)
-        {
-            Debug.LogError("No Character found!");
-            return;
-        }
-
-        Debug.Log("🔧 FORCE FIXING EQUIPMENT LOAD...");
-
-        // 1. ตรวจสอบและ fix character type matching
-        if (multiCharacterData != null)
-        {
-            string currentActive = multiCharacterData.currentActiveCharacter;
-            string characterName = character.CharacterName;
-
-            Debug.Log($"Active Character: {currentActive}");
-            Debug.Log($"Character Name: {characterName}");
-
-            // ถ้าไม่ตรงกัน ให้แก้ไข
-            if (currentActive != characterName)
-            {
-                Debug.LogWarning($"Character type mismatch! Fixing: {characterName}");
-                multiCharacterData.currentActiveCharacter = characterName;
-            }
-        }
-
-        // 2. Force โหลดข้อมูล equipment
-        LoadInventoryData(character);
-
-        // 3. รอแล้ว force refresh UI
-        StartCoroutine(DelayedForceRefresh(character));
-    }
-
+   
     private System.Collections.IEnumerator DelayedForceRefresh(Character character)
     {
         yield return new WaitForSeconds(1f);

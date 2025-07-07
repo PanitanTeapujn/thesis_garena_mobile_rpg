@@ -422,6 +422,12 @@ public class ItemDetailPanel : MonoBehaviour
             // Force sync inventory UI
             ForceUpdateInventorySlot(inventorySlotIndex);
 
+            // 🆕 **FIX**: ใช้ method ใหม่ที่ bypass safety check**
+            if (PersistentPlayerData.Instance != null)
+            {
+                PersistentPlayerData.Instance.ForceSaveInventoryAfterEquip(currentCharacter, "Equip Full Potion Stack");
+            }
+
             Debug.Log($"[ItemDetailPanel] 🎉 Successfully equipped full potion stack!");
             return true;
         }
@@ -515,12 +521,14 @@ public class ItemDetailPanel : MonoBehaviour
                 // Force update inventory UI
                 ForceUpdateInventorySlot(itemSlotIndex);
 
+                // 🆕 **FIX**: Force save ทันทีหลัง equip item
+                ForceSaveAfterEquip(removeCount >= oldStackCount);
+
                 // ถ้า stack หมดแล้ว หรือลบทั้งหมด ให้ปิด detail panel
                 InventoryItem updatedItem = inventory.GetItem(itemSlotIndex);
                 if (updatedItem == null || updatedItem.IsEmpty || removeCount >= oldStackCount)
                 {
                     Debug.Log("[ItemDetailPanel] Item stack depleted or fully removed, closing detail panel");
-                    // ไม่ต้อง update currentItem เพราะจะ hide panel แล้ว
                 }
                 else
                 {
@@ -537,6 +545,29 @@ public class ItemDetailPanel : MonoBehaviour
         else
         {
             Debug.LogWarning($"[ItemDetailPanel] Could not find {currentItem.itemData.ItemName} in inventory");
+        }
+    }
+
+    // 🆕 **เพิ่ม method ใหม่**
+    private void ForceSaveAfterEquip(bool inventoryNowEmpty)
+    {
+        try
+        {
+            if (PersistentPlayerData.Instance != null && currentCharacter != null)
+            {
+                string saveAction = inventoryNowEmpty ? "Equip Last Item - Empty Inventory" : "Equip Item";
+
+                Debug.Log($"[ItemDetailPanel] 💾 Force saving after equip: {saveAction}");
+
+                // 🔑 **ใช้ method ใหม่ที่ bypass safety check ทั้งหมด**
+                PersistentPlayerData.Instance.ForceSaveInventoryAfterEquip(currentCharacter, saveAction);
+
+                Debug.Log($"[ItemDetailPanel] ✅ Force save completed for: {saveAction}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ItemDetailPanel] ❌ Force save error: {e.Message}");
         }
     }
     // 🆕 เพิ่ม method ใหม่สำหรับ force update inventory slot เฉพาะ

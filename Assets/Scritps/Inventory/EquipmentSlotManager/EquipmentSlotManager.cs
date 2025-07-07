@@ -478,42 +478,6 @@ public class EquipmentSlotManager : MonoBehaviour
     #endregion
 
     #region Context Menu for Testing
-    [ContextMenu("🔄 Refresh All Slots")]
-    private void TestRefreshAllSlots()
-    {
-        RefreshAllSlots();
-    }
-
-    [ContextMenu("🔍 Debug Status")]
-    private void DebugStatus()
-    {
-        LogStatus();
-    }
-
-    [ContextMenu("🔍 Debug Connected Slots")]
-    private void DebugConnectedSlots()
-    {
-        Debug.Log("=== CONNECTED SLOTS DEBUG ===");
-        Debug.Log($"Character: {ownerCharacter?.CharacterName ?? "None"}");
-        Debug.Log($"Connected Equipment Slots: {connectedEquipmentSlots.Count}");
-        Debug.Log($"Connected Potion Slots: {connectedPotionSlots.Count}");
-        Debug.Log($"Is Connected: {IsConnected()}");
-
-        // แสดงรายละเอียด equipment slots
-        for (int i = 0; i < connectedEquipmentSlots.Count; i++)
-        {
-            var slot = connectedEquipmentSlots[i];
-            Debug.Log($"  Equipment Slot {i}: {slot?.SlotType} - Empty: {slot?.IsEmpty}");
-        }
-
-        // แสดงรายละเอียด potion slots
-        for (int i = 0; i < connectedPotionSlots.Count; i++)
-        {
-            var slot = connectedPotionSlots[i];
-            Debug.Log($"  Potion Slot {i}: Index {slot?.PotionSlotIndex} - Empty: {slot?.IsEmpty}");
-        }
-
-        Debug.Log("=============================");
-    }
+    
     #endregion
 }

@@ -603,8 +603,23 @@ public class Inventory : NetworkBehaviour
             {
                 Debug.Log($"[Inventory] 💾 Auto-saving after: {action}");
 
-                // ใช้ Coroutine เพื่อไม่ให้ block การทำงาน
-                StartCoroutine(DelayedAutoSave(action));
+                // 🔑 **แยก logic ตาม action type**
+                bool isRemoveOrEquipAction = action.Contains("RemoveItem") ||
+                                            action.Contains("Equip") ||
+                                            action.Contains("Use") ||
+                                            action.Contains("from slot");
+
+                if (isRemoveOrEquipAction)
+                {
+                    // 🆕 **Force save ทันทีสำหรับ remove/equip actions**
+                    PersistentPlayerData.Instance.ForceSaveInventoryAfterEquip(character, action);
+                    Debug.Log($"[Inventory] ✅ Force save completed for: {action}");
+                }
+                else
+                {
+                    // 🆕 **ใช้ Coroutine สำหรับ add actions**
+                    StartCoroutine(DelayedAutoSave(action));
+                }
             }
             else
             {

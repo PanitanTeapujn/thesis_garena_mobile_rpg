@@ -510,7 +510,7 @@ MonoBehaviour:
   giveStarterItems: 1
   starterItemsGiven: 0
   starterItemsList:
-  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+  - itemData: {fileID: 0}
     quantity: 1
     note: 
   - itemData: {fileID: 0}
