@@ -182,26 +182,22 @@ public class Character : NetworkBehaviour
     {
         if (PersistentPlayerData.Instance == null)
         {
-            Debug.LogWarning("[Character] PersistentPlayerData not available yet");
             return;
         }
 
         // ตรวจสอบว่ามีข้อมูลใน Firebase หรือไม่
         if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
         {
-            Debug.Log($"[Character] Found saved data, loading inventory for {CharacterName}...");
 
             // 🆕 ใช้ Coroutine เพื่อ delay การโหลด
             StartCoroutine(DelayedLoadPlayerData());
         }
         else
         {
-            Debug.Log($"[Character] No saved data found for {CharacterName}");
         }
     }
     private System.Collections.IEnumerator DelayedLoadPlayerData()
     {
-        Debug.Log("[Character] Starting detailed load of player data...");
 
         // รอ 3 frames เพื่อให้ UI systems พร้อม
         yield return null;
@@ -211,14 +207,11 @@ public class Character : NetworkBehaviour
         // โหลดข้อมูล inventory และ equipment
         try
         {
-            Debug.Log("[Character] Loading inventory data...");
             PersistentPlayerData.Instance.LoadInventoryData(this);
 
-            Debug.Log("[Character] ✅ Player data loaded successfully");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error loading player data: {e.Message}");
         }
 
         // รออีก 3 frames แล้ว force refresh equipment
@@ -226,21 +219,18 @@ public class Character : NetworkBehaviour
         yield return null;
         yield return null;
 
-        Debug.Log("[Character] Force refreshing equipment UI...");
         ForceRefreshAllEquipmentUI();
 
         // รออีก 2 frames แล้ว verify ผลลัพธ์
         yield return null;
         yield return null;
 
-        Debug.Log("[Character] Verifying loaded equipment...");
     }
 
     private void ForceRefreshAllEquipmentUI()
     {
         try
         {
-            Debug.Log("[Character] 🔄 Force refreshing equipment UI...");
 
             int refreshedManagers = 0;
 
@@ -252,11 +242,9 @@ public class Character : NetworkBehaviour
                 {
                     equipmentSlotManager.ForceRefreshFromCharacter();
                     refreshedManagers++;
-                    Debug.Log("[Character] ✅ EquipmentSlotManager refreshed");
                 }
                 else
                 {
-                    Debug.LogWarning("[Character] ⚠️ EquipmentSlotManager not connected, will retry...");
 
                     // ลองใหม่หลัง 1 วินาที
                     StartCoroutine(RetryRefreshEquipmentUI());
@@ -264,7 +252,6 @@ public class Character : NetworkBehaviour
             }
             else
             {
-                Debug.LogWarning("[Character] ⚠️ No EquipmentSlotManager found on character");
             }
 
             // 2. Force refresh CombatUIManager equipment
@@ -275,16 +262,13 @@ public class Character : NetworkBehaviour
                 {
                     combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
                     refreshedManagers++;
-                    Debug.Log("[Character] ✅ CombatUIManager equipment refreshed");
                 }
                 else
                 {
-                    Debug.LogWarning("[Character] ⚠️ CombatUIManager equipment not connected");
                 }
             }
             else
             {
-                Debug.LogWarning("[Character] ⚠️ No CombatUIManager equipment manager found");
             }
 
             // 3. แจ้ง stats changed
@@ -293,44 +277,34 @@ public class Character : NetworkBehaviour
             // 4. Force update Canvas
             Canvas.ForceUpdateCanvases();
 
-            Debug.Log($"[Character] ✅ Equipment UI refresh complete ({refreshedManagers} managers refreshed)");
 
             if (refreshedManagers == 0)
             {
-                Debug.LogError("[Character] ❌ No equipment managers were refreshed!");
                 DebugEquipmentManagersStatus();
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error refreshing equipment UI: {e.Message}");
         }
     }
 
     // 🆕 เพิ่ม method สำหรับ debug equipment managers
     private void DebugEquipmentManagersStatus()
     {
-        Debug.Log("=== EQUIPMENT MANAGERS STATUS ===");
 
         var equipmentSlotManager = GetComponent<EquipmentSlotManager>();
-        Debug.Log($"Character EquipmentSlotManager: {(equipmentSlotManager != null ? "Found" : "Not Found")}");
         if (equipmentSlotManager != null)
         {
-            Debug.Log($"  - Is Connected: {equipmentSlotManager.IsConnected()}");
         }
 
         var combatUIManager = FindObjectOfType<CombatUIManager>();
-        Debug.Log($"CombatUIManager: {(combatUIManager != null ? "Found" : "Not Found")}");
         if (combatUIManager != null)
         {
-            Debug.Log($"  - Has Equipment Manager: {(combatUIManager.equipmentSlotManager != null)}");
             if (combatUIManager.equipmentSlotManager != null)
             {
-                Debug.Log($"  - Equipment Manager Connected: {combatUIManager.equipmentSlotManager.IsConnected()}");
             }
         }
 
-        Debug.Log("================================");
     }
     private System.Collections.IEnumerator RetryRefreshEquipmentUI()
     {
@@ -346,16 +320,13 @@ public class Character : NetworkBehaviour
             if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
             {
                 equipmentSlotManager.ForceRefreshFromCharacter();
-                Debug.Log($"[Character] ✅ Equipment UI refreshed after {retryCount} retries");
                 break;
             }
 
-            Debug.Log($"[Character] Retry {retryCount}/{maxRetries} - Equipment manager still not ready");
         }
 
         if (retryCount >= maxRetries)
         {
-            Debug.LogWarning("[Character] ⚠️ Failed to refresh equipment UI after max retries");
         }
     }
     // ใน Character.cs - แก้ไข InitializeComponents()
@@ -397,11 +368,9 @@ public class Character : NetworkBehaviour
             if (equipmentSlotManager == null)
                 equipmentSlotManager = gameObject.AddComponent<EquipmentSlotManager>();
 
-            Debug.Log($"[Character] Player components initialized for {CharacterName}");
         }
         else
         {
-            Debug.Log($"[Character] Enemy components initialized for {CharacterName} (skipped inventory/equipment)");
         }
     }
 
@@ -454,7 +423,6 @@ public class Character : NetworkBehaviour
     {
         base.Spawned();
 
-        Debug.Log($"[Character] {CharacterName} spawned - Authority: Input={HasInputAuthority}, State={HasStateAuthority}");
 
         if (HasStateAuthority)
         {
@@ -480,17 +448,14 @@ public class Character : NetworkBehaviour
 
     private IEnumerator PostSpawnStatsLoading()
     {
-        Debug.Log($"[Character] 🚀 Starting simple post-spawn loading for {CharacterName}...");
 
         // รอให้ PersistentPlayerData พร้อม
         yield return new WaitUntil(() => PersistentPlayerData.Instance != null);
         yield return new WaitUntil(() => PersistentPlayerData.Instance.isDataLoaded);
 
-        Debug.Log($"[Character] 📊 PersistentPlayerData ready");
 
         if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
         {
-            Debug.Log($"[Character] 💾 Found saved data, using simple approach...");
 
             // ให้ LevelManager จัดการ stats loading ตามปกติ
             var levelManager = GetComponent<LevelManager>();
@@ -505,17 +470,14 @@ public class Character : NetworkBehaviour
         }
         else
         {
-            Debug.Log($"[Character] 🆕 No saved data, using defaults");
         }
 
         isStatsLoaded = true;
         IsStatsReady = true;
 
-        Debug.Log($"[Character] ✅ Simple loading completed for {CharacterName}");
     }
     private IEnumerator SimpleLoadEquipmentOnly()
     {
-        Debug.Log($"[Character] ⚔️ Loading equipment only (no stats changes)...");
 
         bool shouldHaveEquipment = false;
         try
@@ -526,13 +488,11 @@ public class Character : NetworkBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error while checking equipment data: {e.Message}");
             yield break;
         }
 
         if (shouldHaveEquipment)
         {
-            Debug.Log($"[Character] 🔧 Equipment data found, loading...");
 
             try
             {
@@ -541,7 +501,6 @@ public class Character : NetworkBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[Character] ❌ Error while clearing equipment: {e.Message}");
                 yield break;
             }
 
@@ -554,7 +513,6 @@ public class Character : NetworkBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[Character] ❌ Error while loading inventory data: {e.Message}");
                 yield break;
             }
 
@@ -568,25 +526,20 @@ public class Character : NetworkBehaviour
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[Character] ❌ Error while counting equipped items: {e.Message}");
                 yield break;
             }
 
-            Debug.Log($"[Character] Equipment loading result: {equipmentCount} items");
 
             if (equipmentCount > 0)
             {
                 ForceUpdateEquipmentSlotsNow();
-                Debug.Log($"[Character] ✅ Equipment loaded successfully (stats unchanged)");
             }
             else
             {
-                Debug.LogWarning($"[Character] ⚠️ Equipment loading failed, will retry later");
             }
         }
         else
         {
-            Debug.Log($"[Character] ✅ No equipment data to load");
         }
     }
 
@@ -601,7 +554,6 @@ public class Character : NetworkBehaviour
         // ✅ เปิดใช้งานอีกครั้ง แต่ใช้วิธีที่ปลอดภัย
         try
         {
-            Debug.Log($"[Character] 🔄 Applying loaded equipment stats for {CharacterName}...");
 
             // คำนวณ total stats จาก equipment ทั้งหมด
             ApplyAllEquipmentStats();
@@ -612,11 +564,9 @@ public class Character : NetworkBehaviour
             // แจ้ง stats changed
             OnStatsChanged?.Invoke();
 
-            Debug.Log($"[Character] ✅ Equipment stats applied successfully");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error applying equipment stats: {e.Message}");
         }
     }
     /// </summary>
@@ -624,7 +574,6 @@ public class Character : NetworkBehaviour
     {
         try
         {
-            Debug.Log($"[Character] 🔄 Applying loaded equipment stats with reset for {CharacterName}...");
 
             // 🆕 เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
             float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
@@ -653,28 +602,20 @@ public class Character : NetworkBehaviour
             int armBonus = Armor - baseArmor;
             float critBonus = CriticalChance - baseCriticalChance;
 
-            Debug.Log($"[Character] ✅ Equipment bonuses applied (with reset):");
-            Debug.Log($"  HP: +{hpBonus} (Base: {baseMaxHp} → Total: {MaxHp}) | Current: {CurrentHp}");
-            Debug.Log($"  ATK: +{atkBonus} (Base: {baseAttackDamage} → Total: {AttackDamage})");
-            Debug.Log($"  ARM: +{armBonus} (Base: {baseArmor} → Total: {Armor})");
-            Debug.Log($"  CRIT: +{critBonus:F1}% (Base: {baseCriticalChance:F1}% → Total: {CriticalChance:F1}%)");
+         
 
             // 5. Force update network state
             ForceUpdateNetworkState();
 
             // 6. แจ้ง stats changed
             OnStatsChanged?.Invoke();
-
-            Debug.Log($"[Character] ✅ Applied loaded equipment stats with reset for {CharacterName}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error applying loaded equipment stats with reset: {e.Message}");
         }
     }
     private IEnumerator SimpleLoadPlayerData()
     {
-        Debug.Log($"[Character] 📊 Simple player data loading...");
 
         // ให้ LevelManager จัดการ stats ตามปกติ
         var levelManager = GetComponent<LevelManager>();
@@ -685,7 +626,6 @@ public class Character : NetworkBehaviour
 
             yield return new WaitForSeconds(0.5f);
 
-            Debug.Log($"[Character] ✅ LevelManager handled stats loading");
         }
 
         yield return null;
@@ -693,7 +633,6 @@ public class Character : NetworkBehaviour
 
     private IEnumerator SimpleEquipmentAutoCheck()
     {
-        Debug.Log($"[Character] ⚔️ Starting simple equipment auto-check...");
 
         // รอให้ stats loading เสร็จก่อน
         yield return new WaitForSeconds(1f);
@@ -708,28 +647,23 @@ public class Character : NetworkBehaviour
 
             currentEquipmentCount = GetAllEquippedItems().Count;
 
-            Debug.Log($"[Character] Equipment check: Should have={shouldHaveEquipment}, Current={currentEquipmentCount}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Equipment auto-check error: {e.Message}");
             yield break;
         }
 
         if (shouldHaveEquipment && currentEquipmentCount == 0)
         {
-            Debug.Log($"[Character] 🔧 Equipment missing, auto-loading...");
             yield return StartCoroutine(SimpleEquipmentReload());
         }
         else
         {
-            Debug.Log($"[Character] ✅ Equipment status OK");
         }
     }
 
     private IEnumerator SimpleEquipmentReload()
     {
-        Debug.Log($"[Character] 🔄 Simple equipment reload...");
 
         try
         {
@@ -737,7 +671,6 @@ public class Character : NetworkBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error clearing equipment: {e.Message}");
         }
 
         yield return new WaitForSeconds(0.2f);
@@ -748,7 +681,6 @@ public class Character : NetworkBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error loading inventory data: {e.Message}");
         }
 
         yield return new WaitForSeconds(0.5f);
@@ -760,20 +692,14 @@ public class Character : NetworkBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error getting equipped items: {e.Message}");
         }
 
-        Debug.Log($"[Character] Equipment reload result: {equipmentCount} items");
 
         if (equipmentCount > 0)
         {
             ForceUpdateEquipmentSlotsNow();
-            Debug.Log($"[Character] ✅ Equipment reload successful");
         }
-        else
-        {
-            Debug.LogWarning($"[Character] ⚠️ Equipment reload failed");
-        }
+     
     }
 
    
@@ -785,7 +711,6 @@ public class Character : NetworkBehaviour
 
     private IEnumerator AutoSaveLoadedData()
     {
-        Debug.Log($"[Character] Auto-saving loaded data to ensure integrity...");
 
         yield return new WaitForSeconds(0.2f);
 
@@ -801,18 +726,15 @@ public class Character : NetworkBehaviour
                 PersistentPlayerData.Instance?.SaveBaseStats(this, levelManager);
             }
 
-            Debug.Log($"[Character] ✅ Auto-save completed");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Auto-save failed: {e.Message}");
         }
 
         yield return null;
     }
     private IEnumerator DelayedUIRefresh()
     {
-        Debug.Log($"[Character] Refreshing UI with delay...");
 
         // รอให้ระบบต่างๆ settle
         yield return new WaitForSeconds(0.3f);
@@ -834,7 +756,6 @@ public class Character : NetworkBehaviour
         // Force update Canvas
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log($"[Character] ✅ UI refresh completed");
 
         yield return null;
     }
@@ -847,25 +768,21 @@ public class Character : NetworkBehaviour
     {
         yield return new WaitForSeconds(2f); // รอให้ loading เสร็จก่อน
 
-        Debug.Log($"[Character] 🔍 Auto-checking equipment status...");
 
         // ตรวจสอบว่ามี equipment หรือไม่
         int equipmentCount = GetAllEquippedItems().Count;
         bool hasEquipmentInFirebase = PersistentPlayerData.Instance?.multiCharacterData
             ?.GetCurrentCharacterData()?.HasEquipmentData() ?? false;
 
-        Debug.Log($"[Character] Equipment status: {equipmentCount} items in character, Firebase has data: {hasEquipmentInFirebase}");
 
         if (hasEquipmentInFirebase && equipmentCount == 0)
         {
-            Debug.LogWarning($"[Character] ⚠️ Equipment mismatch detected! Auto-fixing...");
 
             // ทำ auto-fix
             yield return StartCoroutine(AutoFixEquipmentMismatch());
         }
         else
         {
-            Debug.Log($"[Character] ✅ Equipment status OK");
         }
     }
 
@@ -874,7 +791,6 @@ public class Character : NetworkBehaviour
     /// </summary>
     private IEnumerator AutoFixEquipmentMismatch()
     {
-        Debug.Log($"[Character] 🔧 Starting auto-fix for equipment mismatch...");
 
         // Clear และ reload
         ClearAllEquipmentForLoad();
@@ -893,15 +809,12 @@ public class Character : NetworkBehaviour
         OnStatsChanged?.Invoke();
 
         int equipmentCountAfterFix = GetAllEquippedItems().Count;
-        Debug.Log($"[Character] Auto-fix result: {equipmentCountAfterFix} items loaded");
 
         if (equipmentCountAfterFix > 0)
         {
-            Debug.Log($"[Character] ✅ Auto-fix successful!");
         }
         else
         {
-            Debug.LogError($"[Character] ❌ Auto-fix failed - manual intervention needed");
         }
     }
 
@@ -920,7 +833,6 @@ public class Character : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_RequestStatsSync()
     {
-        Debug.Log($"[Character] 📡 InputAuthority requesting stats sync for {CharacterName}");
 
         // StateAuthority ส่ง stats ไปให้ทุกคน
         RPC_SyncStatsToAll(
@@ -934,7 +846,6 @@ public class Character : NetworkBehaviour
     private void RPC_SyncStatsToAll(int hp, int mana, int atk, int magic, int arm,
         float crit, float critDmg, float speed, float hit, float eva, float atkSpeed, float cdr)
     {
-        Debug.Log($"[Character] 📡 Syncing stats to all clients for {CharacterName}");
 
         // Apply synced stats
         maxHp = hp;
@@ -957,13 +868,11 @@ public class Character : NetworkBehaviour
         ForceUpdateNetworkState();
         OnStatsChanged?.Invoke();
 
-        Debug.Log($"[Character] ✅ Stats synced: HP={maxHp}, ATK={attackDamage}, ARM={armor}");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_NotifyStatsLoaded()
     {
-        Debug.Log($"[Character] ✅ Stats loading completed for {CharacterName}");
         isStatsLoaded = true;
     }
 
@@ -1139,7 +1048,6 @@ public class Character : NetworkBehaviour
 
         var (physicalDamage, magicDamage) = GetSkillDamages(skillType, physicalRatio, magicRatio);
 
-        Debug.Log($"[Skill Attack] {CharacterName} uses {skillType} skill: Physical={physicalDamage}, Magic={magicDamage}");
 
         combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
     }
@@ -1150,7 +1058,6 @@ public class Character : NetworkBehaviour
 
         var (physicalDamage, magicDamage) = GetSkillDamages(skillType, flatPhysical, flatMagic);
 
-        Debug.Log($"[Skill Attack] {CharacterName} uses {skillType} skill: Physical={physicalDamage}, Magic={magicDamage}");
 
         target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
     }
@@ -1164,7 +1071,6 @@ public class Character : NetworkBehaviour
 
         var (physicalDamage, magicDamage) = GetAdvancedSkillDamages(physicalRatio, magicRatio, flatPhysical, flatMagic);
 
-        Debug.Log($"[Advanced Skill] {CharacterName}: Physical={physicalDamage} (ratio:{physicalRatio}, flat:{flatPhysical}), Magic={magicDamage} (ratio:{magicRatio}, flat:{flatMagic})");
 
         target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
     }
@@ -1456,7 +1362,6 @@ public class Character : NetworkBehaviour
 
         float totalBonus = baseCritBonus + equipmentBonus;
 
-        Debug.Log($"🔍 Critical: Base={baseCritBonus}, Equipment={equipmentBonus}, Total={totalBonus}");
 
         return totalBonus;
     }
@@ -1466,7 +1371,6 @@ public class Character : NetworkBehaviour
         float oldValue = criticalDamageBonus;
         criticalDamageBonus = newValue;
 
-        Debug.Log($"[Critical Damage Bonus Updated] {CharacterName}: {oldValue} -> {newValue}");
 
         // Force network sync ถ้าจำเป็น (เฉพาะตอนที่มี authority)
         if (forceNetworkSync && HasStateAuthority)
@@ -1554,33 +1458,27 @@ public class Character : NetworkBehaviour
         // แจ้งให้ระบบอื่นๆ รู้ว่า stats เปลี่ยน (รวม Inspector)
         OnStatsChanged?.Invoke();
 
-        Debug.Log($"[Equipment Changed] Critical Damage Bonus now: {GetEffectiveCriticalDamageBonus()}");
     }
     public bool EquipItemData(ItemData itemData)
     {
         if (itemData == null)
         {
-            Debug.LogWarning($"[Character] Cannot equip null item");
             return false;
         }
         if (GetComponent<NetworkEnemy>() != null)
         {
-            Debug.LogWarning($"[Character] Enemy {CharacterName} cannot equip items");
             return false;
         }
 
-        Debug.Log($"[Character] EquipItemData called: {itemData.ItemName} ({itemData.ItemType})");
 
         // ตรวจสอบ lists
         if (characterEquippedItems.Count < 6)
         {
-            Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
             InitializeEquipmentSlots();
         }
 
         if (potionSlots.Count < 5)
         {
-            Debug.LogWarning($"[Character] potionSlots list too small: {potionSlots.Count}");
             InitializeEquipmentSlots();
         }
 
@@ -1597,7 +1495,6 @@ public class Character : NetworkBehaviour
             int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
             if (slotIndex == -1)
             {
-                Debug.LogWarning($"[Character] No slot available for item type: {itemData.ItemType}");
                 return false;
             }
 
@@ -1608,13 +1505,11 @@ public class Character : NetworkBehaviour
                 if (inventory != null)
                 {
                     inventory.AddItem(oldItem, 1);
-                    Debug.Log($"[Character] Added old item back to inventory: {oldItem.ItemName}");
                 }
             }
 
             // Equip item ใหม่
             characterEquippedItems[slotIndex] = itemData;
-            Debug.Log($"[Character] ✅ Equipped {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
 
             // คำนวณ total stats จาก equipment ทั้งหมด
             ApplyAllEquipmentStats();
@@ -1641,14 +1536,12 @@ public class Character : NetworkBehaviour
     // 🆕 เพิ่ม method ใหม่สำหรับ equip potion
     private bool EquipPotionToSlot(ItemData potionData)
     {
-        Debug.Log($"[Character] 🧪 Attempting to equip potion: {potionData.ItemName}");
 
         // หาช่องว่างใน potion slots (0-4)
         int emptySlotIndex = FindEmptyPotionSlot();
 
         if (emptySlotIndex == -1)
         {
-            Debug.LogWarning($"[Character] ❌ All potion slots are full (0-4)");
             DebugPotionSlots();
             return false;
         }
@@ -1671,7 +1564,6 @@ public class Character : NetworkBehaviour
         potionSlots[emptySlotIndex] = potionData;
         potionStackCounts[emptySlotIndex] = totalStackCount; // 🆕 เก็บจำนวน stack
 
-        Debug.Log($"[Character] ✅ Equipped {potionData.ItemName} x{totalStackCount} to potion slot {emptySlotIndex}");
 
         // แจ้ง Event สำหรับ UI (ใช้ ItemType.Potion)
         OnItemEquippedToSlot?.Invoke(this, ItemType.Potion, potionData);
@@ -1696,7 +1588,6 @@ public class Character : NetworkBehaviour
             }
         }
 
-        Debug.Log($"[Character] Found {totalCount} {potionData.ItemName} in inventory");
         return totalCount;
     }
 
@@ -1716,7 +1607,6 @@ public class Character : NetworkBehaviour
         if (slotIndex >= 0 && slotIndex < potionStackCounts.Count)
         {
             potionStackCounts[slotIndex] = stackCount;
-            Debug.Log($"[Character] Set potion slot {slotIndex} stack count to {stackCount}");
         }
     }
     private void DebugPotionSlots()
@@ -1733,7 +1623,6 @@ public class Character : NetworkBehaviour
             }
             else
             {
-                Debug.Log($"Slot {i}: EMPTY");
             }
         }
     }
@@ -1744,7 +1633,6 @@ public class Character : NetworkBehaviour
         if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
         {
             equipmentSlotManager.ForceRefreshFromCharacter();
-            Debug.Log("[Character] ✅ Immediate equipment slots refresh");
         }
 
         // หา CombatUIManager แล้วลอง refresh ด้วย
@@ -1752,7 +1640,6 @@ public class Character : NetworkBehaviour
         if (uiManager?.equipmentSlotManager != null)
         {
             uiManager.equipmentSlotManager.ForceRefreshFromCharacter();
-            Debug.Log("[Character] ✅ Immediate UI manager refresh");
         }
     }
 
@@ -1761,14 +1648,12 @@ public class Character : NetworkBehaviour
     {
         if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlots[potionSlotIndex] == null)
         {
-            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex}");
             return false;
         }
 
         ItemData unequippedPotion = potionSlots[potionSlotIndex];
         int stackCount = potionStackCounts[potionSlotIndex]; // 🆕 ดึงจำนวน stack
 
-        Debug.Log($"[Character] Unequipping {unequippedPotion.ItemName} x{stackCount} from potion slot {potionSlotIndex}");
 
         // เคลียร์ slot
         potionSlots[potionSlotIndex] = null;
@@ -1776,7 +1661,6 @@ public class Character : NetworkBehaviour
 
         // 🆕 ไม่ต้องเพิ่มกลับ inventory ที่นี่ เพราะ ItemDetailPanel จะจัดการเอง
 
-        Debug.Log($"[Character] ✅ Unequipped {unequippedPotion.ItemName} from potion slot {potionSlotIndex}");
         return true;
     }
     // 🆕 Method ใหม่: คำนวณ total stats จาก equipment ทั้งหมด
@@ -1784,7 +1668,6 @@ public class Character : NetworkBehaviour
     {
         if (equipmentManager == null)
         {
-            Debug.LogWarning("[Character] EquipmentManager not found - stats will not be applied!");
             return;
         }
 
@@ -1793,7 +1676,6 @@ public class Character : NetworkBehaviour
         float manaPercentage = maxMana > 0 ? (float)currentMana / maxMana : 1f;
 
         // 🆕 Debug stats ก่อน apply
-        Debug.Log($"[Character] 📈 STATS BEFORE APPLY: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}, CurrentHP={CurrentHp} ({hpPercentage:P1})");
 
         // คำนวณ total stats จาก characterEquippedItems ทั้งหมด
         EquipmentStats totalStats = CalculateTotalEquipmentStats();
@@ -1818,10 +1700,7 @@ public class Character : NetworkBehaviour
         currentMana = Mathf.Clamp(currentMana, 0, maxMana);
 
         // 🆕 Debug stats หลัง apply
-        Debug.Log($"[Character] 📈 STATS AFTER APPLY: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}, CurrentHP={CurrentHp} ({(float)CurrentHp / MaxHp:P1})");
-        Debug.Log($"[Character] 💙 Mana: {CurrentMana}/{MaxMana} ({(float)CurrentMana / MaxMana:P1})");
 
-        Debug.Log($"[Character] ✅ Applied total equipment stats with HP/Mana percentage preserved");
     }
     private EquipmentStats CalculateTotalEquipmentStats()
     {
@@ -1849,11 +1728,9 @@ public class Character : NetworkBehaviour
                 totalStats.physicalResistanceBonus += itemStats.physicalResistanceBonus;
                 totalStats.magicalResistanceBonus += itemStats.magicalResistanceBonus;
 
-                Debug.Log($"[Character] Added stats from {equippedItem.ItemName}: ATK+{itemStats.attackDamageBonus}, ARM+{itemStats.armorBonus}");
             }
         }
 
-        Debug.Log($"[Character] Total calculated stats: ATK+{totalStats.attackDamageBonus}, ARM+{totalStats.armorBonus}, HP+{totalStats.maxHpBonus}");
 
         // 🆕 แสดง total stats ทั้งหมดที่มีค่ามากกว่า 0
         List<string> totalStatsList = new List<string>();
@@ -1888,7 +1765,6 @@ public class Character : NetworkBehaviour
             totalStatsList.Add($"MAG_RES+{totalStats.magicalResistanceBonus:F1}%");
 
         string totalStatsString = totalStatsList.Count > 0 ? string.Join(", ", totalStatsList) : "No total stats";
-        Debug.Log($"[Character] 📊 TOTAL EQUIPMENT STATS: [{totalStatsString}]");
 
         return totalStats;
     }
@@ -1915,29 +1791,22 @@ public class Character : NetworkBehaviour
 
     private int FindEmptyPotionSlot()
     {
-        Debug.Log($"[Character] Searching for empty potion slot in {potionSlots.Count} slots...");
 
         for (int i = 0; i < potionSlots.Count; i++)
         {
             if (potionSlots[i] == null)
             {
-                Debug.Log($"[Character] Found empty potion slot at index {i}");
                 return i;
             }
-            else
-            {
-                Debug.Log($"[Character] Potion slot {i}: {potionSlots[i].ItemName}");
-            }
+           
         }
 
-        Debug.LogWarning("[Character] No empty potion slot found (all 5 slots full)");
         return -1; // เต็มหมด
     }
     private EquipmentData ConvertItemDataToEquipmentData(ItemData itemData)
     {
         if (itemData == null)
         {
-            Debug.LogError("[Character] Cannot convert null ItemData to EquipmentData");
             return null;
         }
 
@@ -1949,7 +1818,6 @@ public class Character : NetworkBehaviour
             itemIcon = itemData.ItemIcon
         };
 
-        Debug.Log($"[Character] Converted {itemData.ItemName} to EquipmentData with stats");
         return equipmentData;
     }
     // เพิ่ม getter methods
@@ -1957,21 +1825,17 @@ public class Character : NetworkBehaviour
     {
         if (itemType == ItemType.Potion)
         {
-            Debug.LogWarning($"[Character] Use GetPotionInSlot() for potion items");
             return null;
         }
 
         int slotIndex = GetSlotIndexForItemType(itemType);
-        Debug.Log($"[Character] GetEquippedItem({itemType}) -> slotIndex: {slotIndex}");
 
         if (slotIndex >= 0 && slotIndex < characterEquippedItems.Count)
         {
             ItemData item = characterEquippedItems[slotIndex];
-            Debug.Log($"[Character] GetEquippedItem result: {(item?.ItemName ?? "NULL")}");
             return item;
         }
 
-        Debug.LogWarning($"[Character] Invalid slot index {slotIndex} for {itemType}");
         return null;
     }
 
@@ -2034,7 +1898,6 @@ public class Character : NetworkBehaviour
             potionStackCounts.Add(0); // 🆕 เริ่มต้นด้วย 0
         }
 
-        Debug.Log($"[Character] Equipment slots initialized: 6 equipment + 5 potion slots with stack counts");
     }
 
     public EquipmentSlotManager GetEquipmentSlotManager()
@@ -2059,26 +1922,22 @@ public class Character : NetworkBehaviour
     {
         if (itemType == ItemType.Potion)
         {
-            Debug.LogWarning($"[Character] Use UnequipPotion() for potion slots");
             return false;
         }
         if (GetComponent<NetworkEnemy>() != null)
         {
-            Debug.LogWarning($"[Character] Enemy {CharacterName} cannot unequip items");
             return false;
         }
 
         int slotIndex = GetSlotIndexForItemType(itemType);
         if (slotIndex == -1 || characterEquippedItems[slotIndex] == null)
         {
-            Debug.LogWarning($"[Character] No equipped item found for type: {itemType}");
             return false;
         }
 
         ItemData unequippedItem = characterEquippedItems[slotIndex];
         characterEquippedItems[slotIndex] = null;
 
-        Debug.Log($"[Character] ✅ Unequipped {unequippedItem.ItemName} from {itemType} slot");
 
         // คำนวณ total stats ใหม่หลังจาก unequip
         ApplyAllEquipmentStats();
@@ -2099,7 +1958,6 @@ public class Character : NetworkBehaviour
     {
         if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlots[potionSlotIndex] == null)
         {
-            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex} to unequip");
             return false;
         }
 
@@ -2110,7 +1968,6 @@ public class Character : NetworkBehaviour
         bool unequipSuccess = UnequipPotion(potionSlotIndex);
         if (!unequipSuccess)
         {
-            Debug.LogError($"[Character] Failed to unequip potion from slot {potionSlotIndex}");
             return false;
         }
 
@@ -2120,13 +1977,11 @@ public class Character : NetworkBehaviour
             bool addSuccess = inventory.AddItem(potionToUnequip, stackCount);
             if (addSuccess)
             {
-                Debug.Log($"[Character] ✅ Added {potionToUnequip.ItemName} x{stackCount} back to inventory");
                 PersistentPlayerData.Instance?.SaveInventoryData(this);
                 return true;
             }
             else
             {
-                Debug.LogError($"[Character] Failed to add {potionToUnequip.ItemName} back to inventory!");
                 // ถ้าใส่ inventory ไม่ได้ ให้ equip กลับ
                 potionSlots[potionSlotIndex] = potionToUnequip;
                 SetPotionStackCount(potionSlotIndex, stackCount);
@@ -2135,7 +1990,6 @@ public class Character : NetworkBehaviour
         }
         else
         {
-            Debug.LogError("[Character] No inventory found!");
             // Equip กลับ
             potionSlots[potionSlotIndex] = potionToUnequip;
             SetPotionStackCount(potionSlotIndex, stackCount);
@@ -2147,7 +2001,6 @@ public class Character : NetworkBehaviour
     {
         if (itemType == ItemType.Potion)
         {
-            Debug.LogWarning($"[Character] Use UnequipPotionAndReturnToInventory() for potion");
             return false;
         }
 
@@ -2155,7 +2008,6 @@ public class Character : NetworkBehaviour
         ItemData equippedItem = GetEquippedItem(itemType);
         if (equippedItem == null)
         {
-            Debug.LogWarning($"[Character] No {itemType} equipped to unequip");
             return false;
         }
 
@@ -2163,7 +2015,6 @@ public class Character : NetworkBehaviour
         bool unequipSuccess = UnequipItemData(itemType);
         if (!unequipSuccess)
         {
-            Debug.LogError($"[Character] Failed to unequip {itemType}");
             return false;
         }
 
@@ -2173,13 +2024,11 @@ public class Character : NetworkBehaviour
             bool addSuccess = inventory.AddItem(equippedItem, 1);
             if (addSuccess)
             {
-                Debug.Log($"[Character] ✅ Added {equippedItem.ItemName} back to inventory");
                 PersistentPlayerData.Instance?.SaveInventoryData(this);
                 return true;
             }
             else
             {
-                Debug.LogError($"[Character] Failed to add {equippedItem.ItemName} back to inventory!");
                 // ถ้าใส่ inventory ไม่ได้ ให้ equip กลับ
                 EquipItemData(equippedItem);
                 return false;
@@ -2187,7 +2036,6 @@ public class Character : NetworkBehaviour
         }
         else
         {
-            Debug.LogError("[Character] No inventory found!");
             // Equip กลับ
             EquipItemData(equippedItem);
             return false;
@@ -2200,33 +2048,28 @@ public class Character : NetworkBehaviour
 
         if (potionSlotIndex < 0 || potionSlotIndex >= potionSlots.Count || potionSlotIndex >= 5)
         {
-            Debug.LogWarning($"[Character] Invalid potion slot index: {potionSlotIndex}");
             return false;
         }
 
         if (Time.time - lastPotionUseTime[potionSlotIndex] < potionCooldown)
         {
-            Debug.LogWarning($"[Character] Potion slot {potionSlotIndex} cooldown not ready!");
             return false;
         }
 
         ItemData potionData = GetPotionInSlot(potionSlotIndex);
         if (potionData == null)
         {
-            Debug.LogWarning($"[Character] No potion in slot {potionSlotIndex}");
             return false;
         }
 
         int currentStackCount = GetPotionStackCount(potionSlotIndex);
         if (currentStackCount <= 0)
         {
-            Debug.LogWarning($"[Character] Potion stack depleted in slot {potionSlotIndex}");
             potionSlots[potionSlotIndex] = null;
             SetPotionStackCount(potionSlotIndex, 0);
             return false;
         }
 
-        Debug.Log($"[Character] 🧪 Using {potionData.ItemName} from slot {potionSlotIndex}. Current stack: {currentStackCount}");
 
         // ใช้ potion
         bool success = ApplyPotionEffects(potionData);
@@ -2240,13 +2083,11 @@ public class Character : NetworkBehaviour
             if (newStackCount <= 0)
             {
                 potionSlots[potionSlotIndex] = null;
-                Debug.Log($"[Character] 🧪 Potion slot {potionSlotIndex} depleted and cleared");
             }
 
             // อัปเดต cooldown เฉพาะ slot นี้
             lastPotionUseTime[potionSlotIndex] = Time.time;
 
-            Debug.Log($"[Character] ✅ Used {potionData.ItemName} from slot {potionSlotIndex}. Remaining: {newStackCount}");
 
             // แจ้ง UI ให้อัปเดตทันที
             ForceUpdatePotionUI(potionSlotIndex);
@@ -2257,7 +2098,6 @@ public class Character : NetworkBehaviour
             return true;
         }
 
-        Debug.LogWarning($"[Character] Failed to apply potion effects for {potionData.ItemName}");
         return false;
     }
     private System.Collections.IEnumerator DelayedPotionSave()
@@ -2271,46 +2111,18 @@ public class Character : NetworkBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Delayed potion save error: {e.Message}");
         }
     }
 
-    private void SaveInventoryAndTotalStats()
-    {
-        try
-        {
-            Debug.Log("[Character] 💾 Saving inventory and equipped items...");
-
-            // บันทึก inventory และ equipped items
-            PersistentPlayerData.Instance?.SaveInventoryData(this);
-
-            // บันทึก equipped items แยกต่างหาก เพื่อความมั่นใจ
-            PersistentPlayerData.Instance?.SaveEquippedItemsOnly(this);
-
-            // ให้ LevelManager จัดการ stats
-            var levelManager = GetComponent<LevelManager>();
-            if (levelManager != null)
-            {
-                levelManager.ForceSaveToFirebase();
-            }
-
-            Debug.Log("[Character] ✅ Save completed");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character] ❌ Save error: {e.Message}");
-        }
-    }
+  
     private void SaveEquipmentImmediately()
     {
         try
         {
-            Debug.Log("[Character] 🚀 Immediate save after equipment change...");
             PersistentPlayerData.Instance?.SaveEquippedItemsOnly(this);
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Immediate save error: {e.Message}");
         }
     }
 
@@ -2322,7 +2134,6 @@ public class Character : NetworkBehaviour
         {
             if (PersistentPlayerData.Instance?.multiCharacterData == null)
             {
-                Debug.LogError("[Character] No PersistentPlayerData available");
                 return;
             }
 
@@ -2331,7 +2142,6 @@ public class Character : NetworkBehaviour
 
             if (characterData != null)
             {
-                Debug.Log($"[Character] 💾 Saving total stats directly for {characterType}...");
 
                 // บันทึก total stats (รวม equipment bonuses)
                 characterData.UpdateTotalStats(
@@ -2343,12 +2153,10 @@ public class Character : NetworkBehaviour
                 // บันทึกลง Firebase
                 PersistentPlayerData.Instance.SavePlayerDataAsync();
 
-                Debug.Log($"[Character] ✅ Total stats saved directly: HP={MaxHp}, ATK={AttackDamage}");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error saving total stats directly: {e.Message}");
         }
     }
 
@@ -2356,7 +2164,6 @@ public class Character : NetworkBehaviour
     {
         try
         {
-            Debug.Log($"[Character] 🔄 Force updating potion UI for slot {potionSlotIndex}...");
 
             // 1. แจ้ง stats changed event
             OnStatsChanged?.Invoke();
@@ -2366,7 +2173,6 @@ public class Character : NetworkBehaviour
             if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
             {
                 equipmentSlotManager.ForceRefreshAfterPotionUse(potionSlotIndex);
-                Debug.Log($"[Character] ✅ Character EquipmentSlotManager potion slot {potionSlotIndex} refreshed");
             }
 
             // 3. Force refresh CombatUIManager equipment slots - เฉพาะ potion slot ที่ใช้
@@ -2374,39 +2180,18 @@ public class Character : NetworkBehaviour
             if (combatUIManager?.equipmentSlotManager != null)
             {
                 combatUIManager.equipmentSlotManager.ForceRefreshAfterPotionUse(potionSlotIndex);
-                Debug.Log($"[Character] ✅ CombatUI EquipmentSlotManager potion slot {potionSlotIndex} refreshed");
             }
 
             // 4. Force update Canvas
             Canvas.ForceUpdateCanvases();
 
-            Debug.Log($"[Character] ✅ Potion UI updated for slot {potionSlotIndex}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error updating potion UI: {e.Message}");
         }
     }
 
-    private void SavePotionDataAfterUse()
-    {
-        try
-        {
-            Debug.Log($"[Character] 💾 Saving potion data after use...");
-
-            // บันทึกข้อมูล potion
-            PersistentPlayerData.Instance?.SaveCharacterPotionData(this);
-
-            // บันทึกข้อมูล inventory ด้วย (ในกรณีที่ potion มาจาก inventory)
-            PersistentPlayerData.Instance?.SaveInventoryData(this);
-
-            Debug.Log($"[Character] ✅ Potion data saved successfully");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character] ❌ Error saving potion data: {e.Message}");
-        }
-    }
+   
 
     /// <summary>
     /// ใช้ผลของ potion กับตัวละคร
@@ -2415,7 +2200,6 @@ public class Character : NetworkBehaviour
     {
         if (potionData?.Stats == null)
         {
-            Debug.LogWarning("[Character] Invalid potion data");
             return false;
         }
 
@@ -2427,7 +2211,6 @@ public class Character : NetworkBehaviour
         {
             int oldHp = currentHp;
             currentHp = Mathf.Min(currentHp + stats.healAmount, maxHp);
-            Debug.Log($"[Character] 💖 Healed {stats.healAmount} HP: {oldHp} -> {currentHp}");
             appliedAnyEffect = true;
         }
 
@@ -2437,7 +2220,6 @@ public class Character : NetworkBehaviour
             int healAmount = Mathf.RoundToInt(maxHp * stats.healPercentage);
             int oldHp = currentHp;
             currentHp = Mathf.Min(currentHp + healAmount, maxHp);
-            Debug.Log($"[Character] 💖 Healed {stats.healPercentage:P0} ({healAmount} HP): {oldHp} -> {currentHp}");
             appliedAnyEffect = true;
         }
 
@@ -2446,7 +2228,6 @@ public class Character : NetworkBehaviour
         {
             int oldMana = currentMana;
             currentMana = Mathf.Min(currentMana + stats.manaAmount, maxMana);
-            Debug.Log($"[Character] 💙 Restored {stats.manaAmount} MP: {oldMana} -> {currentMana}");
             appliedAnyEffect = true;
         }
 
@@ -2456,7 +2237,6 @@ public class Character : NetworkBehaviour
             int manaAmount = Mathf.RoundToInt(maxMana * stats.manaPercentage);
             int oldMana = currentMana;
             currentMana = Mathf.Min(currentMana + manaAmount, maxMana);
-            Debug.Log($"[Character] 💙 Restored {stats.manaPercentage:P0} ({manaAmount} MP): {oldMana} -> {currentMana}");
             appliedAnyEffect = true;
         }
 
@@ -2514,29 +2294,24 @@ public class Character : NetworkBehaviour
     {
         if (itemData == null)
         {
-            Debug.LogWarning($"[Character] Cannot load null equipment");
             return false;
         }
 
-        Debug.Log($"[Character] Loading equipment directly: {itemData.ItemName} ({itemData.ItemType})");
 
         // ตรวจสอบ characterEquippedItems list
         if (characterEquippedItems.Count < 6)
         {
-            Debug.LogWarning($"[Character] characterEquippedItems list too small: {characterEquippedItems.Count}");
             InitializeEquipmentSlots();
         }
 
         int slotIndex = GetSlotIndexForItemType(itemData.ItemType);
         if (slotIndex == -1)
         {
-            Debug.LogWarning($"[Character] No slot available for item type: {itemData.ItemType}");
             return false;
         }
 
         // ใส่ item ลง characterEquippedItems โดยตรง
         characterEquippedItems[slotIndex] = itemData;
-        Debug.Log($"[Character] ✅ Loaded {itemData.ItemName} to slot {slotIndex} ({itemData.ItemType})");
 
         return true;
     }
@@ -2544,7 +2319,6 @@ public class Character : NetworkBehaviour
     {
         if (potionData == null || slotIndex < 0 || slotIndex >= 5)
         {
-            Debug.LogWarning($"[Character] Invalid potion load parameters");
             return false;
         }
 
@@ -2555,15 +2329,11 @@ public class Character : NetworkBehaviour
             if (existingPotion.ItemId == potionData.ItemId)
             {
                 int existingStackCount = GetPotionStackCount(slotIndex);
-                Debug.LogWarning($"[Character] ⚠️ DUPLICATE LOAD DETECTED!");
-                Debug.LogWarning($"[Character] Slot {slotIndex} already has {existingPotion.ItemName} x{existingStackCount}");
-                Debug.LogWarning($"[Character] Trying to load {potionData.ItemName} x{stackCount}");
-                Debug.LogWarning($"[Character] ❌ BLOCKED to prevent duplication");
+               
                 return false;
             }
         }
 
-        Debug.Log($"[Character] Loading potion directly: {potionData.ItemName} x{stackCount} to slot {slotIndex}");
 
         // ตรวจสอบ potion lists
         if (potionSlots.Count < 5 || potionStackCounts.Count < 5)
@@ -2576,14 +2346,12 @@ public class Character : NetworkBehaviour
         potionSlots[slotIndex] = potionData;
         potionStackCounts[slotIndex] = stackCount;
 
-        Debug.Log($"[Character] ✅ Loaded {potionData.ItemName} x{stackCount} to potion slot {slotIndex}");
         return true;
     }
 
 
     public void ClearAllEquipmentForLoad()
     {
-        Debug.Log($"[Character] Clearing all equipment for load...");
 
         // เคลียร์ equipment slots
         if (characterEquippedItems != null)
@@ -2612,47 +2380,19 @@ public class Character : NetworkBehaviour
             }
         }
 
-        Debug.Log($"[Character] ✅ All equipment cleared for load");
     }
 
 
-    /*public void SaveCurrentStatsAsBase()
-    {
-        if (characterStats == null)
-        {
-            Debug.LogWarning("[Character] No characterStats to update!");
-            return;
-        }
-
-        Debug.Log($"[Character] 💾 Saving current stats as new base stats...");
-
-        // Update characterStats ด้วยค่าปัจจุบัน (รวม equipment bonuses)
-        characterStats.maxHp = MaxHp;
-        characterStats.maxMana = MaxMana;
-        characterStats.attackDamage = AttackDamage;
-        characterStats.magicDamage = MagicDamage;
-        characterStats.arrmor = Armor;
-        characterStats.criticalChance = CriticalChance;
-        characterStats.criticalDamageBonus = CriticalDamageBonus;
-        characterStats.moveSpeed = MoveSpeed;
-        characterStats.hitRate = HitRate;
-        characterStats.evasionRate = EvasionRate;
-        characterStats.attackSpeed = AttackSpeed;
-        characterStats.reductionCoolDown = ReductionCoolDown;
-
-        Debug.Log($"[Character] ✅ Current stats saved as base: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}");
-    }*/
+   
     public void ResetToBaseStats()
     {
         try
         {
             if (characterStats == null)
             {
-                Debug.LogWarning("[Character] No characterStats available for reset!");
                 return;
             }
 
-            Debug.Log($"[Character] 🔄 Resetting to base stats for {CharacterName}...");
 
             // เก็บ current HP/Mana percentage เพื่อรักษาไว้
             float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
@@ -2676,11 +2416,9 @@ public class Character : NetworkBehaviour
             CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
             CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
 
-            Debug.Log($"[Character] ✅ Reset to base stats: ATK={AttackDamage}, ARM={Armor}, HP={MaxHp}, CRIT={CriticalChance:F1}%");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[Character] ❌ Error resetting to base stats: {e.Message}");
         }
     }
 
@@ -2690,7 +2428,6 @@ public class Character : NetworkBehaviour
     /// </summary>
     public void ForceRefreshEquipmentAfterLoad()
     {
-        Debug.Log($"[Character] Force refreshing equipment UI after load...");
 
         // Force update equipment slots ทันที
         ForceUpdateEquipmentSlotsNow();
@@ -2698,7 +2435,6 @@ public class Character : NetworkBehaviour
         // แจ้ง stats changed
         OnStatsChanged?.Invoke();
 
-        Debug.Log($"[Character] ✅ Equipment UI refreshed after load");
     }
 
     
@@ -2728,36 +2464,5 @@ public class Character : NetworkBehaviour
     }
 
     // 🆕 Force refresh UI สำหรับ auto-fix
-    private void ForceRefreshInventoryUIAutoFix()
-    {
-        try
-        {
-            Debug.Log("[Character AutoFix] 🔄 Refreshing UI...");
-
-            // Refresh inventory grid
-            var inventoryGrid = FindObjectOfType<InventoryGridManager>();
-            if (inventoryGrid != null)
-            {
-                inventoryGrid.ForceUpdateFromCharacter();
-                inventoryGrid.ForceSyncAllSlots();
-            }
-
-            // Refresh equipment slots
-            var equipmentManager = GetComponent<EquipmentSlotManager>();
-            if (equipmentManager?.IsConnected() == true)
-            {
-                equipmentManager.ForceRefreshFromCharacter();
-            }
-
-            // แจ้ง stats changed
-            RaiseOnStatsChanged();
-            Canvas.ForceUpdateCanvases();
-
-            Debug.Log("[Character AutoFix] ✅ UI refresh completed");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[Character AutoFix] UI refresh error: {e.Message}");
-        }
-    }
+  
 }

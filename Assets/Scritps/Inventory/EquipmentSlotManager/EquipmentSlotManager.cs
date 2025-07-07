@@ -38,26 +38,7 @@ public class EquipmentSlotManager : MonoBehaviour
     /// <summary>
     /// เชื่อมต่อ Equipment Slots จาก CombatUI
     /// </summary>
-    public void RegisterEquipmentSlots(List<EquipmentSlot> slots)
-    {
-        equipmentSlots.Clear();
-        equipmentSlots.AddRange(slots);
-
-        // Setup แต่ละ slot
-        foreach (EquipmentSlot slot in equipmentSlots)
-        {
-            if (slot != null && slot.SlotType != ItemType.Potion)
-            {
-                slot.SetManager(this);
-                slot.OnSlotClicked += HandleSlotClicked;
-            }
-        }
-
-        Debug.Log($"[EquipmentSlotManager] Registered {equipmentSlots.Count} equipment slots");
-
-        // Load equipped items ทันที
-        LoadEquippedItemsToSlots();
-    }
+    
     public void ConnectPotionSlots(List<EquipmentSlot> slots)
     {
         connectedPotionSlots.Clear();
@@ -78,26 +59,7 @@ public class EquipmentSlotManager : MonoBehaviour
     /// <summary>
     /// เชื่อมต่อ Potion Slots จาก CombatUI  
     /// </summary>
-    public void RegisterPotionSlots(List<EquipmentSlot> slots)
-    {
-        potionSlots.Clear();
-        potionSlots.AddRange(slots);
-
-        // Setup แต่ละ slot
-        foreach (EquipmentSlot slot in potionSlots)
-        {
-            if (slot != null && slot.SlotType == ItemType.Potion)
-            {
-                slot.SetManager(this);
-                slot.OnSlotClicked += HandleSlotClicked;
-            }
-        }
-
-        Debug.Log($"[EquipmentSlotManager] Registered {potionSlots.Count} potion slots");
-
-        // Load equipped items ทันที
-        LoadEquippedItemsToSlots();
-    }
+   
     #endregion
     public void ConnectEquipmentSlots(List<EquipmentSlot> slots)
     {
@@ -124,7 +86,6 @@ public class EquipmentSlotManager : MonoBehaviour
         Debug.Log($"[EquipmentSlotManager] Loading equipped items for {ownerCharacter.CharacterName}...");
 
         // 🆕 Debug character equipment ก่อน update slots
-        DebugCharacterEquipment();
 
         int equipmentUpdated = 0;
         int potionUpdated = 0;
@@ -160,32 +121,7 @@ public class EquipmentSlotManager : MonoBehaviour
 
         Debug.Log($"[EquipmentSlotManager] ✅ Updated {equipmentUpdated} equipment slots and {potionUpdated} potion slots");
     }
-    private void DebugCharacterEquipment()
-    {
-        if (ownerCharacter == null) return;
-
-        Debug.Log($"=== CHARACTER EQUIPMENT DEBUG ({ownerCharacter.CharacterName}) ===");
-
-        // Equipment slots
-        Debug.Log("📦 Equipment Slots:");
-        for (int i = 0; i < 6; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData item = ownerCharacter.GetEquippedItem(itemType);
-            Debug.Log($"  {itemType}: {(item?.ItemName ?? "EMPTY")}");
-        }
-
-        // Potion slots
-        Debug.Log("🧪 Potion Slots:");
-        for (int i = 0; i < 5; i++)
-        {
-            ItemData potion = ownerCharacter.GetPotionInSlot(i);
-            int stackCount = ownerCharacter.GetPotionStackCount(i);
-            Debug.Log($"  Slot {i}: {(potion?.ItemName ?? "EMPTY")} x{stackCount}");
-        }
-
-        Debug.Log("========================================================");
-    }
+  
 
     /// <summary>
     /// 🆕 Helper method
@@ -417,42 +353,13 @@ public class EquipmentSlotManager : MonoBehaviour
         }
 
         // Debug character equipment ก่อน refresh
-        DebugCharacterEquipment();
 
         // Refresh all slots
         RefreshAllSlots();
 
         Debug.Log("[EquipmentSlotManager] ✅ Force refresh completed");
     }
-    public bool ValidateEquipmentData()
-    {
-        if (ownerCharacter == null) return false;
-
-        Debug.Log("[EquipmentSlotManager] 🔍 Validating equipment data...");
-
-        int equipmentCount = 0;
-        int potionCount = 0;
-
-        // ตรวจสอบ equipment
-        for (int i = 0; i < 6; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData item = ownerCharacter.GetEquippedItem(itemType);
-            if (item != null) equipmentCount++;
-        }
-
-        // ตรวจสอบ potions
-        for (int i = 0; i < 5; i++)
-        {
-            ItemData potion = ownerCharacter.GetPotionInSlot(i);
-            if (potion != null) potionCount++;
-        }
-
-        Debug.Log($"[EquipmentSlotManager] Found: {equipmentCount} equipment, {potionCount} potions");
-
-        return equipmentCount > 0 || potionCount > 0;
-    }
-
+  
     private System.Collections.IEnumerator RetryRefresh()
     {
         yield return new WaitForSeconds(0.5f);
@@ -467,14 +374,7 @@ public class EquipmentSlotManager : MonoBehaviour
             Debug.LogError("[EquipmentSlotManager] ❌ Retry refresh failed - slots still not connected");
         }
     }
-    public void LogStatus()
-    {
-        Debug.Log($"=== EQUIPMENT SLOT MANAGER STATUS ===");
-        Debug.Log($"Character: {ownerCharacter?.CharacterName ?? "None"}");
-        Debug.Log($"Equipment Slots: {equipmentSlots.Count}");
-        Debug.Log($"Potion Slots: {potionSlots.Count}");
-        Debug.Log($"Is Connected: {IsConnected()}");
-    }
+   
     #endregion
 
     #region Context Menu for Testing
