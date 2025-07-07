@@ -115,7 +115,7 @@ public class Character : NetworkBehaviour
     protected EquipmentSlotManager equipmentSlotManager; // 🆕 เพิ่มใหม่
     [Header("🆕 Equipment Slots")]
     [SerializeField] private List<ItemData> characterEquippedItems = new List<ItemData>(6); // 6 slots: Head, Armor, Weapon, Pants, Shoes, Rune
-    [SerializeField] private List<ItemData> potionSlots = new List<ItemData>(5);   // 5 potion quick slots
+    [SerializeField] public List<ItemData> potionSlots = new List<ItemData>(5);   // 5 potion quick slots
     [Header("🧪 Potion Stack Counts")]
     [SerializeField] private List<int> potionStackCounts = new List<int>(5); // เก็บจำนวนของแต่ละ potion slot
     [Header("🧪 Potion Usage")]
@@ -2603,13 +2603,27 @@ public class Character : NetworkBehaviour
             ForceUpdatePotionUI(potionSlotIndex);
 
             // 🆕 บันทึกข้อมูลทันที (รวม total stats)
-            SaveInventoryAndTotalStats();
+            StartCoroutine(DelayedPotionSave());
 
             return true;
         }
 
         Debug.LogWarning($"[Character] Failed to apply potion effects for {potionData.ItemName}");
         return false;
+    }
+    private System.Collections.IEnumerator DelayedPotionSave()
+    {
+        yield return new WaitForSeconds(2f); // รอ 2 วินาที
+
+        try
+        {
+            Debug.Log("[Character] 💾 Delayed potion save...");
+            PersistentPlayerData.Instance?.SaveCharacterPotionData(this);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Delayed potion save error: {e.Message}");
+        }
     }
 
     private void SaveInventoryAndTotalStats()
@@ -2885,6 +2899,21 @@ public class Character : NetworkBehaviour
             return false;
         }
 
+        // 🔧 แก้ไข: ตรวจสอบการ duplicate loading อย่างเข้มงวด
+        ItemData existingPotion = GetPotionInSlot(slotIndex);
+        if (existingPotion != null)
+        {
+            if (existingPotion.ItemId == potionData.ItemId)
+            {
+                int existingStackCount = GetPotionStackCount(slotIndex);
+                Debug.LogWarning($"[Character] ⚠️ DUPLICATE LOAD DETECTED!");
+                Debug.LogWarning($"[Character] Slot {slotIndex} already has {existingPotion.ItemName} x{existingStackCount}");
+                Debug.LogWarning($"[Character] Trying to load {potionData.ItemName} x{stackCount}");
+                Debug.LogWarning($"[Character] ❌ BLOCKED to prevent duplication");
+                return false;
+            }
+        }
+
         Debug.Log($"[Character] Loading potion directly: {potionData.ItemName} x{stackCount} to slot {slotIndex}");
 
         // ตรวจสอบ potion lists
@@ -2901,6 +2930,7 @@ public class Character : NetworkBehaviour
         Debug.Log($"[Character] ✅ Loaded {potionData.ItemName} x{stackCount} to potion slot {slotIndex}");
         return true;
     }
+
 
     public void ClearAllEquipmentForLoad()
     {

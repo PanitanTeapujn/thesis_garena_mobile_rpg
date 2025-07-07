@@ -513,7 +513,7 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
     quantity: 1
     note: 
-  - itemData: {fileID: 11400000, guid: db622234496cdd6488025fdca056b20a, type: 2}
+  - itemData: {fileID: 0}
     quantity: 1
     note: 
   - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
