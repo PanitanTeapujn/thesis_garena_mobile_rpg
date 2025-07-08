@@ -448,16 +448,34 @@ public class Character : NetworkBehaviour
 
     private IEnumerator PostSpawnStatsLoading()
     {
+        Debug.Log("[Character] 🔄 Post spawn stats loading...");
 
-        // รอให้ PersistentPlayerData พร้อม
+        // 🔧 รอให้ PersistentPlayerData โหลดเสร็จก่อน - เพิ่มเวลารอ
         yield return new WaitUntil(() => PersistentPlayerData.Instance != null);
-        yield return new WaitUntil(() => PersistentPlayerData.Instance.isDataLoaded);
 
-
-        if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
+        // 🔧 รอให้ data โหลดเสร็จจริงๆ
+        float waitTime = 0f;
+        while (!PersistentPlayerData.Instance.isDataLoaded && waitTime < 15f)
         {
+            yield return new WaitForSeconds(0.5f);
+            waitTime += 0.5f;
+            Debug.Log($"[Character] Waiting for data... {waitTime}s");
+        }
 
-            // ให้ LevelManager จัดการ stats loading ตามปกติ
+        if (!PersistentPlayerData.Instance.isDataLoaded)
+        {
+            Debug.LogError("[Character] Timeout waiting for PersistentPlayerData!");
+            isStatsLoaded = true;
+            IsStatsReady = true;
+            yield break;
+        }
+
+        // 🔧 ตรวจสอบว่ามีข้อมูลจริงๆ ก่อนโหลด
+        bool hasValidData = PersistentPlayerData.Instance.HasValidData();
+        Debug.Log($"[Character] Has valid data: {hasValidData}");
+
+        if (hasValidData)
+        {
             var levelManager = GetComponent<LevelManager>();
             if (levelManager != null)
             {
@@ -465,16 +483,15 @@ public class Character : NetworkBehaviour
                 yield return new WaitForSeconds(0.5f);
             }
 
-            // โหลด equipment แยกต่างหาก (ไม่แตะ stats)
             yield return StartCoroutine(SimpleLoadEquipmentOnly());
         }
         else
         {
+            Debug.Log("[Character] No valid data found, using defaults");
         }
 
         isStatsLoaded = true;
         IsStatsReady = true;
-
     }
     private IEnumerator SimpleLoadEquipmentOnly()
     {

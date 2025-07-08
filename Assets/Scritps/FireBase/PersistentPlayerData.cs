@@ -125,10 +125,20 @@ public class PersistentPlayerData : MonoBehaviour
 
     public bool HasValidData()
     {
-        return isDataLoaded &&
-               multiCharacterData != null &&
-               !string.IsNullOrEmpty(multiCharacterData.playerName) &&
-               GetCurrentCharacterData() != null;
+        if (!isDataLoaded || multiCharacterData == null)
+            return false;
+
+        // ตรวจสอบว่ามีข้อมูลผู้เล่นจริงๆ
+        bool hasPlayerData = !string.IsNullOrEmpty(multiCharacterData.playerName) &&
+                            multiCharacterData.characters != null &&
+                            multiCharacterData.characters.Count > 0;
+
+        // ตรวจสอบว่ามีข้อมูลตัวละครปัจจุบัน
+        bool hasCurrentCharacter = GetCurrentCharacterData() != null;
+
+        Debug.Log($"[HasValidData] PlayerData: {hasPlayerData}, CurrentChar: {hasCurrentCharacter}");
+
+        return hasPlayerData && hasCurrentCharacter;
     }
     #endregion
 
@@ -151,7 +161,8 @@ public class PersistentPlayerData : MonoBehaviour
 
         var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).GetValueAsync();
 
-        float timeout = 3f;
+        // 🔧 เพิ่ม timeout เป็น 10 วินาที
+        float timeout = 10f;
         float elapsed = 0f;
 
         while (!task.IsCompleted && elapsed < timeout)
@@ -165,20 +176,28 @@ public class PersistentPlayerData : MonoBehaviour
             string json = task.Result.GetRawJsonValue();
             bool loaded = false;
 
-            try
+            // 🔧 เพิ่มการตรวจสอบว่า json ไม่ว่าง
+            if (!string.IsNullOrEmpty(json) && json.Length > 50) // มีข้อมูลจริงๆ
             {
-                multiCharacterData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
-                if (multiCharacterData != null && multiCharacterData.IsValid())
+                try
                 {
-                    isDataLoaded = true;
-                    loaded = true;
-                    SaveToPlayerPrefs();
-                    Debug.Log($"✅ Loaded multi-character data: {multiCharacterData.playerName}, Active: {multiCharacterData.currentActiveCharacter}");
+                    multiCharacterData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
+                    if (multiCharacterData != null && multiCharacterData.IsValid())
+                    {
+                        isDataLoaded = true;
+                        loaded = true;
+                        SaveToPlayerPrefs();
+                        Debug.Log($"✅ Loaded multi-character data: {multiCharacterData.playerName}, Active: {multiCharacterData.currentActiveCharacter}");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[PersistentPlayerData] Failed to parse data: {e.Message}");
                 }
             }
-            catch (System.Exception e)
+            else
             {
-                Debug.LogWarning($"[PersistentPlayerData] Failed to parse data: {e.Message}");
+                Debug.LogWarning("[PersistentPlayerData] JSON data is empty or too small, treating as no data");
             }
 
             if (!loaded)
@@ -187,19 +206,17 @@ public class PersistentPlayerData : MonoBehaviour
             }
             else
             {
-                // 🆕 โหลดข้อมูลเงินหลังจากโหลดข้อมูลหลักเสร็จ
                 LoadCurrencyData();
             }
         }
         else
         {
-            Debug.Log("[PersistentPlayerData] No data found. Creating default data...");
+            Debug.Log("[PersistentPlayerData] No data found or timeout. Creating default data...");
             CreateDefaultMultiCharacterData();
         }
 
         RegisterPlayerInDirectory();
     }
-
     private void CreateDefaultMultiCharacterData()
     {
         multiCharacterData = new MultiCharacterPlayerData();

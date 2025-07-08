@@ -137,8 +137,19 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             yield break;
         }
 
+        // 🔧 รอให้ PersistentPlayerData โหลดเสร็จก่อน
+        yield return new WaitUntil(() => PersistentPlayerData.Instance != null);
+
+        // 🔧 รอให้ data โหลดเสร็จ
+        float dataWaitTime = 0f;
+        while (!PersistentPlayerData.Instance.isDataLoaded && dataWaitTime < 15f)
+        {
+            yield return new WaitForSeconds(0.5f);
+            dataWaitTime += 0.5f;
+        }
+
         // รอให้ Character โหลด stats เสร็จ
-        int maxWaitTime = 30; // 30 วินาที
+        int maxWaitTime = 30;
         float waitTime = 0f;
 
         while (!character.IsStatsLoadingComplete() && waitTime < maxWaitTime)
@@ -146,7 +157,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             yield return new WaitForSeconds(0.1f);
             waitTime += 0.1f;
 
-            // Debug ทุก 3 วินาที
             if (Mathf.RoundToInt(waitTime) % 3 == 0 && waitTime % 1f < 0.1f)
             {
                 Debug.Log($"[PlayerSpawner] Still waiting for {hero.CharacterName} stats... ({waitTime:F1}s)");
