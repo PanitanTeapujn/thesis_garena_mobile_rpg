@@ -47,6 +47,8 @@ public class StageCompleteUI : MonoBehaviour
     /// </summary>
     public void ShowStageComplete(string stageName)
     {
+        Debug.Log($"🔍 [StageCompleteUI] ShowStageComplete called for: {stageName}");
+        Debug.Log($"🔍 [StageCompleteUI] Called from: {System.Environment.StackTrace}");
         if (stageCompletePanel == null)
         {
             Debug.LogWarning("[StageCompleteUI] Stage complete panel is not assigned!");

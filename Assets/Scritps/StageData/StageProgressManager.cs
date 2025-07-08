@@ -332,49 +332,7 @@ public class StageProgressManager : MonoBehaviour
     }
 
     // ✅ รีเซ็ต Progress
-    [ContextMenu("Reset All Progress")]
-    public void ResetProgress()
-    {
-        if (stageProgress != null)
-            stageProgress.ResetProgress();
-
-        // ลบ PlayerPrefs
-        string[] allPossibleStages = {
-            "PlayRoom1_1", "PlayRoom1_2", "PlayRoom1_3",
-            "PlayRoom2_1", "PlayRoom2_2", "PlayRoom2_3",
-            "PlayRoom3_1", "PlayRoom3_2", "PlayRoom3_3"
-        };
-
-        foreach (string stage in allPossibleStages)
-        {
-            PlayerPrefs.DeleteKey($"EnemyKills_{stage}");
-        }
-        PlayerPrefs.DeleteKey("CompletedStages");
-        PlayerPrefs.DeleteKey("LastPlayedStage");
-        PlayerPrefs.Save();
-
-        // ลบใน Firebase
-        if (useFirebase)
-        {
-            SaveProgressToFirebase();
-        }
-
-        Debug.Log("🔄 [StageProgress] All progress reset!");
-    }
-
-    // ✅ แสดง Progress ปัจจุบัน
-    [ContextMenu("Show Current Progress")]
-    public void ShowCurrentProgress()
-    {
-        if (stageProgress != null)
-        {
-            stageProgress.LogProgress();
-        }
-        else
-        {
-            Debug.Log("[StageProgress] No progress data available");
-        }
-    }
+  
 
     // ✅ เปิด/ปิด Auto Save
     public void SetAutoSave(bool enabled)

@@ -225,7 +225,7 @@ public class EquipmentSlot : MonoBehaviour
             stackCountText.gameObject.SetActive(false);
         }
 
-        Debug.Log($"[EquipmentSlot] {slotType} slot set to empty, isEmpty now: {isEmpty}");
+     //   Debug.Log($"[EquipmentSlot] {slotType} slot set to empty, isEmpty now: {isEmpty}");
     }
 
     private void UpdatePotionStackCount()
@@ -242,7 +242,7 @@ public class EquipmentSlot : MonoBehaviour
         if (potionData == null)
         {
             // 🆕 ถ้าไม่มี potion แสดงว่า slot ว่างแล้ว
-            Debug.Log($"[EquipmentSlot] Potion slot {potionSlotIndex} is now empty");
+          //  Debug.Log($"[EquipmentSlot] Potion slot {potionSlotIndex} is now empty");
             stackCountText.gameObject.SetActive(false);
 
             // 🆕 เปลี่ยน slot เป็น empty state
@@ -253,7 +253,7 @@ public class EquipmentSlot : MonoBehaviour
         // ดึง stack count จาก character
         int stackCount = manager.OwnerCharacter.GetPotionStackCount(potionSlotIndex);
 
-        Debug.Log($"[EquipmentSlot] 🧪 Updating potion slot {potionSlotIndex}: {potionData.ItemName} x{stackCount}");
+   //     Debug.Log($"[EquipmentSlot] 🧪 Updating potion slot {potionSlotIndex}: {potionData.ItemName} x{stackCount}");
 
         if (stackCount > 1)
         {
@@ -315,13 +315,13 @@ public class EquipmentSlot : MonoBehaviour
             {
                 // อัปเดต UI
                 SetFilledState(potionData.ItemIcon, potionData.GetTierColor());
-                Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: {potionData.ItemName}");
+              //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: {potionData.ItemName}");
             }
             else
             {
                 // Slot ว่าง
                 SetEmptyState();
-                Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: EMPTY");
+              //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: EMPTY");
             }
         }
         else
@@ -332,12 +332,12 @@ public class EquipmentSlot : MonoBehaviour
             if (equippedItem != null)
             {
                 SetFilledState(equippedItem.ItemIcon, equippedItem.GetTierColor());
-                Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: {equippedItem.ItemName}");
+             //   Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: {equippedItem.ItemName}");
             }
             else
             {
                 SetEmptyState();
-                Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: EMPTY");
+               // Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: EMPTY");
             }
         }
     }
@@ -345,7 +345,7 @@ public class EquipmentSlot : MonoBehaviour
     {
         if (itemSprite == null)
         {
-            Debug.LogWarning($"[EquipmentSlot] Trying to fill {slotType} slot with null sprite!");
+           // Debug.LogWarning($"[EquipmentSlot] Trying to fill {slotType} slot with null sprite!");
             SetEmptyState();
             return;
         }
@@ -373,7 +373,7 @@ public class EquipmentSlot : MonoBehaviour
             Canvas.ForceUpdateCanvases();
         }
 
-        Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
+       // Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
     }
     private bool ShouldShowSlotTypeText()
     {

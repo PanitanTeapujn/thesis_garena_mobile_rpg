@@ -14,7 +14,7 @@ public class StageSelectionManager : MonoBehaviour
         public Button selectButton;
 
         [Header("🎯 Progression Settings")]
-        public int requiredEnemyKills = 10;        // จำนวน Enemy ที่ต้องกำจัด
+        public int requiredEnemyKills;        // จำนวน Enemy ที่ต้องกำจัด
         public string[] requiredPreviousStages;   // substage ที่ต้องผ่านมาก่อน
         public bool isFirstStage = false;         // ด่านแรกของแต่ละ Main Stage
 
@@ -314,10 +314,8 @@ public class StageSelectionManager : MonoBehaviour
         {
             Debug.LogWarning($"SubStage {selectedSubStage.sceneToLoad} is still locked!");
 
-            // แสดงข้อความใน UI เดิม
             if (selectedSubStageText != null)
             {
-                // แสดงเงื่อนไขที่ต้องทำ
                 string lockMessage = "🔒 Locked";
                 if (selectedSubStage.requiredPreviousStages != null && selectedSubStage.requiredPreviousStages.Length > 0)
                 {
@@ -335,11 +333,17 @@ public class StageSelectionManager : MonoBehaviour
         UpdateGameModeButtons();
 
         PlayerPrefs.SetString("SelectedStage", selectedSubStage.sceneToLoad);
+
+        // 🆕 แปลงเป็น lowercase ก่อนบันทึก
+        string normalizedSceneName = selectedSubStage.sceneToLoad.ToLower();
+        PlayerPrefs.SetInt($"RequiredKills_{normalizedSceneName}", selectedSubStage.requiredEnemyKills);
+        PlayerPrefs.Save();
+
         Debug.Log($"Selected sub-stage: {selectedSubStage.subStageName} -> {selectedSubStage.sceneToLoad}");
+        Debug.Log($"🎯 Saved required kills: RequiredKills_{normalizedSceneName} = {selectedSubStage.requiredEnemyKills}");
 
         OnStageSelected?.Invoke(selectedSubStage.sceneToLoad);
     }
-
     void UpdateSubStageUI()
     {
         if (selectedSubStageText != null)
@@ -382,6 +386,14 @@ public class StageSelectionManager : MonoBehaviour
         }
 
         string sceneToLoad = PlayerPrefs.GetString("SelectedStage", "PlayRoom1_1");
+
+        // 🆕 Debug ตรวจสอบ PlayerPrefs
+        SubStagePanel selectedSubStage = mainStagePanels[currentMainStageIndex].subStagePanels[selectedSubStageIndex];
+        Debug.Log($"🎮 [StartSoloGame] Scene: {sceneToLoad}");
+        Debug.Log($"🎮 [StartSoloGame] Required kills: {selectedSubStage.requiredEnemyKills}");
+        Debug.Log($"🎮 [StartSoloGame] PlayerPrefs key: RequiredKills_{sceneToLoad}");
+        Debug.Log($"🎮 [StartSoloGame] PlayerPrefs value: {PlayerPrefs.GetInt($"RequiredKills_{sceneToLoad}", -999)}");
+
         OnSoloGameSelected?.Invoke(sceneToLoad);
     }
 

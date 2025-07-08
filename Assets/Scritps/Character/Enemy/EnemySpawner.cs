@@ -123,7 +123,7 @@ public class EnemySpawner : NetworkBehaviour
     private const float STAGE_CHECK_INTERVAL = 2f; // เช็คทุก 2 วินาที
 
     public int currentSessionKills { get; private set; } = 0; // เปลี่ยนเป็น property
-    private int requiredKillsForStage = 10;
+    private int requiredKillsForStage ;
 
     private float nextSpawnTime = 0f;
     private float nextWaveTime = 0f;
@@ -164,32 +164,52 @@ public class EnemySpawner : NetworkBehaviour
         InitializeBossConditions();
         ValidateSettings();
 
-        // 🆕 กำหนดชื่อด่านถ้ายังไม่ได้ตั้ง
         if (string.IsNullOrEmpty(currentStageName))
         {
-            currentStageName = SceneManager.GetActiveScene().name;
-        }
-
-        // 🆕 Reset kills counter สำหรับรอบปัจจุบัน
-        currentSessionKills = 0;
-        requiredKillsForStage = EnemyKillTracker.GetRequiredKillsForStage(currentStageName);
-        isStageCompleted = false; // รีเซ็ตสถานะด่าน
-
-        if (showMultiSpawnInfo)
-        {
-            Debug.Log($"🌊 Multi-Spawn Mode: {multiSpawnMode} | Points: {spawnPointCount} | Per Point: {enemiesPerPoint}");
-        }
-
-        if (showStageDebugInfo)
-        {
-            Debug.Log($"🏁 Current Stage: {currentStageName} | Stop when completed: {stopSpawningWhenStageCompleted}");
-            Debug.Log($"🎯 Required Kills: {requiredKillsForStage} | Session Kills Reset: {currentSessionKills}");
-
-            if (requiredKillsForStage <= 0)
+            // อ่านจาก PlayerPrefs ก่อน
+            string selectedStage = PlayerPrefs.GetString("SelectedStage", "");
+            if (!string.IsNullOrEmpty(selectedStage))
             {
-                Debug.LogWarning($"⚠️ Required kills is {requiredKillsForStage} for stage {currentStageName}! Check EnemyKillTracker settings.");
+                currentStageName = selectedStage;
+                Debug.Log($"🎯 [EnemySpawner] Using stage from PlayerPrefs: '{currentStageName}'");
+            }
+            else
+            {
+                currentStageName = SceneManager.GetActiveScene().name;
+                Debug.LogWarning($"🎯 [EnemySpawner] No PlayerPrefs, using scene name: '{currentStageName}'");
             }
         }
+
+        // 🆕 ตรวจสอบว่า currentStageName ไม่ว่าง
+        if (string.IsNullOrEmpty(currentStageName))
+        {
+            Debug.LogError("🚨 [EnemySpawner] currentStageName is still empty after setup!");
+            currentStageName = "playroom1_1"; // fallback
+        }
+
+        // 🆕 Debug ก่อนเรียก GetRequiredKillsForStage
+        Debug.Log($"🔍 [DEBUG] About to check required kills for stage: {currentStageName}");
+        Debug.Log($"🔍 [DEBUG] PlayerPrefs key will be: RequiredKills_{currentStageName}");
+        Debug.Log($"🔍 [DEBUG] PlayerPrefs value: {PlayerPrefs.GetInt($"RequiredKills_{currentStageName}", -999)}");
+
+        currentSessionKills = 0;
+        requiredKillsForStage = EnemyKillTracker.GetRequiredKillsForStage(currentStageName);
+        nextSpawnTime = Time.time + 2f; // รอ 2 วินาทีก่อน spawn
+        lastStageCheckTime = Time.time + 3f; // รอ 3 วินาทีก่อนเช็ค stage
+        // 🆕 Debug หลังได้รับค่า
+        Debug.Log($"🔍 [DEBUG] Got required kills: {requiredKillsForStage}");
+
+        // 🆕 บังคับให้มีค่าขั้นต่ำ
+        if (requiredKillsForStage <= 0)
+        {
+            Debug.LogError($"❌ [ERROR] Invalid requiredKillsForStage: {requiredKillsForStage}. Setting to 10.");
+            requiredKillsForStage = 10;
+        }
+
+        isStageCompleted = false;
+
+        Debug.Log($"🎯 [FINAL] Stage: {currentStageName}, Required: {requiredKillsForStage}, Session: {currentSessionKills}");
+
     }
 
     private void InitializeSpawnPoints()
@@ -344,14 +364,21 @@ public class EnemySpawner : NetworkBehaviour
 
         lastStageCheckTime = Time.time;
 
+        // 🆕 ป้องกัน stage name ว่าง
+        if (string.IsNullOrEmpty(currentStageName))
+        {
+            Debug.LogWarning("🚨 [CheckStageCompletionStatus] currentStageName is empty, skipping check");
+            return;
+        }
+
         bool wasCompleted = isStageCompleted;
 
-        // 🔧 ใช้ currentSessionKills แทนค่าที่เก็บถาวร
+        // ใช้ currentSessionKills แทนค่าที่เก็บถาวร
         isStageCompleted = currentSessionKills >= requiredKillsForStage;
 
         if (showStageDebugInfo && Time.time % 3f < 0.1f) // Debug ทุก 3 วินาที
         {
-            Debug.Log($"🎯 Stage {currentStageName}: {currentSessionKills}/{requiredKillsForStage} kills (Session) - Completed: {isStageCompleted}");
+            Debug.Log($"🎯 Stage '{currentStageName}': {currentSessionKills}/{requiredKillsForStage} kills (Session) - Completed: {isStageCompleted}");
         }
 
         // ถ้าเพิ่งเสร็จใหม่
@@ -364,9 +391,22 @@ public class EnemySpawner : NetworkBehaviour
     // 🆕 เรียกเมื่อด่านเพิ่งเสร็จใหม่
     private void OnStageJustCompleted()
     {
+        // 🆕 Debug ก่อนส่ง RPC
+        Debug.Log($"🔍 [OnStageJustCompleted] currentStageName: '{currentStageName}'");
+        Debug.Log($"🔍 [OnStageJustCompleted] currentSessionKills: {currentSessionKills}");
+        Debug.Log($"🔍 [OnStageJustCompleted] requiredKillsForStage: {requiredKillsForStage}");
+        Debug.Log($"🔍 [OnStageJustCompleted] Time.time: {Time.time}");
+
+        // ตรวจสอบว่า stageName ไม่ว่าง
+        if (string.IsNullOrEmpty(currentStageName))
+        {
+            Debug.LogError("🚨 [OnStageJustCompleted] currentStageName is empty! Cannot complete stage.");
+            return;
+        }
+
         Debug.Log($"🎉 Stage {currentStageName} just completed! ({currentSessionKills}/{requiredKillsForStage} kills)");
 
-        // 🆕 Mark ด่านเป็น completed ใน StageProgressManager (สำหรับ save ถาวร)
+        // Mark ด่านเป็น completed ใน StageProgressManager (สำหรับ save ถาวร)
         StageProgressManager.CompleteStage(currentStageName);
 
         if (stopSpawningWhenStageCompleted)
@@ -390,12 +430,31 @@ public class EnemySpawner : NetworkBehaviour
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_AnnounceStageCompleted(string stageName)
     {
+        // 🆕 เพิ่ม debug
+        Debug.Log($"🔍 [EnemySpawner] RPC_AnnounceStageCompleted called for: {stageName}");
+        Debug.Log($"🔍 [EnemySpawner] Current session kills: {currentSessionKills}");
+        Debug.Log($"🔍 [EnemySpawner] Required kills: {requiredKillsForStage}");
+        Debug.Log($"🔍 [EnemySpawner] Stage completed: {isStageCompleted}");
+
         Debug.Log($"🏆 STAGE COMPLETED: {stageName}!");
 
-        // 🆕 อัพเดทจำนวน enemy สุดท้ายให้ StageRewardTracker
+        // อัพเดทจำนวน enemy สุดท้ายให้ StageRewardTracker
         StageRewardTracker.Instance.SetCorrectEnemyCount(currentSessionKills);
+        StageCompleteUI stageUI = FindObjectOfType<StageCompleteUI>();
 
         StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
+        if (stageUI != null)
+        {
+            bool isPanelActive = stageUI.stageCompletePanel != null && stageUI.stageCompletePanel.activeSelf;
+            Debug.Log($"🔍 [START] StageCompleteUI panel active: {isPanelActive}");
+
+            // ถ้า panel เปิดอยู่แล้ว ให้ปิด
+            if (isPanelActive)
+            {
+                Debug.LogWarning("🔍 [START] StageCompleteUI was already active! Hiding it...");
+                stageUI.HideStageComplete();
+            }
+        }
         if (stageCompleteUI != null)
         {
             stageCompleteUI.ShowStageComplete(stageName);

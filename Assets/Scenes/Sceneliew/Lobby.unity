@@ -18661,11 +18661,11 @@ MonoBehaviour:
   backToStageButton: {fileID: 1204333730}
   mainStagePanels:
   - panel: {fileID: 947627144}
-    stageName: 
+    stageName: PlayRoom1
     subStagePanels:
     - panel: {fileID: 882755272}
-      subStageName: MapFire1-1
-      sceneToLoad: Playroom1
+      subStageName: PlayRoom1
+      sceneToLoad: PlayRoom1
       selectButton: {fileID: 882755276}
       requiredEnemyKills: 20
       requiredPreviousStages: []

@@ -191,7 +191,7 @@ public class EquipmentSlotManager : MonoBehaviour
         {
             if (slot != null)
             {
-                Debug.Log($"[EquipmentSlotManager] 🧪 Refreshing potion slot {slot.PotionSlotIndex}...");
+             //   Debug.Log($"[EquipmentSlotManager] 🧪 Refreshing potion slot {slot.PotionSlotIndex}...");
                 slot.RefreshFromCharacterData();
                 potionRefreshed++;
             }
@@ -200,11 +200,11 @@ public class EquipmentSlotManager : MonoBehaviour
         // 🆕 Force update Canvas หลัง refresh ทั้งหมด
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log($"[EquipmentSlotManager] ✅ Refreshed {equipmentRefreshed} equipment slots and {potionRefreshed} potion slots");
+       // Debug.Log($"[EquipmentSlotManager] ✅ Refreshed {equipmentRefreshed} equipment slots and {potionRefreshed} potion slots");
     }
     public void RefreshPotionSlots()
     {
-        Debug.Log($"[EquipmentSlotManager] 🧪 Refreshing potion slots only...");
+       // Debug.Log($"[EquipmentSlotManager] 🧪 Refreshing potion slots only...");
 
         int refreshed = 0;
         foreach (EquipmentSlot slot in connectedPotionSlots)
@@ -217,7 +217,7 @@ public class EquipmentSlotManager : MonoBehaviour
         }
 
         Canvas.ForceUpdateCanvases();
-        Debug.Log($"[EquipmentSlotManager] ✅ Refreshed {refreshed} potion slots");
+      //  Debug.Log($"[EquipmentSlotManager] ✅ Refreshed {refreshed} potion slots");
     }
 
 
