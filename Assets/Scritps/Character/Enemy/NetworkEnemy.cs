@@ -954,7 +954,6 @@ public class NetworkEnemy : Character
             NotifySpawnerOfDeath();
 
             // 5. Global kill tracking
-            EnemyKillTracker.OnEnemyKilled();
         }
 
         // Death visual effects...
@@ -972,6 +971,7 @@ public class NetworkEnemy : Character
         {
             statusManager.ClearAllStatusEffects();
         }
+        StageRewardTracker.AddEnemyKill();
 
         StartCoroutine(DestroyAfterDelay());
     }

@@ -122,7 +122,7 @@ public class EnemySpawner : NetworkBehaviour
     private float lastStageCheckTime = 0f;
     private const float STAGE_CHECK_INTERVAL = 2f; // เช็คทุก 2 วินาที
 
-    private int currentSessionKills = 0;
+    public int currentSessionKills { get; private set; } = 0; // เปลี่ยนเป็น property
     private int requiredKillsForStage = 10;
 
     private float nextSpawnTime = 0f;
@@ -300,6 +300,9 @@ public class EnemySpawner : NetworkBehaviour
         Debug.Log($"🔥 currentSessionKills AFTER: {currentSessionKills}");
         Debug.Log($"🎯 Stage progress: {currentSessionKills}/{requiredKillsForStage} for {currentStageName}");
 
+        // 🆕 ส่งข้อมูลไป StageRewardTracker (ใช้ RPC เพื่อให้ทุกคนได้ข้อมูลเดียวกัน)
+        RPC_UpdateStageRewardTracker(enemyTypeName);
+
         // อัพเดท kill statistics
         if (killedCounts.ContainsKey(enemyTypeName))
         {
@@ -324,6 +327,14 @@ public class EnemySpawner : NetworkBehaviour
         {
             Debug.Log($"📊 Direct Kill Update - {enemyTypeName}: {killedCounts[enemyTypeName]}, Total: {totalEnemiesKilled}");
         }
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_UpdateStageRewardTracker(string enemyTypeName)
+    {
+        // อัพเดท StageRewardTracker ให้ทุกคน
+        StageRewardTracker.AddEnemyKill();
+
+        Debug.Log($"[RPC_UpdateStageRewardTracker] Added enemy kill for {enemyTypeName}");
     }
     private void CheckStageCompletionStatus()
     {
@@ -376,25 +387,24 @@ public class EnemySpawner : NetworkBehaviour
             RPC_AnnounceStageCompleted(currentStageName);
         }
     }
-
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_AnnounceStageCompleted(string stageName)
     {
         Debug.Log($"🏆 STAGE COMPLETED: {stageName}!");
 
-        // ✅ หา StageCompleteUI ในฉาก
+        // 🆕 อัพเดทจำนวน enemy สุดท้ายให้ StageRewardTracker
+        StageRewardTracker.Instance.SetCorrectEnemyCount(currentSessionKills);
+
         StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
         if (stageCompleteUI != null)
         {
             stageCompleteUI.ShowStageComplete(stageName);
-            Debug.Log($"✅ Found and triggered StageCompleteUI for: {stageName}");
         }
         else
         {
-            Debug.LogWarning("🏆 No StageCompleteUI found in scene! Please add StageCompleteUI to your scene.");
+            Debug.LogWarning("🏆 No StageCompleteUI found in scene!");
         }
     }
-
     // เพิ่ม method สำหรับ manual testing
     [ContextMenu("🧪 Test: Trigger Stage Complete UI")]
     public void TestTriggerStageCompleteUI()

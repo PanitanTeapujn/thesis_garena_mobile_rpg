@@ -212,6 +212,9 @@ public class ItemDropManager : NetworkBehaviour
 
             RPC_ShowItemPickup(player.Object, $"{prefix} {itemText}", messageColor);
 
+            // 🆕 บันทึกลง StageRewardTracker
+            StageRewardTracker.AddItemReward(dropResult.itemData, dropResult.quantity);
+
             Debug.Log($"[ItemDropManager] ✅ Gave {itemText} ({dropResult.itemData.GetTierText()}) to {player.CharacterName}");
         }
         else
@@ -219,7 +222,6 @@ public class ItemDropManager : NetworkBehaviour
             Debug.LogWarning($"[ItemDropManager] Failed to add {dropResult.itemData.ItemName} to {player.CharacterName}'s inventory");
         }
     }
-
     private List<Character> FindNearbyPlayers()
     {
         List<Character> nearbyPlayers = new List<Character>();

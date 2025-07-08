@@ -137,6 +137,9 @@ public class EnemyDropManager : NetworkBehaviour
                     CurrencyManager.AddGoldStatic(goldPerPlayer);
                     RPC_ShowGoldPickup(player.Object, goldPerPlayer);
                 }
+
+                // บันทึกลง StageRewardTracker
+                StageRewardTracker.AddGoldReward(goldDropped);
             }
         }
 
@@ -150,8 +153,14 @@ public class EnemyDropManager : NetworkBehaviour
                     CurrencyManager.AddGemsStatic(gemsPerPlayer);
                     RPC_ShowGemsPickup(player.Object, gemsPerPlayer);
                 }
+
+                // บันทึกลง StageRewardTracker
+                StageRewardTracker.AddGemsReward(gemsDropped);
             }
         }
+
+        // ❌ ลบบรรทัดนี้ออก - ไม่ track enemy kill ที่นี่แล้ว
+        // StageRewardTracker.AddEnemyKill();
     }
 
     private List<Character> FindNearbyPlayers()

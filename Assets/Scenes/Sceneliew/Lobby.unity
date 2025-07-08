@@ -18667,7 +18667,7 @@ MonoBehaviour:
       subStageName: MapFire1-1
       sceneToLoad: Playroom1
       selectButton: {fileID: 882755276}
-      requiredEnemyKills: 10
+      requiredEnemyKills: 20
       requiredPreviousStages: []
       isFirstStage: 1
     - panel: {fileID: 430931127}
