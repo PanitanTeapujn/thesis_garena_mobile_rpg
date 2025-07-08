@@ -199,6 +199,10 @@ MonoBehaviour:
   spawnInWaves: 0
   enemiesPerWave: 3
   waveCooldown: 2
+  currentStageName: 
+  stopSpawningWhenStageCompleted: 1
+  showStageDebugInfo: 1
+  stageCompleteUI: {fileID: 0}
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0

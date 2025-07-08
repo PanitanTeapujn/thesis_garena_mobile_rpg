@@ -115,7 +115,8 @@ public class EnemySpawner : NetworkBehaviour
 
     [Header("🔧 Stage Debug")]
     public bool showStageDebugInfo = true;
-
+    [Header("🏆 Stage Complete UI")]
+    public StageCompleteUI stageCompleteUI;
     // เพิ่มตัวแปรสำหรับเช็คสถานะด่าน
     private bool isStageCompleted = false;
     private float lastStageCheckTime = 0f;
@@ -381,9 +382,29 @@ public class EnemySpawner : NetworkBehaviour
     {
         Debug.Log($"🏆 STAGE COMPLETED: {stageName}!");
 
-        // ที่นี่จะเป็นจุดที่เรียก UI แสดงผลลัพธ์ใน Step 2
-        // StageResultsUI.Show(stageName); // จะทำใน Step 2
+        // ✅ หา StageCompleteUI ในฉาก
+        StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
+        if (stageCompleteUI != null)
+        {
+            stageCompleteUI.ShowStageComplete(stageName);
+            Debug.Log($"✅ Found and triggered StageCompleteUI for: {stageName}");
+        }
+        else
+        {
+            Debug.LogWarning("🏆 No StageCompleteUI found in scene! Please add StageCompleteUI to your scene.");
+        }
     }
+
+    // เพิ่ม method สำหรับ manual testing
+    [ContextMenu("🧪 Test: Trigger Stage Complete UI")]
+    public void TestTriggerStageCompleteUI()
+    {
+        if (Application.isPlaying && HasStateAuthority)
+        {
+            RPC_AnnounceStageCompleted($"Test_{currentStageName}");
+        }
+    }
+
     public void SetCurrentStage(string stageName)
     {
         currentStageName = stageName;
@@ -1113,54 +1134,7 @@ public class EnemySpawner : NetworkBehaviour
             }
         }
     }
-    [ContextMenu("🧪 Test: Spawn and Kill Enemy")]
-    public void TestSpawnAndKillEnemy()
-    {
-        if (!Application.isPlaying || !HasStateAuthority)
-        {
-            Debug.LogWarning("Need to be server and in play mode!");
-            return;
-        }
-
-        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
-        {
-            Debug.LogError("No enemy prefabs!");
-            return;
-        }
-
-        // หา enemy prefab ตัวแรกที่ใช้ได้
-        EnemySpawnData testEnemyData = null;
-        foreach (var enemy in enemyPrefabs)
-        {
-            if (enemy.enemyPrefab != null)
-            {
-                testEnemyData = enemy;
-                break;
-            }
-        }
-
-        if (testEnemyData == null)
-        {
-            Debug.LogError("No valid enemy prefab found!");
-            return;
-        }
-
-        // Spawn enemy
-        Vector3 spawnPos = transform.position + Vector3.forward * 2f;
-        NetworkEnemy spawnedEnemy = Runner.Spawn(testEnemyData.enemyPrefab, spawnPos, Quaternion.identity, PlayerRef.None);
-
-        if (spawnedEnemy != null)
-        {
-            activeEnemies.Add(spawnedEnemy);
-            spawnedEnemyTypes[spawnedEnemy.Object] = testEnemyData.enemyName;
-
-            Debug.Log($"🧪 Spawned test enemy: {testEnemyData.enemyName}");
-            Debug.Log($"🧪 currentSessionKills before kill: {currentSessionKills}");
-
-            // ฆ่าทันที
-            StartCoroutine(KillEnemyAfterDelay(spawnedEnemy, 1f));
-        }
-    }
+ 
 
     private System.Collections.IEnumerator KillEnemyAfterDelay(NetworkEnemy enemy, float delay)
     {
