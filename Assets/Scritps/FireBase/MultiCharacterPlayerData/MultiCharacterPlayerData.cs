@@ -673,6 +673,9 @@ public class MultiCharacterPlayerData
 
     [Header("Stage Progress")]
     public StageProgressData stageProgress = new StageProgressData();
+    [Header("🔍 Stage Progress Debug Info")]
+    public bool hasStageProgressData = false;
+    public string stageProgressLastSaveTime = "";
 
     [Header("Friends System")]
     public List<string> friends = new List<string>();
@@ -752,6 +755,23 @@ public class MultiCharacterPlayerData
         InitializeInventorySystem();
         InitializeCurrencySystem();
         InitializeDefaultCharacter();
+        InitializeStageProgressSystem();
+    }
+
+    private void InitializeStageProgressSystem()
+    {
+        hasStageProgressData = false;
+        stageProgressLastSaveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        Debug.Log("✅ Stage progress system initialized");
+    }
+
+    public void UpdateStageProgressDebugInfo()
+    {
+        if (stageProgress != null)
+        {
+            stageProgressLastSaveTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            hasStageProgressData = stageProgress.completedStages.Count > 0 || stageProgress.stageEnemyKills.Count > 0;
+        }
     }
     private void InitializeInventorySystem()
     {

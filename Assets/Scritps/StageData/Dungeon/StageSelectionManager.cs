@@ -450,11 +450,5 @@ public class StageSelectionManager : MonoBehaviour
     }
 
     // ========== Debug Methods ==========
-    [ContextMenu("Log Current Selection")]
-    void Debug_LogCurrentSelection()
-    {
-        Debug.Log($"Main Stage: {(currentMainStageIndex >= 0 ? mainStagePanels[currentMainStageIndex].stageName : "None")}");
-        Debug.Log($"Sub Stage: {GetSelectedStageName()}");
-        Debug.Log($"Scene: {GetSelectedScene()}");
-    }
+ 
 }

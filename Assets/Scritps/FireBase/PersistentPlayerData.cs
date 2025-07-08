@@ -3,6 +3,7 @@ using Firebase.Auth;
 using Firebase.Database;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class PersistentPlayerData : MonoBehaviour
 {
@@ -149,11 +150,13 @@ public class PersistentPlayerData : MonoBehaviour
         StartCoroutine(LoadDataCoroutine());
     }
 
+    // แก้ไขใน PersistentPlayerData.cs - LoadDataCoroutine()
     public IEnumerator LoadDataCoroutine()
     {
         if (auth?.CurrentUser == null)
         {
-            CreateDefaultMultiCharacterData();
+            Debug.LogWarning("[PersistentPlayerData] No authenticated user, loading from backup");
+            LoadFromPlayerPrefsBackup(); // 🆕 เพิ่ม backup loading
             yield break;
         }
 
@@ -161,14 +164,20 @@ public class PersistentPlayerData : MonoBehaviour
 
         var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).GetValueAsync();
 
-        // 🔧 เพิ่ม timeout เป็น 10 วินาที
-        float timeout = 10f;
+        // 🔧 เพิ่ม timeout เป็น 30 วินาที
+        float timeout = 30f;
         float elapsed = 0f;
 
         while (!task.IsCompleted && elapsed < timeout)
         {
             elapsed += Time.deltaTime;
             yield return null;
+
+            // 🆕 แสดง progress ทุก 5 วินาที
+            if (Mathf.RoundToInt(elapsed) % 5 == 0 && elapsed % 1f < 0.1f)
+            {
+                Debug.Log($"[PersistentPlayerData] Still loading... {elapsed:F1}s");
+            }
         }
 
         if (task.IsCompleted && task.Exception == null && task.Result.Exists)
@@ -176,32 +185,50 @@ public class PersistentPlayerData : MonoBehaviour
             string json = task.Result.GetRawJsonValue();
             bool loaded = false;
 
-            // 🔧 เพิ่มการตรวจสอบว่า json ไม่ว่าง
-            if (!string.IsNullOrEmpty(json) && json.Length > 50) // มีข้อมูลจริงๆ
+            // 🔧 เพิ่มการ validate ข้อมูลมากขึ้น
+            if (!string.IsNullOrEmpty(json) && json.Length > 100) // เพิ่มขนาดขั้นต่ำ
             {
                 try
                 {
-                    multiCharacterData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
-                    if (multiCharacterData != null && multiCharacterData.IsValid())
+                    var tempData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
+
+                    // 🆕 validate ข้อมูลให้เข้มงวดขึ้น
+                    if (IsValidPlayerData(tempData))
                     {
+                        multiCharacterData = tempData;
                         isDataLoaded = true;
                         loaded = true;
                         SaveToPlayerPrefs();
-                        Debug.Log($"✅ Loaded multi-character data: {multiCharacterData.playerName}, Active: {multiCharacterData.currentActiveCharacter}");
+
+                        Debug.Log($"✅ Loaded valid data: {multiCharacterData.playerName}");
+                        Debug.Log($"  - Characters: {multiCharacterData.characters.Count}");
+                        Debug.Log($"  - Active: {multiCharacterData.currentActiveCharacter}");
+                        Debug.Log($"  - Stage Progress: {multiCharacterData.stageProgress?.completedStages.Count ?? 0} completed");
+
+                        // 🆕 บันทึกเป็น backup
+                        SaveCompleteBackupToPlayerPrefs();
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[PersistentPlayerData] Invalid data structure, trying backup");
+                        loaded = LoadFromPlayerPrefsBackup();
                     }
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogWarning($"[PersistentPlayerData] Failed to parse data: {e.Message}");
+                    Debug.LogError($"[PersistentPlayerData] Failed to parse data: {e.Message}");
+                    loaded = LoadFromPlayerPrefsBackup();
                 }
             }
             else
             {
-                Debug.LogWarning("[PersistentPlayerData] JSON data is empty or too small, treating as no data");
+                Debug.LogWarning($"[PersistentPlayerData] JSON too small ({json?.Length ?? 0} chars), trying backup");
+                loaded = LoadFromPlayerPrefsBackup();
             }
 
             if (!loaded)
             {
+                Debug.LogWarning("[PersistentPlayerData] Creating new data as last resort");
                 CreateDefaultMultiCharacterData();
             }
             else
@@ -209,13 +236,106 @@ public class PersistentPlayerData : MonoBehaviour
                 LoadCurrencyData();
             }
         }
+        else if (elapsed >= timeout)
+        {
+            Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Trying backup data...");
+
+            bool backupLoaded = LoadFromPlayerPrefsBackup();
+            if (!backupLoaded)
+            {
+                Debug.LogError("[PersistentPlayerData] No backup available, creating new data");
+                CreateDefaultMultiCharacterData();
+            }
+        }
         else
         {
-            Debug.Log("[PersistentPlayerData] No data found or timeout. Creating default data...");
-            CreateDefaultMultiCharacterData();
+            Debug.Log("[PersistentPlayerData] No Firebase data found, trying backup...");
+
+            bool backupLoaded = LoadFromPlayerPrefsBackup();
+            if (!backupLoaded)
+            {
+                CreateDefaultMultiCharacterData();
+            }
         }
 
         RegisterPlayerInDirectory();
+    }
+
+    // 🆕 เพิ่ม method สำหรับ validate ข้อมูล
+    private bool IsValidPlayerData(MultiCharacterPlayerData data)
+    {
+        if (data == null) return false;
+
+        // ตรวจสอบข้อมูลพื้นฐาน
+        bool hasBasicData = !string.IsNullOrEmpty(data.playerName) &&
+                           !string.IsNullOrEmpty(data.currentActiveCharacter) &&
+                           data.characters != null &&
+                           data.characters.Count > 0;
+
+        if (!hasBasicData) return false;
+
+        // ตรวจสอบว่ามี character ที่ active อยู่จริง
+        bool hasActiveCharacter = data.characters.Any(c => c.characterType == data.currentActiveCharacter);
+
+        if (!hasActiveCharacter) return false;
+
+        Debug.Log($"[IsValidPlayerData] Data validation passed for {data.playerName}");
+        return true;
+    }
+
+    // 🆕 เพิ่ม backup system
+    private bool LoadFromPlayerPrefsBackup()
+    {
+        Debug.Log("[LoadFromPlayerPrefsBackup] Attempting to load backup data...");
+
+        string backupJson = PlayerPrefs.GetString("PlayerDataBackup", "");
+        if (string.IsNullOrEmpty(backupJson))
+        {
+            Debug.LogWarning("[LoadFromPlayerPrefsBackup] No backup data found");
+            return false;
+        }
+
+        try
+        {
+            var backupData = JsonUtility.FromJson<MultiCharacterPlayerData>(backupJson);
+            if (IsValidPlayerData(backupData))
+            {
+                multiCharacterData = backupData;
+                isDataLoaded = true;
+
+                Debug.Log($"✅ Loaded backup data: {multiCharacterData.playerName}");
+                Debug.Log($"  - Backup Date: {PlayerPrefs.GetString("PlayerDataBackupDate", "Unknown")}");
+
+                return true;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadFromPlayerPrefsBackup] Failed to parse backup: {e.Message}");
+        }
+
+        return false;
+    }
+
+    // 🆕 เพิ่ม method สำหรับบันทึก backup
+    private void SaveCompleteBackupToPlayerPrefs()
+    {
+        try
+        {
+            if (multiCharacterData != null)
+            {
+                string json = JsonUtility.ToJson(multiCharacterData, true);
+                PlayerPrefs.SetString("PlayerDataBackup", json);
+                PlayerPrefs.SetString("PlayerDataBackupDate", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                PlayerPrefs.Save();
+
+                Debug.Log("[SaveCompleteBackupToPlayerPrefs] Complete backup saved");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveCompleteBackupToPlayerPrefs] Error: {e.Message}");
+        }
     }
     private void CreateDefaultMultiCharacterData()
     {
@@ -250,11 +370,32 @@ public class PersistentPlayerData : MonoBehaviour
         StartCoroutine(SaveDataCoroutine());
     }
 
+    private bool isSaving = false;
+
     private IEnumerator SaveDataCoroutine()
     {
-        if (multiCharacterData == null || auth?.CurrentUser == null) yield break;
+        if (multiCharacterData == null || auth?.CurrentUser == null)
+        {
+            yield break;
+        }
 
+        // ป้องกัน concurrent save
+        if (isSaving)
+        {
+            Debug.LogWarning("[PersistentPlayerData] Save already in progress, skipping...");
+            yield break;
+        }
+
+        isSaving = true;
+
+        // อัปเดต debug info ทั้งหมด
         multiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        multiCharacterData.UpdateStageProgressDebugInfo();
+        multiCharacterData.UpdateAllInventoryDebugInfo();
+        multiCharacterData.UpdateCurrencyDebugInfo();
+
+        // 🆕 บันทึก backup ก่อน save ไป Firebase
+        SaveCompleteBackupToPlayerPrefs();
 
         string json = JsonUtility.ToJson(multiCharacterData, true);
         var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).SetRawJsonValueAsync(json);
@@ -262,7 +403,7 @@ public class PersistentPlayerData : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
 
         SaveToPlayerPrefs();
-        Debug.Log($"💾 Saved multi-character data for {multiCharacterData.playerName}");
+        Debug.Log($"💾 Saved complete player data including stage progress for {multiCharacterData.playerName}");
 
         if (task.IsCompleted)
         {
@@ -272,9 +413,15 @@ public class PersistentPlayerData : MonoBehaviour
             }
             else
             {
-                Debug.Log($"✅ Successfully saved to Firebase");
+                Debug.Log($"✅ Successfully saved complete data to Firebase");
+
+                // 🆕 อัปเดต backup timestamp หลัง save สำเร็จ
+                PlayerPrefs.SetString("LastSuccessfulSave", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                PlayerPrefs.Save();
             }
         }
+
+        isSaving = false;
     }
 
     private void SaveToPlayerPrefs()

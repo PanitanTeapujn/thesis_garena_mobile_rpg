@@ -25,6 +25,18 @@ public class StageProgressManager : MonoBehaviour
         }
     }
 
+    private StageProgressData StageProgress
+    {
+        get
+        {
+            if (PersistentPlayerData.Instance?.multiCharacterData?.stageProgress == null)
+            {
+                PersistentPlayerData.Instance.multiCharacterData.stageProgress = new StageProgressData();
+            }
+            return PersistentPlayerData.Instance.multiCharacterData.stageProgress;
+        }
+    }
+
     [Header("Firebase Integration")]
     public bool useFirebase = true;
     public bool autoSave = true;
@@ -72,18 +84,15 @@ public class StageProgressManager : MonoBehaviour
     {
         StageProgressManager instance = Instance;
 
-        if (instance.stageProgress == null)
-            instance.stageProgress = new StageProgressData();
+        // ใช้ StageProgress property แทน
+        instance.StageProgress.AddEnemyKill(stageName);
 
-        instance.stageProgress.AddEnemyKill(stageName);
-
-        // ✅ เช็คการผ่านด่านทันที
         instance.CheckStageCompletion(stageName);
 
-        // ✅ Auto Save ถ้าเปิดใช้
         if (instance.autoSave)
         {
-            instance.SaveProgressToFirebase();
+            // เปลี่ยนจาก SaveProgressToFirebase เป็น SaveThroughPersistentPlayerData
+            instance.SaveThroughPersistentPlayerData();
         }
     }
 
@@ -104,30 +113,35 @@ public class StageProgressManager : MonoBehaviour
     {
         StageProgressManager instance = Instance;
 
-        if (instance.stageProgress == null)
-            instance.stageProgress = new StageProgressData();
+        instance.StageProgress.CompleteStage(stageName);
 
-        instance.stageProgress.CompleteStage(stageName);
-
-        // ✅ Auto Save ถ้าเปิดใช้
         if (instance.autoSave)
         {
-            instance.SaveProgressToFirebase();
+            instance.SaveThroughPersistentPlayerData();
         }
     }
-
     // ✅ เช็คว่าผ่านด่านแล้วหรือยัง
     public static bool IsStageCompleted(string stageName)
     {
         StageProgressManager instance = Instance;
-        return instance.stageProgress?.IsStageCompleted(stageName) ?? false;
+        return instance.StageProgress?.IsStageCompleted(stageName) ?? false;
     }
 
     // ✅ ดึงจำนวน Enemy ที่กำจัดแล้ว
+    // แก้ไข GetEnemyKills
     public static int GetEnemyKills(string stageName)
     {
         StageProgressManager instance = Instance;
-        return instance.stageProgress?.GetEnemyKills(stageName) ?? 0;
+        return instance.StageProgress?.GetEnemyKills(stageName) ?? 0;
+    }
+    private void SaveThroughPersistentPlayerData()
+    {
+        if (PersistentPlayerData.Instance?.multiCharacterData != null)
+        {
+            PersistentPlayerData.Instance.multiCharacterData.UpdateStageProgressDebugInfo();
+            PersistentPlayerData.Instance.SavePlayerDataAsync();
+            Debug.Log("💾 [StageProgress] Saved through PersistentPlayerData");
+        }
     }
 
     // ========== Firebase Save/Load Methods ==========
@@ -135,16 +149,23 @@ public class StageProgressManager : MonoBehaviour
     // ✅ โหลด Progress จาก Firebase
     public void LoadProgress()
     {
-        if (useFirebase && auth?.CurrentUser != null)
+        if (PersistentPlayerData.Instance?.multiCharacterData?.stageProgress != null)
         {
-            StartCoroutine(LoadProgressFromFirebase());
+            // ข้อมูลมีอยู่แล้วจาก PersistentPlayerData
+            Debug.Log($"✅ [StageProgress] Loaded from PersistentPlayerData - {StageProgress.completedStages.Count} completed stages");
+            StageProgress.LogProgress();
         }
         else
         {
-            // ถ้าไม่ใช้ Firebase หรือไม่ได้ Login ให้โหลดจาก PlayerPrefs
-            LoadFromPlayerPrefs();
+            // สร้าง default progress
+            if (PersistentPlayerData.Instance?.multiCharacterData != null)
+            {
+                PersistentPlayerData.Instance.multiCharacterData.stageProgress = new StageProgressData();
+                Debug.Log("[StageProgress] Created default progress in PersistentPlayerData");
+            }
         }
     }
+
 
     private IEnumerator LoadProgressFromFirebase()
     {
@@ -197,10 +218,7 @@ public class StageProgressManager : MonoBehaviour
     // ✅ บันทึก Progress ลง Firebase
     public void SaveProgressToFirebase()
     {
-        if (!useFirebase || auth?.CurrentUser == null || stageProgress == null)
-            return;
-
-        StartCoroutine(SaveProgressToFirebaseCoroutine());
+        SaveThroughPersistentPlayerData();
     }
 
     private IEnumerator SaveProgressToFirebaseCoroutine()
@@ -310,7 +328,7 @@ public class StageProgressManager : MonoBehaviour
     // ✅ บังคับ Save ทันที
     public static void ForceSave()
     {
-        Instance.SaveProgressToFirebase();
+        Instance.SaveThroughPersistentPlayerData();
     }
 
     // ✅ รีเซ็ต Progress

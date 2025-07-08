@@ -137,27 +137,45 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             yield break;
         }
 
-        // 🔧 รอให้ PersistentPlayerData โหลดเสร็จก่อน
+        // 🔧 รอให้ PersistentPlayerData โหลดเสร็จก่อน - เพิ่มเวลารอ
         yield return new WaitUntil(() => PersistentPlayerData.Instance != null);
 
-        // 🔧 รอให้ data โหลดเสร็จ
+        // 🔧 รอให้ data โหลดเสร็จจริงๆ - เพิ่มเวลาเป็น 45 วินาที
         float dataWaitTime = 0f;
-        while (!PersistentPlayerData.Instance.isDataLoaded && dataWaitTime < 15f)
+        while (!PersistentPlayerData.Instance.isDataLoaded && dataWaitTime < 45f)
         {
-            yield return new WaitForSeconds(0.5f);
-            dataWaitTime += 0.5f;
+            yield return new WaitForSeconds(1f); // เปลี่ยนจาก 0.5 เป็น 1 วินาที
+            dataWaitTime += 1f;
+
+            // แสดง progress ทุก 5 วินาที
+            if (Mathf.RoundToInt(dataWaitTime) % 5 == 0)
+            {
+                Debug.Log($"[PlayerSpawner] Still waiting for data... {dataWaitTime}s");
+            }
         }
 
-        // รอให้ Character โหลด stats เสร็จ
-        int maxWaitTime = 30;
+        // 🆕 ตรวจสอบว่าข้อมูลถูกต้องหรือไม่
+        bool hasValidData = PersistentPlayerData.Instance.HasValidData();
+        Debug.Log($"[PlayerSpawner] Data loaded: {PersistentPlayerData.Instance.isDataLoaded}, Valid: {hasValidData}");
+
+        if (!PersistentPlayerData.Instance.isDataLoaded)
+        {
+            Debug.LogError($"[PlayerSpawner] ❌ TIMEOUT waiting for PersistentPlayerData after {dataWaitTime}s!");
+
+            // 🆕 ลองโหลด backup
+            yield return StartCoroutine(TryLoadBackupData());
+        }
+
+        // รอให้ Character โหลด stats เสร็จ - เพิ่มเวลาเป็น 45 วินาที
+        int maxWaitTime = 45;
         float waitTime = 0f;
 
         while (!character.IsStatsLoadingComplete() && waitTime < maxWaitTime)
         {
-            yield return new WaitForSeconds(0.1f);
-            waitTime += 0.1f;
+            yield return new WaitForSeconds(0.5f);
+            waitTime += 0.5f;
 
-            if (Mathf.RoundToInt(waitTime) % 3 == 0 && waitTime % 1f < 0.1f)
+            if (Mathf.RoundToInt(waitTime) % 5 == 0 && waitTime % 1f < 0.5f)
             {
                 Debug.Log($"[PlayerSpawner] Still waiting for {hero.CharacterName} stats... ({waitTime:F1}s)");
             }
@@ -172,49 +190,87 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogWarning($"[PlayerSpawner] ⚠️ Timeout waiting for {hero.CharacterName} stats after {maxWaitTime}s");
             heroStatsReady[hero] = false;
+
+            // 🆕 ลองโหลดข้อมูลอีกครั้ง
+            yield return StartCoroutine(RetryLoadCharacterData(character));
         }
     }
 
-
-    private IEnumerator SetupCombatUIWithDelay(Hero hero, NetworkObject playerObject)
+    // 🆕 เพิ่ม method สำหรับลอง load backup
+    private IEnumerator TryLoadBackupData()
     {
-        yield return new WaitForSeconds(0.5f);
+        Debug.Log("[PlayerSpawner] 🔄 Trying to load backup data...");
 
-        while (!hero.IsSpawned)
+        bool backupLoaded = false;
+
+        // ลองให้ PersistentPlayerData โหลด backup
+        var loadBackupMethod = typeof(PersistentPlayerData).GetMethod(
+            "LoadFromPlayerPrefsBackup",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+        try
         {
-            yield return null;
-        }
-
-        // Setup Screen Space UI (เฉพาะ local player)
-        if (hero.HasInputAuthority)
-        {
-            Debug.Log($"Setting up Combat UI for local player: {hero.CharacterName}");
-
-            CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
-
-            if (combatUI == null && combatUIManagerPrefab != null)
+            if (loadBackupMethod != null)
             {
-                combatUI = Instantiate(combatUIManagerPrefab);
-                Debug.Log("Created new CombatUIManager from prefab");
-            }
-
-            if (combatUI != null)
-            {
-                yield return new WaitForEndOfFrame();
-                combatUI.SetLocalHero(hero);
+                backupLoaded = (bool)loadBackupMethod.Invoke(PersistentPlayerData.Instance, null);
             }
         }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PlayerSpawner] Error loading backup: {e.Message}");
+        }
 
-        // ไม่สร้าง WorldSpaceUI ที่นี่ เพราะจะสร้างผ่าน RPC แทน
+        if (backupLoaded)
+        {
+            Debug.Log("[PlayerSpawner] ✅ Backup data loaded successfully");
+            yield return new WaitForSeconds(1f);
+        }
+        else
+        {
+            Debug.LogWarning("[PlayerSpawner] ❌ No backup data available");
+        }
     }
-    private IEnumerator SetHeroAfterDelay(CombatUIManager combatUI, Hero hero)
+
+
+    // 🆕 เพิ่ม method สำหรับ retry การโหลด character data
+    private IEnumerator RetryLoadCharacterData(Character character)
     {
-        // รอให้ CombatUIManager setup เสร็จ
-        yield return new WaitForSeconds(0.5f);
+        Debug.Log("[PlayerSpawner] 🔄 Retrying character data load...");
 
-        combatUI.SetLocalHero(hero);
-        Debug.Log($"Hero set to CombatUIManager after delay: {hero.CharacterName}");
+        yield return new WaitForSeconds(2f);
+
+        try
+        {
+            // ลองโหลดข้อมูลใหม่
+            if (PersistentPlayerData.Instance?.HasValidData() == true)
+            {
+                var levelManager = character.GetComponent<LevelManager>();
+                if (levelManager != null)
+                {
+                    levelManager.RefreshCharacterData();
+                }
+
+                PersistentPlayerData.Instance.LoadInventoryData(character);
+
+                
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PlayerSpawner] Retry failed: {e.Message}");
+        }
+        yield return new WaitForSeconds(2f);
+
+        // ตรวจสอบผลลัพธ์
+        if (character.MaxHp > 0 && character.AttackDamage > 0)
+        {
+            heroStatsReady[character.GetComponent<Hero>()] = true;
+            Debug.Log("[PlayerSpawner] ✅ Retry successful!");
+        }
     }
+
+
+
     private void Update()
     {
         if (_runner == null)
