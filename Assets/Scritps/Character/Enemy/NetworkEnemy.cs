@@ -923,13 +923,14 @@ public class NetworkEnemy : Character
         }
     }
 
+    // ใน NetworkEnemy.cs - แก้ไข RPC_OnDeath()
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_OnDeath()
     {
         Debug.Log($"Enemy {name} died!");
         IsDead = true;
 
-        // 🆕 Drop system ทั้งหมด
+        // 🆕 ทำ drops และ session kill counting ทันทีเมื่อตาย
         if (HasStateAuthority)
         {
             // 1. Currency drops (เงิน + เพชร)
@@ -939,7 +940,7 @@ public class NetworkEnemy : Character
                 currencyDropManager.TriggerDrops();
             }
 
-            // 2. Item drops (ใหม่!)
+            // 2. Item drops
             ItemDropManager itemDropManager = GetComponent<ItemDropManager>();
             if (itemDropManager != null)
             {
@@ -947,8 +948,13 @@ public class NetworkEnemy : Character
             }
 
             // 3. Experience drops
-            EnemyKillTracker.OnEnemyKilled();
             DropExpToNearbyHeroes();
+
+            // 🆕 4. บอก EnemySpawner ว่า enemy ตัวนี้ตายแล้ว (สำหรับ session kills)
+            NotifySpawnerOfDeath();
+
+            // 5. Global kill tracking
+            EnemyKillTracker.OnEnemyKilled();
         }
 
         // Death visual effects...
@@ -969,17 +975,54 @@ public class NetworkEnemy : Character
 
         StartCoroutine(DestroyAfterDelay());
     }
+
+    // 🆕 Method ใหม่สำหรับแจ้ง EnemySpawner
+    private void NotifySpawnerOfDeath()
+    {
+        // หา EnemySpawner ในเกม
+        EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
+
+        if (spawner != null)
+        {
+            // ได้ enemy type name จาก character stats หรือ object name
+            string enemyTypeName = GetEnemyTypeName();
+
+            Debug.Log($"🔥 Notifying spawner of death: {enemyTypeName}");
+
+            // เรียก method ใหม่ใน EnemySpawner
+            spawner.OnEnemyDeath(this, enemyTypeName);
+        }
+        else
+        {
+            Debug.LogWarning($"🔥 No EnemySpawner found! Cannot update session kills for {name}");
+        }
+    }
+
+    // 🆕 Method หา enemy type name
+    private string GetEnemyTypeName()
+    {
+        // ลองหาจาก CharacterName ก่อน
+        if (!string.IsNullOrEmpty(CharacterName))
+        {
+            return CharacterName;
+        }
+
+        // ถ้าไม่มี ใช้ชื่อ object แทน (ตัด (Clone) ออก)
+        string objectName = name.Replace("(Clone)", "").Trim();
+        return objectName;
+    }
+
     // 🆕 เพิ่ม method ใหม่สำหรับ drop items
-   
-  
-   
 
-   
 
-   
-   
 
-   
+
+
+
+
+
+
+
 
     private int GetEnemyLevel()
     {

@@ -106,6 +106,23 @@ public class EnemySpawner : NetworkBehaviour
     public bool spawnInWaves = false;
     public int enemiesPerWave = 3;
     public float waveCooldown = 10f;
+    [Header("🏁 Stage Completion")]
+    [Tooltip("ชื่อด่านปัจจุบัน (ถ้าไม่ใส่จะใช้ชื่อ Scene)")]
+    public string currentStageName = "";
+
+    [Tooltip("หยุด spawn เมื่อด่านเสร็จแล้ว")]
+    public bool stopSpawningWhenStageCompleted = true;
+
+    [Header("🔧 Stage Debug")]
+    public bool showStageDebugInfo = true;
+
+    // เพิ่มตัวแปรสำหรับเช็คสถานะด่าน
+    private bool isStageCompleted = false;
+    private float lastStageCheckTime = 0f;
+    private const float STAGE_CHECK_INTERVAL = 2f; // เช็คทุก 2 วินาที
+
+    private int currentSessionKills = 0;
+    private int requiredKillsForStage = 10;
 
     private float nextSpawnTime = 0f;
     private float nextWaveTime = 0f;
@@ -131,6 +148,7 @@ public class EnemySpawner : NetworkBehaviour
 
     private void Start()
     {
+        // โค้ดเดิม...
         if (Runner == null)
         {
             var networkRunner = FindObjectOfType<NetworkRunner>();
@@ -145,9 +163,31 @@ public class EnemySpawner : NetworkBehaviour
         InitializeBossConditions();
         ValidateSettings();
 
+        // 🆕 กำหนดชื่อด่านถ้ายังไม่ได้ตั้ง
+        if (string.IsNullOrEmpty(currentStageName))
+        {
+            currentStageName = SceneManager.GetActiveScene().name;
+        }
+
+        // 🆕 Reset kills counter สำหรับรอบปัจจุบัน
+        currentSessionKills = 0;
+        requiredKillsForStage = EnemyKillTracker.GetRequiredKillsForStage(currentStageName);
+        isStageCompleted = false; // รีเซ็ตสถานะด่าน
+
         if (showMultiSpawnInfo)
         {
             Debug.Log($"🌊 Multi-Spawn Mode: {multiSpawnMode} | Points: {spawnPointCount} | Per Point: {enemiesPerPoint}");
+        }
+
+        if (showStageDebugInfo)
+        {
+            Debug.Log($"🏁 Current Stage: {currentStageName} | Stop when completed: {stopSpawningWhenStageCompleted}");
+            Debug.Log($"🎯 Required Kills: {requiredKillsForStage} | Session Kills Reset: {currentSessionKills}");
+
+            if (requiredKillsForStage <= 0)
+            {
+                Debug.LogWarning($"⚠️ Required kills is {requiredKillsForStage} for stage {currentStageName}! Check EnemyKillTracker settings.");
+            }
         }
     }
 
@@ -186,9 +226,46 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (Runner == null || !Runner.IsServer) return;
 
+        // เช็คสถานะด่านก่อน
+        CheckStageCompletionStatus();
+
+        // ถ้าด่านเสร็จแล้วและต้องหยุด spawn ให้หยุดเลย
+        if (isStageCompleted && stopSpawningWhenStageCompleted)
+        {
+            CleanupDeadEnemies();
+            CleanupDeadBosses();
+            ProcessPendingMultiSpawns();
+
+            if (showStageDebugInfo && Time.time % 5f < 0.1f)
+            {
+                Debug.Log($"🏁 Stage {currentStageName} completed - Spawning stopped");
+            }
+            return;
+        }
+
+        // 🔍 Debug ก่อนเรียก CleanupDeadEnemies
+        if (showDebugInfo && Time.time % 2f < 0.1f && activeEnemies.Count > 0)
+        {
+            Debug.Log($"🔍 About to call CleanupDeadEnemies. Active enemies: {activeEnemies.Count}");
+
+            // ตรวจสอบสถานะของแต่ละ enemy
+            for (int i = 0; i < activeEnemies.Count; i++)
+            {
+                var enemy = activeEnemies[i];
+                if (enemy != null)
+                {
+                    Debug.Log($"🔍 Enemy {i}: {enemy.name}, IsDead: {enemy.IsDead}, HP: {enemy.CurrentHp}");
+                }
+                else
+                {
+                    Debug.Log($"🔍 Enemy {i}: NULL");
+                }
+            }
+        }
+
         CleanupDeadEnemies();
         CleanupDeadBosses();
-        ProcessPendingMultiSpawns(); // 🆕 ประมวลผล multi-spawn queue
+        ProcessPendingMultiSpawns();
 
         if (enableBossSpawning)
         {
@@ -201,11 +278,224 @@ public class EnemySpawner : NetworkBehaviour
         }
         else if (multiSpawnMode != MultiSpawnMode.Off)
         {
-            HandleSimpleMultiSpawning(); // 🆕 ระบบใหม่ที่เรียบง่าย
+            HandleSimpleMultiSpawning();
         }
         else
         {
             HandleNormalSpawning();
+        }
+    }
+    public void OnEnemyDeath(NetworkEnemy deadEnemy, string enemyTypeName)
+    {
+        if (!HasStateAuthority) return;
+
+        Debug.Log($"🔥 EnemySpawner: Received death notification for {enemyTypeName}");
+        Debug.Log($"🔥 currentSessionKills BEFORE: {currentSessionKills}");
+
+        // อัพเดท session kills ทันที
+        currentSessionKills++;
+        totalEnemiesKilled++;
+
+        Debug.Log($"🔥 currentSessionKills AFTER: {currentSessionKills}");
+        Debug.Log($"🎯 Stage progress: {currentSessionKills}/{requiredKillsForStage} for {currentStageName}");
+
+        // อัพเดท kill statistics
+        if (killedCounts.ContainsKey(enemyTypeName))
+        {
+            killedCounts[enemyTypeName]++;
+        }
+        else
+        {
+            killedCounts[enemyTypeName] = 1;
+        }
+
+        // อัพเดท boss kill counts
+        UpdateBossKillCounts(enemyTypeName);
+
+        // เช็คว่าด่านเสร็จหรือยังทันที
+        if (currentSessionKills >= requiredKillsForStage && !isStageCompleted)
+        {
+            Debug.Log($"🎉 Stage completion triggered by direct death notification! Kill #{currentSessionKills}");
+            ForceCheckStageStatus();
+        }
+
+        if (verboseKillTracking)
+        {
+            Debug.Log($"📊 Direct Kill Update - {enemyTypeName}: {killedCounts[enemyTypeName]}, Total: {totalEnemiesKilled}");
+        }
+    }
+    private void CheckStageCompletionStatus()
+    {
+        // เช็คทุก STAGE_CHECK_INTERVAL วินาที เพื่อไม่ให้ส่งผลต่อ performance
+        if (Time.time - lastStageCheckTime < STAGE_CHECK_INTERVAL)
+            return;
+
+        lastStageCheckTime = Time.time;
+
+        bool wasCompleted = isStageCompleted;
+
+        // 🔧 ใช้ currentSessionKills แทนค่าที่เก็บถาวร
+        isStageCompleted = currentSessionKills >= requiredKillsForStage;
+
+        if (showStageDebugInfo && Time.time % 3f < 0.1f) // Debug ทุก 3 วินาที
+        {
+            Debug.Log($"🎯 Stage {currentStageName}: {currentSessionKills}/{requiredKillsForStage} kills (Session) - Completed: {isStageCompleted}");
+        }
+
+        // ถ้าเพิ่งเสร็จใหม่
+        if (!wasCompleted && isStageCompleted)
+        {
+            OnStageJustCompleted();
+        }
+    }
+
+    // 🆕 เรียกเมื่อด่านเพิ่งเสร็จใหม่
+    private void OnStageJustCompleted()
+    {
+        Debug.Log($"🎉 Stage {currentStageName} just completed! ({currentSessionKills}/{requiredKillsForStage} kills)");
+
+        // 🆕 Mark ด่านเป็น completed ใน StageProgressManager (สำหรับ save ถาวร)
+        StageProgressManager.CompleteStage(currentStageName);
+
+        if (stopSpawningWhenStageCompleted)
+        {
+            Debug.Log($"🛑 Stopping all enemy spawning for completed stage: {currentStageName}");
+
+            // หยุด spawning ทันที
+            nextSpawnTime = float.MaxValue;
+            nextWaveTime = float.MaxValue;
+            nextMultiSpawnTime = float.MaxValue;
+
+            // หยุด multi-spawn ที่กำลังทำอยู่
+            isMultiSpawning = false;
+            pendingSpawnPositions.Clear();
+            pendingSpawnEnemies.Clear();
+
+            // แจ้งเตือนผู้เล่น (ผ่าน RPC)
+            RPC_AnnounceStageCompleted(currentStageName);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_AnnounceStageCompleted(string stageName)
+    {
+        Debug.Log($"🏆 STAGE COMPLETED: {stageName}!");
+
+        // ที่นี่จะเป็นจุดที่เรียก UI แสดงผลลัพธ์ใน Step 2
+        // StageResultsUI.Show(stageName); // จะทำใน Step 2
+    }
+    public void SetCurrentStage(string stageName)
+    {
+        currentStageName = stageName;
+        isStageCompleted = false; // รีเซ็ตสถานะ
+
+        if (showStageDebugInfo)
+        {
+            Debug.Log($"🏁 Stage set to: {stageName}");
+        }
+    }
+    public int GetRequiredKills()
+    {
+        return requiredKillsForStage;
+    }
+    public bool IsCurrentStageCompleted()
+    {
+        return isStageCompleted;
+    }
+
+    /// <summary>
+    /// บังคับให้เช็คสถานะด่านทันที
+    /// </summary>
+    public void ForceCheckStageStatus()
+    {
+        lastStageCheckTime = 0f; // รีเซ็ตเวลาเพื่อให้เช็คใหม่ทันที
+        CheckStageCompletionStatus();
+    }
+
+    /// <summary>
+    /// เปิด/ปิดการหยุด spawn เมื่อด่านเสร็จ
+    /// </summary>
+    public void SetStopSpawningWhenCompleted(bool shouldStop)
+    {
+        stopSpawningWhenStageCompleted = shouldStop;
+
+        if (showStageDebugInfo)
+        {
+            Debug.Log($"🏁 Stop spawning when completed: {shouldStop}");
+        }
+    }
+
+    /// <summary>
+    /// รีสตาร์ทการ spawn หลังจากที่หยุดไปแล้ว (สำหรับ restart ด่าน)
+    /// </summary>
+    public void RestartSpawning()
+    {
+        if (!HasStateAuthority) return;
+
+        isStageCompleted = false;
+        currentSessionKills = 0;
+        totalEnemiesKilled = 0; // รีเซ็ต total kills ด้วย
+
+        // รีเซ็ต timers
+        nextSpawnTime = Time.time + 1f;
+        nextWaveTime = Time.time + waveCooldown;
+        nextMultiSpawnTime = Time.time + multiSpawnCooldown;
+        lastStageCheckTime = 0f;
+
+        // รีเซ็ต kill counts และ boss conditions
+        InitializeSpawnCounts();
+        InitializeBossConditions();
+
+        Debug.Log($"🔄 Complete restart for stage: {currentStageName}");
+        Debug.Log($"🎯 Required kills: {requiredKillsForStage}");
+        Debug.Log($"🔥 Session kills reset to: {currentSessionKills}");
+    }
+
+    /// <summary>
+    /// เปิด/ปิดการหยุด spawn เมื่อด่านเสร็จ
+    /// </summary>
+
+    [ContextMenu("🧪 Test: Mark Stage as Completed")]
+    public void TestMarkStageCompleted()
+    {
+        if (Application.isPlaying)
+        {
+            isStageCompleted = true;
+            OnStageJustCompleted();
+        }
+    }
+
+    [ContextMenu("🧪 Test: Reset Stage Status")]
+    public void TestResetStageStatus()
+    {
+        if (Application.isPlaying)
+        {
+            RestartSpawning();
+        }
+    }
+    /// <summary>
+    /// รีสตาร์ทการ spawn หลังจากที่หยุดไปแล้ว (สำหรับ restart ด่าน)
+    /// </summary>
+
+
+    [ContextMenu("🔍 Debug: Show Current Stage Info")]
+    public void DebugShowCurrentStageInfo()
+    {
+        if (Application.isPlaying)
+        {
+            int persistentKills = StageProgressManager.GetEnemyKills(currentStageName);
+            bool persistentCompleted = StageProgressManager.IsStageCompleted(currentStageName);
+
+            Debug.Log($"=== STAGE DEBUG INFO ===");
+            Debug.Log($"Stage Name: {currentStageName}");
+            Debug.Log($"🔥 SESSION Kills: {currentSessionKills}");
+            Debug.Log($"🎯 Required Kills: {requiredKillsForStage}");
+            Debug.Log($"💾 Persistent Kills: {persistentKills} (saved in Firebase)");
+            Debug.Log($"✅ Is Completed (Session): {isStageCompleted}");
+            Debug.Log($"💾 Is Completed (Persistent): {persistentCompleted}");
+            Debug.Log($"👹 Active Enemies: {activeEnemies.Count}");
+            Debug.Log($"🛑 Stop Spawning When Completed: {stopSpawningWhenStageCompleted}");
+            Debug.Log($"========================");
         }
     }
 
@@ -794,54 +1084,100 @@ public class EnemySpawner : NetworkBehaviour
         {
             NetworkEnemy enemy = activeEnemies[i];
 
+            // ถ้า enemy ตายหรือ null ให้ลบออกจาก active list
             if (enemy == null || enemy.IsDead)
             {
-                string enemyTypeName = "";
-
+                // ลดจำนวน current count ของ enemy type นั้นๆ
                 if (enemy != null && enemy.Object != null && spawnedEnemyTypes.ContainsKey(enemy.Object))
                 {
-                    enemyTypeName = spawnedEnemyTypes[enemy.Object];
+                    string enemyTypeName = spawnedEnemyTypes[enemy.Object];
                     spawnedEnemyTypes.Remove(enemy.Object);
-                }
-                else if (enemy != null)
-                {
-                    string enemyName = enemy.name.Replace("(Clone)", "").Trim();
 
+                    // หา enemy data แล้วลด count
                     foreach (EnemySpawnData enemyData in enemyPrefabs)
                     {
-                        if (enemyData.enemyPrefab != null &&
-                            (enemyData.enemyPrefab.name == enemyName ||
-                             enemyData.enemyName == enemyName ||
-                             enemyData.enemyPrefab.name.Contains(enemyName) ||
-                             enemyName.Contains(enemyData.enemyPrefab.name)))
+                        if (enemyData.enemyName == enemyTypeName)
                         {
-                            enemyTypeName = enemyData.enemyName;
                             enemyData.currentCount = Mathf.Max(0, enemyData.currentCount - 1);
                             break;
                         }
                     }
-                }
 
-                if (!string.IsNullOrEmpty(enemyTypeName))
-                {
-                    RecordEnemyKill(enemyTypeName);
-                    EnemyKillTracker.OnEnemyKilled();
-
-                    if (verboseKillTracking)
+                    if (showDebugInfo)
                     {
-                        Debug.Log($"💀 {enemyTypeName} killed! Total: {totalEnemiesKilled}");
+                        Debug.Log($"🗑️ Cleaned up dead enemy: {enemyTypeName}");
                     }
-                }
-                else if (verboseKillTracking)
-                {
-                    Debug.LogWarning($"[EnemySpawner] Could not identify enemy type for kill tracking! Enemy name: {(enemy != null ? enemy.name : "null")}");
                 }
 
                 activeEnemies.RemoveAt(i);
             }
         }
     }
+    [ContextMenu("🧪 Test: Spawn and Kill Enemy")]
+    public void TestSpawnAndKillEnemy()
+    {
+        if (!Application.isPlaying || !HasStateAuthority)
+        {
+            Debug.LogWarning("Need to be server and in play mode!");
+            return;
+        }
 
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+        {
+            Debug.LogError("No enemy prefabs!");
+            return;
+        }
+
+        // หา enemy prefab ตัวแรกที่ใช้ได้
+        EnemySpawnData testEnemyData = null;
+        foreach (var enemy in enemyPrefabs)
+        {
+            if (enemy.enemyPrefab != null)
+            {
+                testEnemyData = enemy;
+                break;
+            }
+        }
+
+        if (testEnemyData == null)
+        {
+            Debug.LogError("No valid enemy prefab found!");
+            return;
+        }
+
+        // Spawn enemy
+        Vector3 spawnPos = transform.position + Vector3.forward * 2f;
+        NetworkEnemy spawnedEnemy = Runner.Spawn(testEnemyData.enemyPrefab, spawnPos, Quaternion.identity, PlayerRef.None);
+
+        if (spawnedEnemy != null)
+        {
+            activeEnemies.Add(spawnedEnemy);
+            spawnedEnemyTypes[spawnedEnemy.Object] = testEnemyData.enemyName;
+
+            Debug.Log($"🧪 Spawned test enemy: {testEnemyData.enemyName}");
+            Debug.Log($"🧪 currentSessionKills before kill: {currentSessionKills}");
+
+            // ฆ่าทันที
+            StartCoroutine(KillEnemyAfterDelay(spawnedEnemy, 1f));
+        }
+    }
+
+    private System.Collections.IEnumerator KillEnemyAfterDelay(NetworkEnemy enemy, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (enemy != null && !enemy.IsDead)
+        {
+            Debug.Log($"🧪 Killing test enemy...");
+
+            // ตั้งค่า HP เป็น 0 และ IsDead เป็น true
+            enemy.CurrentHp = 0;
+            enemy.IsDead = true;
+
+            Debug.Log($"🧪 Enemy killed! IsDead: {enemy.IsDead}, HP: {enemy.CurrentHp}");
+            Debug.Log($"🧪 Will check in next CleanupDeadEnemies...");
+        }
+    }
     private void CleanupDeadBosses()
     {
         for (int i = activeBosses.Count - 1; i >= 0; i--)
@@ -877,26 +1213,10 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    private void RecordEnemyKill(string enemyName)
-    {
-        totalEnemiesKilled++;
+    
 
-        if (killedCounts.ContainsKey(enemyName))
-        {
-            killedCounts[enemyName]++;
-        }
-        else
-        {
-            killedCounts[enemyName] = 1;
-        }
-
-        if (verboseKillTracking && totalEnemiesKilled % 5 == 0)
-        {
-            Debug.Log($"📊 Kill Stats - Total: {totalEnemiesKilled}, {enemyName}: {killedCounts[enemyName]}");
-        }
-
-        UpdateBossKillCounts(enemyName);
-    }
+    // 🧪 3. เพิ่ม method สำหรับทดสอบการฆ่า enemy ตรงๆ
+   
 
     private void UpdateBossKillCounts(string killedEnemyName)
     {
@@ -1111,10 +1431,10 @@ public class EnemySpawner : NetworkBehaviour
                 continue;
             }
 
-            if (string.IsNullOrEmpty(enemy.enemyName))
+            if (string.IsNullOrEmpty(currentStageName))
             {
-                enemy.enemyName = enemy.enemyPrefab.name;
-                Debug.Log($"[EnemySpawner] Auto-assigned name '{enemy.enemyName}' to enemy");
+                currentStageName = SceneManager.GetActiveScene().name;
+                Debug.LogWarning($"[EnemySpawner] No stage name set, using scene name: {currentStageName}");
             }
 
             validEnemies++;
@@ -1139,6 +1459,11 @@ public class EnemySpawner : NetworkBehaviour
                     Debug.Log($"🌊 Multi-Spawn enabled: {multiSpawnMode} mode");
                 }
             }
+        }
+        if (string.IsNullOrEmpty(currentStageName))
+        {
+            currentStageName = SceneManager.GetActiveScene().name;
+            Debug.LogWarning($"[EnemySpawner] No stage name set, using scene name: {currentStageName}");
         }
 
         if (bossConditions != null)
@@ -1269,17 +1594,7 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    public void AddKillCount(string enemyName, int count = 1)
-    {
-        if (!Runner.IsServer) return;
-
-        for (int i = 0; i < count; i++)
-        {
-            RecordEnemyKill(enemyName);
-        }
-
-        Debug.Log($"[DEBUG] Added {count} kills for {enemyName}. Total killed: {totalEnemiesKilled}");
-    }
+  
 
     public void ResetBossKillCount(string bossName)
     {

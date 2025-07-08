@@ -117,7 +117,7 @@ public class EnemyDropManager : NetworkBehaviour
         // Log results
         if (showDropLogs || dropSettings.showDropLogs)
         {
-            Debug.Log($"[EnemyDropManager] {enemy.CharacterName} (Level {enemyLevel}) dropped: {goldDropped} gold, {gemsDropped} gems");
+          //  Debug.Log($"[EnemyDropManager] {enemy.CharacterName} (Level {enemyLevel}) dropped: {goldDropped} gold, {gemsDropped} gems");
         }
     }
 
@@ -293,7 +293,7 @@ public class EnemyDropManager : NetworkBehaviour
         // ✅ Fallback destroy (ป้องกันไม่หาย)
         StartCoroutine(ForceDestroyAfterTime(textObj, 4f));
 
-        Debug.Log($"[PickupText] Created: '{message}' at {position}");
+       // Debug.Log($"[PickupText] Created: '{message}' at {position}");
     }
     private IEnumerator ForceDestroyAfterTime(GameObject textObj, float time)
     {
@@ -301,7 +301,7 @@ public class EnemyDropManager : NetworkBehaviour
 
         if (textObj != null)
         {
-            Debug.Log($"[PickupText] Force destroying text: {textObj.name}");
+         //   Debug.Log($"[PickupText] Force destroying text: {textObj.name}");
 
             // ลบออกจาก active list
             if (activePickupTexts.Contains(textObj))
@@ -406,28 +406,7 @@ public class EnemyDropManager : NetworkBehaviour
     }
 
     // ✅ เพิ่ม method สำหรับ debug
-    [ContextMenu("🔍 Debug Active Pickup Texts")]
-    public void DebugActivePickupTexts()
-    {
-        Debug.Log($"=== ACTIVE PICKUP TEXTS ({activePickupTexts.Count}) ===");
-
-        for (int i = 0; i < activePickupTexts.Count; i++)
-        {
-            GameObject textObj = activePickupTexts[i];
-            if (textObj != null)
-            {
-                var textComponent = textObj.GetComponent<Text>();
-                string content = textComponent?.text ?? "Unknown";
-                Debug.Log($"  {i}: {textObj.name} - '{content}'");
-            }
-            else
-            {
-                Debug.Log($"  {i}: NULL (should be cleaned up)");
-            }
-        }
-
-        Debug.Log("=======================================");
-    }
+  
 
     // ✅ เพิ่ม method สำหรับ force cleanup ทั้งหมด
     [ContextMenu("🧹 Force Cleanup All Pickup Texts")]
