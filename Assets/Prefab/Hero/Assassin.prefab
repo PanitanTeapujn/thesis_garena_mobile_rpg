@@ -276,6 +276,13 @@ MonoBehaviour:
   toxicBombPrefab: {fileID: 0}
   plagueCloudPrefab: {fileID: 0}
   skillRangeIndicatorMaterial: {fileID: 0}
+  poisonInfusionEffect: {fileID: 0}
+  toxicDashEffect: {fileID: 0}
+  shadowAssassinEffect: {fileID: 0}
+  plagueOutbreakEffect: {fileID: 0}
+  basicAttackEffect: {fileID: 1231740799838009829, guid: 87167b19fb4a32a4e8e4f2c5f40a40b3,
+    type: 3}
+  invisibilityEffect: {fileID: 0}
   _PoisonInfusionStacks: 0
   _IsInPlagueCloud: 0
   _PlagueCloudEndTime: 0

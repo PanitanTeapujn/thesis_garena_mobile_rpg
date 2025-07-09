@@ -21,7 +21,13 @@ public class Assassin : Hero
     public Material skillRangeIndicatorMaterial;
     private GameObject plagueRangeIndicator;
     private LineRenderer rangeCircle;
-
+    [Header("🎨 Assassin Visual Effects")]
+    [SerializeField] private ParticleSystem poisonInfusionEffect;    // เอฟเฟกต์พิษ
+    [SerializeField] private ParticleSystem toxicDashEffect;         // เอฟเฟกต์ dash
+    [SerializeField] private ParticleSystem shadowAssassinEffect;    // เอฟเฟกต์ teleport
+    [SerializeField] private ParticleSystem plagueOutbreakEffect;    // เอฟเฟกต์ ultimate
+    [SerializeField] private ParticleSystem basicAttackEffect;       // เอฟเฟกต์โจมตีปกติ
+    [SerializeField] private ParticleSystem invisibilityEffect;      // เอฟเฟกต์หายตัว
     // ========== Network Properties for Skills ==========
     [Networked] public int PoisonInfusionStacks { get; set; }
     [Networked] public bool IsInPlagueCloud { get; set; }
@@ -111,31 +117,55 @@ public class Assassin : Hero
         List<Character> hitEnemies = new List<Character>();
         IsDashing = true;
 
+        // สร้าง dash trail effect
+        GameObject dashTrail = null;
+        if (toxicDashEffect != null)
+        {
+            dashTrail = Instantiate(toxicDashEffect.gameObject, startPos, Quaternion.identity);
+
+            ParticleSystem ps = dashTrail.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.5f, 1f, 0f, 0.8f); // เขียวพิษ
+                main.startLifetime = dashTime + 1f;
+                main.loop = true;
+
+                // ปรับ shape ให้เป็นเส้นตรง
+                ParticleSystem.ShapeModule shape = ps.shape;
+                shape.shapeType = ParticleSystemShapeType.Box;
+                shape.scale = new Vector3(1f, 1f, dashDistance);
+            }
+        }
+
         while (elapsed < dashTime)
         {
-            elapsed += Time.deltaTime; // ✅ ใช้ Time.deltaTime แทน Time.fixedDeltaTime
+            elapsed += Time.deltaTime;
             float progress = elapsed / dashTime;
 
-            // ✅ FIX: ใช้ Rigidbody สำหรับ InputAuthority, ใช้ transform สำหรับ visual
             Vector3 currentPos = Vector3.Lerp(startPos, endPos, progress);
+
+            // อัพเดทตำแหน่ง dash trail
+            if (dashTrail != null)
+            {
+                dashTrail.transform.position = currentPos;
+                dashTrail.transform.LookAt(endPos);
+            }
 
             if (HasInputAuthority)
             {
-                // ใช้ Rigidbody สำหรับการเคลื่อนที่จริง
                 if (rb != null)
                 {
                     rb.MovePosition(currentPos);
                 }
-                // ✅ อัพเดท NetworkedPosition
                 NetworkedPosition = currentPos;
             }
             else
             {
-                // Visual only สำหรับ remote clients
                 transform.position = currentPos;
             }
 
-            // ✅ เช็คศัตรูเฉพาะ StateAuthority เพื่อคำนวณ damage
+            // เช็คศัตรู
             if (HasStateAuthority)
             {
                 Collider[] enemies = Physics.OverlapSphere(currentPos, 2f, LayerMask.GetMask("Enemy"));
@@ -146,6 +176,9 @@ public class Assassin : Hero
                     {
                         hitEnemies.Add(enemy);
                         ApplyToxicDashEffects(enemy);
+
+                        // สร้าง hit effect
+                        CreateToxicHitEffect(enemy.transform.position);
                     }
                 }
             }
@@ -153,7 +186,7 @@ public class Assassin : Hero
             yield return null;
         }
 
-        // ✅ FIX: ตั้งตำแหน่งสุดท้าย
+        // ตั้งตำแหน่งสุดท้าย
         if (HasInputAuthority)
         {
             if (rb != null)
@@ -167,8 +200,39 @@ public class Assassin : Hero
             transform.position = endPos;
         }
 
+        // ทำลาย dash trail
+        if (dashTrail != null)
+        {
+            // หยุด loop แล้วปล่อยให้ particle หายไปเอง
+            ParticleSystem ps = dashTrail.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.loop = false;
+            }
+
+            Destroy(dashTrail, 2f);
+        }
+
         IsDashing = false;
         Debug.Log($"🌫️ [Toxic Dash] {CharacterName} dashed through {hitEnemies.Count} enemies!");
+    }
+    private void CreateToxicHitEffect(Vector3 position)
+    {
+        if (toxicDashEffect != null)
+        {
+            GameObject hitEffect = Instantiate(toxicDashEffect.gameObject, position + Vector3.up * 1f, Quaternion.identity);
+
+            ParticleSystem ps = hitEffect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.8f, 0.2f, 0.8f, 0.9f); // สีม่วงพิษ
+                main.startLifetime = 1f;
+            }
+
+            Destroy(hitEffect, 1.5f);
+        }
     }
 
     private void ApplyToxicDashEffects(Character enemy)
@@ -381,11 +445,30 @@ public class Assassin : Hero
 
     private IEnumerator ExecutePlagueOutbreak(Vector3 position)
     {
-        // สร้าง visual effect
+        // สร้าง visual effect ด้วย Particle System
         GameObject plagueEffect = null;
-        if (plagueCloudPrefab != null)
+        if (plagueOutbreakEffect != null)
         {
-            plagueEffect = Instantiate(plagueCloudPrefab, position, Quaternion.identity);
+            plagueEffect = Instantiate(plagueOutbreakEffect.gameObject, position, Quaternion.identity);
+            plagueEffect.transform.localScale = Vector3.one * 5f; // ขยายให้ใหญ่มาก
+
+            ParticleSystem ps = plagueEffect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.2f, 0.8f, 0.2f, 0.8f); // เขียวพิษ
+                main.startLifetime = 20f; // ยาวเท่ากับ duration
+                main.loop = true;
+
+                // ปรับ shape ให้เป็นวงกลมใหญ่
+                ParticleSystem.ShapeModule shape = ps.shape;
+                shape.shapeType = ParticleSystemShapeType.Circle;
+                shape.radius = 12f;
+            }
+        }
+        else
+        {
+            Debug.LogWarning("PlagueOutbreakEffect is not assigned!");
         }
 
         float duration = 20f;
@@ -394,7 +477,7 @@ public class Assassin : Hero
         float elapsed = 0f;
 
         // ✅ Super Poison damage ใหม่
-        int superPoisonDamage = GetScaledPoisonDamage(0.8f); // 80% ของ base formula
+        int superPoisonDamage = GetScaledPoisonDamage(0.8f);
 
         IsInPlagueCloud = true;
         PlagueCloudEndTime = Time.time + duration;
@@ -412,37 +495,41 @@ public class Assassin : Hero
             Debug.Log($"💚 [Plague Outbreak] Team Auras activated!");
         }
 
+        // เพิ่ม secondary effects ทุก 3 วินาที
+        StartCoroutine(CreatePlagueWaves(position, duration));
+
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
 
             if (elapsed >= nextTick)
             {
-                // ✅ ผลกระทบต่อศัตรู
+                // ผลกระทบต่อศัตรู
                 Collider[] enemies = Physics.OverlapSphere(position, 12f, LayerMask.GetMask("Enemy"));
                 foreach (Collider col in enemies)
                 {
                     Character enemy = col.GetComponent<Character>();
                     if (enemy != null)
                     {
-                        // ✅ Super Poison ใช้สูตรใหม่
+                        // Super Poison
                         enemy.ApplyStatusEffect(StatusEffectType.Poison, superPoisonDamage, 5f);
                         enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 8f, 0.8f);
                         enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 8f, 0.5f);
                         enemy.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.6f);
 
-                        // ✅ เพิ่ม: direct magic damage ทุกวินาที
-                        int directDamage = GetScaledSkillDamage(0.3f); // 30% ของ base formula
+                        // Direct magic damage
+                        int directDamage = GetScaledSkillDamage(0.3f);
                         enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic);
 
-                        // ✅ โอกาส stun
+                        // สร้าง hit effect
+                        CreatePoisonHitEffect(enemy.transform.position);
+
+                        // โอกาส stun
                         if (Random.Range(0f, 100f) < 20f)
                         {
                             enemy.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
                             Debug.Log($"☠️ {enemy.CharacterName} stunned by plague cloud!");
                         }
-
-                        Debug.Log($"☠️ Plague Cloud: {superPoisonDamage} poison + {directDamage} direct damage to {enemy.CharacterName}");
                     }
                 }
 
@@ -461,6 +548,55 @@ public class Assassin : Hero
         }
 
         Debug.Log($"☠️ [Plague Outbreak] Effect ended");
+    }
+    private IEnumerator CreatePlagueWaves(Vector3 center, float duration)
+    {
+        float elapsed = 0f;
+        int waveCount = 0;
+
+        while (elapsed < duration)
+        {
+            yield return new WaitForSeconds(3f);
+            elapsed += 3f;
+            waveCount++;
+
+            // สร้างคลื่นพิษ
+            if (toxicDashEffect != null)
+            {
+                GameObject wave = Instantiate(toxicDashEffect.gameObject, center, Quaternion.identity);
+                wave.transform.localScale = Vector3.one * (2f + waveCount * 0.5f);
+
+                ParticleSystem ps = wave.GetComponent<ParticleSystem>();
+                if (ps != null)
+                {
+                    ParticleSystem.MainModule main = ps.main;
+                    main.startColor = new Color(0.8f, 0.2f, 0.8f, 0.6f); // สีม่วงพิษ
+                    main.startLifetime = 2f;
+                }
+
+                Destroy(wave, 3f);
+            }
+
+            Debug.Log($"🌊 Plague wave {waveCount} created!");
+        }
+    }
+
+    private void CreatePoisonHitEffect(Vector3 position)
+    {
+        if (poisonInfusionEffect != null)
+        {
+            GameObject hitEffect = Instantiate(poisonInfusionEffect.gameObject, position + Vector3.up * 1f, Quaternion.identity);
+
+            ParticleSystem ps = hitEffect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.green;
+                main.startLifetime = 0.8f;
+            }
+
+            Destroy(hitEffect, 1.5f);
+        }
     }
 
     // ========== 🐍 Passive: Venom Mastery ==========
@@ -593,26 +729,93 @@ public class Assassin : Hero
     }
 
     // ========== 🎨 Visual Range Indicator System ==========
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    protected override void RPC_OnAttackHit(NetworkObject enemyObject)
+    {
+        Debug.Log($"{CharacterName} hit enemy!");
+
+        if (enemyObject != null)
+        {
+            // แสดง basic attack effect
+            RPC_ShowSkillEffect("BasicAttack");
+
+            // ถ้ามี poison infusion ให้แสดงเอฟเฟกต์พิษ
+            if (PoisonInfusionStacks > 0)
+            {
+                CreatePoisonAttackEffect(enemyObject.transform.position);
+            }
+
+            // ถ้าเป็น critical hit ให้แสดงเอฟเฟกต์พิเศษ
+            if (PoisonInfusionStacks == 1) // final strike
+            {
+                CreateCriticalAttackEffect(enemyObject.transform.position);
+            }
+        }
+    }
+    private void CreatePoisonAttackEffect(Vector3 position)
+    {
+        if (poisonInfusionEffect != null)
+        {
+            GameObject effect = Instantiate(poisonInfusionEffect.gameObject, position + Vector3.up * 1f, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.2f, 0.8f, 0.2f, 0.9f); // เขียวพิษ
+                main.startLifetime = 1.2f;
+            }
+
+            Destroy(effect, 2f);
+        }
+    }
+
+    private void CreateCriticalAttackEffect(Vector3 position)
+    {
+        if (shadowAssassinEffect != null)
+        {
+            GameObject effect = Instantiate(shadowAssassinEffect.gameObject, position + Vector3.up * 2f, Quaternion.identity);
+            effect.transform.localScale = Vector3.one * 2f; // ขยายให้ใหญ่
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(1f, 0.8f, 0f, 1f); // สีทอง
+                main.startLifetime = 1.5f;
+            }
+
+            Destroy(effect, 2.5f);
+        }
+    }
     private void CreateRangeIndicator()
     {
-        // สร้าง GameObject สำหรับ range indicator
-        plagueRangeIndicator = new GameObject($"{CharacterName}_PlagueRangeIndicator");
-        plagueRangeIndicator.transform.SetParent(transform);
+        // ใช้ Particle System แทน LineRenderer
+        if (plagueOutbreakEffect != null)
+        {
+            plagueRangeIndicator = Instantiate(plagueOutbreakEffect.gameObject, transform);
+            plagueRangeIndicator.name = $"{CharacterName}_PlagueRangeIndicator";
 
-        // เพิ่ม LineRenderer
-        rangeCircle = plagueRangeIndicator.AddComponent<LineRenderer>();
+            // ปรับขนาดและสี
+            ParticleSystem ps = plagueRangeIndicator.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.5f, 0f, 1f, 0.6f); // สีม่วงโปร่งใส
+                main.startLifetime = 1f;
+                main.loop = true;
 
-        // ตั้งค่า LineRenderer
-        rangeCircle.material = CreateRangeIndicatorMaterial();
-        rangeCircle.endColor = new Color(0.5f, 0f, 1f, 0.6f); // สีม่วงโปร่งใส
-        rangeCircle.startWidth = 0.2f;
-        rangeCircle.endWidth = 0.2f;
-        rangeCircle.useWorldSpace = true;
-        rangeCircle.loop = true;
-        rangeCircle.positionCount = 64; // จำนวนจุดสำหรับวงกลม
+                ParticleSystem.ShapeModule shape = ps.shape;
+                shape.shapeType = ParticleSystemShapeType.Circle;
+                shape.radius = 12f; // รัศมี ultimate
+            }
 
-        // ซ่อนไว้ตอนเริ่ม
-        plagueRangeIndicator.SetActive(false);
+            plagueRangeIndicator.SetActive(false);
+        }
+        else
+        {
+            Debug.LogWarning("PlagueOutbreakEffect is not assigned!");
+        }
     }
 
     private Material CreateRangeIndicatorMaterial()
@@ -631,31 +834,48 @@ public class Assassin : Hero
 
     private void ShowRangeIndicator(Vector3 center, float radius)
     {
-        if (plagueRangeIndicator == null || rangeCircle == null) return;
+        if (plagueRangeIndicator == null) return;
 
-        // เปิดใช้งาน indicator
-        plagueRangeIndicator.SetActive(true);
+        plagueRangeIndicator.transform.position = center;
 
-        // สร้างจุดสำหรับวงกลม
-        Vector3[] circlePoints = new Vector3[rangeCircle.positionCount];
-        float angleStep = 2f * Mathf.PI / rangeCircle.positionCount;
-
-        for (int i = 0; i < rangeCircle.positionCount; i++)
+        // ปรับขนาดตามรัศมี
+        ParticleSystem ps = plagueRangeIndicator.GetComponent<ParticleSystem>();
+        if (ps != null)
         {
-            float angle = i * angleStep;
-            float x = center.x + Mathf.Cos(angle) * radius;
-            float z = center.z + Mathf.Sin(angle) * radius;
-            float y = center.y + 0.1f; // ยกสูงเล็กน้อยเพื่อไม่ให้ติดพื้น
-
-            circlePoints[i] = new Vector3(x, y, z);
+            ParticleSystem.ShapeModule shape = ps.shape;
+            shape.radius = radius;
         }
 
-        rangeCircle.SetPositions(circlePoints);
+        plagueRangeIndicator.SetActive(true);
 
         // เริ่ม animation effect
-        StartCoroutine(AnimateRangeIndicator());
+        StartCoroutine(AnimateParticleRangeIndicator());
 
-        Debug.Log($"🎨 [Range Indicator] Showing plague range: {radius}m");
+        Debug.Log($"🎨 [Particle Range Indicator] Showing plague range: {radius}m");
+    }
+    private IEnumerator AnimateParticleRangeIndicator()
+    {
+        if (plagueRangeIndicator == null) yield break;
+
+        ParticleSystem ps = plagueRangeIndicator.GetComponent<ParticleSystem>();
+        if (ps == null) yield break;
+
+        ParticleSystem.MainModule main = ps.main;
+        Color originalColor = main.startColor.color;
+
+        while (plagueRangeIndicator.activeInHierarchy)
+        {
+            // สร้าง pulsing effect
+            float alpha = 0.3f + 0.3f * Mathf.Sin(Time.time * 3f);
+            Color newColor = originalColor;
+            newColor.a = alpha;
+            main.startColor = newColor;
+
+            yield return null;
+        }
+
+        // รีเซ็ตสีเมื่อเสร็จสิ้น
+        main.startColor = originalColor;
     }
 
     private void HideRangeIndicator()
@@ -694,14 +914,45 @@ public class Assassin : Hero
     // ========== Helper Methods - FIXED ==========
     private void SetVisibility(bool visible)
     {
+        // เอฟเฟกต์ก่อนเปลี่ยน visibility
+        if (!visible)
+        {
+            RPC_ShowSkillEffect("Invisibility");
+        }
+
         Renderer[] renderers = GetComponentsInChildren<Renderer>();
         foreach (Renderer renderer in renderers)
         {
             renderer.enabled = visible;
         }
-        IsInvisible = !visible;
-    }
 
+        IsInvisible = !visible;
+
+        // เอฟเฟกต์หลังจาก appear
+        if (visible)
+        {
+            StartCoroutine(ShowAppearEffect());
+        }
+    }
+    private IEnumerator ShowAppearEffect()
+    {
+        yield return new WaitForSeconds(0.1f);
+
+        if (shadowAssassinEffect != null)
+        {
+            GameObject effect = Instantiate(shadowAssassinEffect.gameObject, transform.position, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.cyan;
+                main.startLifetime = 0.8f;
+            }
+
+            Destroy(effect, 1.5f);
+        }
+    }
     private bool CanUseSkill(int manaCost)
     {
         // ✅ ลบการเช็ค authority - ให้ทุกคนเช็คได้
@@ -778,7 +1029,136 @@ public class Assassin : Hero
     private void RPC_ShowSkillEffect(string effectName)
     {
         Debug.Log($"✨ [Skill Effect] {CharacterName} - {effectName}");
-        // TODO: Add visual effects here
+
+        switch (effectName)
+        {
+            case "PoisonInfusion":
+                ShowPoisonInfusionEffect();
+                break;
+            case "ToxicDash":
+                ShowToxicDashEffect();
+                break;
+            case "ShadowAssassination":
+                ShowShadowAssassinationEffect();
+                break;
+            case "PlagueOutbreak":
+                ShowPlagueOutbreakEffect();
+                break;
+            case "BasicAttack":
+                ShowBasicAttackEffect();
+                break;
+            case "Invisibility":
+                ShowInvisibilityEffect();
+                break;
+        }
+    }
+    private void ShowPoisonInfusionEffect()
+    {
+        if (poisonInfusionEffect != null)
+        {
+            GameObject effect = Instantiate(poisonInfusionEffect.gameObject, transform.position + Vector3.up * 1f, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.green;
+                main.startLifetime = 2f;
+            }
+
+            Destroy(effect, 3f);
+        }
+    }
+
+    private void ShowToxicDashEffect()
+    {
+        if (toxicDashEffect != null)
+        {
+            GameObject effect = Instantiate(toxicDashEffect.gameObject, transform.position, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.5f, 1f, 0f, 0.8f); // เขียวพิษ
+                main.startLifetime = 1.5f;
+            }
+
+            Destroy(effect, 2f);
+        }
+    }
+
+    private void ShowShadowAssassinationEffect()
+    {
+        if (shadowAssassinEffect != null)
+        {
+            GameObject effect = Instantiate(shadowAssassinEffect.gameObject, transform.position + Vector3.up * 2f, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.3f, 0f, 0.8f, 0.9f); // สีม่วงเข้ม
+                main.startLifetime = 1f;
+            }
+
+            Destroy(effect, 2f);
+        }
+    }
+
+    private void ShowPlagueOutbreakEffect()
+    {
+        if (plagueOutbreakEffect != null)
+        {
+            GameObject effect = Instantiate(plagueOutbreakEffect.gameObject, transform.position, Quaternion.identity);
+            effect.transform.localScale = Vector3.one * 3f; // ขยายให้ใหญ่
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.2f, 0.8f, 0.2f, 0.7f); // เขียวอ่อน
+                main.startLifetime = 3f;
+            }
+
+            Destroy(effect, 5f);
+        }
+    }
+
+    private void ShowBasicAttackEffect()
+    {
+        if (basicAttackEffect != null)
+        {
+            GameObject effect = Instantiate(basicAttackEffect.gameObject, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.white;
+                main.startLifetime = 0.5f;
+            }
+
+            Destroy(effect, 1f);
+        }
+    }
+
+    private void ShowInvisibilityEffect()
+    {
+        if (invisibilityEffect != null)
+        {
+            GameObject effect = Instantiate(invisibilityEffect.gameObject, transform.position, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.8f, 0.8f, 0.8f, 0.3f); // เทาโปร่งใส
+                main.startLifetime = 1f;
+            }
+
+            Destroy(effect, 2f);
+        }
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]

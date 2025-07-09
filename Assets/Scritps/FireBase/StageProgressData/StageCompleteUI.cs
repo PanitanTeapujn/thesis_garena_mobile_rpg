@@ -21,7 +21,9 @@ public class StageCompleteUI : MonoBehaviour
     public GameObject itemRewardPrefab;
     public TextMeshProUGUI completionTimeText;
     public TextMeshProUGUI enemiesKilledText;
-
+    [Header("⏱️ Display Settings")]
+    public float delayBeforeShow = 2f; // หน่วงเวลาก่อนแสดง UI
+    public float fadeInDuration = 1f;   // ระยะเวลา fade in
     [Header("Audio")]
     public AudioSource victoryAudioSource;
     public AudioClip victorySound;
@@ -54,6 +56,7 @@ public class StageCompleteUI : MonoBehaviour
             Debug.LogWarning("[StageCompleteUI] Stage complete panel is not assigned!");
             return;
         }
+        StartCoroutine(ShowStageCompleteWithDelay(stageName));
 
         // 🆕 Debug ข้อมูล rewards ก่อนแสดง
         var preDisplayRewards = StageRewardTracker.GetCurrentRewards();
@@ -92,6 +95,7 @@ public class StageCompleteUI : MonoBehaviour
     /// <summary>
     /// แสดงข้อมูล rewards ที่ได้รับ
     /// </summary>
+    /// 
     private void DisplayStageRewards()
     {
         var rewards = StageRewardTracker.GetCurrentRewards();
@@ -113,7 +117,79 @@ public class StageCompleteUI : MonoBehaviour
 
         Debug.Log($"[StageCompleteUI] 🏆 Displayed rewards: Gold={rewards.totalGoldEarned:N0}, Gems={rewards.totalGemsEarned}, Items={rewards.itemsEarned.Count}");
     }
+    private IEnumerator ShowStageCompleteWithDelay(string stageName)
+    {
+        Debug.Log($"🕒 [StageCompleteUI] Waiting {delayBeforeShow} seconds before showing UI...");
 
+        // หน่วงเวลาก่อนแสดง
+        yield return new WaitForSeconds(delayBeforeShow);
+
+        // 🆕 Debug ข้อมูล rewards ก่อนแสดง
+        var preDisplayRewards = StageRewardTracker.GetCurrentRewards();
+        Debug.Log($"[StageCompleteUI] 🔍 Pre-display rewards: Gold={preDisplayRewards.totalGoldEarned}, Items={preDisplayRewards.itemsEarned.Count}");
+
+        // หยุดการติดตาม rewards และคำนวณเวลา
+        StageRewardTracker.Instance.StopStageTracking();
+
+        // 🆕 Debug ข้อมูลหลัง StopTracking
+        var postStopRewards = StageRewardTracker.GetCurrentRewards();
+        Debug.Log($"[StageCompleteUI] 🔍 Post-stop rewards: Gold={postStopRewards.totalGoldEarned}, Items={postStopRewards.itemsEarned.Count}");
+
+        // ตั้งค่า panel ให้โปร่งใสก่อน (สำหรับ fade in effect)
+        if (stageCompletePanel != null)
+        {
+            CanvasGroup canvasGroup = stageCompletePanel.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+                canvasGroup = stageCompletePanel.AddComponent<CanvasGroup>();
+
+            canvasGroup.alpha = 0f;
+            stageCompletePanel.SetActive(true);
+        }
+
+        // ตั้งค่าข้อความพื้นฐาน
+        if (stageNameText != null)
+            stageNameText.text = stageName;
+
+        if (congratsText != null)
+            congratsText.text = "🎉 STAGE COMPLETED! 🎉";
+
+        // แสดงข้อมูล rewards
+        DisplayStageRewards();
+
+        // เล่นเสียง
+        PlayVictorySound();
+
+        // เริ่ม fade in effect
+        yield return StartCoroutine(FadeInPanel());
+
+        // หยุดเวลาชั่วขณะหลังจากแสดงเสร็จแล้ว
+        Time.timeScale = 0.1f;
+        StartCoroutine(RestoreTimeScale());
+
+        Debug.Log($"🏆 [StageCompleteUI] Stage complete UI fully displayed for: {stageName}");
+    }
+    private IEnumerator FadeInPanel()
+    {
+        CanvasGroup canvasGroup = stageCompletePanel.GetComponent<CanvasGroup>();
+        if (canvasGroup == null) yield break;
+
+        float elapsed = 0f;
+
+        while (elapsed < fadeInDuration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / fadeInDuration;
+
+            // Ease in curve
+            float alpha = Mathf.Lerp(0f, 1f, progress * progress);
+            canvasGroup.alpha = alpha;
+
+            yield return null;
+        }
+
+        canvasGroup.alpha = 1f;
+        Debug.Log("✨ [StageCompleteUI] Fade in complete!");
+    }
     /// <summary>
     /// แสดงเงินและเพชรที่ได้รับ
     /// </summary>
@@ -226,14 +302,25 @@ public class StageCompleteUI : MonoBehaviour
         Vector3 originalScale = itemUI.transform.localScale;
         itemUI.transform.localScale = Vector3.zero;
 
-        float duration = 0.3f;
+        // หน่วงเวลาสุ่มเพื่อให้ไอเทมปรากฏทีละตัว
+        float randomDelay = Random.Range(0f, 0.3f);
+        yield return new WaitForSecondsRealtime(randomDelay);
+
+        float duration = 0.5f; // เพิ่มระยะเวลา animation
         float elapsed = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime; // ใช้ unscaled เพราะ timeScale ถูกปรับ
             float progress = elapsed / duration;
-            float scale = Mathf.Lerp(0f, 1f, Mathf.Sqrt(progress)); // Ease out curve
+
+            // Bounce effect
+            float scale = Mathf.Lerp(0f, 1f, Mathf.Sqrt(progress));
+            if (progress > 0.8f)
+            {
+                // เพิ่ม bounce เล็กน้อยที่ท้าย
+                scale += Mathf.Sin((progress - 0.8f) * Mathf.PI * 5f) * 0.1f;
+            }
 
             itemUI.transform.localScale = originalScale * scale;
             yield return null;
@@ -279,7 +366,37 @@ public class StageCompleteUI : MonoBehaviour
     public void HideStageComplete()
     {
         if (stageCompletePanel != null)
+        {
+            StartCoroutine(FadeOutPanel());
+        }
+    }
+    private IEnumerator FadeOutPanel()
+    {
+        CanvasGroup canvasGroup = stageCompletePanel.GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
             stageCompletePanel.SetActive(false);
+            yield break;
+        }
+
+        float elapsed = 0f;
+        float startAlpha = canvasGroup.alpha;
+
+        while (elapsed < fadeInDuration * 0.5f) // Fade out เร็วกว่า fade in
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / (fadeInDuration * 0.5f);
+
+            float alpha = Mathf.Lerp(startAlpha, 0f, progress);
+            canvasGroup.alpha = alpha;
+
+            yield return null;
+        }
+
+        canvasGroup.alpha = 0f;
+        stageCompletePanel.SetActive(false);
+
+        Debug.Log("🌙 [StageCompleteUI] Fade out complete!");
     }
 
     /// <summary>
@@ -288,6 +405,7 @@ public class StageCompleteUI : MonoBehaviour
     private void BackToLobby()
     {
         Debug.Log("[StageCompleteUI] Going back to lobby...");
+        StartCoroutine(BackToLobbyWithTransition());
 
         // 🆕 Force reset rewards ก่อนกลับ Lobby
         StageRewardTracker.ForceResetRewards();
@@ -297,6 +415,26 @@ public class StageCompleteUI : MonoBehaviour
 
         // ทำความสะอาด Network Components เหมือน LoseScene
         CleanupNetworkComponents();
+
+        // โหลด Lobby Scene
+        SceneManager.LoadScene("Lobby");
+    }
+    private IEnumerator BackToLobbyWithTransition()
+    {
+        // Fade out panel ก่อน
+        yield return StartCoroutine(FadeOutPanel());
+
+        // 🆕 Force reset rewards ก่อนกลับ Lobby
+        StageRewardTracker.ForceResetRewards();
+
+        // คืนค่า Time Scale ปกติก่อน
+        Time.timeScale = 1f;
+
+        // ทำความสะอาด Network Components เหมือน LoseScene
+        CleanupNetworkComponents();
+
+        // รอหน่วงเวลานิดหนึ่งก่อนโหลด scene
+        yield return new WaitForSeconds(0.5f);
 
         // โหลด Lobby Scene
         SceneManager.LoadScene("Lobby");
@@ -349,27 +487,26 @@ public class StageCompleteUI : MonoBehaviour
     /// </summary>
     private IEnumerator RestoreTimeScale()
     {
-        yield return new WaitForSecondsRealtime(2f); // รอ 2 วินาทีจริง (ไม่ได้รับผลจาก timeScale)
+        yield return new WaitForSecondsRealtime(3f); // เพิ่มเป็น 3 วินาที
+
+        // Smooth transition กลับเป็น normal time
+        float duration = 1f;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / duration;
+
+            Time.timeScale = Mathf.Lerp(0.1f, 1f, progress);
+            yield return null;
+        }
+
         Time.timeScale = 1f;
+        Debug.Log("⏰ [StageCompleteUI] Time scale restored to normal");
     }
 
     #region Debug Methods
-    [ContextMenu("🧪 Test: Show Stage Complete")]
-    public void TestShowStageComplete()
-    {
-        if (Application.isPlaying)
-        {
-            ShowStageComplete("Test Stage");
-        }
-    }
 
-    [ContextMenu("🧪 Test: Hide Stage Complete")]
-    public void TestHideStageComplete()
-    {
-        if (Application.isPlaying)
-        {
-            HideStageComplete();
-        }
-    }
     #endregion
 }
