@@ -188,10 +188,5 @@ public class ItemRewardUI : MonoBehaviour
     /// <summary>
     /// 🔧 Debug method สำหรับตรวจสอบ layout
     /// </summary>
-    [ContextMenu("🔧 Fix Layout")]
-    public void FixLayout()
-    {
-        Awake(); // เรียก setup ใหม่
-        Debug.Log($"[ItemRewardUI] Layout fixed: {preferredWidth}x{preferredHeight}");
-    }
+   
 }

@@ -170,7 +170,11 @@ public class EnemySpawner : NetworkBehaviour
         InitializeSpawnCounts();
         InitializeBossConditions();
         ValidateSettings();
-
+        if (StageRewardTracker.Instance != null)
+        {
+            StageRewardTracker.Instance.StartStageTracking(currentStageName);
+            Debug.Log($"🎯 [EnemySpawner] Forced StageRewardTracker to start tracking: {currentStageName}");
+        }
         if (string.IsNullOrEmpty(currentStageName))
         {
             // อ่านจาก PlayerPrefs ก่อน

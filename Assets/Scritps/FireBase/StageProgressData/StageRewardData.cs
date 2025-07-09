@@ -70,10 +70,19 @@ public class StageRewardData
     {
         totalGoldEarned = 0;
         totalGemsEarned = 0;
-        itemsEarned.Clear();
+
+        // 🆕 ลบ items ทั้งหมดและสร้าง List ใหม่
+        if (itemsEarned != null)
+        {
+            itemsEarned.Clear();
+        }
+        itemsEarned = new List<ItemRewardInfo>();
+
         totalEnemiesKilled = 0;
         stageCompletionTime = 0f;
         stageName = "";
+
+        Debug.Log("[StageRewardData] 🧹 Complete reset performed");
     }
 
     public bool HasAnyRewards()

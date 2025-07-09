@@ -42,24 +42,32 @@ public class StageRewardTracker : MonoBehaviour
         {
             _instance = this;
             DontDestroyOnLoad(gameObject);
+
+            // 🆕 Subscribe to scene loading event
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         }
         else if (_instance != this)
         {
             Destroy(gameObject);
         }
     }
-
     private void Start()
     {
         StartStageTracking();
     }
-
+    private void OnDestroy()
+    {
+        // Unsubscribe from scene loading event
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
     /// <summary>
     /// เริ่มการติดตามสำหรับด่านใหม่
     /// </summary>
     public void StartStageTracking(string stageName = "")
     {
-        currentStageRewards.Reset();
+        // 🆕 บังคับ reset ทุกครั้งเมื่อเริ่มด่านใหม่
+        currentStageRewards = new StageRewardData(); // สร้างใหม่แทนการ Reset()
+
         stageStartTime = Time.time;
         isTrackingStage = true;
 
@@ -69,12 +77,27 @@ public class StageRewardTracker : MonoBehaviour
         }
         else
         {
-            // ใช้ชื่อ scene ปัจจุบัน
             currentStageRewards.SetStageName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
         }
 
         if (showDebugLogs)
+        {
             Debug.Log($"[StageRewardTracker] 🎯 Started tracking rewards for: {currentStageRewards.stageName}");
+            Debug.Log($"[StageRewardTracker] 🔄 Reset - Gold: {currentStageRewards.totalGoldEarned}, Items: {currentStageRewards.itemsEarned.Count}");
+        }
+    }
+
+    public static void ForceResetRewards()
+    {
+        if (Instance != null)
+        {
+            Instance.currentStageRewards = new StageRewardData();
+            Instance.stageStartTime = Time.time;
+            Instance.isTrackingStage = false;
+
+            if (Instance.showDebugLogs)
+                Debug.Log("[StageRewardTracker] 🧹 Forced reset of all rewards");
+        }
     }
 
     /// <summary>
@@ -91,11 +114,20 @@ public class StageRewardTracker : MonoBehaviour
             if (showDebugLogs)
             {
                 Debug.Log($"[StageRewardTracker] ⏹️ Stopped tracking. Completion time: {completionTime:F1}s");
-                LogCurrentRewards();
             }
         }
     }
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // ถ้าเป็นการโหลด scene ใหม่ที่ไม่ใช่ Lobby หรือ Menu ให้ reset
+        if (scene.name != "Lobby" && scene.name != "MainMenu" && !scene.name.Contains("Menu"))
+        {
+            if (showDebugLogs)
+                Debug.Log($"[StageRewardTracker] 🔄 Scene changed to: {scene.name} - Resetting rewards");
 
+            StartStageTracking(scene.name);
+        }
+    }
     /// <summary>
     /// เพิ่มเงินที่ได้รับ
     /// </summary>
@@ -182,96 +214,10 @@ public class StageRewardTracker : MonoBehaviour
     /// <summary>
     /// แสดงสถิติ rewards ปัจจุบัน
     /// </summary>
-    private void LogCurrentRewards()
-    {
-        Debug.Log("=== STAGE REWARDS SUMMARY ===");
-        Debug.Log($"Stage: {currentStageRewards.stageName}");
-        Debug.Log($"💰 Gold: {currentStageRewards.totalGoldEarned:N0}");
-        Debug.Log($"💎 Gems: {currentStageRewards.totalGemsEarned}");
-        Debug.Log($"🎁 Items: {currentStageRewards.itemsEarned.Count}");
-        Debug.Log($"⚔️ Enemies killed: {currentStageRewards.totalEnemiesKilled}");
-        Debug.Log($"⏱️ Time: {currentStageRewards.stageCompletionTime:F1}s");
-
-        if (currentStageRewards.itemsEarned.Count > 0)
-        {
-            Debug.Log("Items earned:");
-            foreach (var item in currentStageRewards.itemsEarned)
-            {
-                string quantityText = item.quantity > 1 ? $" x{item.quantity}" : "";
-                Debug.Log($"  - {item.itemName}{quantityText} ({item.GetTierText()})");
-            }
-        }
-        Debug.Log("=============================");
-    }
+   
 
     #region Debug Methods
-    [ContextMenu("🧪 Test: Add Sample Rewards")]
-    public void TestAddSampleRewards()
-    {
-        if (Application.isPlaying)
-        {
-            AddGoldReward(1500);
-            AddGemsReward(25);
-
-            // จำลอง item rewards (ต้องมี ItemDatabase)
-            Debug.Log("🧪 Added sample rewards for testing");
-            LogCurrentRewards();
-        }
-    }
-
-    [ContextMenu("🧪 Test: Reset Rewards")]
-    public void TestResetRewards()
-    {
-        if (Application.isPlaying)
-        {
-            currentStageRewards.Reset();
-            Debug.Log("🧪 Reset all rewards");
-        }
-    }
-
-    [ContextMenu("📊 Show Current Rewards")]
-    public void ShowCurrentRewards()
-    {
-        if (Application.isPlaying)
-        {
-            LogCurrentRewards();
-        }
-    }
-
-    [ContextMenu("🔧 Debug: Compare EnemySpawner Count")]
-    public void DebugCompareEnemyCount()
-    {
-        if (Application.isPlaying)
-        {
-            EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
-            if (spawner != null)
-            {
-                Debug.Log("=== ENEMY COUNT COMPARISON ===");
-                Debug.Log($"🎯 EnemySpawner.currentSessionKills: {spawner.currentSessionKills}");
-                Debug.Log($"📊 StageRewardTracker.totalEnemiesKilled: {currentStageRewards.totalEnemiesKilled}");
-                Debug.Log($"🎯 Required kills for stage: {spawner.GetRequiredKills()}");
-                Debug.Log($"✅ Stage completed: {spawner.IsCurrentStageCompleted()}");
-                Debug.Log("==============================");
-            }
-            else
-            {
-                Debug.LogWarning("🔍 No EnemySpawner found in scene!");
-            }
-        }
-    }
-
-    [ContextMenu("🔧 Force Sync Enemy Count")]
-    public void ForceSyncEnemyCount()
-    {
-        if (Application.isPlaying)
-        {
-            EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
-            if (spawner != null)
-            {
-                SetCorrectEnemyCount(spawner.currentSessionKills);
-                Debug.Log($"🔧 Force synced enemy count to: {spawner.currentSessionKills}");
-            }
-        }
-    }
+   
+   
     #endregion
 }

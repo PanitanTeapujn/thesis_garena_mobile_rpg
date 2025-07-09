@@ -48,15 +48,23 @@ public class StageCompleteUI : MonoBehaviour
     public void ShowStageComplete(string stageName)
     {
         Debug.Log($"🔍 [StageCompleteUI] ShowStageComplete called for: {stageName}");
-        Debug.Log($"🔍 [StageCompleteUI] Called from: {System.Environment.StackTrace}");
+
         if (stageCompletePanel == null)
         {
             Debug.LogWarning("[StageCompleteUI] Stage complete panel is not assigned!");
             return;
         }
 
+        // 🆕 Debug ข้อมูล rewards ก่อนแสดง
+        var preDisplayRewards = StageRewardTracker.GetCurrentRewards();
+        Debug.Log($"[StageCompleteUI] 🔍 Pre-display rewards: Gold={preDisplayRewards.totalGoldEarned}, Items={preDisplayRewards.itemsEarned.Count}");
+
         // หยุดการติดตาม rewards และคำนวณเวลา
         StageRewardTracker.Instance.StopStageTracking();
+
+        // 🆕 Debug ข้อมูลหลัง StopTracking
+        var postStopRewards = StageRewardTracker.GetCurrentRewards();
+        Debug.Log($"[StageCompleteUI] 🔍 Post-stop rewards: Gold={postStopRewards.totalGoldEarned}, Items={postStopRewards.itemsEarned.Count}");
 
         // แสดง panel
         stageCompletePanel.SetActive(true);
@@ -280,6 +288,9 @@ public class StageCompleteUI : MonoBehaviour
     private void BackToLobby()
     {
         Debug.Log("[StageCompleteUI] Going back to lobby...");
+
+        // 🆕 Force reset rewards ก่อนกลับ Lobby
+        StageRewardTracker.ForceResetRewards();
 
         // คืนค่า Time Scale ปกติก่อน
         Time.timeScale = 1f;
