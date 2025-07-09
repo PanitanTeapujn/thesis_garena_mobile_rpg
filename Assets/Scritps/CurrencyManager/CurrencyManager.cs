@@ -485,40 +485,6 @@ public class CurrencyManager : NetworkBehaviour
     #endregion
 
     #region Debug Methods
-    [ContextMenu("Add 1000 Gold")]
-    private void TestAddGold()
-    {
-        AddGold(1000);
-    }
-
-    [ContextMenu("Add 100 Gems")]
-    private void TestAddGems()
-    {
-        AddGems(100);
-    }
-
-    [ContextMenu("Spend 500 Gold")]
-    private void TestSpendGold()
-    {
-        SpendGold(500);
-    }
-
-    [ContextMenu("Spend 50 Gems")]
-    private void TestSpendGems()
-    {
-        SpendGems(50);
-    }
-
-    [ContextMenu("Force Save Currency")]
-    private void TestForceSave()
-    {
-        ForceSaveCurrency();
-    }
-
-    [ContextMenu("Show Current Currency")]
-    private void ShowCurrentCurrency()
-    {
-        Debug.Log($"💰 Current Currency - Gold: {GetCurrentGold()}, Gems: {GetCurrentGems()}");
-    }
+  
     #endregion
 }

@@ -17,6 +17,8 @@ public class ItemDatabase : ScriptableObject
     [SerializeField] private List<ItemData> shoesItems = new List<ItemData>();
     [SerializeField] private List<ItemData> runes = new List<ItemData>();
     [SerializeField] private List<ItemData> potions = new List<ItemData>(); // เพิ่มบรรทัดนี้
+    [SerializeField] private List<ItemData> materials = new List<ItemData>();
+    [SerializeField] private List<ItemData> miscItems = new List<ItemData>();  // 🆕
 
     #endregion
 
@@ -59,7 +61,8 @@ public class ItemDatabase : ScriptableObject
         shoesItems.Clear();
         runes.Clear();
         potions.Clear(); // เพิ่มบรรทัดนี้
-
+        materials.Clear();
+        miscItems.Clear();  // 🆕
 
         // จัดกลุ่มตาม type
         foreach (var item in allItems)
@@ -89,16 +92,16 @@ public class ItemDatabase : ScriptableObject
                 case ItemType.Potion: // เพิ่ม case นี้
                     potions.Add(item);
                     break;
+                case ItemType.Material:
+                    materials.Add(item);
+                    break;
+                case ItemType.Misc:      // 🆕
+                    miscItems.Add(item);
+                    break;
             }
         }
 
-        Debug.Log($"📦 ItemDatabase refreshed: {allItems.Count} total items");
-        Debug.Log($"   🗡️ Weapons: {weapons.Count}");
-        Debug.Log($"   ⛑️ Head: {headItems.Count}");
-        Debug.Log($"   🛡️ Armor: {armorItems.Count}");
-        Debug.Log($"   👖 Pants: {pantsItems.Count}");
-        Debug.Log($"   👟 Shoes: {shoesItems.Count}");
-        Debug.Log($"   🔮 Runes: {runes.Count}");
+       
     }
     #endregion
 
@@ -124,7 +127,9 @@ public class ItemDatabase : ScriptableObject
             case ItemType.Shoes: return new List<ItemData>(shoesItems);
             case ItemType.Rune: return new List<ItemData>(runes);
             case ItemType.Potion: return new List<ItemData>(potions); // เพิ่มบรรทัดนี้
-
+            case ItemType.Material: return new List<ItemData>(materials);
+            case ItemType.Misc: return new List<ItemData>(miscItems);      // 🆕
+                                                                           // เพิ่มบรรทัดนี้
             default: return new List<ItemData>();
         }
     }
@@ -144,6 +149,16 @@ public class ItemDatabase : ScriptableObject
         if (allItems.Count == 0) return null;
         int randomIndex = Random.Range(0, allItems.Count);
         return allItems[randomIndex];
+    }
+    public List<ItemData> GetSellableItems()
+    {
+        return allItems.Where(item => item.IsSellable).ToList();
+    }
+
+    // 🆕 เพิ่ม method หา materials
+    public List<ItemData> GetAllMaterials()
+    {
+        return allItems.Where(item => item.IsMaterial()).ToList();
     }
 
     public ItemData GetRandomItemByType(ItemType itemType)

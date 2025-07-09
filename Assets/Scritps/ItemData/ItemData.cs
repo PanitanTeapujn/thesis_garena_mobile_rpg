@@ -12,7 +12,10 @@ public enum ItemType
     Pants = 3,      // กางเกง
     Shoes = 4,      // รองเท้า
     Rune = 5,
-  Potion = 6     // รูน (3 ช่อง)
+  Potion = 6  ,
+    Material = 7,// รูน (3 ช่อง)
+    Misc = 8        // 🆕 ของเบ็ดเตล็ด
+
 }
 
 [System.Serializable]
@@ -189,6 +192,14 @@ public class ItemData : ScriptableObject
     [TextArea(3, 5)]
     [SerializeField] public string description;
     #endregion
+
+    [Header("💰 Economy")]
+    [SerializeField] public long sellPrice = 0;      // ราคาขาย (เงินที่ได้เมื่อขายให้ NPC)
+    [SerializeField] public long buyPrice = 0;       // ราคาซื้อ (เงินที่ต้องจ่ายเมื่อซื้อจาก shop)
+    [SerializeField] public bool isSellable = true;  // สามารถขายได้หรือไม่
+    [SerializeField] public bool isTradeable = true; // สามารถแลกเปลี่ยนได้หรือไม่
+
+
     [Header("Stack Settings")]
     [SerializeField] public int maxStackSize = 1;
     [SerializeField] public bool isStackable = false;
@@ -210,6 +221,10 @@ public class ItemData : ScriptableObject
     public ItemTier Tier => tier;
     public string Description => description;
     public ItemStats Stats => stats;
+    public long SellPrice => sellPrice;
+    public long BuyPrice => buyPrice;
+    public bool IsSellable => isSellable;
+    public bool IsTradeable => isTradeable;
     #endregion
 
     #region Validation
@@ -278,6 +293,14 @@ public class ItemData : ScriptableObject
                 isStackable = true;
                 maxStackSize = Mathf.Max(maxStackSize, 10); // Rune stack ได้ 10
                 break;
+            case ItemType.Material:  // 🆕 วัสดุ stack ได้เยอะ
+                isStackable = true;
+                maxStackSize = Mathf.Max(maxStackSize, 999);
+                break;
+            case ItemType.Misc:      // 🆕 ของเบ็ดเตล็ด stack ได้ปานกลาง
+                isStackable = true;
+                maxStackSize = Mathf.Max(maxStackSize, 50);
+                break;
             case ItemType.Weapon:
             case ItemType.Head:
             case ItemType.Armor:
@@ -287,6 +310,42 @@ public class ItemData : ScriptableObject
                 maxStackSize = 1; // อุปกรณ์ไม่ stack
                 break;
         }
+    }
+    public bool IsEquippableItem()
+    {
+        switch (itemType)
+        {
+            case ItemType.Weapon:
+            case ItemType.Head:
+            case ItemType.Armor:
+            case ItemType.Pants:
+            case ItemType.Shoes:
+                return true;
+            case ItemType.Rune:
+            case ItemType.Potion:
+            case ItemType.Material:
+            case ItemType.Misc:
+                return false;
+            default:
+                return false;
+        }
+    }
+
+    // 🆕 เพิ่ม method ตรวจสอบว่าเป็นวัสดุหรือไม่
+    public bool IsMaterial()
+    {
+        return itemType == ItemType.Material || itemType == ItemType.Misc;
+    }
+
+    // 🆕 เพิ่ม method คำนวณราคา
+    public long GetSellValue(int quantity = 1)
+    {
+        return sellPrice * quantity;
+    }
+
+    public long GetBuyValue(int quantity = 1)
+    {
+        return buyPrice * quantity;
     }
     public string GetTierText()
     {
@@ -314,7 +373,10 @@ public class ItemData : ScriptableObject
         firebaseData.itemType = (int)itemType;
         firebaseData.tier = (int)tier;
         firebaseData.description = description;
-
+        firebaseData.sellPrice = sellPrice;
+        firebaseData.buyPrice = buyPrice;
+        firebaseData.isSellable = isSellable;
+        firebaseData.isTradeable = isTradeable;
         // Copy stats
         firebaseData.attackDamageBonus = stats.attackDamageBonus;
         firebaseData.magicDamageBonus = stats.magicDamageBonus;
@@ -350,6 +412,11 @@ public class ItemData : ScriptableObject
         item.tier = (ItemTier)firebaseData.tier;
         item.description = firebaseData.description;
 
+        item.sellPrice = firebaseData.sellPrice;
+        item.buyPrice = firebaseData.buyPrice;
+        item.isSellable = firebaseData.isSellable;
+        item.isTradeable = firebaseData.isTradeable;
+
         // Copy stats
         item.stats.attackDamageBonus = firebaseData.attackDamageBonus;
         item.stats.magicDamageBonus = firebaseData.magicDamageBonus;
@@ -373,14 +440,7 @@ public class ItemData : ScriptableObject
     #endregion
 
     #region Debug
-    [ContextMenu("Debug Item Info")]
-    public void DebugItemInfo()
-    {
-        Debug.Log($"📦 Item: {itemName} ({itemId})");
-        Debug.Log($"🏷️ Type: {itemType}, Tier: {GetTierText()}");
-        Debug.Log($"📜 Description: {description}");
-        Debug.Log($"⚡ Stats:\n{stats.GetStatsDescription()}");
-    }
+   
     #endregion
 }
 #endregion
@@ -396,7 +456,10 @@ public class FirebaseItemData
     public int tier;           // ItemTier as int
     public string description;
     #endregion
-
+    public long sellPrice = 0;
+    public long buyPrice = 0;
+    public bool isSellable = true;
+    public bool isTradeable = true;
     #region Stats (Flattened for Firebase)
     public int attackDamageBonus = 0;
     public int magicDamageBonus = 0;

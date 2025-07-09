@@ -14,7 +14,10 @@ public class ItemDetailPanel : MonoBehaviour
     public TextMeshProUGUI stackCountText;  // จำนวนไอเทม
     public Button closeButton;              // ปุ่มปิด panel
     public Image itemTierBackground;        // พื้นหลังแสดงสี tier ของ item icon
-
+    [Header("🆕 Value Panel")]
+    public Button showValueButton;          // ปุ่มแสดง value panel
+    public TextMeshProUGUI showValueButtonText; // ข้อความในปุ่ม
+    public ItemValuePanel itemValuePanel;   // Reference ไปยัง ItemValuePanel
     [Header("🆕 Equip/Unequip Buttons")]
     public Button equipButton;              // ปุ่ม Equip
     public Button unequipButton;            // ปุ่ม Unequip
@@ -47,7 +50,11 @@ public class ItemDetailPanel : MonoBehaviour
             unequipButton.onClick.RemoveAllListeners();
             unequipButton.onClick.AddListener(OnUnequipButtonClicked);
         }
-
+        if (showValueButton != null)
+        {
+            showValueButton.onClick.RemoveAllListeners();
+            showValueButton.onClick.AddListener(OnShowValueButtonClicked);
+        }
         combatUIManager = GetComponentInParent<CombatUIManager>();
 
         // 🆕 Setup tier background for itemIconImage (ใช้ background แทน outline)
@@ -56,8 +63,37 @@ public class ItemDetailPanel : MonoBehaviour
         HideItemDetail();
     }
 
-   
 
+    private void OnShowValueButtonClicked()
+    {
+        if (currentItem == null)
+        {
+            Debug.LogWarning("[ItemDetailPanel] No current item to show value");
+            return;
+        }
+
+        // ปิด detail panel
+        HideItemDetail();
+
+        // เปิด value panel
+        if (itemValuePanel != null)
+        {
+            itemValuePanel.ShowValuePanel(currentItem);
+        }
+        else
+        {
+            // หา ItemValuePanel ใน scene ถ้าไม่ได้ assign
+            ItemValuePanel valuePanel = FindObjectOfType<ItemValuePanel>();
+            if (valuePanel != null)
+            {
+                valuePanel.ShowValuePanel(currentItem);
+            }
+            else
+            {
+                Debug.LogWarning("[ItemDetailPanel] ItemValuePanel not found!");
+            }
+        }
+    }
     public void ShowItemDetail(InventoryItem item)
     {
         if (item == null || item.IsEmpty)
@@ -110,7 +146,7 @@ public class ItemDetailPanel : MonoBehaviour
         if (itemDescText != null)
         {
             itemDescText.text = string.IsNullOrEmpty(itemData.Description) ?
-                "No description available." : itemData.Description;
+                "" : itemData.Description;
         }
 
         // แสดงสถิติ
@@ -118,7 +154,7 @@ public class ItemDetailPanel : MonoBehaviour
         {
             string statsText = itemData.Stats.GetStatsDescription();
             itemStatsText.text = string.IsNullOrEmpty(statsText) ?
-                "No bonus stats" : statsText;
+                "": statsText;
         }
 
         // แสดงจำนวนไอเทม (สำหรับไอเทมที่ stack ได้)
@@ -134,6 +170,17 @@ public class ItemDetailPanel : MonoBehaviour
                 stackCountText.gameObject.SetActive(false);
             }
         }
+        if (itemDescText != null)
+        {
+            string descText = string.IsNullOrEmpty(itemData.Description) ?
+                "" : itemData.Description;
+
+            // เพิ่มข้อมูลราคาถ้ามี
+            
+
+            itemDescText.text = descText;
+        }
+
 
         // จัดการปุ่ม Equip/Unequip
         UpdateEquipButtons(itemData);
@@ -725,11 +772,17 @@ public class ItemDetailPanel : MonoBehaviour
     }
     private void UpdateEquipButtons(ItemData itemData)
     {
-        bool isCurrentlyEquipped = IsItemCurrentlyEquipped(itemData);
+        // 🆕 ซ่อนปุ่ม equip/unequip สำหรับ materials และ misc
+        if (itemData.ItemType == ItemType.Material || itemData.ItemType == ItemType.Misc)
+        {
+            if (equipButton != null) equipButton.gameObject.SetActive(false);
+            if (unequipButton != null) unequipButton.gameObject.SetActive(false);
+            Debug.Log($"[ItemDetailPanel] Hidden equip buttons for {itemData.ItemType}");
+            return;
+        }
 
-        Debug.Log($"[ItemDetailPanel] Updating buttons for {itemData.ItemName}:");
-        Debug.Log($"  - Item Type: {itemData.ItemType}");
-        Debug.Log($"  - Currently Equipped: {isCurrentlyEquipped}");
+        // สำหรับไอเทมอื่น ๆ ใช้ logic เดิม
+        bool isCurrentlyEquipped = IsItemCurrentlyEquipped(itemData);
 
         if (equipButton != null)
         {
@@ -737,14 +790,11 @@ public class ItemDetailPanel : MonoBehaviour
             equipButton.gameObject.SetActive(showEquipButton);
             if (equipButtonText != null)
             {
-                // 🆕 เปลี่ยนข้อความตาม item type
                 if (itemData.ItemType == ItemType.Potion)
                     equipButtonText.text = "Add to Quick Slot";
                 else
                     equipButtonText.text = "Equip";
             }
-
-            Debug.Log($"  - Equip Button: {(showEquipButton ? "VISIBLE" : "HIDDEN")}");
         }
 
         if (unequipButton != null)
@@ -753,44 +803,14 @@ public class ItemDetailPanel : MonoBehaviour
             unequipButton.gameObject.SetActive(showUnequipButton);
             if (unequipButtonText != null)
             {
-                // 🆕 เปลี่ยนข้อความตาม item type
                 if (itemData.ItemType == ItemType.Potion)
                     unequipButtonText.text = "Remove from Slot";
                 else
                     unequipButtonText.text = "Unequip";
             }
-
-            Debug.Log($"  - Unequip Button: {(showUnequipButton ? "VISIBLE" : "HIDDEN")}");
         }
     }
 
-    private void DebugCurrentCharacterSlots()
-    {
-        if (currentCharacter == null)
-        {
-            Debug.LogWarning("[ItemDetailPanel] No current character to debug");
-            return;
-        }
-
-        Debug.Log("=== CHARACTER SLOTS DEBUG ===");
-
-        // Debug equipment slots
-        Debug.Log("--- Equipment Slots ---");
-        ItemType[] equipmentTypes = { ItemType.Head, ItemType.Armor, ItemType.Weapon, ItemType.Pants, ItemType.Shoes, ItemType.Rune };
-        foreach (ItemType type in equipmentTypes)
-        {
-            ItemData equipped = currentCharacter.GetEquippedItem(type);
-            Debug.Log($"{type}: {(equipped?.ItemName ?? "EMPTY")}");
-        }
-
-        // Debug potion slots
-        Debug.Log("--- Potion Slots ---");
-        for (int i = 0; i < 5; i++)
-        {
-            ItemData potion = currentCharacter.GetPotionInSlot(i);
-            Debug.Log($"Potion {i}: {(potion?.ItemName ?? "EMPTY")}");
-        }
-    }
     private bool IsItemCurrentlyEquipped(ItemData itemData)
     {
         if (currentCharacter == null || itemData == null) return false;
