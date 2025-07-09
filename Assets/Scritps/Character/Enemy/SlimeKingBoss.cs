@@ -49,7 +49,7 @@ public class SlimeKingBoss : NetworkEnemy
     [SerializeField] private ParticleSystem crownEffect;       // เอฟเฟกต์มงกุฎ
     [SerializeField] private ParticleSystem phaseTransitionFX; // เอฟเฟกต์เปลี่ยนเฟส
     [SerializeField] private ParticleSystem rageAura;          // ออร่าโกรธ
-    [SerializeField] private ParticleSystem elementalAura;     // ออร่าธาตุ
+    [SerializeField] public ParticleSystem elementalAura;     // ออร่าธาตุ
     [SerializeField] private Light bossLight;                  // แสงพิเศษ
 
     [Header("📊 Boss UI")]
@@ -523,22 +523,31 @@ public class SlimeKingBoss : NetworkEnemy
 
     private void CreateFallingSlime(Vector3 startPos)
     {
-        // สร้าง slime projectile
-        GameObject fallingSlime = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        fallingSlime.transform.position = startPos;
-        fallingSlime.transform.localScale = Vector3.one * 0.8f;
-        fallingSlime.GetComponent<Renderer>().material.color = Color.green;
+        // ใช้ particle effect แทนการสร้าง sphere
+        if (elementalAura != null)
+        {
+            GameObject fallingSlime = Instantiate(elementalAura.gameObject, startPos, Quaternion.identity);
+            fallingSlime.transform.localScale = Vector3.one * 0.8f;
 
-        // เพิ่ม Rigidbody เพื่อให้ตก
-        Rigidbody slimeRb = fallingSlime.AddComponent<Rigidbody>();
-        slimeRb.useGravity = true;
+            // ปรับสีเป็นเขียว
+            ParticleSystem ps = fallingSlime.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.green;
+            }
 
-        // เพิ่ม script จัดการการกระทบ
-        FallingSlimeProjectile projectile = fallingSlime.AddComponent<FallingSlimeProjectile>();
-        projectile.Initialize(MagicDamage);
+            // เพิ่ม Rigidbody เพื่อให้ตก
+            Rigidbody slimeRb = fallingSlime.AddComponent<Rigidbody>();
+            slimeRb.useGravity = true;
 
-        // ทำลายหลัง 10 วินาทีถ้ายังไม่กระทบ
-        Destroy(fallingSlime, 10f);
+            // เพิ่ม script จัดการการกระทบ
+            FallingSlimeProjectile projectile = fallingSlime.AddComponent<FallingSlimeProjectile>();
+            projectile.Initialize(MagicDamage);
+
+            // ทำลายหลัง 10 วินาทีถ้ายังไม่กระทบ
+            Destroy(fallingSlime, 10f);
+        }
     }
 
     // Minion Summoning System
@@ -945,33 +954,26 @@ public class SlimeKingBoss : NetworkEnemy
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowGroundSlamWarning(Vector3 position)
     {
-        // แสดงเอฟเฟกต์เตือนก่อน ground slam
-        GameObject warningFX = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        warningFX.transform.position = position;
-        warningFX.transform.localScale = new Vector3(multiAttackRadius * 2f, 0.1f, multiAttackRadius * 2f);
-        warningFX.GetComponent<Renderer>().material.color = Color.red;
-
-        // กระพริบ
-        StartCoroutine(FlashWarning(warningFX));
-
-        Destroy(warningFX, 2f);
-    }
-
-    private IEnumerator FlashWarning(GameObject warning)
-    {
-        Renderer renderer = warning.GetComponent<Renderer>();
-
-        for (int i = 0; i < 10; i++)
+        // แสดงเอฟเฟกต์เตือนก่อน ground slam ด้วย Particle เท่านั้น
+        if (phaseTransitionFX != null)
         {
-            renderer.enabled = !renderer.enabled;
-            yield return new WaitForSeconds(0.2f);
+            GameObject warningFX = Instantiate(phaseTransitionFX.gameObject, position, Quaternion.identity);
+            warningFX.transform.localScale *= 2f;
+
+            // เปลี่ยนสีเป็นแดงเตือน (ถ้า particle รองรับ)
+            ParticleSystem.MainModule main = warningFX.GetComponent<ParticleSystem>().main;
+            main.startColor = Color.red;
+
+            Destroy(warningFX, 2f);
         }
     }
+
+   
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ExecuteGroundSlam(Vector3 position)
     {
-        // เอฟเฟกต์การกระแทกพื้น
+        // เอฟเฟกต์การกระแทกพื้นด้วย Particle เท่านั้น
         if (phaseTransitionFX != null)
         {
             GameObject slamFX = Instantiate(phaseTransitionFX.gameObject, position, Quaternion.identity);
@@ -1014,35 +1016,26 @@ public class SlimeKingBoss : NetworkEnemy
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowElementalWave(Vector3 center, float radius)
     {
-        // สร้างคลื่นธาตุ
-        GameObject wave = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        wave.transform.position = center;
-        wave.transform.localScale = new Vector3(radius * 2f, 0.2f, radius * 2f);
-
-        // สีสุ่มตามธาตุ
-        Color[] elementColors = { Color.red, Color.cyan, Color.green };
-        wave.GetComponent<Renderer>().material.color = elementColors[Random.Range(0, elementColors.Length)];
-
-        // ขยายขนาด
-        StartCoroutine(ExpandWave(wave, radius));
-
-        Destroy(wave, 2f);
-    }
-
-    private IEnumerator ExpandWave(GameObject wave, float targetRadius)
-    {
-        Vector3 startScale = Vector3.one * 0.1f;
-        Vector3 endScale = new Vector3(targetRadius * 2f, 0.2f, targetRadius * 2f);
-
-        for (float t = 0; t < 1f; t += Time.deltaTime * 2f)
+        // สร้างคลื่นธาตุด้วย Particle เท่านั้น
+        if (elementalAura != null)
         {
-            if (wave != null)
+            GameObject wave = Instantiate(elementalAura.gameObject, center, Quaternion.identity);
+            wave.transform.localScale = Vector3.one * radius;
+
+            // ปรับสีตามธาตุ
+            ParticleSystem ps = wave.GetComponent<ParticleSystem>();
+            if (ps != null)
             {
-                wave.transform.localScale = Vector3.Lerp(startScale, endScale, t);
+                ParticleSystem.MainModule main = ps.main;
+                Color[] elementColors = { Color.red, Color.cyan, Color.green };
+                main.startColor = elementColors[Random.Range(0, elementColors.Length)];
             }
-            yield return null;
+
+            Destroy(wave, 2f);
         }
     }
+
+   
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowSlimeRainStart()
@@ -1084,41 +1077,46 @@ public class SlimeKingBoss : NetworkEnemy
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowBossAttackEffect(Vector3 position)
     {
-        // เอฟเฟกต์การโจมตีของ boss
-        GameObject attackFX = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        attackFX.transform.position = position + Vector3.up * 1f;
-        attackFX.transform.localScale = Vector3.one * 2f;
-        attackFX.GetComponent<Renderer>().material.color = Color.yellow;
-
-        Destroy(attackFX, 1f);
+        // เอฟเฟกต์การโจมตีของ boss ด้วย Particle เท่านั้น
+        if (crownEffect != null)
+        {
+            GameObject attackFX = Instantiate(crownEffect.gameObject, position + Vector3.up * 1f, Quaternion.identity);
+            attackFX.transform.localScale = Vector3.one * 2f;
+            Destroy(attackFX, 1f);
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowCounterAttackEffect(Vector3 position)
     {
-        // เอฟเฟกต์ counter attack
-        GameObject counterFX = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        counterFX.transform.position = position + Vector3.up * 2f;
-        counterFX.transform.localScale = Vector3.one * 1.5f;
-        counterFX.GetComponent<Renderer>().material.color = Color.red;
-
-        Destroy(counterFX, 0.8f);
+        // เอฟเฟกต์ counter attack ด้วย Particle เท่านั้น
+        if (rageAura != null)
+        {
+            GameObject counterFX = Instantiate(rageAura.gameObject, position + Vector3.up * 2f, Quaternion.identity);
+            counterFX.transform.localScale = Vector3.one * 1.5f;
+            Destroy(counterFX, 0.8f);
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowImmunityEffect(Vector3 position)
     {
-        // เอฟเฟกต์ immunity
-        GameObject immuneFX = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        immuneFX.transform.position = position + Vector3.up * 2f;
-        immuneFX.transform.localScale = Vector3.one * 3f;
-        immuneFX.GetComponent<Renderer>().material.color = Color.white;
+        // เอฟเฟกต์ immunity ด้วย Particle เท่านั้น
+        if (elementalAura != null)
+        {
+            GameObject immuneFX = Instantiate(elementalAura.gameObject, position + Vector3.up * 2f, Quaternion.identity);
+            immuneFX.transform.localScale = Vector3.one * 3f;
 
-        // ทำให้โปร่งใส
-        Material mat = immuneFX.GetComponent<Renderer>().material;
-        mat.color = new Color(1, 1, 1, 0.3f);
+            // ปรับสีเป็นขาว
+            ParticleSystem ps = immuneFX.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.white;
+            }
 
-        Destroy(immuneFX, 1f);
+            Destroy(immuneFX, 1f);
+        }
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -1257,7 +1255,7 @@ public class FallingSlimeProjectile : MonoBehaviour
             Debug.Log($"🌧️ Falling Slime hit {hero.CharacterName} for {damage} damage!");
         }
 
-        // สร้างเอฟเฟกต์การกระเด็น
+        // สร้างเอฟเฟกต์การกระเด็น (เฉพาะ particle)
         CreateImpactEffect();
 
         // ทำลายตัวเอง
@@ -1266,26 +1264,24 @@ public class FallingSlimeProjectile : MonoBehaviour
 
     private void CreateImpactEffect()
     {
-        // สร้างเอฟเฟกต์การกระแทก
-        GameObject impactFX = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        impactFX.transform.position = transform.position;
-        impactFX.transform.localScale = Vector3.one * 2f;
-        impactFX.GetComponent<Renderer>().material.color = Color.green;
-
-        Destroy(impactFX, 1f);
-
-        // สร้างสเศษกระเด็น
-        for (int i = 0; i < 3; i++)
+        // หาค่า SlimeKingBoss เพื่อใช้ particle effects
+        SlimeKingBoss slimeKing = FindObjectOfType<SlimeKingBoss>();
+        if (slimeKing != null && slimeKing.elementalAura != null)
         {
-            GameObject shard = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            shard.transform.position = transform.position + Random.insideUnitSphere * 0.5f;
-            shard.transform.localScale = Vector3.one * 0.1f;
-            shard.GetComponent<Renderer>().material.color = Color.green;
+            GameObject impactFX = Instantiate(slimeKing.elementalAura.gameObject, transform.position, Quaternion.identity);
+            impactFX.transform.localScale = Vector3.one * 2f;
 
-            Rigidbody shardRb = shard.AddComponent<Rigidbody>();
-            shardRb.AddForce(Random.insideUnitSphere * 3f, ForceMode.Impulse);
+            // ปรับสีเป็นเขียว
+            ParticleSystem ps = impactFX.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = Color.green;
+            }
 
-            Destroy(shard, 2f);
+            Destroy(impactFX, 1f);
         }
+
+        // ไม่สร้างเศษกระเด็นแบบ primitive objects อีกต่อไป
     }
 }

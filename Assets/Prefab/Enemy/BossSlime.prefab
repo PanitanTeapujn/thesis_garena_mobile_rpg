@@ -448,8 +448,7 @@ MonoBehaviour:
   maxMultiTargets: 3
   slamDamageMultiplier: 1.5
   canSummonMinions: 1
-  minionPrefabs:
-  - {fileID: 8670071803579099242, guid: eaf15b70e569d2343846e52d707dd01e, type: 3}
+  minionPrefabs: []
   maxMinions: 6
   summonCooldown: 15
   hasElementalPowers: 1
@@ -459,10 +458,14 @@ MonoBehaviour:
   desperateThreshold: 0.25
   immunityDuration: 3
   isImmune: 0
-  crownEffect: {fileID: 0}
-  phaseTransitionFX: {fileID: 0}
-  rageAura: {fileID: 0}
-  elementalAura: {fileID: 0}
+  crownEffect: {fileID: 8330877085987332212, guid: 6c064513aa7cae142b65066943c8fdbd,
+    type: 3}
+  phaseTransitionFX: {fileID: 5748945079150391416, guid: c50f9e2c685970e4c8ebcd5fc8c7b3e4,
+    type: 3}
+  rageAura: {fileID: 4891440538664600065, guid: 82066d902ed0dd6488ddfd32eb994801,
+    type: 3}
+  elementalAura: {fileID: 2413333106277601229, guid: 108ca465382c11742bd2c91fe4fdb13f,
+    type: 3}
   bossLight: {fileID: 0}
   showBossHealthBar: 1
   _NetworkedPhase: 0
