@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 1492029380697295795}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.25, y: 0, z: 6.65}
+  m_LocalPosition: {x: -0.25, y: 0, z: 14.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -56,7 +56,7 @@ Transform:
   m_GameObject: {fileID: 1538009057022103995}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.9, y: 0, z: -8.14}
+  m_LocalPosition: {x: -0.9, y: 0, z: -18.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -105,7 +105,7 @@ GameObject:
   - component: {fileID: 4145889400217059357}
   - component: {fileID: 5007749454147549919}
   m_Layer: 0
-  m_Name: EnemySpawn2
+  m_Name: EnemySpawn 3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -146,31 +146,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefabs:
-  - enemyPrefab: {fileID: 2102208964661930907, guid: 8327cd786d97d4645ab0fd919d324d79,
+  - enemyPrefab: {fileID: 1925022699066192109, guid: 9ef78462b234581449845839dcfb4bfd,
       type: 3}
     enemyName: 
     spawnWeight: 5
-    maxCount: -1
-    spawnCooldown: 1
-    lastSpawnTime: 0
-    currentCount: 0
-  - enemyPrefab: {fileID: 4839707611699536701, guid: a34ed28bb016f414cb790b9d3fc817e5,
-      type: 3}
-    enemyName: 
-    spawnWeight: 3
-    maxCount: -1
+    maxCount: 1
     spawnCooldown: 1
     lastSpawnTime: 0
     currentCount: 0
   bossConditions:
   - bossPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
       type: 3}
-    bossName: Shadowboss
+    bossName: 
     enemiesToKill: 20
     includeSpecificEnemies: 1
-    specificEnemyNames: []
+    specificEnemyNames:
+    - Slime
     bossRespawnCooldown: 0
-    maxBossInstances: 1
+    maxBossInstances: 0
     announceSpawn: 1
     spawnWarningTime: 0
     currentKillCount: 0
@@ -181,7 +174,12 @@ MonoBehaviour:
   bossSpawnPoints:
   - {fileID: 6608536978320820854}
   useBossSpawnPoints: 1
-  maxTotalEnemies: 10
+  multiSpawnMode: 1
+  spawnPointCount: 2
+  enemiesPerPoint: 1
+  minPlayerDistance: 8
+  multiSpawnCooldown: 10
+  maxTotalEnemies: 1
   spawnInterval: 5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
@@ -192,14 +190,21 @@ MonoBehaviour:
   - {fileID: 5449713855246032909}
   - {fileID: 6023309308642714384}
   - {fileID: 3756664571040027359}
-  spawnRadius: 10.42
-  useSpawnPoints: 0
+  spawnRadius: 20
+  useSpawnPoints: 1
   showDebugInfo: 0
   verboseKillTracking: 1
+  showMultiSpawnInfo: 1
   balanceEnemyTypes: 1
   spawnInWaves: 0
   enemiesPerWave: 3
   waveCooldown: 2
+  currentStageName: 
+  stopSpawningWhenStageCompleted: 1
+  showStageDebugInfo: 1
+  stageCompleteUI: {fileID: 0}
+  destroyRemainingEnemiesOnStageComplete: 1
+  destroyDelay: 1
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -212,7 +217,7 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SortKey: 560115782
+  SortKey: 3452150452
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []
@@ -337,7 +342,7 @@ Transform:
   m_GameObject: {fileID: 9124788995687505417}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.82, y: 0, z: 1.3}
+  m_LocalPosition: {x: 8.8, y: 0, z: 1.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

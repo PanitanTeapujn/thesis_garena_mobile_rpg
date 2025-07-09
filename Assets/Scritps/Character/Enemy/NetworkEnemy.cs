@@ -305,6 +305,10 @@ public class NetworkEnemy : Character
         }
     }
 
+    protected virtual void OnDestroy()
+    {
+    }
+
     // ========== 🆕 Patrol System ==========
     private void GenerateNewPatrolTarget()
     {
@@ -807,7 +811,7 @@ public class NetworkEnemy : Character
     }
 
     // ========== 🎨 Debug Visualization ==========
-    private void OnDrawGizmosSelected()
+    protected void OnDrawGizmosSelected()
     {
         if (!showPatrolGizmos) return;
 

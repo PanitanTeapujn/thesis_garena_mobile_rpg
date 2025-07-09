@@ -105,7 +105,7 @@ GameObject:
   - component: {fileID: 4145889400217059357}
   - component: {fileID: 5007749454147549919}
   m_Layer: 0
-  m_Name: EnemySpawn 1
+  m_Name: EnemySpawn 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -146,11 +146,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefabs:
+  - enemyPrefab: {fileID: 5444127218872422526, guid: d007969deee58184ab2703244b9aced6,
+      type: 3}
+    enemyName: 
+    spawnWeight: 3
+    maxCount: 5
+    spawnCooldown: 1
+    lastSpawnTime: 0
+    currentCount: 0
   - enemyPrefab: {fileID: 2102208964661930907, guid: eaf15b70e569d2343846e52d707dd01e,
       type: 3}
     enemyName: 
     spawnWeight: 5
-    maxCount: -1
+    maxCount: 10
     spawnCooldown: 1
     lastSpawnTime: 0
     currentCount: 0
@@ -174,12 +182,12 @@ MonoBehaviour:
   bossSpawnPoints:
   - {fileID: 6608536978320820854}
   useBossSpawnPoints: 1
-  multiSpawnMode: 1
+  multiSpawnMode: 4
   spawnPointCount: 6
   enemiesPerPoint: 1
   minPlayerDistance: 8
   multiSpawnCooldown: 10
-  maxTotalEnemies: 20
+  maxTotalEnemies: 10
   spawnInterval: 5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
@@ -217,7 +225,7 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SortKey: 1847687270
+  SortKey: 4153443779
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []

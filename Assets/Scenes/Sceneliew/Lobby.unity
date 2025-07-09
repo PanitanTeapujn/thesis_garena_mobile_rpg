@@ -18439,14 +18439,14 @@ MonoBehaviour:
       subStageName: PlayRoom1
       sceneToLoad: PlayRoom1
       selectButton: {fileID: 882755276}
-      requiredEnemyKills: 20
+      requiredEnemyKills: 40
       requiredPreviousStages: []
       isFirstStage: 1
     - panel: {fileID: 430931127}
       subStageName: MapFire1-2
       sceneToLoad: Playroom2
       selectButton: {fileID: 430931129}
-      requiredEnemyKills: 10
+      requiredEnemyKills: 30
       requiredPreviousStages:
       - PlayRoom1
       isFirstStage: 0
@@ -18454,7 +18454,7 @@ MonoBehaviour:
       subStageName: MapFire1-3
       sceneToLoad: Playroom3
       selectButton: {fileID: 959851598}
-      requiredEnemyKills: 10
+      requiredEnemyKills: 1
       requiredPreviousStages:
       - PlayRoom2
       isFirstStage: 0
@@ -21973,7 +21973,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &2127417878
 RectTransform:
   m_ObjectHideFlags: 0

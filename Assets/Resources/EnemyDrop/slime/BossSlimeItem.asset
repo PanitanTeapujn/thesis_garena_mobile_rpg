@@ -10,32 +10,32 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
-  m_Name: SlimeItem
+  m_Name: BossSlimeItem
   m_EditorClassIdentifier: 
-  overallDropChance: 20
+  overallDropChance: 100
   maxItemDrops: 5
   dropChanceLevelBonus: 1.5
   itemDrops:
-  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+  - itemData: {fileID: 11400000, guid: 9b5571c5ab683e54dad5b51909377e8a, type: 2}
     dropChance: 50
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
+  - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
     dropChance: 50
-    minQuantity: 1
-    maxQuantity: 10
-    minEnemyLevel: 1
-    maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 2bb99274bb5f1fc4db2fdd638ee5bbe2, type: 2}
-    dropChance: 30
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
-    dropChance: 20
+  - itemData: {fileID: 11400000, guid: 31d5441768d79c54faee54144fed1476, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
+    dropChance: 50
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
