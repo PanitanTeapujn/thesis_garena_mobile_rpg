@@ -20,45 +20,45 @@ MonoBehaviour:
   costCurrency: Gems
   costPerTenRolls: 900
   gachaItems:
-  - itemData: {fileID: 11400000, guid: 9739c2cf8ec34e748b7e8e439e151a4f, type: 2}
-    dropRate: 50
+  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+    dropRate: 80
     minQuantity: 1
-    maxQuantity: 0
+    maxQuantity: 1
     isRareItem: 0
     isFeaturedItem: 1
     description: 
-  - itemData: {fileID: 11400000, guid: 4ee05e10572bccd44af258ef80904c3a, type: 2}
-    dropRate: 50
+  - itemData: {fileID: 11400000, guid: 25b65ac60a36a2149b7fc173ec13cc4b, type: 2}
+    dropRate: 80
     minQuantity: 1
-    maxQuantity: 0
+    maxQuantity: 1
     isRareItem: 0
     isFeaturedItem: 1
     description: 
   - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
     dropRate: 0.1
     minQuantity: 1
-    maxQuantity: 0
+    maxQuantity: 1
     isRareItem: 1
     isFeaturedItem: 0
     description: 
-  - itemData: {fileID: 11400000, guid: 5613a22e56bac2d46961c91bbdebeb11, type: 2}
-    dropRate: 50
-    minQuantity: 1
-    maxQuantity: 0
-    isRareItem: 0
-    isFeaturedItem: 1
-    description: 
-  - itemData: {fileID: 11400000, guid: 5613a22e56bac2d46961c91bbdebeb11, type: 2}
-    dropRate: 50
-    minQuantity: 1
-    maxQuantity: 0
-    isRareItem: 0
-    isFeaturedItem: 1
-    description: 
-  - itemData: {fileID: 11400000, guid: a9b74eb6cb081a44193bc54e5f5e2f9d, type: 2}
+  - itemData: {fileID: 11400000, guid: 1268ba4a84c529c468fc8d88171469f1, type: 2}
     dropRate: 20
     minQuantity: 1
-    maxQuantity: 0
+    maxQuantity: 1
+    isRareItem: 1
+    isFeaturedItem: 0
+    description: 
+  - itemData: {fileID: 11400000, guid: 4ee83ea7066de2d47ae6e87a1561c849, type: 2}
+    dropRate: 80
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: 8e0db883a5c8fab4bb6b7bf1439dc926, type: 2}
+    dropRate: 40
+    minQuantity: 1
+    maxQuantity: 1
     isRareItem: 0
     isFeaturedItem: 1
     description: 

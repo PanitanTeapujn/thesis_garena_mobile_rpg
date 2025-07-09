@@ -145,6 +145,17 @@ public class GachaMachine : MonoBehaviour
 
         if (selectedEntry == null || !selectedEntry.IsValid())
         {
+            // แสดงสถานะแต่ละ entry
+            for (int i = 0; i < gachaPool.GachaItems.Count; i++)
+            {
+                var e = gachaPool.GachaItems[i];
+                Debug.LogError(
+                    $"[GachaMachine:{machineName}] Entry {i} — " +
+                    $"itemData={(e.itemData == null ? "null" : e.itemData.ItemName)}; " +
+                    $"IsValid={e.IsValid()}"
+                );
+            }
+            
             Debug.LogError(" Failed to get valid gacha item");
             return null;
         }
