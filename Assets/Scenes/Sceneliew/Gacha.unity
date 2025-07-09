@@ -122,6 +122,59 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &55648691
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 55648693}
+  - component: {fileID: 55648692}
+  m_Layer: 0
+  m_Name: GameObject (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &55648692
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55648691}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9406ef0f3dacaa42b1fc3bd5f6ee7ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  machineId: 0
+  machineName: Tool
+  gachaPool: {fileID: 11400000, guid: db1ef91966b08b04b85cb2ab63b33a92, type: 2}
+  trackGuarantee: 1
+  machineAnimator: {fileID: 0}
+  rollEffect: {fileID: 0}
+  audioSource: {fileID: 0}
+  rollSound: {fileID: 0}
+  rareItemSound: {fileID: 0}
+--- !u!4 &55648693
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 55648691}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.4808624, y: 5.4311, z: 2.381174}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &148644987
 GameObject:
   m_ObjectHideFlags: 0
@@ -151,12 +204,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 647edd55c7066dc499a034806985ace7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  items:
-  - {fileID: 11400000, guid: 198bb7b007727214096bcf2bc69bf96c, type: 2}
-  drawButton: {fileID: 541342296}
-  multiDrawButton: {fileID: 987169513}
-  resultImage: {fileID: 0}
-  resultText: {fileID: 0}
+  enableDebugLog: 1
+  autoAddRewardsToInventory: 1
+  gachaMachines:
+  - {fileID: 55648692}
+  uiManager: {fileID: 0}
 --- !u!4 &148644989
 Transform:
   m_ObjectHideFlags: 0
@@ -514,6 +566,7 @@ GameObject:
   - component: {fileID: 237599040}
   - component: {fileID: 237599039}
   - component: {fileID: 237599038}
+  - component: {fileID: 237599042}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -606,6 +659,41 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &237599042
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237599037}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 19861e083ecd62843a32430f03155319, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gachaMainPanel: {fileID: 0}
+  gachaResultPanel: {fileID: 0}
+  machineSelectionPanel: {fileID: 0}
+  machineButtonContainer: {fileID: 0}
+  machineButtonPrefab: {fileID: 0}
+  machineNameText: {fileID: 0}
+  machineDescriptionText: {fileID: 0}
+  machineIconImage: {fileID: 0}
+  costSingleText: {fileID: 0}
+  costTenText: {fileID: 0}
+  rollSingleButton: {fileID: 541342296}
+  rollTenButton: {fileID: 987169513}
+  resultItemContainer: {fileID: 0}
+  resultItemPrefab: {fileID: 0}
+  closeResultsButton: {fileID: 0}
+  gachaOpenEffect: {fileID: 0}
+  uiAudioSource: {fileID: 0}
+  buttonClickSound: {fileID: 0}
+  gachaOpenSound: {fileID: 0}
+  rareItemSound: {fileID: 0}
+  errorPanel: {fileID: 0}
+  errorMessageText: {fileID: 0}
+  closeErrorButton: {fileID: 0}
 --- !u!1 &283386836
 GameObject:
   m_ObjectHideFlags: 0
@@ -1217,3 +1305,4 @@ SceneRoots:
   - {fileID: 237599041}
   - {fileID: 1119071043}
   - {fileID: 148644989}
+  - {fileID: 55648693}

@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ba018c659a1b2247ab2f765daaf818b, type: 3}
+  m_Name: ToolGachaPool
+  m_EditorClassIdentifier: 
+  poolId: 0
+  poolName: ToolGachaPool
+  poolIcon: {fileID: 21300000, guid: 86aefa2655c3f114ab27823c16e3f431, type: 3}
+  description: 
+  costPerRoll: 100
+  costCurrency: Gems
+  costPerTenRolls: 900
+  gachaItems:
+  - itemData: {fileID: 11400000, guid: 9739c2cf8ec34e748b7e8e439e151a4f, type: 2}
+    dropRate: 50
+    minQuantity: 1
+    maxQuantity: 0
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: 4ee05e10572bccd44af258ef80904c3a, type: 2}
+    dropRate: 50
+    minQuantity: 1
+    maxQuantity: 0
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
+    dropRate: 0.1
+    minQuantity: 1
+    maxQuantity: 0
+    isRareItem: 1
+    isFeaturedItem: 0
+    description: 
+  - itemData: {fileID: 11400000, guid: 5613a22e56bac2d46961c91bbdebeb11, type: 2}
+    dropRate: 50
+    minQuantity: 1
+    maxQuantity: 0
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: 5613a22e56bac2d46961c91bbdebeb11, type: 2}
+    dropRate: 50
+    minQuantity: 1
+    maxQuantity: 0
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: a9b74eb6cb081a44193bc54e5f5e2f9d, type: 2}
+    dropRate: 20
+    minQuantity: 1
+    maxQuantity: 0
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  hasGuarantee: 0
+  guaranteeCount: 100
+  guaranteeTier: 5
