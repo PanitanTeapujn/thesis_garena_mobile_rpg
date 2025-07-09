@@ -121,6 +121,13 @@ public class EnemySpawner : NetworkBehaviour
     private bool isStageCompleted = false;
     private float lastStageCheckTime = 0f;
     private const float STAGE_CHECK_INTERVAL = 2f; // เช็คทุก 2 วินาที
+    [Header("🧹 Auto Cleanup")]
+    [Tooltip("ทำลาย enemy ทั้งหมดเมื่อด่านเสร็จ")]
+    public bool destroyRemainingEnemiesOnStageComplete = true;
+
+    [Tooltip("หน่วงเวลาก่อนทำลาย enemy (วินาที)")]
+    [Range(0f, 5f)]
+    public float destroyDelay = 1f;
 
     public int currentSessionKills { get; private set; } = 0; // เปลี่ยนเป็น property
     private int requiredKillsForStage ;
@@ -391,28 +398,17 @@ public class EnemySpawner : NetworkBehaviour
     // 🆕 เรียกเมื่อด่านเพิ่งเสร็จใหม่
     private void OnStageJustCompleted()
     {
-        // 🆕 Debug ก่อนส่ง RPC
-        Debug.Log($"🔍 [OnStageJustCompleted] currentStageName: '{currentStageName}'");
-        Debug.Log($"🔍 [OnStageJustCompleted] currentSessionKills: {currentSessionKills}");
-        Debug.Log($"🔍 [OnStageJustCompleted] requiredKillsForStage: {requiredKillsForStage}");
-        Debug.Log($"🔍 [OnStageJustCompleted] Time.time: {Time.time}");
-
         // ตรวจสอบว่า stageName ไม่ว่าง
         if (string.IsNullOrEmpty(currentStageName))
         {
-            Debug.LogError("🚨 [OnStageJustCompleted] currentStageName is empty! Cannot complete stage.");
             return;
         }
-
-        Debug.Log($"🎉 Stage {currentStageName} just completed! ({currentSessionKills}/{requiredKillsForStage} kills)");
 
         // Mark ด่านเป็น completed ใน StageProgressManager (สำหรับ save ถาวร)
         StageProgressManager.CompleteStage(currentStageName);
 
         if (stopSpawningWhenStageCompleted)
         {
-            Debug.Log($"🛑 Stopping all enemy spawning for completed stage: {currentStageName}");
-
             // หยุด spawning ทันที
             nextSpawnTime = float.MaxValue;
             nextWaveTime = float.MaxValue;
@@ -423,20 +419,149 @@ public class EnemySpawner : NetworkBehaviour
             pendingSpawnPositions.Clear();
             pendingSpawnEnemies.Clear();
 
+            // 🆕 ทำลาย enemy ที่เหลือทั้งหมด
+            if (destroyRemainingEnemiesOnStageComplete)
+            {
+                DestroyRemainingEnemies();
+            }
+
             // แจ้งเตือนผู้เล่น (ผ่าน RPC)
             RPC_AnnounceStageCompleted(currentStageName);
+        }
+    }
+    private void DestroyRemainingEnemies()
+    {
+        if (!HasStateAuthority) return;
+
+        int destroyedCount = 0;
+        int destroyedBossCount = 0;
+
+        // ทำลาย enemy ปกติ
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            NetworkEnemy enemy = activeEnemies[i];
+            if (enemy != null && !enemy.IsDead)
+            {
+                // ลบออกจาก tracking ก่อน
+                if (enemy.Object != null && spawnedEnemyTypes.ContainsKey(enemy.Object))
+                {
+                    string enemyTypeName = spawnedEnemyTypes[enemy.Object];
+                    spawnedEnemyTypes.Remove(enemy.Object);
+
+                    // ลด current count
+                    foreach (EnemySpawnData enemyData in enemyPrefabs)
+                    {
+                        if (enemyData.enemyName == enemyTypeName)
+                        {
+                            enemyData.currentCount = Mathf.Max(0, enemyData.currentCount - 1);
+                            break;
+                        }
+                    }
+                }
+
+                // ทำลายทันที (ไม่ผ่าน death system)
+                if (enemy.Object != null)
+                {
+                    Runner.Despawn(enemy.Object);
+                    destroyedCount++;
+                }
+            }
+            activeEnemies.RemoveAt(i);
+        }
+
+        // ทำลาย boss ที่เหลือ
+        for (int i = activeBosses.Count - 1; i >= 0; i--)
+        {
+            NetworkEnemy boss = activeBosses[i];
+            if (boss != null && !boss.IsDead)
+            {
+                // อัพเดท boss condition
+                string bossName = boss.name.Replace("(Clone)", "").Trim();
+                foreach (BossSpawnCondition condition in bossConditions)
+                {
+                    if (condition.bossPrefab != null &&
+                        (condition.bossPrefab.name == bossName ||
+                         condition.bossName == bossName ||
+                         condition.bossPrefab.name.Contains(bossName) ||
+                         bossName.Contains(condition.bossPrefab.name)))
+                    {
+                        condition.currentBossCount = Mathf.Max(0, condition.currentBossCount - 1);
+                        break;
+                    }
+                }
+
+                // ทำลายทันที
+                if (boss.Object != null)
+                {
+                    Runner.Despawn(boss.Object);
+                    destroyedBossCount++;
+                }
+            }
+            activeBosses.RemoveAt(i);
+        }
+
+        // ลบ pending spawns ทั้งหมด
+        pendingSpawnPositions.Clear();
+        pendingSpawnEnemies.Clear();
+        isMultiSpawning = false;
+
+        // ส่ง RPC แจ้งการทำลาย
+        if (destroyedCount > 0 || destroyedBossCount > 0)
+        {
+            RPC_AnnounceEnemiesDestroyed(destroyedCount, destroyedBossCount);
+        }
+
+        if (showStageDebugInfo)
+        {
+            Debug.Log($"🧹 Stage cleanup: Destroyed {destroyedCount} enemies and {destroyedBossCount} bosses");
+        }
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_AnnounceEnemiesDestroyed(int enemyCount, int bossCount)
+    {
+        if (showStageDebugInfo)
+        {
+            string message = "🧹 Stage cleared! ";
+            if (enemyCount > 0)
+            {
+                message += $"Removed {enemyCount} enemies";
+            }
+            if (bossCount > 0)
+            {
+                message += $"{(enemyCount > 0 ? " and " : "")}Removed {bossCount} bosses";
+            }
+            Debug.Log(message);
+        }
+    }
+
+    // 🆕 Method สำหรับทำลาย enemy ที่เหลือแบบ manual (สำหรับเรียกจากภายนอก)
+    public void ForceDestroyAllRemainingEnemies()
+    {
+        if (!HasStateAuthority)
+        {
+            Debug.LogWarning("🚨 Cannot destroy enemies - not server authority");
+            return;
+        }
+
+        DestroyRemainingEnemies();
+        Debug.Log("🧹 Manually destroyed all remaining enemies");
+    }
+
+    // 🆕 เพิ่ม method สำหรับ toggle การทำลาย enemy อัตโนมัติ
+    public void SetAutoDestroyEnemies(bool enable)
+    {
+        destroyRemainingEnemiesOnStageComplete = enable;
+
+        if (showStageDebugInfo)
+        {
+            Debug.Log($"🧹 Auto destroy enemies on stage complete: {enable}");
         }
     }
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_AnnounceStageCompleted(string stageName)
     {
         // 🆕 เพิ่ม debug
-        Debug.Log($"🔍 [EnemySpawner] RPC_AnnounceStageCompleted called for: {stageName}");
-        Debug.Log($"🔍 [EnemySpawner] Current session kills: {currentSessionKills}");
-        Debug.Log($"🔍 [EnemySpawner] Required kills: {requiredKillsForStage}");
-        Debug.Log($"🔍 [EnemySpawner] Stage completed: {isStageCompleted}");
-
-        Debug.Log($"🏆 STAGE COMPLETED: {stageName}!");
+       
 
         // อัพเดทจำนวน enemy สุดท้ายให้ StageRewardTracker
         StageRewardTracker.Instance.SetCorrectEnemyCount(currentSessionKills);
@@ -446,12 +571,10 @@ public class EnemySpawner : NetworkBehaviour
         if (stageUI != null)
         {
             bool isPanelActive = stageUI.stageCompletePanel != null && stageUI.stageCompletePanel.activeSelf;
-            Debug.Log($"🔍 [START] StageCompleteUI panel active: {isPanelActive}");
 
             // ถ้า panel เปิดอยู่แล้ว ให้ปิด
             if (isPanelActive)
             {
-                Debug.LogWarning("🔍 [START] StageCompleteUI was already active! Hiding it...");
                 stageUI.HideStageComplete();
             }
         }
@@ -461,18 +584,10 @@ public class EnemySpawner : NetworkBehaviour
         }
         else
         {
-            Debug.LogWarning("🏆 No StageCompleteUI found in scene!");
         }
     }
     // เพิ่ม method สำหรับ manual testing
-    [ContextMenu("🧪 Test: Trigger Stage Complete UI")]
-    public void TestTriggerStageCompleteUI()
-    {
-        if (Application.isPlaying && HasStateAuthority)
-        {
-            RPC_AnnounceStageCompleted($"Test_{currentStageName}");
-        }
-    }
+ 
 
     public void SetCurrentStage(string stageName)
     {
@@ -545,49 +660,7 @@ public class EnemySpawner : NetworkBehaviour
     /// เปิด/ปิดการหยุด spawn เมื่อด่านเสร็จ
     /// </summary>
 
-    [ContextMenu("🧪 Test: Mark Stage as Completed")]
-    public void TestMarkStageCompleted()
-    {
-        if (Application.isPlaying)
-        {
-            isStageCompleted = true;
-            OnStageJustCompleted();
-        }
-    }
-
-    [ContextMenu("🧪 Test: Reset Stage Status")]
-    public void TestResetStageStatus()
-    {
-        if (Application.isPlaying)
-        {
-            RestartSpawning();
-        }
-    }
-    /// <summary>
-    /// รีสตาร์ทการ spawn หลังจากที่หยุดไปแล้ว (สำหรับ restart ด่าน)
-    /// </summary>
-
-
-    [ContextMenu("🔍 Debug: Show Current Stage Info")]
-    public void DebugShowCurrentStageInfo()
-    {
-        if (Application.isPlaying)
-        {
-            int persistentKills = StageProgressManager.GetEnemyKills(currentStageName);
-            bool persistentCompleted = StageProgressManager.IsStageCompleted(currentStageName);
-
-            Debug.Log($"=== STAGE DEBUG INFO ===");
-            Debug.Log($"Stage Name: {currentStageName}");
-            Debug.Log($"🔥 SESSION Kills: {currentSessionKills}");
-            Debug.Log($"🎯 Required Kills: {requiredKillsForStage}");
-            Debug.Log($"💾 Persistent Kills: {persistentKills} (saved in Firebase)");
-            Debug.Log($"✅ Is Completed (Session): {isStageCompleted}");
-            Debug.Log($"💾 Is Completed (Persistent): {persistentCompleted}");
-            Debug.Log($"👹 Active Enemies: {activeEnemies.Count}");
-            Debug.Log($"🛑 Stop Spawning When Completed: {stopSpawningWhenStageCompleted}");
-            Debug.Log($"========================");
-        }
-    }
+  
 
     // 🆕 ระบบ Multi-Spawn ที่เรียบง่าย
     private void HandleSimpleMultiSpawning()
@@ -637,7 +710,6 @@ public class EnemySpawner : NetworkBehaviour
 
         if (showMultiSpawnInfo && totalPlanned > 0)
         {
-            Debug.Log($"🌊 Multi-Spawn ({multiSpawnMode}): {totalPlanned} enemies at {spawnPositions.Count} points!");
         }
     }
 
@@ -872,7 +944,6 @@ public class EnemySpawner : NetworkBehaviour
         if (validPositions.Count == 0)
         {
             if (showMultiSpawnInfo)
-                Debug.LogWarning("🌊 No safe spawn positions found, using original positions");
             return positions;
         }
 
@@ -1195,7 +1266,6 @@ public class EnemySpawner : NetworkBehaviour
 
                     if (showDebugInfo)
                     {
-                        Debug.Log($"🗑️ Cleaned up dead enemy: {enemyTypeName}");
                     }
                 }
 
@@ -1217,8 +1287,6 @@ public class EnemySpawner : NetworkBehaviour
             enemy.CurrentHp = 0;
             enemy.IsDead = true;
 
-            Debug.Log($"🧪 Enemy killed! IsDead: {enemy.IsDead}, HP: {enemy.CurrentHp}");
-            Debug.Log($"🧪 Will check in next CleanupDeadEnemies...");
         }
     }
     private void CleanupDeadBosses()
