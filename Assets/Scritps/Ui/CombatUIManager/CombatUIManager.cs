@@ -1047,7 +1047,8 @@ public class CombatUIManager : MonoBehaviour
 
         if (attackSpeedText != null)
         {
-            float multiplier = 1f + localHero.GetEffectiveAttackSpeed();
+            // ใช้ฟังก์ชันใหม่สำหรับ UI
+            float multiplier = localHero.GetAttackSpeedMultiplierForUI();
             attackSpeedText.text = $"AS: x{multiplier:F2}";
         }
 

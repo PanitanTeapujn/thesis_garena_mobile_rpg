@@ -537,6 +537,9 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
     quantity: 1
     note: 
+  - itemData: {fileID: 11400000, guid: 8e0db883a5c8fab4bb6b7bf1439dc926, type: 2}
+    quantity: 1
+    note: 
   useFallbackItems: 1
   fallbackToTestItems: 1
   testSword: {fileID: 0}

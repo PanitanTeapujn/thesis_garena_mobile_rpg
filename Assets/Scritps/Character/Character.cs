@@ -1355,9 +1355,6 @@ public class Character : NetworkBehaviour
 
     public virtual float GetEffectiveAttackSpeed()
     {
-        // ✅ เปลี่ยนจาก multiplier เป็น % reduction
-        float baseAttackSpeed = AttackSpeed; // ค่าฐานจาก character (ไม่ใช้แล้ว)
-
         // รวม attack speed bonus เป็น %
         float totalAttackSpeedBonus = 0f;
 
@@ -1371,19 +1368,54 @@ public class Character : NetworkBehaviour
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
-            float auraBonus = (auraMultiplier - 1f) * 100f; // แปลง 1.3x เป็น 30%
+            float auraBonus = (auraMultiplier - 1f) * 100f;
             totalAttackSpeedBonus += auraBonus;
         }
 
-        // ✅ คำนวณ cooldown reduction แทน speed multiplier
-        float cooldownReduction = totalAttackSpeedBonus / 100f; // แปลง % เป็น decimal
-        cooldownReduction = Mathf.Clamp(cooldownReduction, 0f, 0.9f); // จำกัดไม่เกิน 90%
+        // ✅ คำนวณ cooldown reduction ด้วย Diminishing Returns
+        float cooldownReduction = CalculateAttackSpeedReduction(totalAttackSpeedBonus);
 
-        // ✅ Debug แสดงรายละเอียดใหม่
         Debug.Log($"[GetEffectiveAttackSpeed] {CharacterName}: Attack Speed Bonus = {totalAttackSpeedBonus}%, Cooldown Reduction = {cooldownReduction * 100f}%");
 
-        // return cooldown reduction สำหรับใช้ในการคำนวณ
         return cooldownReduction;
+    }
+    private float CalculateAttackSpeedReduction(float attackSpeedPercent)
+    {
+        // สูตร Diminishing Returns: reduction = attackSpeed / (attackSpeed + 100)
+        // ตัวอย่าง:
+        // 50% → 50/(50+100) = 0.333 (33.3% reduction)
+        // 100% → 100/(100+100) = 0.5 (50% reduction) 
+        // 300% → 300/(300+100) = 0.75 (75% reduction)
+        // 900% → 900/(900+100) = 0.9 (90% reduction - ใกล้เคียง limit)
+
+        float reduction = attackSpeedPercent / (attackSpeedPercent + 100f);
+
+        // จำกัดไม่เกิน 95% (ป้องกัน cooldown เป็น 0)
+        reduction = Mathf.Clamp(reduction, 0f, 0.99f);
+
+        return reduction;
+    }
+    public float GetAttackSpeedMultiplierForUI()
+    {
+        // รวม attack speed bonus เป็น %
+        float totalAttackSpeedBonus = 0f;
+
+        if (equipmentManager != null)
+        {
+            totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
+        }
+
+        if (statusEffectManager != null)
+        {
+            float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
+            float auraBonus = (auraMultiplier - 1f) * 100f;
+            totalAttackSpeedBonus += auraBonus;
+        }
+
+        // ✅ แปลง % เป็น multiplier สำหรับ UI
+        float multiplier = 1f + (totalAttackSpeedBonus / 100f);
+
+        return multiplier;
     }
 
 
