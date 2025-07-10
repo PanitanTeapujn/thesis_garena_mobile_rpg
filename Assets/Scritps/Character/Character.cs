@@ -2168,6 +2168,39 @@ public class Character : NetworkBehaviour
 
         return false;
     }
+    public void ClearEquipmentSlotsForReload()
+    {
+        Debug.Log("[Character] 🧹 Clearing equipment slots for reload (not affecting inventory)...");
+
+        // เคลียร์ equipment slots
+        if (characterEquippedItems != null)
+        {
+            for (int i = 0; i < characterEquippedItems.Count; i++)
+            {
+                characterEquippedItems[i] = null;
+            }
+        }
+
+        // เคลียร์ potion slots
+        if (potionSlots != null)
+        {
+            for (int i = 0; i < potionSlots.Count; i++)
+            {
+                potionSlots[i] = null;
+            }
+        }
+
+        // เคลียร์ potion stack counts
+        if (potionStackCounts != null)
+        {
+            for (int i = 0; i < potionStackCounts.Count; i++)
+            {
+                potionStackCounts[i] = 0;
+            }
+        }
+
+        Debug.Log("[Character] ✅ Equipment slots cleared for reload");
+    }
     private System.Collections.IEnumerator DelayedPotionSave()
     {
         yield return new WaitForSeconds(2f); // รอ 2 วินาที

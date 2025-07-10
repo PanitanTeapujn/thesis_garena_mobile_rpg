@@ -1424,13 +1424,13 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// แสดงรายการอุปกรณ์ที่บันทึก
     /// </summary>
-  
+
 
 
     /// <summary>
     /// แสดงสถิติการบันทึกทั้งหมด
     /// </summary>
-   
+
 
     #endregion
     #region 🆕 Inventory Load Methods
@@ -1440,15 +1440,9 @@ public class PersistentPlayerData : MonoBehaviour
     /// </summary>
     public void LoadInventoryData(Character character)
     {
-        if (character == null)
+        if (character == null || multiCharacterData == null)
         {
-            Debug.LogError("[LoadInventoryData] Character is null!");
-            return;
-        }
-
-        if (multiCharacterData == null)
-        {
-            Debug.LogError("[LoadInventoryData] MultiCharacterData is null!");
+            Debug.LogError("[LoadInventoryData] Character or MultiCharacterData is null!");
             return;
         }
 
@@ -1456,38 +1450,328 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.Log($"[LoadInventoryData] 📥 Starting inventory load for {character.CharacterName}");
 
-            // 1. Load Shared Inventory
-            bool inventoryLoaded = LoadSharedInventoryData(character);
+            // 1. Load Character Equipment FIRST (ป้องกันไม่ให้อาวุธหลุดไป inventory)
+            bool equipmentLoaded = LoadCharacterEquipmentDataFirst(character);
 
-            // 2. Load Character Equipment (ใช้ระบบเดิมที่สมบูรณ์)
-            bool equipmentLoaded = LoadCharacterEquipmentData(character);
+            // 2. Load Shared Inventory AFTER equipment (เพื่อไม่ให้ overlap)
+            bool inventoryLoaded = LoadSharedInventoryDataSafe(character);
 
             if (inventoryLoaded || equipmentLoaded)
             {
-                Debug.Log($"[LoadInventoryData] ✅ Inventory load completed for {character.CharacterName}");
-
-                // 3. Force refresh หลัง load เสร็จ
+                Debug.Log($"[LoadInventoryData] ✅ Load completed - Equipment: {equipmentLoaded}, Inventory: {inventoryLoaded}");
                 ForceRefreshInventoryUI(character);
-
-                // 🆕 4. แจ้ง LevelManager ให้คำนวณ stats ใหม่หลังโหลด equipment
                 NotifyLevelManagerEquipmentLoaded(character);
             }
             else
             {
-                Debug.LogWarning("[LoadInventoryData] ⚠️ No data was loaded - giving starter items");
+                Debug.LogWarning("[LoadInventoryData] ⚠️ No data loaded");
                 GiveStarterItemsIfNeeded(character);
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LoadInventoryData] ❌ Error loading inventory: {e.Message}");
-            Debug.LogError($"[LoadInventoryData] Stack trace: {e.StackTrace}");
-
-            // ถ้า load ไม่ได้ ให้ starter items
+            Debug.LogError($"[LoadInventoryData] ❌ Error: {e.Message}");
             GiveStarterItemsIfNeeded(character);
         }
     }
-  
+    private bool LoadSharedInventoryDataSafe(Character character)
+    {
+        try
+        {
+            var inventory = character.GetInventory();
+            if (inventory == null)
+            {
+                Debug.LogWarning("[LoadSharedInventoryDataSafe] Character has no inventory");
+                return false;
+            }
+
+            var sharedData = multiCharacterData.sharedInventory;
+            if (sharedData == null || !sharedData.IsValid() || sharedData.items.Count == 0)
+            {
+                Debug.LogWarning("[LoadSharedInventoryDataSafe] No shared inventory data to load");
+                return false;
+            }
+
+            Debug.Log($"[LoadSharedInventoryDataSafe] 📦 Loading {sharedData.items.Count} items (excluding equipped items)");
+
+            // 🔧 รายการ ItemID ที่ equipped แล้ว (ไม่ให้โหลดเข้า inventory)
+            var equippedItemIds = GetCurrentlyEquippedItemIds(character);
+
+            // เคลียร์ inventory เฉพาะที่ไม่ใช่ equipped items
+            ClearInventoryExcludingEquipped(inventory, equippedItemIds);
+
+            // โหลดไอเทมที่ไม่ได้ equipped
+            int successCount = 0;
+            int skippedCount = 0;
+
+            foreach (var savedItem in sharedData.items)
+            {
+                if (savedItem == null || !savedItem.IsValid())
+                    continue;
+
+                // 🔧 ข้าม items ที่ equipped แล้ว
+                if (equippedItemIds.Contains(savedItem.itemId))
+                {
+                    Debug.Log($"[LoadSharedInventoryDataSafe] ⏭️ Skipping equipped item: {savedItem.itemName}");
+                    skippedCount++;
+                    continue;
+                }
+
+                bool loaded = LoadSingleInventoryItemSafe(inventory, savedItem);
+                if (loaded) successCount++;
+            }
+
+            Debug.Log($"[LoadSharedInventoryDataSafe] ✅ Loaded {successCount} items, skipped {skippedCount} equipped items");
+            return successCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSharedInventoryDataSafe] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private HashSet<string> GetCurrentlyEquippedItemIds(Character character)
+    {
+        var equippedIds = new HashSet<string>();
+
+        try
+        {
+            // Equipment items (6 ช่อง)
+            for (int i = 0; i < 6; i++)
+            {
+                ItemType itemType = GetItemTypeFromSlotIndex(i);
+                ItemData equippedItem = character.GetEquippedItem(itemType);
+
+                if (equippedItem != null && !string.IsNullOrEmpty(equippedItem.ItemId))
+                {
+                    equippedIds.Add(equippedItem.ItemId);
+                    Debug.Log($"[GetCurrentlyEquippedItemIds] Found equipped: {equippedItem.ItemName} (ID: {equippedItem.ItemId})");
+                }
+            }
+
+            // Potion items (5 ช่อง)
+            for (int i = 0; i < 5; i++)
+            {
+                ItemData potionItem = character.GetPotionInSlot(i);
+
+                if (potionItem != null && !string.IsNullOrEmpty(potionItem.ItemId))
+                {
+                    equippedIds.Add(potionItem.ItemId);
+                    Debug.Log($"[GetCurrentlyEquippedItemIds] Found equipped potion: {potionItem.ItemName} (ID: {potionItem.ItemId})");
+                }
+            }
+
+            Debug.Log($"[GetCurrentlyEquippedItemIds] Total equipped items: {equippedIds.Count}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[GetCurrentlyEquippedItemIds] ❌ Error: {e.Message}");
+        }
+
+        return equippedIds;
+    }
+
+    // 🆕 เคลียร์ inventory แต่ไม่แตะ equipped items
+    private void ClearInventoryExcludingEquipped(Inventory inventory, HashSet<string> equippedItemIds)
+    {
+        try
+        {
+            Debug.Log("[ClearInventoryExcludingEquipped] 🧹 Clearing inventory (preserving equipped items)...");
+
+            // ดู items ใน inventory ปัจจุบัน
+            for (int i = inventory.CurrentSlots - 1; i >= 0; i--)
+            {
+                var item = inventory.GetItem(i);
+                if (item != null && !item.IsEmpty)
+                {
+                    // ถ้าเป็น equipped item ให้ข้าม
+                    if (equippedItemIds.Contains(item.itemData.ItemId))
+                    {
+                        Debug.Log($"[ClearInventoryExcludingEquipped] ⏭️ Preserving equipped item: {item.itemData.ItemName}");
+                        continue;
+                    }
+
+                    // ลบ items ที่ไม่ได้ equipped
+                    inventory.RemoveItem(i, item.stackCount);
+                }
+            }
+
+            Debug.Log("[ClearInventoryExcludingEquipped] ✅ Inventory cleared (equipped items preserved)");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ClearInventoryExcludingEquipped] ❌ Error: {e.Message}");
+        }
+    }
+    private bool LoadCharacterEquipmentDataFirst(Character character)
+    {
+        try
+        {
+            string characterType = multiCharacterData.currentActiveCharacter;
+            Debug.Log($"[LoadCharacterEquipmentDataFirst] ⚔️ Loading equipment FIRST for {characterType}");
+
+            var characterProgressData = multiCharacterData.GetCharacterData(characterType);
+            if (characterProgressData?.characterEquipment == null)
+            {
+                Debug.LogWarning($"[LoadCharacterEquipmentDataFirst] No equipment data for {characterType}");
+                return false;
+            }
+
+            var equipmentData = characterProgressData.characterEquipment;
+            if (!equipmentData.IsValid())
+            {
+                Debug.LogWarning($"[LoadCharacterEquipmentDataFirst] Invalid equipment data");
+                return false;
+            }
+
+            // 🔧 เคลียร์ equipment slots ก่อน (แต่ไม่แตะ inventory)
+            character.ClearEquipmentSlotsForReload();
+
+            // โหลด Equipment Slots (6 ช่อง) โดยไม่ให้ไปใน inventory
+            bool equipmentLoaded = LoadEquipmentSlotsDirectly(character, equipmentData);
+
+            // โหลด Potion Slots (5 ช่อง)
+            bool potionsLoaded = LoadPotionSlotsDirectly(character, equipmentData);
+
+            if (equipmentLoaded || potionsLoaded)
+            {
+                Debug.Log($"[LoadCharacterEquipmentDataFirst] ✅ Equipment loaded FIRST - Equipment: {equipmentLoaded}, Potions: {potionsLoaded}");
+
+                // Apply stats หลังโหลด equipment
+                character.ApplyLoadedEquipmentStats();
+                character.ForceRefreshEquipmentAfterLoad();
+
+                return true;
+            }
+
+            return false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadCharacterEquipmentDataFirst] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+    private bool LoadEquipmentSlotsDirectly(Character character, CharacterEquipmentData equipmentData)
+    {
+        try
+        {
+            int loadedCount = 0;
+            var equipment = equipmentData.equipment;
+
+            Debug.Log("[LoadEquipmentSlotsDirectly] Loading equipment slots directly...");
+
+            // โหลดแต่ละ slot โดยไม่ให้ไปใน inventory
+            if (LoadSingleEquipmentSlotDirectly(character, ItemType.Head, equipment.headItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotDirectly(character, ItemType.Armor, equipment.armorItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotDirectly(character, ItemType.Weapon, equipment.weaponItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotDirectly(character, ItemType.Pants, equipment.pantsItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotDirectly(character, ItemType.Shoes, equipment.shoesItemId))
+                loadedCount++;
+            if (LoadSingleEquipmentSlotDirectly(character, ItemType.Rune, equipment.runeItemId))
+                loadedCount++;
+
+            Debug.Log($"[LoadEquipmentSlotsDirectly] ✅ Loaded {loadedCount}/6 equipment pieces");
+            return loadedCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadEquipmentSlotsDirectly] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    private bool LoadSingleEquipmentSlotDirectly(Character character, ItemType itemType, string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId))
+            return false;
+
+        try
+        {
+            ItemData itemData = GetItemDataById(itemId);
+            if (itemData == null)
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotDirectly] Item not found: {itemId} for {itemType}");
+                return false;
+            }
+
+            if (itemData.ItemType != itemType)
+            {
+                Debug.LogError($"[LoadSingleEquipmentSlotDirectly] Item type mismatch: {itemData.ItemType} != {itemType}");
+                return false;
+            }
+
+            // โหลดโดยตรงไปยัง equipment slot (ไม่ผ่าน inventory)
+            bool success = character.LoadEquipmentDirectly(itemData);
+            if (success)
+            {
+                Debug.Log($"[LoadSingleEquipmentSlotDirectly] ✅ Loaded {itemData.ItemName} directly to {itemType} slot");
+                return true;
+            }
+
+            return false;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadSingleEquipmentSlotDirectly] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    private bool LoadPotionSlotsDirectly(Character character, CharacterEquipmentData equipmentData)
+    {
+        try
+        {
+            int loadedCount = 0;
+
+            Debug.Log("[LoadPotionSlotsDirectly] Loading potion slots directly...");
+
+            for (int i = 0; i < 5; i++)
+            {
+                var potionSlot = equipmentData.GetPotionSlot(i);
+                if (potionSlot?.IsValid() == true)
+                {
+                    ItemData potionData = GetItemDataById(potionSlot.itemId);
+                    if (potionData?.ItemType == ItemType.Potion)
+                    {
+                        // โหลดโดยตรงไปยัง potion slot (ไม่ผ่าน inventory)
+                        bool loaded = character.LoadPotionDirectly(potionData, i, potionSlot.stackCount);
+                        if (loaded)
+                        {
+                            Debug.Log($"[LoadPotionSlotsDirectly] ✅ Loaded {potionData.ItemName} x{potionSlot.stackCount} to slot {i}");
+                            loadedCount++;
+                        }
+                    }
+                }
+            }
+
+            Debug.Log($"[LoadPotionSlotsDirectly] ✅ Loaded {loadedCount}/5 potion slots");
+            return loadedCount > 0;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LoadPotionSlotsDirectly] ❌ Error: {e.Message}");
+            return false;
+        }
+    }
+
+    private ItemType GetItemTypeFromSlotIndex(int slotIndex)
+    {
+        switch (slotIndex)
+        {
+            case 0: return ItemType.Head;
+            case 1: return ItemType.Armor;
+            case 2: return ItemType.Weapon;
+            case 3: return ItemType.Pants;
+            case 4: return ItemType.Shoes;
+            case 5: return ItemType.Rune;
+            default: return ItemType.Weapon;
+        }
+    }
     private System.Collections.IEnumerator DelayedUIRefresh(Character character)
     {
         yield return new WaitForSeconds(0.2f);
@@ -3529,19 +3813,7 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // 🆕 เพิ่ม helper method
-    private ItemType GetItemTypeFromSlotIndex(int slotIndex)
-    {
-        switch (slotIndex)
-        {
-            case 0: return ItemType.Head;
-            case 1: return ItemType.Armor;
-            case 2: return ItemType.Weapon;
-            case 3: return ItemType.Pants;
-            case 4: return ItemType.Shoes;
-            case 5: return ItemType.Rune;
-            default: return ItemType.Weapon;
-        }
-    }
+   
 
 
     #endregion
