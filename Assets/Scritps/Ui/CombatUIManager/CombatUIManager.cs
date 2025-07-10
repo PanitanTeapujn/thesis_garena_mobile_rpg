@@ -77,7 +77,7 @@ public class CombatUIManager : MonoBehaviour
     public TextMeshProUGUI hitRateText;
     public TextMeshProUGUI evasionRateText;
     public TextMeshProUGUI attackSpeedText;
-
+    public TextMeshProUGUI liftSteal;
     [Header("🆕 Item Detail Panel")]
     public GameObject itemDetailPanel;              // Panel สำหรับแสดงรายละเอียดไอเทม
     public ItemDetailPanel itemDetailManager;      // Manager สำหรับจัดการ panel
@@ -1050,6 +1050,14 @@ public class CombatUIManager : MonoBehaviour
             // ใช้ฟังก์ชันใหม่สำหรับ UI
             float multiplier = localHero.GetAttackSpeedMultiplierForUI();
             attackSpeedText.text = $"AS: x{multiplier:F2}";
+        }
+        if (liftSteal != null)
+        {
+            float effectiveLifesteal = localHero.GetEffectiveLifeSteal();
+            liftSteal.text = $"LST: {effectiveLifesteal:F1}%";
+
+            // ✅ เพิ่ม debug
+            Debug.Log($"[CombatUI] Lifesteal UI: Base={localHero.LifeSteal:F1}, Effective={effectiveLifesteal:F1}");
         }
 
     }

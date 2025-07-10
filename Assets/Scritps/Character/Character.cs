@@ -72,7 +72,8 @@ public class Character : NetworkBehaviour
 
     [SerializeField] private float reductionCoolDown;
     public float ReductionCoolDown { get { return reductionCoolDown; } set { reductionCoolDown = value; } }
-
+    [SerializeField] private float lifeSteal;
+    public float LifeSteal { get { return lifeSteal; } set { lifeSteal = value; } }
     [Header("Attack Settings")]
     [SerializeField] private AttackType attackType = AttackType.Physical; // Default เป็น Physical
     public AttackType AttackType { get { return attackType; } set { attackType = value; } }
@@ -85,6 +86,7 @@ public class Character : NetworkBehaviour
     [Networked] public int NetworkedMaxMana { get; set; }
     [Networked] public bool IsNetworkStateReady { get; set; }
     [Networked] public bool IsStatsReady { get; set; } = false;
+    [Networked] public float NetworkedLifeSteal { get; set; }
 
     [Header("🆕 Spawn State Management")]
     [SerializeField] private bool isStatsLoaded = false;
@@ -387,6 +389,8 @@ public class Character : NetworkBehaviour
             evasionRate = characterStats.evasionRate;
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
+            lifeSteal = characterStats.lifeSteal;
+
             attackType = characterStats.attackType;
             InitializeEquipmentSlots();
 
@@ -828,6 +832,8 @@ public class Character : NetworkBehaviour
             NetworkedCurrentHp = currentHp;
             NetworkedMaxMana = maxMana;
             NetworkedCurrentMana = currentMana;
+            NetworkedLifeSteal = lifeSteal;
+
             IsNetworkStateReady = true;
         }
     }
@@ -1278,7 +1284,31 @@ public class Character : NetworkBehaviour
 
         return totalBonus;
     }
+    // ใน Character.cs - แก้ไข GetEffectiveLifeSteal()
+    public virtual float GetEffectiveLifeSteal()
+    {
+        // ✅ ใช้ characterStats.lifeSteal แทน this.lifeSteal
+        float baseLifeSteal = characterStats != null ? characterStats.lifeSteal : 0f;
 
+        // Add equipment lifesteal bonus
+        if (equipmentManager != null)
+        {
+            baseLifeSteal += equipmentManager.GetLifeStealBonus();
+        }
+
+        Debug.Log($"[GetEffectiveLifeSteal] {CharacterName}: CharacterStats={characterStats?.lifeSteal ?? 0}, Equipment={equipmentManager?.GetLifeStealBonus() ?? 0}, Total={baseLifeSteal}");
+
+        return Mathf.Clamp(baseLifeSteal, 0f, 100f);
+    }
+    [ContextMenu("Debug Lifesteal Problem")]
+    public void DebugLifestealProblem()
+    {
+        Debug.Log($"=== LIFESTEAL DEBUG ===");
+        Debug.Log($"CharacterStats.lifeSteal: {characterStats?.lifeSteal ?? 0:F1}%");
+        Debug.Log($"Character.LifeSteal field: {LifeSteal:F1}%");
+        Debug.Log($"Equipment bonus: {equipmentManager?.GetLifeStealBonus() ?? 0:F1}%");
+        Debug.Log($"GetEffectiveLifeSteal(): {GetEffectiveLifeSteal():F1}%");
+    }
     public void UpdateCriticalDamageBonus(float newValue, bool forceNetworkSync = false)
     {
         float oldValue = criticalDamageBonus;
@@ -1615,6 +1645,20 @@ public class Character : NetworkBehaviour
         // 🆕 Debug stats หลัง apply
 
     }
+    [ContextMenu("Debug Lifesteal Stats")]
+    public void DebugLifestealStats()
+    {
+        Debug.Log($"=== {CharacterName} LIFESTEAL DEBUG ===");
+        Debug.Log($"Base Lifesteal: {LifeSteal:F1}%");
+
+        if (equipmentManager != null)
+        {
+            Debug.Log($"Equipment Lifesteal Bonus: {equipmentManager.GetLifeStealBonus():F1}%");
+        }
+
+        Debug.Log($"Effective Lifesteal: {GetEffectiveLifeSteal():F1}%");
+        Debug.Log("=====================================");
+    }
     private EquipmentStats CalculateTotalEquipmentStats()
     {
         EquipmentStats totalStats = new EquipmentStats();
@@ -1637,6 +1681,7 @@ public class Character : NetworkBehaviour
                 totalStats.attackSpeedBonus += itemStats.attackSpeedBonus;
                 totalStats.hitRateBonus += itemStats.hitRateBonus;
                 totalStats.evasionRateBonus += itemStats.evasionRateBonus;
+                totalStats.lifeStealBonus += itemStats.lifeStealBonus;
                 totalStats.reductionCoolDownBonus += itemStats.reductionCoolDownBonus;
                 totalStats.physicalResistanceBonus += itemStats.physicalResistanceBonus;
                 totalStats.magicalResistanceBonus += itemStats.magicalResistanceBonus;
@@ -1672,6 +1717,9 @@ public class Character : NetworkBehaviour
             totalStatsList.Add($"EVA+{totalStats.evasionRateBonus:F1}%");
         if (totalStats.reductionCoolDownBonus != 0f)
             totalStatsList.Add($"CDR+{totalStats.reductionCoolDownBonus:F1}%");
+        if (totalStats.lifeStealBonus != 0f)
+            totalStatsList.Add($"LST+{totalStats.lifeStealBonus:F1}%");
+
         if (totalStats.physicalResistanceBonus != 0f)
             totalStatsList.Add($"PHYS_RES+{totalStats.physicalResistanceBonus:F1}%");
         if (totalStats.magicalResistanceBonus != 0f)
@@ -2093,7 +2141,7 @@ public class Character : NetworkBehaviour
                 characterData.UpdateTotalStats(
                     MaxHp, MaxMana, AttackDamage, MagicDamage, Armor,
                     CriticalChance, CriticalDamageBonus, MoveSpeed,
-                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown
+                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown,LifeSteal
                 );
 
                 // บันทึกลง Firebase
@@ -2357,7 +2405,7 @@ public class Character : NetworkBehaviour
             EvasionRate = characterStats.evasionRate;
             AttackSpeed = characterStats.attackSpeed;
             ReductionCoolDown = characterStats.reductionCoolDown;
-
+            LifeSteal = characterStats.lifeSteal;
             // คำนวณ HP/Mana ตาม percentage เดิม
             CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
             CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);

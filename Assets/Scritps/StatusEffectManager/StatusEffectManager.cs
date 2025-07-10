@@ -343,19 +343,24 @@ public class StatusEffectManager : NetworkBehaviour
         duration = duration * (1f - durationReduction);
 
         bool wasAlreadyFrozen = IsFrozen;
-
         IsFrozen = true;
         FreezeDuration = Mathf.Max(0.5f, duration);
 
         if (!wasAlreadyFrozen)
         {
+            // ✅ เก็บ original speed เพื่อ restore (แต่ไม่แก้ไข character.MoveSpeed)
             OriginalMoveSpeed = character.MoveSpeed;
-            character.MoveSpeed *= 0.3f; // ลดความเร็วเหลือ 30%
 
+            // ❌ ลบบรรทัดนี้ออก
+            // character.MoveSpeed *= 0.3f;
+
+            // ✅ หยุด movement แทน
             if (character.rb != null)
             {
                 character.rb.velocity = Vector3.zero;
             }
+
+            Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen! Original Speed: {OriginalMoveSpeed:F1}, Effective Speed: {character.GetEffectiveMoveSpeed():F1}");
         }
 
         Debug.Log($"[ApplyFreeze] {character.CharacterName} is frozen for {FreezeDuration:F1}s!");
@@ -380,14 +385,17 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        IsFrozen = false;
-        FreezeDuration = 0f;
+        if (IsFrozen)
+        {
+            IsFrozen = false;
+            FreezeDuration = 0f;
 
-        // คืนค่าความเร็ว
-        character.MoveSpeed = OriginalMoveSpeed;
+            // ❌ ลบบรรทัดนี้ออก (ไม่ต้อง restore เพราะไม่ได้แก้ไข)
+            // character.MoveSpeed = OriginalMoveSpeed;
 
-        Debug.Log($"{character.CharacterName} is no longer frozen. Move speed restored: {character.MoveSpeed}");
-        OnStatusEffectChanged?.Invoke(character, StatusEffectType.Freeze, false);
+            Debug.Log($"[RemoveFreeze] {character.CharacterName} is no longer frozen! Speed: {character.GetEffectiveMoveSpeed():F1}");
+            OnStatusEffectChanged?.Invoke(character, StatusEffectType.Freeze, false);
+        }
     }
 
     // ========== 🔥 Burn System ==========

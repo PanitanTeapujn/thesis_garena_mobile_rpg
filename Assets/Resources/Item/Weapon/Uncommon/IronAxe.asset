@@ -18,6 +18,10 @@ MonoBehaviour:
   itemType: 0
   tier: 2
   description: 
+  sellPrice: 0
+  buyPrice: 0
+  isSellable: 1
+  isTradeable: 1
   maxStackSize: 1
   isStackable: 0
   stats:
@@ -29,12 +33,13 @@ MonoBehaviour:
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 0.02
+    attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 20
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

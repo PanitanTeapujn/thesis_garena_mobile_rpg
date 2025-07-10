@@ -226,6 +226,7 @@ MonoBehaviour:
   evasionRate: 0
   attackSpeed: 0
   reductionCoolDown: 0
+  lifeSteal: 0
   attackType: 0
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
@@ -233,6 +234,7 @@ MonoBehaviour:
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
   _IsStatsReady: 0
+  _NetworkedLifeSteal: 0
   isStatsLoaded: 0
   isSpawnComplete: 0
   healthRegenPerSecond: 1
@@ -412,6 +414,7 @@ MonoBehaviour:
     evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
   currentRuneStats:
     attackDamageBonus: 0
     magicDamageBonus: 0
@@ -427,6 +430,7 @@ MonoBehaviour:
     evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
   _NetworkedAttackDamageBonus: 0
   _NetworkedMagicDamageBonus: 0
   _NetworkedArmorBonus: 0
@@ -441,6 +445,7 @@ MonoBehaviour:
   _NetworkedAttackSpeedBonus: 0
   _NetworkedReductionCoolDown: 0
   _NetworkedCriticalMultiplierBonus: 0
+  _NetworkedLifeStealBonus: 0
 --- !u!114 &-3790733776071842223
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -494,6 +499,7 @@ MonoBehaviour:
     armorBonusPerLevel: 1
     criticalChanceBonusPerLevel: 0
     moveSpeedBonusPerLevel: 0
+    lifeStealBonusPerLevel: 0
   expSettings:
     baseExpToNextLevel: 120
     expGrowthRate: 1.5
@@ -538,6 +544,9 @@ MonoBehaviour:
     quantity: 1
     note: 
   - itemData: {fileID: 11400000, guid: 8e0db883a5c8fab4bb6b7bf1439dc926, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 9b5571c5ab683e54dad5b51909377e8a, type: 2}
     quantity: 1
     note: 
   useFallbackItems: 1

@@ -27,4 +27,5 @@ MonoBehaviour:
   evasionRate: 5
   attackSpeed: 1
   reductionCoolDown: 0
+  lifeSteal: 0
   attackType: 0

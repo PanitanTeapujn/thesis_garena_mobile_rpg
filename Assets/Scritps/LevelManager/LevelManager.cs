@@ -15,6 +15,8 @@ public class LevelUpStats
     public int armorBonusPerLevel = 1;
     public float criticalChanceBonusPerLevel = 0.5f;
     public float moveSpeedBonusPerLevel = 0f;
+    public float lifeStealBonusPerLevel = 0f; // Optional: 0.1f = +0.1% ต่อ level
+
 }
 
 [System.Serializable]
@@ -48,6 +50,7 @@ public class LevelManager : NetworkBehaviour
     private float baseEvasionRate;
     private float baseAttackSpeed;
     private float baseReductionCoolDown;
+    private float baseLifeSteal;
     // ========== Network Properties ==========
     [Networked] public int CurrentLevel { get; set; } = 1;
     [Networked] public int CurrentExp { get; set; } = 0;
@@ -358,8 +361,9 @@ public class LevelManager : NetworkBehaviour
                     character.HitRate,                 // total Hit Rate (รวม equipment)
                     character.EvasionRate,             // total Evasion (รวม equipment)
                     character.AttackSpeed,             // total Attack Speed (รวม equipment)
-                    character.ReductionCoolDown        // total CDR (รวม equipment)
-                );
+                    character.ReductionCoolDown ,       // total CDR (รวม equipment)
+                    character.LifeSteal
+                ); 
 
                 Debug.Log($"[LevelManager] ✅ Total stats saved to Firebase for {activeCharacterType}");
                 Debug.Log($"  Saved: HP={character.MaxHp}, ATK={character.AttackDamage}, ARM={character.Armor}");
@@ -398,7 +402,8 @@ public class LevelManager : NetworkBehaviour
                     character.HitRate,
                     character.EvasionRate,
                     character.AttackSpeed,
-                    character.ReductionCoolDown
+                    character.ReductionCoolDown,
+                    character.LifeSteal
                 );
 
                 Debug.Log($"[LevelManager] ✅ Updated stats saved for {activeCharacterType}");
@@ -468,7 +473,7 @@ public class LevelManager : NetworkBehaviour
             characterData.UpdateBaseStats(
                 baseMaxHp, baseMaxMana, baseAttackDamage, baseMagicDamage, baseArmor,
                 baseCriticalChance, baseCriticalDamageBonus, baseMoveSpeed,
-                baseHitRate, baseEvasionRate, baseAttackSpeed, baseReductionCoolDown
+                baseHitRate, baseEvasionRate, baseAttackSpeed, baseReductionCoolDown,baseLifeSteal
             );
 
             Debug.Log($"[LevelManager] 💾 Base stats saved to Firebase");
@@ -567,6 +572,7 @@ public class LevelManager : NetworkBehaviour
         character.Armor += levelUpStats.armorBonusPerLevel;
         character.CriticalChance += levelUpStats.criticalChanceBonusPerLevel;
         character.MoveSpeed += levelUpStats.moveSpeedBonusPerLevel;
+        character.LifeSteal += levelUpStats.lifeStealBonusPerLevel;
 
         // ✅ Full restore on level up
         character.CurrentHp = character.MaxHp;
@@ -655,7 +661,8 @@ public class LevelManager : NetworkBehaviour
                 character.HitRate,
                 character.EvasionRate,
                 character.AttackSpeed,
-                character.ReductionCoolDown
+                character.ReductionCoolDown,
+                character.LifeSteal
             );
 
             Debug.Log($"💾 Quick saved {activeCharacterType} - Level {CurrentLevel} with total stats");

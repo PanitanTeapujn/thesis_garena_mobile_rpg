@@ -172,10 +172,13 @@ public class CombatManager : NetworkBehaviour
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
-
+        if (attacker != null && totalDamage > 0)
+        {
+            ApplyLifesteal(attacker, totalDamage);
+        }
 
         // Apply damage
-      
+
 
         // Sync network state
         SyncHealthUpdate();
@@ -262,6 +265,68 @@ public class CombatManager : NetworkBehaviour
                 HandleDeath();
             }
         }
+    }
+    private void ApplyLifesteal(Character attacker, int damageDealt)
+    {
+        // ✅ ใช้ GetEffectiveLifeSteal() ที่จะรวม Equipment bonus
+        float lifeStealPercent = attacker.GetEffectiveLifeSteal();
+
+        Debug.Log($"[ApplyLifesteal] {attacker.CharacterName}: Effective Lifesteal = {lifeStealPercent:F1}%");
+
+        if (lifeStealPercent <= 0f) return;
+
+        // Calculate lifesteal amount
+        int lifeStealAmount = Mathf.RoundToInt(damageDealt * (lifeStealPercent / 100f));
+
+        if (lifeStealAmount <= 0) return;
+
+        // Apply healing to attacker
+        int oldHp = attacker.CurrentHp;
+        attacker.CurrentHp = Mathf.Min(attacker.CurrentHp + lifeStealAmount, attacker.MaxHp);
+        int actualHeal = attacker.CurrentHp - oldHp;
+
+        if (actualHeal > 0)
+        {
+            Debug.Log($"[Lifesteal] {attacker.CharacterName}: {lifeStealPercent:F1}% of {damageDealt} = {lifeStealAmount} HP healed ({actualHeal} actual)");
+
+            // Show lifesteal text
+            if (HasStateAuthority)
+            {
+                Vector3 textPosition = attacker.transform.position + Vector3.up * 2.5f;
+                RPC_ShowLifestealText(textPosition, actualHeal);
+            }
+
+            // Sync attacker's health
+            SyncAttackerHealth(attacker);
+
+            // Fire heal event
+            OnCharacterHealed?.Invoke(attacker, actualHeal);
+        }
+    }
+
+    // ✅ เพิ่ม RPC สำหรับ Lifesteal text
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowLifestealText(Vector3 position, int healAmount)
+    {
+    }
+
+    // เพิ่ม RPC สำหรับ Lifesteal text
+   
+
+    // เพิ่ม method สำหรับ sync attacker health
+    private void SyncAttackerHealth(Character attacker)
+    {
+        if (HasStateAuthority)
+        {
+            attacker.NetworkedCurrentHp = attacker.CurrentHp;
+            RPC_BroadcastAttackerHealthUpdate(attacker.NetworkedCurrentHp);
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_BroadcastAttackerHealthUpdate(int newHp)
+    {
+        // This will be handled by the attacker's own CombatManager
     }
     #endregion
 

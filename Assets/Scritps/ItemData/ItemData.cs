@@ -56,7 +56,9 @@ public class ItemStats
     [Header("Special Stats")]
     public float reductionCoolDownBonus = 0f;   // % (0.1f = -10% cooldown)
     public float physicalResistanceBonus = 0f;  // % (0.15f = +15% resistance)
-    public float magicalResistanceBonus = 0f;   // % (0.15f = +15% resistance)
+    public float magicalResistanceBonus = 0f;
+    public float lifeStealBonus = 0f;           // % (1.5f = +1.5% lifesteal)
+                                                // % (0.15f = +15% resistance)
     private bool isStackable;
     #endregion
     #region Potion Stats
@@ -87,6 +89,8 @@ public class ItemStats
         equipStats.reductionCoolDownBonus = reductionCoolDownBonus;
         equipStats.physicalResistanceBonus = physicalResistanceBonus;
         equipStats.magicalResistanceBonus = magicalResistanceBonus;
+        equipStats.lifeStealBonus = lifeStealBonus;
+
         return equipStats;
     }
 
@@ -96,7 +100,7 @@ public class ItemStats
                criticalChanceBonus != 0f || criticalDamageBonus != 0f ||
                maxHpBonus != 0 || maxManaBonus != 0 || moveSpeedBonus != 0f ||
                attackSpeedBonus != 0f || hitRateBonus != 0f || evasionRateBonus != 0f ||
-               reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f || magicalResistanceBonus != 0f;
+               reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f || magicalResistanceBonus != 0f || lifeStealBonus != 0f ;
     }
 
     // แทนที่ GetStatsDescription() method เดิมด้วยโค้ดนี้
@@ -139,6 +143,8 @@ public class ItemStats
             statsList.Add($"Physical Res: +{physicalResistanceBonus:F1}%");
         if (magicalResistanceBonus != 0f)
             statsList.Add($"Magical Res: +{magicalResistanceBonus:F1}%");
+        if (lifeStealBonus != 0f)
+            statsList.Add($"Lifesteal: +{lifeStealBonus:F1}%");
 
         // Potion Effects
         if (healAmount > 0)
@@ -392,6 +398,7 @@ public class ItemData : ScriptableObject
         firebaseData.reductionCoolDownBonus = stats.reductionCoolDownBonus;
         firebaseData.physicalResistanceBonus = stats.physicalResistanceBonus;
         firebaseData.magicalResistanceBonus = stats.magicalResistanceBonus;
+        firebaseData.lifeStealBonus = stats.lifeStealBonus;
 
 
         firebaseData.healAmount = stats.healAmount;
@@ -435,6 +442,8 @@ public class ItemData : ScriptableObject
         item.stats.manaAmount = firebaseData.manaAmount;
         item.stats.healPercentage = firebaseData.healPercentage;
         item.stats.manaPercentage = firebaseData.manaPercentage;
+        item.stats.lifeStealBonus = firebaseData.lifeStealBonus;
+
         return item;
     }
     #endregion
@@ -475,6 +484,8 @@ public class FirebaseItemData
     public float reductionCoolDownBonus = 0f;
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
+    public float lifeStealBonus = 0f;
+
     #endregion
     #region Potion Stats (เพิ่มใหม่)
     public int healAmount = 0;
@@ -511,6 +522,7 @@ public class FirebaseItemData
         stats.reductionCoolDownBonus = reductionCoolDownBonus;
         stats.physicalResistanceBonus = physicalResistanceBonus;
         stats.magicalResistanceBonus = magicalResistanceBonus;
+        stats.lifeStealBonus = lifeStealBonus;
 
         stats.healAmount = healAmount;
         stats.manaAmount = manaAmount;

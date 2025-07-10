@@ -1081,6 +1081,8 @@ public class CharacterProgressData
     public float baseEvasionRate = 0f;
     public float baseAttackSpeed = 0f;
     public float baseReductionCoolDown = 0f;
+    public float baseLifeSteal = 0f;
+
     #endregion
 
     #region Total Stats (Base + Equipment Bonuses) - เก็บไว้เพื่อ backward compatibility
@@ -1099,6 +1101,7 @@ public class CharacterProgressData
     public float totalHitRate;
     public float totalEvasionRate;
     public float totalReductionCoolDown;
+    public float totalLifeSteal;
     #endregion
 
     #region Character Equipment System
@@ -1153,7 +1156,7 @@ public class CharacterProgressData
     /// 🆕 อัปเดต base stats
     /// </summary>
     public void UpdateBaseStats(int hp, int mana, int atk, int magic, int armor,
-        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr)
+        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr, float lifesteal)
     {
         baseMaxHp = hp;
         baseMaxMana = mana;
@@ -1167,6 +1170,7 @@ public class CharacterProgressData
         baseEvasionRate = evasion;
         baseAttackSpeed = atkSpeed;
         baseReductionCoolDown = cdr;
+        baseLifeSteal = lifesteal;
 
         hasBaseStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -1178,7 +1182,7 @@ public class CharacterProgressData
     /// 🆕 อัปเดต total stats
     /// </summary>
     public void UpdateTotalStats(int hp, int mana, int atk, int magic, int armor,
-        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr)
+        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr, float lifesteal)
     {
         totalMaxHp = hp;
         totalMaxMana = mana;
@@ -1192,6 +1196,7 @@ public class CharacterProgressData
         totalEvasionRate = evasion;
         totalAttackSpeed = atkSpeed;
         totalReductionCoolDown = cdr;
+        totalLifeSteal = lifesteal;
 
         hasTotalStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");

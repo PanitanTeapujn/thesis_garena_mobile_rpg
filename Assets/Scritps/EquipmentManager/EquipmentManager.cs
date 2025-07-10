@@ -65,6 +65,8 @@ public class EquipmentStats
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
     #endregion
+    [Header("Special Stats")]
+    public float lifeStealBonus = 0f;
 }
 
 [System.Serializable]
@@ -114,6 +116,8 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedAttackSpeedBonus { get; set; }
     [Networked] public float NetworkedReductionCoolDown { get; set; }
     [Networked] public float NetworkedCriticalMultiplierBonus { get; set; }
+    [Networked] public float NetworkedLifeStealBonus { get; set; }
+
     #endregion
 
     #region Unity Lifecycle & Initialization  Awake, Start, Spawned และการเริ่มต้นระบบ
@@ -214,9 +218,10 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicDamage += currentEquipmentStats.magicDamageBonus;
         character.Armor += currentEquipmentStats.armorBonus;
         character.CriticalChance += currentEquipmentStats.criticalChanceBonus;
-
-        // ✅ เพิ่ม: Apply critical multiplier bonus
         character.CriticalDamageBonus += currentEquipmentStats.criticalMultiplierBonus;
+
+        // ✅ เพิ่มบรรทัดนี้
+        character.LifeSteal += currentEquipmentStats.lifeStealBonus;
 
         character.MaxHp += currentEquipmentStats.maxHpBonus;
         character.MaxMana += currentEquipmentStats.maxManaBonus;
@@ -230,9 +235,9 @@ public class EquipmentManager : NetworkBehaviour
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
-        Debug.Log($"[Equipment Applied] {character.CharacterName} - ATK: +{currentEquipmentStats.attackDamageBonus}, ARM: +{currentEquipmentStats.armorBonus}");
-        Debug.Log($"[Equipment Applied] Critical Multiplier: +{currentEquipmentStats.criticalMultiplierBonus} (Total: {character.CriticalDamageBonus})");
+        Debug.Log($"[Equipment Applied] {character.CharacterName} - Lifesteal: +{currentEquipmentStats.lifeStealBonus}% (Total: {character.GetEffectiveLifeSteal():F1}%)");
     }
+
 
     private void RemoveEquipmentStats()
     {
@@ -240,9 +245,10 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicDamage -= currentEquipmentStats.magicDamageBonus;
         character.Armor -= currentEquipmentStats.armorBonus;
         character.CriticalChance -= currentEquipmentStats.criticalChanceBonus;
-
-        // ✅ แก้ไข: Remove critical multiplier bonus
         character.CriticalDamageBonus -= currentEquipmentStats.criticalMultiplierBonus;
+
+        // ✅ เพิ่มบรรทัดนี้
+        character.LifeSteal -= currentEquipmentStats.lifeStealBonus;
 
         character.MaxHp -= currentEquipmentStats.maxHpBonus;
         character.MaxMana -= currentEquipmentStats.maxManaBonus;
@@ -263,15 +269,16 @@ public class EquipmentManager : NetworkBehaviour
         character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
         character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-
-        // ✅ ป้องกัน critical multiplier ติดลบ
         character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+
+        // ✅ เพิ่มบรรทัดนี้ - ป้องกัน Lifesteal ติดลบ
+        character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
 
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
-        Debug.Log($"[Equipment Removed] Critical Multiplier: -{currentEquipmentStats.criticalMultiplierBonus} (Total: {character.CriticalDamageBonus})");
+        Debug.Log($"[Equipment Removed] Lifesteal: -{currentEquipmentStats.lifeStealBonus}% (Total: {character.GetEffectiveLifeSteal():F1}%)");
     }
     private void ApplyRuneStats()
     {
@@ -279,9 +286,10 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicDamage += currentRuneStats.magicDamageBonus;
         character.Armor += currentRuneStats.armorBonus;
         character.CriticalChance += currentRuneStats.criticalChanceBonus;
-
-        // ✅ เพิ่ม: Apply rune critical multiplier bonus
         character.CriticalDamageBonus += currentRuneStats.criticalMultiplierBonus;
+
+        // ✅ เพิ่มบรรทัดนี้
+        character.LifeSteal += currentRuneStats.lifeStealBonus;
 
         character.MaxHp += currentRuneStats.maxHpBonus;
         character.MaxMana += currentRuneStats.maxManaBonus;
@@ -291,7 +299,7 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed += currentRuneStats.attackSpeedBonus;
         character.ReductionCoolDown += currentRuneStats.reductionCoolDownBonus;
 
-        Debug.Log($"[Rune Applied] {character.CharacterName} - ATK: +{currentRuneStats.attackDamageBonus}, CritMult: +{currentRuneStats.criticalMultiplierBonus}");
+        Debug.Log($"[Rune Applied] {character.CharacterName} - Lifesteal: +{currentRuneStats.lifeStealBonus}%");
     }
 
     private void RemoveRuneStats()
@@ -300,9 +308,10 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicDamage -= currentRuneStats.magicDamageBonus;
         character.Armor -= currentRuneStats.armorBonus;
         character.CriticalChance -= currentRuneStats.criticalChanceBonus;
-
-        // ✅ เพิ่ม: Remove rune critical multiplier bonus
         character.CriticalDamageBonus -= currentRuneStats.criticalMultiplierBonus;
+
+        // ✅ เพิ่มบรรทัดนี้
+        character.LifeSteal -= currentRuneStats.lifeStealBonus;
 
         character.MaxHp -= currentRuneStats.maxHpBonus;
         character.MaxMana -= currentRuneStats.maxManaBonus;
@@ -312,7 +321,7 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed -= currentRuneStats.attackSpeedBonus;
         character.ReductionCoolDown -= currentRuneStats.reductionCoolDownBonus;
 
-        // Ensure stats don't go negative (เหมือนเดิม)
+        // Ensure stats don't go negative
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
         character.MagicDamage = Mathf.Max(1, character.MagicDamage);
         character.Armor = Mathf.Max(0, character.Armor);
@@ -323,9 +332,10 @@ public class EquipmentManager : NetworkBehaviour
         character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
         character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-
-        // ✅ ป้องกัน critical multiplier ติดลบ
         character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+
+        // ✅ เพิ่มบรรทัดนี้
+        character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
     }
 
     private void UpdateAllStats()
@@ -383,6 +393,7 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedEvasionRateBonus = totalStats.evasionRateBonus;
             NetworkedAttackSpeedBonus = totalStats.attackSpeedBonus;
             NetworkedReductionCoolDown = totalStats.reductionCoolDownBonus;
+            NetworkedLifeStealBonus = totalStats.lifeStealBonus;
 
             Debug.Log($"[Equipment Sync] {character.CharacterName}: Critical Multiplier Bonus = {totalStats.criticalMultiplierBonus}");
         }
@@ -390,6 +401,12 @@ public class EquipmentManager : NetworkBehaviour
     #endregion
 
     #region Public Query Methods  methods สำหรับดูข้อมูล stats ต่างๆ
+    public float GetLifeStealBonus()
+    {
+        float totalBonus = currentEquipmentStats.lifeStealBonus + currentRuneStats.lifeStealBonus;
+        Debug.Log($"[GetLifeStealBonus] {character.CharacterName}: Equipment={currentEquipmentStats.lifeStealBonus}, Rune={currentRuneStats.lifeStealBonus}, Total={totalBonus}");
+        return totalBonus;
+    }
     public int GetArmorBonus()
     {
         return currentEquipmentStats.armorBonus + currentRuneStats.armorBonus;
@@ -460,6 +477,10 @@ public class EquipmentManager : NetworkBehaviour
         total.evasionRateBonus = currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
         total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
         total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
+
+        // ✅ เพิ่มบรรทัดนี้
+        total.lifeStealBonus = currentEquipmentStats.lifeStealBonus + currentRuneStats.lifeStealBonus;
+
         return total;
     }
     #endregion

@@ -448,6 +448,8 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.SetFloat("PlayerEvasionRate", currentCharacter.totalEvasionRate);
         PlayerPrefs.SetFloat("PlayerAttackSpeed", currentCharacter.totalAttackSpeed);
         PlayerPrefs.SetFloat("PlayerReductionCoolDown", currentCharacter.totalReductionCoolDown);
+        PlayerPrefs.SetFloat("PlayerLifeSteal", currentCharacter.totalLifeSteal);
+
         PlayerPrefs.Save();
     }
 
@@ -472,7 +474,7 @@ public class PersistentPlayerData : MonoBehaviour
 
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
        int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
-       float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
+       float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal)
     {
         if (multiCharacterData == null)
         {
@@ -505,6 +507,7 @@ public class PersistentPlayerData : MonoBehaviour
             character.totalEvasionRate = evasionRate;
             character.totalAttackSpeed = attackSpeed;
             character.totalReductionCoolDown = reductionCoolDown;
+            character.totalLifeSteal = lifeSteal; // ✅ เพิ่ม
 
             // Mark ว่ามี total stats
             character.hasTotalStats = true;
@@ -523,12 +526,7 @@ public class PersistentPlayerData : MonoBehaviour
 
 
     // Note: This method appears to be a duplicate with different parameters - consider removing or renaming
-    internal void UpdateLevelAndStats(int currentLevel, int currentExp, int expToNextLevel, int maxHp, int maxMana,
-        int attackDamage, int magicDamage, int armor, float criticalChance, float criticalmulti, float criticalMultiplier,
-        float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown)
-    {
-        throw new System.NotImplementedException();
-    }
+    
     #endregion
 
     #region Player Directory & Registration การลงทะเบียนผู้เล่น
@@ -3332,7 +3330,7 @@ public class PersistentPlayerData : MonoBehaviour
             characterData.UpdateBaseStats(
                 character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
                 character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
-                character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown
+                character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown,character.LifeSteal
             );
 
             Debug.Log($"[SaveBaseStatsToCharacterData] ✅ Base stats saved: HP={character.MaxHp}, ATK={character.AttackDamage}");
