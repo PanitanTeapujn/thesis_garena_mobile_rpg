@@ -304,7 +304,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         Character character = hero.GetComponent<Character>();
         if (character != null)
         {
-            Debug.Log($"[PlayerSpawner] 📊 Final spawned stats for {hero.CharacterName}: HP={character.MaxHp}, ATK={character.AttackDamage}, ARM={character.Armor}");
+            Debug.Log($"[PlayerSpawner] 📊 Final spawned stats for {hero.CharacterName}: HP={character.MaxHp}, ATK={character.AttackDamage}, CriBonus={character.CriticalDamageBonus}, CriBonus{character.CriticalDamageBonus }");
         }
     }
     private IEnumerator DelayedWorldUISetup(Hero hero)

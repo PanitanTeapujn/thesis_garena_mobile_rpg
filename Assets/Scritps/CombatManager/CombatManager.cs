@@ -176,15 +176,19 @@ public class CombatManager : NetworkBehaviour
             isCritical = CalculateCriticalHit(attacker);
         }
 
-        // คำนวณ damage แยกตาม type
-        int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal);
-        int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic);
+        // ✅ แก้ไข: ใช้ attacker สำหรับคำนวณ critical damage
+        int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal, attacker);
+        int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic, attacker);
         int totalDamage = finalPhysicalDamage + finalMagicDamage;
 
         // Apply damage
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
+
+
+        // Apply damage
+      
 
         // Sync network state
         SyncHealthUpdate();
@@ -205,8 +209,8 @@ public class CombatManager : NetworkBehaviour
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
+        int finalDamage = CalculateFinalDamage(damage, isCritical, damageType, null);
 
-        int finalDamage = CalculateFinalDamage(damage, isCritical, damageType);
 
         int oldHp = character.CurrentHp;
         character.CurrentHp -= finalDamage;
@@ -275,7 +279,7 @@ public class CombatManager : NetworkBehaviour
     #endregion
 
     #region Damage Calculations - การคำนวณดาเมจสุดท้าย รวม Critical, Armor, Resistance และ Auras
-    private int CalculateFinalDamage(int baseDamage, bool isCritical, DamageType damageType)
+    private int CalculateFinalDamage(int baseDamage, bool isCritical, DamageType damageType, Character attacker = null)
     {
         if (baseDamage <= 0) return 0;
 
@@ -292,14 +296,24 @@ public class CombatManager : NetworkBehaviour
         // Critical damage calculation
         if (isCritical)
         {
-            float criticalDamageBonus = character.GetEffectiveCriticalDamageBonus();
+            // ✅ แก้ไข: ใช้ attacker แทน character
+            float criticalDamageBonus = 0f;
+            if (attacker != null)
+            {
+                criticalDamageBonus = attacker.GetEffectiveCriticalDamageBonus();
+            }
+            else
+            {
+                criticalDamageBonus = character.GetEffectiveCriticalDamageBonus();
+            }
+
             int criticalDamage = Mathf.RoundToInt(finalDamage * (1f + criticalDamageBonus));
 
-            Debug.Log($"[Critical Hit] Base: {finalDamage} × (1 + {criticalDamageBonus:F2}) = {criticalDamage}");
-            Debug.Log($"[Critical Stats] CriticalDamageBonus: {character.CriticalDamageBonus}, Equipment Bonus: {(equipmentManager?.GetCriticalMultiplierBonus() ?? 0f)}, Total: {criticalDamageBonus}");
+            Debug.Log($"[Critical Hit] {attacker?.CharacterName ?? character.CharacterName}: Base: {finalDamage} × (1 + {criticalDamageBonus:F2}) = {criticalDamage}");
 
             return criticalDamage;
         }
+
 
         // Apply resistance based on damage type
         float resistance = 0f;
@@ -419,6 +433,10 @@ public class CombatManager : NetworkBehaviour
         }
 
         bool isCritical = critRoll < attackerCritChance;
+
+        // ✅ เพิ่ม debug
+        Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
+
         return isCritical;
     }
 

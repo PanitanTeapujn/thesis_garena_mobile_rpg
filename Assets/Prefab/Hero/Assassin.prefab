@@ -525,7 +525,7 @@ MonoBehaviour:
   - itemData: {fileID: 0}
     quantity: 1
     note: 
-  - itemData: {fileID: 0}
+  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
     quantity: 1
     note: 
   - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}

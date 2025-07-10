@@ -215,8 +215,8 @@ public class EquipmentManager : NetworkBehaviour
         character.Armor += currentEquipmentStats.armorBonus;
         character.CriticalChance += currentEquipmentStats.criticalChanceBonus;
 
-        // 🔧 สำหรับวิธีที่ 2: ไม่แตะ character.CriticalMultiplier
-        // ให้ GetEffectiveCriticalMultiplier() คำนวณเอง
+        // ✅ เพิ่ม: Apply critical multiplier bonus
+        character.CriticalDamageBonus += currentEquipmentStats.criticalMultiplierBonus;
 
         character.MaxHp += currentEquipmentStats.maxHpBonus;
         character.MaxMana += currentEquipmentStats.maxManaBonus;
@@ -231,7 +231,7 @@ public class EquipmentManager : NetworkBehaviour
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
         Debug.Log($"[Equipment Applied] {character.CharacterName} - ATK: +{currentEquipmentStats.attackDamageBonus}, ARM: +{currentEquipmentStats.armorBonus}");
-        Debug.Log($"Critical Multiplier Bonus: {currentEquipmentStats.criticalMultiplierBonus} (not applied to character, will be calculated in GetEffectiveCriticalMultiplier)");
+        Debug.Log($"[Equipment Applied] Critical Multiplier: +{currentEquipmentStats.criticalMultiplierBonus} (Total: {character.CriticalDamageBonus})");
     }
 
     private void RemoveEquipmentStats()
@@ -241,13 +241,8 @@ public class EquipmentManager : NetworkBehaviour
         character.Armor -= currentEquipmentStats.armorBonus;
         character.CriticalChance -= currentEquipmentStats.criticalChanceBonus;
 
-        // 🔧 แก้ไข: ลบ critical multiplier bonus
-        float critMultBonus = currentEquipmentStats.criticalMultiplierBonus;
-        if (critMultBonus != 0f)
-        {
-            character.CriticalDamageBonus -= critMultBonus;
-            Debug.Log($"[Equipment Removed] {character.CharacterName}: Critical Multiplier -{critMultBonus} (new total: {character.CriticalDamageBonus})");
-        }
+        // ✅ แก้ไข: Remove critical multiplier bonus
+        character.CriticalDamageBonus -= currentEquipmentStats.criticalMultiplierBonus;
 
         character.MaxHp -= currentEquipmentStats.maxHpBonus;
         character.MaxMana -= currentEquipmentStats.maxManaBonus;
@@ -269,20 +264,25 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
         character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
 
-        // 🔧 เพิ่ม: ป้องกัน critical multiplier ติดลบ
+        // ✅ ป้องกัน critical multiplier ติดลบ
         character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
 
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
-    }
 
+        Debug.Log($"[Equipment Removed] Critical Multiplier: -{currentEquipmentStats.criticalMultiplierBonus} (Total: {character.CriticalDamageBonus})");
+    }
     private void ApplyRuneStats()
     {
         character.AttackDamage += currentRuneStats.attackDamageBonus;
         character.MagicDamage += currentRuneStats.magicDamageBonus;
         character.Armor += currentRuneStats.armorBonus;
         character.CriticalChance += currentRuneStats.criticalChanceBonus;
+
+        // ✅ เพิ่ม: Apply rune critical multiplier bonus
+        character.CriticalDamageBonus += currentRuneStats.criticalMultiplierBonus;
+
         character.MaxHp += currentRuneStats.maxHpBonus;
         character.MaxMana += currentRuneStats.maxManaBonus;
         character.MoveSpeed += currentRuneStats.moveSpeedBonus;
@@ -290,7 +290,8 @@ public class EquipmentManager : NetworkBehaviour
         character.EvasionRate += currentRuneStats.evasionRateBonus;
         character.AttackSpeed += currentRuneStats.attackSpeedBonus;
         character.ReductionCoolDown += currentRuneStats.reductionCoolDownBonus;
-        Debug.Log($"[Rune Applied] {character.CharacterName} - ATK: +{currentRuneStats.attackDamageBonus}");
+
+        Debug.Log($"[Rune Applied] {character.CharacterName} - ATK: +{currentRuneStats.attackDamageBonus}, CritMult: +{currentRuneStats.criticalMultiplierBonus}");
     }
 
     private void RemoveRuneStats()
@@ -299,6 +300,10 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicDamage -= currentRuneStats.magicDamageBonus;
         character.Armor -= currentRuneStats.armorBonus;
         character.CriticalChance -= currentRuneStats.criticalChanceBonus;
+
+        // ✅ เพิ่ม: Remove rune critical multiplier bonus
+        character.CriticalDamageBonus -= currentRuneStats.criticalMultiplierBonus;
+
         character.MaxHp -= currentRuneStats.maxHpBonus;
         character.MaxMana -= currentRuneStats.maxManaBonus;
         character.MoveSpeed -= currentRuneStats.moveSpeedBonus;
@@ -307,7 +312,7 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed -= currentRuneStats.attackSpeedBonus;
         character.ReductionCoolDown -= currentRuneStats.reductionCoolDownBonus;
 
-        // Ensure stats don't go negative
+        // Ensure stats don't go negative (เหมือนเดิม)
         character.AttackDamage = Mathf.Max(1, character.AttackDamage);
         character.MagicDamage = Mathf.Max(1, character.MagicDamage);
         character.Armor = Mathf.Max(0, character.Armor);
@@ -318,6 +323,9 @@ public class EquipmentManager : NetworkBehaviour
         character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
         character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
         character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+
+        // ✅ ป้องกัน critical multiplier ติดลบ
+        character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
     }
 
     private void UpdateAllStats()
@@ -418,11 +426,9 @@ public class EquipmentManager : NetworkBehaviour
         float runeBonus = currentRuneStats.criticalMultiplierBonus;
         float totalBonus = equipmentBonus + runeBonus;
 
-        // 🔧 Debug: แสดงรายละเอียดการคำนวณ
-        if (Application.isEditor && totalBonus > 0f)
-        {
-            Debug.Log($"[GetCriticalMultiplierBonus] {character.CharacterName}: Equipment={equipmentBonus}, Rune={runeBonus}, Total={totalBonus}");
-        }
+        // ✅ Debug แสดงรายละเอียด
+        Debug.Log($"[GetCriticalMultiplierBonus] {character.CharacterName}: Equipment={equipmentBonus}, Rune={runeBonus}, Total={totalBonus}");
+        Debug.Log($"[Equipment Stats] criticalMultiplierBonus = {currentEquipmentStats.criticalMultiplierBonus}");
 
         return totalBonus;
     }

@@ -1367,18 +1367,17 @@ public class Character : NetworkBehaviour
         return baseAttackSpeed;
     }
 
-    public float GetEffectiveCriticalDamageBonus()
+    public virtual float GetEffectiveCriticalDamageBonus()
     {
-        float baseCritBonus = criticalDamageBonus;
+        float baseCriticalBonus = CriticalDamageBonus / 100f;
+
+        // Equipment bonus
         float equipmentBonus = 0f;
+       
 
-        if (equipmentManager != null)
-        {
-            equipmentBonus = equipmentManager.GetCriticalMultiplierBonus();
-        }
+        float totalBonus = baseCriticalBonus + equipmentBonus;
 
-        float totalBonus = baseCritBonus + equipmentBonus;
-
+        Debug.Log($"[GetEffectiveCriticalDamageBonus] {CharacterName}: Base={CriticalDamageBonus}, Equipment={equipmentManager?.GetCriticalMultiplierBonus()}, Total={totalBonus}");
 
         return totalBonus;
     }

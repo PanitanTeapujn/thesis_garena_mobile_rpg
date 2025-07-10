@@ -1031,8 +1031,9 @@ public class CombatUIManager : MonoBehaviour
 
         if (criticalDamageText != null)
         {
-            criticalDamageText.text = $"CRIT DMG: {localHero.GetEffectiveCriticalDamageBonus():F1}%";
+            criticalDamageText.text = $"CRIT DMG: {localHero.GetEffectiveCriticalDamageBonus() * 100f:F1}%";
         }
+
 
         if (hitRateText != null)
         {

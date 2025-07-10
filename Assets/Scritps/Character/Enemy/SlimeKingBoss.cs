@@ -486,7 +486,7 @@ public class SlimeKingBoss : NetworkEnemy
 
             case 1: // Ice
                 hero.TakeDamage(elementalDamage, DamageType.Magic);
-                hero.ApplyStatusEffect(StatusEffectType.Freeze, 0, 4f);
+                hero.ApplyStatusEffect(StatusEffectType.Bleed, 2, 4f);
                 Debug.Log($"❄️ Elemental Ice hit {hero.CharacterName}!");
                 break;
 
