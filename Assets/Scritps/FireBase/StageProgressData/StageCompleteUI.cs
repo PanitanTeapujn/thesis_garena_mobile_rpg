@@ -56,40 +56,9 @@ public class StageCompleteUI : MonoBehaviour
             Debug.LogWarning("[StageCompleteUI] Stage complete panel is not assigned!");
             return;
         }
+
+        // เรียกแค่ coroutine เท่านั้น ไม่แสดง UI ทันที
         StartCoroutine(ShowStageCompleteWithDelay(stageName));
-
-        // 🆕 Debug ข้อมูล rewards ก่อนแสดง
-        var preDisplayRewards = StageRewardTracker.GetCurrentRewards();
-        Debug.Log($"[StageCompleteUI] 🔍 Pre-display rewards: Gold={preDisplayRewards.totalGoldEarned}, Items={preDisplayRewards.itemsEarned.Count}");
-
-        // หยุดการติดตาม rewards และคำนวณเวลา
-        StageRewardTracker.Instance.StopStageTracking();
-
-        // 🆕 Debug ข้อมูลหลัง StopTracking
-        var postStopRewards = StageRewardTracker.GetCurrentRewards();
-        Debug.Log($"[StageCompleteUI] 🔍 Post-stop rewards: Gold={postStopRewards.totalGoldEarned}, Items={postStopRewards.itemsEarned.Count}");
-
-        // แสดง panel
-        stageCompletePanel.SetActive(true);
-
-        // ตั้งค่าข้อความพื้นฐาน
-        if (stageNameText != null)
-            stageNameText.text = stageName;
-
-        if (congratsText != null)
-            congratsText.text = "🎉 STAGE COMPLETED! 🎉";
-
-        // แสดงข้อมูล rewards
-        DisplayStageRewards();
-
-        // เล่นเสียง
-        PlayVictorySound();
-
-        // หยุดเวลาชั่วขณะ (optional)
-        Time.timeScale = 0.1f;
-        StartCoroutine(RestoreTimeScale());
-
-        Debug.Log($"🏆 [StageCompleteUI] Showing stage complete with rewards for: {stageName}");
     }
 
     /// <summary>

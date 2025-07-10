@@ -6616,6 +6616,8 @@ MonoBehaviour:
     type: 3}
   completionTimeText: {fileID: 864906834}
   enemiesKilledText: {fileID: 1592221207}
+  delayBeforeShow: 5
+  fadeInDuration: 2
   victoryAudioSource: {fileID: 0}
   victorySound: {fileID: 0}
 --- !u!1 &1685072796
