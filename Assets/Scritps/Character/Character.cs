@@ -1353,19 +1353,39 @@ public class Character : NetworkBehaviour
         return baseReductionCoolDown;
     }
 
-    public float GetEffectiveAttackSpeed()
+    public virtual float GetEffectiveAttackSpeed()
     {
-        float baseAttackSpeed = attackSpeed;
+        // ✅ เปลี่ยนจาก multiplier เป็น % reduction
+        float baseAttackSpeed = AttackSpeed; // ค่าฐานจาก character (ไม่ใช้แล้ว)
 
-        // ✅ รวม Attack Speed Aura
-        if (statusEffectManager != null)
+        // รวม attack speed bonus เป็น %
+        float totalAttackSpeedBonus = 0f;
+
+        // Equipment bonus (เป็น %)
+        if (equipmentManager != null)
         {
-            float attackSpeedMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
-            baseAttackSpeed *= attackSpeedMultiplier;
+            totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
         }
 
-        return baseAttackSpeed;
+        // Status effect bonus (เป็น %)
+        if (statusEffectManager != null)
+        {
+            float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
+            float auraBonus = (auraMultiplier - 1f) * 100f; // แปลง 1.3x เป็น 30%
+            totalAttackSpeedBonus += auraBonus;
+        }
+
+        // ✅ คำนวณ cooldown reduction แทน speed multiplier
+        float cooldownReduction = totalAttackSpeedBonus / 100f; // แปลง % เป็น decimal
+        cooldownReduction = Mathf.Clamp(cooldownReduction, 0f, 0.9f); // จำกัดไม่เกิน 90%
+
+        // ✅ Debug แสดงรายละเอียดใหม่
+        Debug.Log($"[GetEffectiveAttackSpeed] {CharacterName}: Attack Speed Bonus = {totalAttackSpeedBonus}%, Cooldown Reduction = {cooldownReduction * 100f}%");
+
+        // return cooldown reduction สำหรับใช้ในการคำนวณ
+        return cooldownReduction;
     }
+
 
     public virtual float GetEffectiveCriticalDamageBonus()
     {

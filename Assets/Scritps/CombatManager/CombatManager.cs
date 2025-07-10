@@ -127,26 +127,13 @@ public class CombatManager : NetworkBehaviour
     private float CalculateAttackCooldownWithSpeed(Character attacker)
     {
         float baseAttackCooldown = attacker.AttackCooldown;
-        float attackSpeedMultiplier = attacker.AttackSpeed;
 
-        if (attacker.GetComponent<EquipmentManager>() != null)
-        {
-            attackSpeedMultiplier += attacker.GetComponent<EquipmentManager>().GetAttackSpeedBonus();
-        }
+        // ✅ ใช้ระบบใหม่: cooldown reduction
+        float cooldownReduction = attacker.GetEffectiveAttackSpeed(); // ได้ค่า 0-0.9
+        float finalCooldown = baseAttackCooldown * (1f - cooldownReduction);
 
-        if (attacker.GetComponent<StatusEffectManager>() != null)
-        {
-            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
-            float auraMultiplier = attackerStatus.GetTotalAttackSpeedMultiplier();
-            attackSpeedMultiplier *= auraMultiplier;
+        Debug.Log($"[Attack Cooldown] {attacker.CharacterName}: Base={baseAttackCooldown}s, Reduction={cooldownReduction * 100f}%, Final={finalCooldown:F2}s");
 
-            if (auraMultiplier > 1f)
-            {
-                Debug.Log($"[Attack Speed Aura] Attack speed boosted by {(auraMultiplier - 1f) * 100:F0}%");
-            }
-        }
-
-        float finalCooldown = baseAttackCooldown / Mathf.Max(0.1f, attackSpeedMultiplier);
         return finalCooldown;
     }
     #endregion
@@ -435,7 +422,7 @@ public class CombatManager : NetworkBehaviour
         bool isCritical = critRoll < attackerCritChance;
 
         // ✅ เพิ่ม debug
-        Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
+      //  Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
 
         return isCritical;
     }

@@ -657,9 +657,8 @@ public class Assassin : Hero
 
             if (nearestEnemy != null)
             {
-                // ✅ ง่ายขึ้น: ใช้ RPC เดียว
                 bool hasPoisonInfusion = PoisonInfusionStacks > 0;
-                bool guaranteedCrit = PoisonInfusionStacks == 1; // ครั้งสุดท้าย
+                bool guaranteedCrit = PoisonInfusionStacks == 1;
 
                 RPC_PerformAssassinAttack(nearestEnemy.Object, hasPoisonInfusion, guaranteedCrit);
 
@@ -670,12 +669,13 @@ public class Assassin : Hero
                     Debug.Log($"🐍 Poison Infusion: {PoisonInfusionStacks} stacks remaining");
                 }
 
-                // ✅ ใช้ GetEffectiveAttackSpeed() แทน AttackSpeed
-                float effectiveAttackSpeed = GetEffectiveAttackSpeed();
-                float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed);
+                // ✅ ใช้ระบบใหม่: cooldown reduction
+                float cooldownReduction = GetEffectiveAttackSpeed(); // ได้ค่า 0-0.9 (0%-90%)
+                float finalAttackCooldown = AttackCooldown * (1f - cooldownReduction);
+
                 nextAttackTime = Time.time + finalAttackCooldown;
 
-                Debug.Log($"🐍 Assassin attack! Speed: {effectiveAttackSpeed:F1}x, Cooldown: {finalAttackCooldown:F1}s");
+                Debug.Log($"🐍 Assassin attack! Cooldown Reduction: {cooldownReduction * 100f}%, Final Cooldown: {finalAttackCooldown:F2}s");
             }
         }
     }

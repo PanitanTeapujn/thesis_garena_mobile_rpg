@@ -1047,8 +1047,10 @@ public class CombatUIManager : MonoBehaviour
 
         if (attackSpeedText != null)
         {
-            attackSpeedText.text = $"AS: {localHero.GetEffectiveAttackSpeed():F2}";
+            float multiplier = 1f + localHero.GetEffectiveAttackSpeed();
+            attackSpeedText.text = $"AS: x{multiplier:F2}";
         }
+
     }
 
     public void ShowEquipmentItemDetail(ItemData itemData)

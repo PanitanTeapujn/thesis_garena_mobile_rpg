@@ -600,12 +600,10 @@
                 if (networkInputData.attack && Time.time >= nextAttackTime)
                 {
                     TryAttack();
-                    float effectiveAttackSpeed = GetEffectiveAttackSpeed();
-                    float attackCooldown = (AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed)) * reductionMultiplier;
-                    nextAttackTime = Time.time + attackCooldown;
+                    // ✅ ลบการคำนวณ attack cooldown ที่นี่ เพราะ TryAttack() จะจัดการเอง
                 }
 
-                // ✅ Skills - ลบการเช็ค authority เพิ่มเติม
+                // Skills - ใช้ cooldown reduction เหมือนเดิม
                 if (networkInputData.skill1 && !skill1Consumed)
                 {
                     if (Time.time >= nextSkill1Time)
@@ -648,7 +646,7 @@
             }
         }
 
-        // ✅ Network sync - ทำทั้ง StateAuthority และ InputAuthority
+        // Network sync - ทำทั้ง StateAuthority และ InputAuthority
         if (HasStateAuthority)
         {
             NetworkedCurrentHp = CurrentHp;
@@ -657,7 +655,7 @@
             NetworkedMaxMana = MaxMana;
         }
 
-        // ✅ Client sync to server
+        // Client sync to server
         if (HasInputAuthority && !HasStateAuthority)
         {
             if (NetworkedCurrentHp != CurrentHp || NetworkedCurrentMana != CurrentMana)
@@ -774,12 +772,13 @@
             {
                 RPC_PerformAttack(nearestEnemy.Object);
 
-                // ✅ 🌟 เปลี่ยน: ใช้ GetEffectiveAttackSpeed() แทน AttackSpeed
-                float effectiveAttackSpeed = GetEffectiveAttackSpeed();
-                float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed);
+                // ✅ ใช้ระบบใหม่: cooldown reduction
+                float cooldownReduction = GetEffectiveAttackSpeed(); // ได้ค่า 0-0.9 (0%-90%)
+                float finalAttackCooldown = AttackCooldown * (1f - cooldownReduction);
 
                 nextAttackTime = Time.time + finalAttackCooldown;
-                Debug.Log($"Hero attacking enemy at distance: {Vector3.Distance(transform.position, nearestEnemy.transform.position)} | Attack Speed: {effectiveAttackSpeed:F1}x");
+
+                Debug.Log($"Hero attacking enemy | Cooldown Reduction: {cooldownReduction * 100f}%, Final Cooldown: {finalAttackCooldown:F2}s");
             }
         }
     }
