@@ -28,7 +28,7 @@ MonoBehaviour:
     attackDamageBonus: 10
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 2
+    criticalChanceBonus: 5
     criticalDamageBonus: 10
     maxHpBonus: 0
     maxManaBonus: 0
@@ -39,7 +39,7 @@ MonoBehaviour:
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
-    lifeStealBonus: 20
+    lifeStealBonus: 3
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

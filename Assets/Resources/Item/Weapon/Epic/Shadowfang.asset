@@ -33,12 +33,13 @@ MonoBehaviour:
     maxHpBonus: 100
     maxManaBonus: 0
     moveSpeedBonus: 0.05
-    attackSpeedBonus: 50
+    attackSpeedBonus: 10
     hitRateBonus: 5
     evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

@@ -10,31 +10,36 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Dragon Slayer
+  m_Name: Shadow Dagger
   m_EditorClassIdentifier: 
-  itemId: Dragon Slayer
-  itemName: Dragon Slayer
-  itemIcon: {fileID: 21300000, guid: 23e3487bd159e544bbce0a44b6faadc4, type: 3}
-  itemType: 0
+  itemId: "\tMask of Shadows"
+  itemName: "\tMask of Shadows"
+  itemIcon: {fileID: 21300000, guid: 3253ad9deab97584d9f92d6a2fad17b4, type: 3}
+  itemType: 1
   tier: 5
   description: 
+  sellPrice: 0
+  buyPrice: 0
+  isSellable: 1
+  isTradeable: 1
   maxStackSize: 1
   isStackable: 0
   stats:
-    attackDamageBonus: 50
+    attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 12
-    criticalDamageBonus: 50
-    maxHpBonus: 200
+    criticalChanceBonus: 8
+    criticalDamageBonus: 0
+    maxHpBonus: 0
     maxManaBonus: 0
-    moveSpeedBonus: 0.1
-    attackSpeedBonus: 0.12
-    hitRateBonus: 5
-    evasionRateBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 10
+    hitRateBonus: 0
+    evasionRateBonus: 5
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

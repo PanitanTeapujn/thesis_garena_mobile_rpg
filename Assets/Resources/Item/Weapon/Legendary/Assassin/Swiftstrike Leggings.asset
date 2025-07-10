@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
+  m_Name: Swiftstrike Leggings
+  m_EditorClassIdentifier: 
+  itemId: "\tSwiftstrike Leggings"
+  itemName: "\tSwiftstrike Leggings"
+  itemIcon: {fileID: 21300000, guid: 5ab71ab515b5c864b99cbc0e848d3662, type: 3}
+  itemType: 3
+  tier: 5
+  description: 
+  sellPrice: 0
+  buyPrice: 0
+  isSellable: 1
+  isTradeable: 1
+  maxStackSize: 1
+  isStackable: 0
+  stats:
+    attackDamageBonus: 0
+    magicDamageBonus: 0
+    armorBonus: 0
+    criticalChanceBonus: 0
+    criticalDamageBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
+    moveSpeedBonus: 0.1
+    attackSpeedBonus: 15
+    hitRateBonus: 0
+    evasionRateBonus: 0
+    reductionCoolDownBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+    lifeStealBonus: 0
+    healAmount: 0
+    manaAmount: 0
+    healPercentage: 0
+    manaPercentage: 0

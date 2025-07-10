@@ -77,6 +77,7 @@ public class CombatUIManager : MonoBehaviour
     public TextMeshProUGUI hitRateText;
     public TextMeshProUGUI evasionRateText;
     public TextMeshProUGUI attackSpeedText;
+    public TextMeshProUGUI reductionCoolDownText;
     public TextMeshProUGUI liftSteal;
     [Header("🆕 Item Detail Panel")]
     public GameObject itemDetailPanel;              // Panel สำหรับแสดงรายละเอียดไอเทม
@@ -1044,7 +1045,10 @@ public class CombatUIManager : MonoBehaviour
         {
             evasionRateText.text = $"EVA: {localHero.EvasionRate:F1}%";
         }
-
+        if (reductionCoolDownText != null)
+        {
+            reductionCoolDownText.text = $"CDR : {localHero.ReductionCoolDown:F1}%";
+        }
         if (attackSpeedText != null)
         {
             // ใช้ฟังก์ชันใหม่สำหรับ UI

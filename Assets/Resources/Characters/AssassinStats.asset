@@ -23,7 +23,7 @@ MonoBehaviour:
   attackRange: 1
   criticalChance: 10
   criticalDamageBonus: 10
-  hitRate: 80
+  hitRate: 70
   evasionRate: 5
   attackSpeed: 1
   reductionCoolDown: 0

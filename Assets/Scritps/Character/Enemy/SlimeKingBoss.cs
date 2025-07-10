@@ -26,7 +26,7 @@ public class SlimeKingBoss : NetworkEnemy
     [Header("💥 Multi-Attack System")]
     [SerializeField] private float multiAttackRadius = 8f;     // รัศมีโจมตีพื้นที่
     [SerializeField] private int maxMultiTargets = 3;          // โจมตีได้สูงสุด 3 เป้าหมาย
-    [SerializeField] private float slamDamageMultiplier = 1.5f; // ดาเมจการกระแทก
+    [SerializeField] private float slamDamageMultiplier = 5f; // ดาเมจการกระแทก
 
     [Header("🌪️ Special Abilities")]
     [SerializeField] private bool canSummonMinions = true;     // เรียก slime น้อย

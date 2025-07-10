@@ -138,7 +138,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.77, y: 0.92, z: 0.2}
+  m_Size: {x: 0.77, y: 1.56, z: 0.2}
   m_Center: {x: -0.2, y: 0.3, z: 0}
 --- !u!114 &1153582897584543797
 MonoBehaviour:
@@ -193,12 +193,17 @@ MonoBehaviour:
   evasionRate: 0
   attackSpeed: 0
   reductionCoolDown: 0
+  lifeSteal: 0
   attackType: 0
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
   _NetworkedCurrentMana: 0
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
+  _IsStatsReady: 0
+  _NetworkedLifeSteal: 0
+  isStatsLoaded: 0
+  isSpawnComplete: 0
   healthRegenPerSecond: 100000000
   manaRegenPerSecond: 3
   rb: {fileID: 0}
@@ -206,6 +211,9 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  enableAutoFixInventory: 1
+  autoFixCompleted: 0
+  autoFixDelay: 3
   _IsDead:
     _value: 0
   _NetworkedPosition: {x: 0, y: 0, z: 0}
@@ -242,6 +250,8 @@ MonoBehaviour:
   showPatrolGizmos: 1
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
+  dropManager: {fileID: 0}
+  ItemDrop: {fileID: 0}
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -379,6 +389,7 @@ MonoBehaviour:
     armorBonusPerLevel: 1
     criticalChanceBonusPerLevel: 0.5
     moveSpeedBonusPerLevel: 0.1
+    lifeStealBonusPerLevel: 0
   expSettings:
     baseExpToNextLevel: 100
     expGrowthRate: 1.2

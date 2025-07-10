@@ -528,11 +528,11 @@ MonoBehaviour:
   giveStarterItems: 1
   starterItemsGiven: 0
   starterItemsList:
-  - itemData: {fileID: 0}
-    quantity: 1
+  - itemData: {fileID: 11400000, guid: 1ce9ba711b68f914b8362e6e6a4917f8, type: 2}
+    quantity: 10
     note: 
-  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
-    quantity: 1
+  - itemData: {fileID: 11400000, guid: 040cf83aed18772409c4a13f2e6a9dfa, type: 2}
+    quantity: 10
     note: 
   - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
     quantity: 20
@@ -540,13 +540,64 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
     quantity: 20
     note: 
-  - itemData: {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
+  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
     quantity: 1
     note: 
-  - itemData: {fileID: 11400000, guid: 8e0db883a5c8fab4bb6b7bf1439dc926, type: 2}
+  - itemData: {fileID: 11400000, guid: dfefd4a870e90d84cae1abb4c90744f7, type: 2}
     quantity: 1
     note: 
-  - itemData: {fileID: 11400000, guid: 9b5571c5ab683e54dad5b51909377e8a, type: 2}
+  - itemData: {fileID: 11400000, guid: 39fa8ead6717e0f4e8503ec0758bb937, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 466a04b6fbab2254a88a8a0c328e6012, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: cb53536a40b373a4686f7ef4c13009bb, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: d0660a08dab62d94bb08c9ca10de275b, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 0252b258346d8774b9d9ba3d958af025, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 71e5755254cedaa4bb8e4cce40c6a134, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 0c7bcbfd303485b439782276171e27a4, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 92b4c5e0144b248479337dee64bf07b0, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6618b40d61c48f64caabc0dd8351c64e, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: e745e079c25a47c499afb6f4b129506d, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: bf9fee0df52857f4588010e1e1dffef6, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: b48d3e4819115de4b93f3d9292613ad1, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: e958d18474a707944a39dd806febaa21, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: eeda5bc38457dc845b4dc3c12dc7d741, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: a8cb289f65e01f24296c6d23beb24ebd, type: 2}
     quantity: 1
     note: 
   useFallbackItems: 1
