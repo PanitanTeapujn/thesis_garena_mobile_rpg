@@ -145,15 +145,10 @@ public class Character : NetworkBehaviour
     }
     protected virtual void Start()
     {
-        StartCoroutine(DelayedLoadPlayerDataStart());
         InitializeStats();
        
     }
-    private System.Collections.IEnumerator DelayedLoadPlayerDataStart()
-    {
-        // 🆕 ไม่ใช้ method นี้แล้ว เพราะจะใช้  แทน
-        yield break;
-    }
+   
     public bool IsStatsLoadingComplete()
     {
         return isStatsLoaded && isSpawnComplete;
@@ -278,10 +273,7 @@ public class Character : NetworkBehaviour
             Canvas.ForceUpdateCanvases();
 
 
-            if (refreshedManagers == 0)
-            {
-                DebugEquipmentManagersStatus();
-            }
+           
         }
         catch (System.Exception e)
         {
@@ -289,23 +281,7 @@ public class Character : NetworkBehaviour
     }
 
     // 🆕 เพิ่ม method สำหรับ debug equipment managers
-    private void DebugEquipmentManagersStatus()
-    {
-
-        var equipmentSlotManager = GetComponent<EquipmentSlotManager>();
-        if (equipmentSlotManager != null)
-        {
-        }
-
-        var combatUIManager = FindObjectOfType<CombatUIManager>();
-        if (combatUIManager != null)
-        {
-            if (combatUIManager.equipmentSlotManager != null)
-            {
-            }
-        }
-
-    }
+   
     private System.Collections.IEnumerator RetryRefreshEquipmentUI()
     {
         int maxRetries = 10;
@@ -631,93 +607,11 @@ public class Character : NetworkBehaviour
         {
         }
     }
-    private IEnumerator SimpleLoadPlayerData()
-    {
+   
 
-        // ให้ LevelManager จัดการ stats ตามปกติ
-        var levelManager = GetComponent<LevelManager>();
-        if (levelManager != null)
-        {
-            // ใช้ระบบเดิมของ LevelManager
-            levelManager.RefreshCharacterData();
+   
 
-            yield return new WaitForSeconds(0.5f);
-
-        }
-
-        yield return null;
-    }
-
-    private IEnumerator SimpleEquipmentAutoCheck()
-    {
-
-        // รอให้ stats loading เสร็จก่อน
-        yield return new WaitForSeconds(1f);
-
-        bool shouldHaveEquipment = false;
-        int currentEquipmentCount = 0;
-
-        try
-        {
-            shouldHaveEquipment = PersistentPlayerData.Instance?.multiCharacterData
-                ?.GetActiveCharacterData()?.HasEquipmentData() ?? false;
-
-            currentEquipmentCount = GetAllEquippedItems().Count;
-
-        }
-        catch (System.Exception e)
-        {
-            yield break;
-        }
-
-        if (shouldHaveEquipment && currentEquipmentCount == 0)
-        {
-            yield return StartCoroutine(SimpleEquipmentReload());
-        }
-        else
-        {
-        }
-    }
-
-    private IEnumerator SimpleEquipmentReload()
-    {
-
-        try
-        {
-            ClearAllEquipmentForLoad();
-        }
-        catch (System.Exception e)
-        {
-        }
-
-        yield return new WaitForSeconds(0.2f);
-
-        try
-        {
-            PersistentPlayerData.Instance?.LoadInventoryData(this);
-        }
-        catch (System.Exception e)
-        {
-        }
-
-        yield return new WaitForSeconds(0.5f);
-
-        int equipmentCount = 0;
-        try
-        {
-            equipmentCount = GetAllEquippedItems().Count;
-        }
-        catch (System.Exception e)
-        {
-        }
-
-
-        if (equipmentCount > 0)
-        {
-            ForceUpdateEquipmentSlotsNow();
-        }
-     
-    }
+   
 
    
 
@@ -726,56 +620,7 @@ public class Character : NetworkBehaviour
 
   
 
-    private IEnumerator AutoSaveLoadedData()
-    {
-
-        yield return new WaitForSeconds(0.2f);
-
-        try
-        {
-            // บันทึก inventory data
-            PersistentPlayerData.Instance?.SaveInventoryData(this);
-
-            // บันทึก total stats
-            var levelManager = GetComponent<LevelManager>();
-            if (levelManager != null)
-            {
-                PersistentPlayerData.Instance?.SaveBaseStats(this, levelManager);
-            }
-
-        }
-        catch (System.Exception e)
-        {
-        }
-
-        yield return null;
-    }
-    private IEnumerator DelayedUIRefresh()
-    {
-
-        // รอให้ระบบต่างๆ settle
-        yield return new WaitForSeconds(0.3f);
-
-        // Force refresh equipment slots
-        ForceUpdateEquipmentSlotsNow();
-
-        // Force refresh inventory
-        var inventoryGrid = FindObjectOfType<InventoryGridManager>();
-        if (inventoryGrid != null)
-        {
-            inventoryGrid.ForceUpdateFromCharacter();
-            inventoryGrid.ForceSyncAllSlots();
-        }
-
-        // แจ้ง stats changed
-        OnStatsChanged?.Invoke();
-
-        // Force update Canvas
-        Canvas.ForceUpdateCanvases();
-
-
-        yield return null;
-    }
+   
     #region 🆕 Auto-Fix System
 
     /// <summary>

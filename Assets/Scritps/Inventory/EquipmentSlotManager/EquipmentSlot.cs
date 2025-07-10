@@ -448,7 +448,6 @@ public class EquipmentSlot : MonoBehaviour
         }
 
         // 🆕 Debug character's equipped items
-        DebugCharacterEquippedItems(character);
 
         ItemData itemData = null;
 
@@ -480,25 +479,7 @@ public class EquipmentSlot : MonoBehaviour
     }
 
     // 🆕 เพิ่ม method สำหรับ debug equipped items
-    private void DebugCharacterEquippedItems(Character character)
-    {
-        Debug.Log($"=== DEBUG CHARACTER EQUIPPED ITEMS ({character.CharacterName}) ===");
-
-        // ตรวจสอบแต่ละ equipment slot
-        for (int i = 0; i < 6; i++)
-        {
-            ItemType itemType = GetItemTypeFromSlotIndex(i);
-            ItemData equippedItem = character.GetEquippedItem(itemType);
-            Debug.Log($"Slot {i} ({itemType}): {(equippedItem?.ItemName ?? "NULL")}");
-        }
-
-        // ตรวจสอบ potion slots
-        for (int i = 0; i < 5; i++)
-        {
-            ItemData potionItem = character.GetPotionInSlot(i);
-            Debug.Log($"Potion {i}: {(potionItem?.ItemName ?? "NULL")}");
-        }
-    }
+   
 
     private ItemType GetItemTypeFromSlotIndex(int slotIndex)
     {

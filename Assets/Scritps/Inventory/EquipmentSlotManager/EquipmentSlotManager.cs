@@ -348,7 +348,6 @@ public class EquipmentSlotManager : MonoBehaviour
             Debug.LogWarning("[EquipmentSlotManager] ⚠️ Equipment slots not connected! Retrying...");
 
             // ลองรอแล้ว retry
-            StartCoroutine(RetryRefresh());
             return;
         }
 
@@ -360,20 +359,7 @@ public class EquipmentSlotManager : MonoBehaviour
         Debug.Log("[EquipmentSlotManager] ✅ Force refresh completed");
     }
   
-    private System.Collections.IEnumerator RetryRefresh()
-    {
-        yield return new WaitForSeconds(0.5f);
-
-        if (IsConnected())
-        {
-            RefreshAllSlots();
-            Debug.Log("[EquipmentSlotManager] ✅ Retry refresh successful");
-        }
-        else
-        {
-            Debug.LogError("[EquipmentSlotManager] ❌ Retry refresh failed - slots still not connected");
-        }
-    }
+   
    
     #endregion
 

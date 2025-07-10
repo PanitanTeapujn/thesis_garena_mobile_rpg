@@ -1797,158 +1797,11 @@ public class PersistentPlayerData : MonoBehaviour
         Debug.Log("[DelayedUIRefresh] ✅ UI refreshed after equipment load");
     }
 
-    private void ForceRefreshInventoryUIOnly(Character character)
-    {
-        try
-        {
-            Debug.Log("[ForceRefreshInventoryUIOnly] 🔄 Refreshing UI only (no stats changes)...");
-
-            // 1. Force refresh equipment slots UI
-            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
-            if (equipmentSlotManager?.IsConnected() == true)
-            {
-                equipmentSlotManager.ForceRefreshFromCharacter();
-            }
-
-            // 2. Force refresh CombatUI equipment slots
-            var combatUIManager = FindObjectOfType<CombatUIManager>();
-            if (combatUIManager?.equipmentSlotManager?.IsConnected() == true)
-            {
-                combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
-            }
-
-            // 3. Force refresh inventory grid
-            var inventoryGrid = FindObjectOfType<InventoryGridManager>();
-            if (inventoryGrid != null)
-            {
-                inventoryGrid.ForceUpdateFromCharacter();
-                inventoryGrid.ForceSyncAllSlots();
-            }
-
-            // 4. Force update Canvas
-            Canvas.ForceUpdateCanvases();
-
-            Debug.Log("[ForceRefreshInventoryUIOnly] ✅ UI refresh completed (stats unchanged)");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ForceRefreshInventoryUIOnly] ❌ Error: {e.Message}");
-        }
-    }
-    private void NotifyCharacterEquipmentLoaded(Character character)
-    {
-        Debug.Log("[NotifyCharacterEquipmentLoaded] ⚠️ DISABLED - no longer notifying Character to recalculate stats");
-        Debug.Log("[NotifyCharacterEquipmentLoaded] ✅ Equipment loaded without stats interference");
-
-        // ไม่เรียก character.ApplyLoadedEquipmentStats() เพื่อไม่ให้ stats บัค
-        // เฉพาะ refresh UI
-        ForceRefreshInventoryUIOnly(character);
-    }
   
-    private bool LoadEquipmentSlotsSimple(Character character, CharacterEquipmentData equipmentData)
-    {
-        try
-        {
-            int loadedCount = 0;
-            var equipment = equipmentData.equipment;
-
-            Debug.Log("[LoadEquipmentSlotsSimple] Loading 6 equipment slots (no stats application)...");
-
-            // เคลียร์ equipment ก่อน
-            character.ClearAllEquipmentForLoad();
-
-            // โหลดแต่ละ slot โดยไม่ apply stats
-            if (LoadSingleEquipmentSlotSimple(character, ItemType.Head, equipment.headItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlotSimple(character, ItemType.Armor, equipment.armorItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlotSimple(character, ItemType.Weapon, equipment.weaponItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlotSimple(character, ItemType.Pants, equipment.pantsItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlotSimple(character, ItemType.Shoes, equipment.shoesItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlotSimple(character, ItemType.Rune, equipment.runeItemId))
-                loadedCount++;
-
-            Debug.Log($"[LoadEquipmentSlotsSimple] ✅ Loaded {loadedCount}/6 equipment items (no stats changes)");
-            return loadedCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadEquipmentSlotsSimple] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
-    private bool LoadSingleEquipmentSlotSimple(Character character, ItemType itemType, string itemId)
-    {
-        if (string.IsNullOrEmpty(itemId))
-            return false;
-
-        try
-        {
-            // หา ItemData จาก ID
-            ItemData itemData = GetItemDataById(itemId);
-            if (itemData == null)
-            {
-                Debug.LogError($"[LoadSingleEquipmentSlotSimple] Item not found: {itemId} for {itemType}");
-                return false;
-            }
-
-            // ตรวจสอบ item type
-            if (itemData.ItemType != itemType)
-            {
-                Debug.LogError($"[LoadSingleEquipmentSlotSimple] Item type mismatch: {itemData.ItemType} != {itemType}");
-                return false;
-            }
-
-            // โหลด item ลง character โดยไม่ apply stats
-            bool success = character.LoadEquipmentDirectly(itemData);
-            if (success)
-            {
-                Debug.Log($"[LoadSingleEquipmentSlotSimple] ✅ Loaded {itemData.ItemName} (no stats applied)");
-                return true;
-            }
-
-            return false;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadSingleEquipmentSlotSimple] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
-
+   
   
-    private bool LoadPotionSlotsSimple(Character character, CharacterEquipmentData equipmentData)
-    {
-        try
-        {
-            int loadedCount = 0;
-
-            for (int i = 0; i < 5; i++)
-            {
-                var potionSlot = equipmentData.GetPotionSlot(i);
-                if (potionSlot?.IsValid() == true)
-                {
-                    ItemData potionData = GetItemDataById(potionSlot.itemId);
-                    if (potionData?.ItemType == ItemType.Potion)
-                    {
-                        bool loaded = character.LoadPotionDirectly(potionData, i, potionSlot.stackCount);
-                        if (loaded) loadedCount++;
-                    }
-                }
-            }
-
-            Debug.Log($"[LoadPotionSlotsSimple] ✅ Loaded {loadedCount}/5 potion slots");
-            return loadedCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadPotionSlotsSimple] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
+    
+   
 
     /// </summary>
     private void NotifyLevelManagerEquipmentLoaded(Character character)
@@ -2609,42 +2462,34 @@ public class PersistentPlayerData : MonoBehaviour
     {
         if (equipmentData == null)
         {
-            Debug.Log("[LogLoadedEquipmentData] No equipment data to log");
             return;
         }
 
-        Debug.Log($"=== LOADED EQUIPMENT DATA ({equipmentData.characterType}) ===");
 
         // Equipment slots
         int equippedCount = 0;
         if (!string.IsNullOrEmpty(equipmentData.equipment.headItemId))
         {
-            Debug.Log($"Head: {equipmentData.equipment.headItemId}");
             equippedCount++;
         }
         if (!string.IsNullOrEmpty(equipmentData.equipment.armorItemId))
         {
-            Debug.Log($"Armor: {equipmentData.equipment.armorItemId}");
             equippedCount++;
         }
         if (!string.IsNullOrEmpty(equipmentData.equipment.weaponItemId))
         {
-            Debug.Log($"Weapon: {equipmentData.equipment.weaponItemId}");
             equippedCount++;
         }
         if (!string.IsNullOrEmpty(equipmentData.equipment.pantsItemId))
         {
-            Debug.Log($"Pants: {equipmentData.equipment.pantsItemId}");
             equippedCount++;
         }
         if (!string.IsNullOrEmpty(equipmentData.equipment.shoesItemId))
         {
-            Debug.Log($"Shoes: {equipmentData.equipment.shoesItemId}");
             equippedCount++;
         }
         if (!string.IsNullOrEmpty(equipmentData.equipment.runeItemId))
         {
-            Debug.Log($"Rune: {equipmentData.equipment.runeItemId}");
             equippedCount++;
         }
 
@@ -2655,13 +2500,11 @@ public class PersistentPlayerData : MonoBehaviour
             var potion = equipmentData.potionSlots[i];
             if (!potion.IsEmpty())
             {
-                Debug.Log($"Potion {i}: {potion.itemName} x{potion.stackCount} - ID: {potion.itemId}");
                 potionCount++;
             }
         }
 
-        Debug.Log($"Equipment loaded: {equippedCount}/6, Potions loaded: {potionCount}/5");
-        Debug.Log("===============================================");
+      
     }
 
     /// <summary>
@@ -2947,35 +2790,7 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// ใส่ potion ลง slot โดยตรง (สำหรับ load data)
     /// </summary>
-    private bool SetPotionSlotDirectly(Character character, int slotIndex, ItemData potionData, int stackCount)
-    {
-        try
-        {
-            // วิธีง่ายๆ: ใช้ EquipItemData แต่ต้องทำหลังจากที่เคลียร์ potion slots ทั้งหมดแล้ว
-            // แล้วใส่ potion ตาม order ที่ต้องการ
-
-            Debug.Log($"[SetPotionSlotDirectly] Trying to set potion {potionData.ItemName} x{stackCount} to slot {slotIndex}");
-
-            // ใช้ method ที่มีอยู่แล้ว
-            bool success = character.EquipItemData(potionData);
-
-            if (success)
-            {
-                // ตั้งค่า stack count โดยใช้ method ที่มีอยู่
-                character.SetPotionStackCount(slotIndex, stackCount);
-                Debug.Log($"[SetPotionSlotDirectly] ✅ Set potion slot {slotIndex}: {potionData.ItemName} x{stackCount}");
-                return true;
-            }
-
-            Debug.LogWarning($"[SetPotionSlotDirectly] Failed to equip {potionData.ItemName}");
-            return false;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[SetPotionSlotDirectly] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
+   
 
     #endregion
 
@@ -3224,36 +3039,12 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// ดึง potion slots list จาก Character (private field)
     /// </summary>
-    private List<ItemData> GetCharacterPotionSlots(Character character)
-    {
-        try
-        {
-            var field = character.GetType().GetField("potionSlots",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return field?.GetValue(character) as List<ItemData>;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+   
 
     /// <summary>
     /// ดึง potion stack counts list จาก Character (private field)
     /// </summary>
-    private List<int> GetCharacterPotionStackCounts(Character character)
-    {
-        try
-        {
-            var field = character.GetType().GetField("potionStackCounts",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            return field?.GetValue(character) as List<int>;
-        }
-        catch
-        {
-            return null;
-        }
-    }
+   
 
     #endregion
     public CharacterProgressData GetOrCreateCharacterData(string characterType)
