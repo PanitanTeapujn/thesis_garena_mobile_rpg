@@ -33,13 +33,42 @@ public class UpgradeLobby : MonoBehaviour
     public TextMeshProUGUI attackSpeedText;
     public TextMeshProUGUI reductionCoolDownText;
     public TextMeshProUGUI liftSteal;
+
     public Hero localHero { get; set; }
+
+
+    [Header("🎯 Stat Point System")]
+    public TextMeshProUGUI availableStatPointsText;
+    public TextMeshProUGUI totalStatPointsEarnedText;
+
+    [Header("📈 Stat Upgrade Buttons")]
+    public Button upgradeSTRButton;
+    public Button upgradeDEXButton;
+    public Button upgradeINTButton;
+    public Button upgradeMASButton;
+
+    [Header("📊 Stat Upgrade Displays")]
+    public TextMeshProUGUI strUpgradeText;      // แสดงจำนวนครั้งที่อัพ STR
+    public TextMeshProUGUI dexUpgradeText;      // แสดงจำนวนครั้งที่อัพ DEX
+    public TextMeshProUGUI intUpgradeText;      // แสดงจำนวนครั้งที่อัพ INT
+    public TextMeshProUGUI masUpgradeText;      // แสดงจำนวนครั้งที่อัพ MAS
+
 
     // Start is called before the first frame update
     void Start()
     {
         closeUpgradeLobby.onClick.AddListener(CloseUpgradeLobby);
+        if (upgradeSTRButton != null)
+            upgradeSTRButton.onClick.AddListener(() => UpgradeStat(StatType.STR));
 
+        if (upgradeDEXButton != null)
+            upgradeDEXButton.onClick.AddListener(() => UpgradeStat(StatType.DEX));
+
+        if (upgradeINTButton != null)
+            upgradeINTButton.onClick.AddListener(() => UpgradeStat(StatType.INT));
+
+        if (upgradeMASButton != null)
+            upgradeMASButton.onClick.AddListener(() => UpgradeStat(StatType.MAS));
     }
 
     // Update is called once per frame
@@ -125,14 +154,10 @@ public class UpgradeLobby : MonoBehaviour
         }
 
         // Health & Mana
-       
-
         if (inventoryHealthText != null)
         {
             inventoryHealthText.text = $"HP:{localHero.NetworkedCurrentHp}/{localHero.NetworkedMaxHp}";
         }
-
-       
 
         if (inventoryManaText != null)
         {
@@ -198,9 +223,137 @@ public class UpgradeLobby : MonoBehaviour
             liftSteal.text = $"LST: {effectiveLifesteal:F1}%";
         }
 
+        // 🆕 อัปเดต stat point information
+        UpdateStatPointDisplay();
+        UpdateStatUpgradeButtons();
+
         Debug.Log($"[UpgradeLobby] ✅ Stats updated successfully from Hero object");
+    }
+    private void UpdateStatPointDisplay()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+
+            if (characterData != null)
+            {
+                // แสดง available stat points
+                if (availableStatPointsText != null)
+                {
+                    availableStatPointsText.text = $"Available: {characterData.availableStatPoints}";
+                }
+
+                // แสดง total earned stat points
+                if (totalStatPointsEarnedText != null)
+                {
+                    totalStatPointsEarnedText.text = $"Total Earned: {characterData.totalStatPointsEarned}";
+                }
+
+                // แสดงจำนวนครั้งที่อัพแต่ละ stat
+                if (strUpgradeText != null)
+                {
+                    strUpgradeText.text = $"STR: {characterData.upgradedSTR}/{localHero.GetCurrentLevel()}";
+                }
+
+                if (dexUpgradeText != null)
+                {
+                    dexUpgradeText.text = $"DEX: {characterData.upgradedDEX}/{localHero.GetCurrentLevel()}";
+                }
+
+                if (intUpgradeText != null)
+                {
+                    intUpgradeText.text = $"INT: {characterData.upgradedINT}/{localHero.GetCurrentLevel()}";
+                }
+
+                if (masUpgradeText != null)
+                {
+                    masUpgradeText.text = $"MAS: {characterData.upgradedMAS}/{localHero.GetCurrentLevel()}";
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error updating stat point display: {e.Message}");
+        }
+    }
+
+    // 🆕 Method สำหรับอัปเดตสถานะปุ่ม upgrade
+    private void UpdateStatUpgradeButtons()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+
+            if (characterData != null)
+            {
+                // อัปเดตสถานะปุ่มตามเงื่อนไข
+                if (upgradeSTRButton != null)
+                {
+                    upgradeSTRButton.interactable = characterData.CanUpgradeStat(StatType.STR);
+                }
+
+                if (upgradeDEXButton != null)
+                {
+                    upgradeDEXButton.interactable = characterData.CanUpgradeStat(StatType.DEX);
+                }
+
+                if (upgradeINTButton != null)
+                {
+                    upgradeINTButton.interactable = characterData.CanUpgradeStat(StatType.INT);
+                }
+
+                if (upgradeMASButton != null)
+                {
+                    upgradeMASButton.interactable = characterData.CanUpgradeStat(StatType.MAS);
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error updating upgrade buttons: {e.Message}");
+        }
+    }
+
+    // 🆕 Method สำหรับ upgrade stat (ยังไม่ implement การเพิ่ม stat จริง)
+    private void UpgradeStat(StatType statType)
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+
+            if (characterData != null && characterData.CanUpgradeStat(statType))
+            {
+                bool success = characterData.UpgradeStat(statType);
+
+                if (success)
+                {
+                    Debug.Log($"[UpgradeLobby] ✅ Successfully upgraded {statType}");
+
+                    // อัปเดต UI
+                    UpdateStatPointDisplay();
+                    UpdateStatUpgradeButtons();
+
+                    // บันทึกลง Firebase
+                    PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                    // TODO: ขั้นตอนที่ 4 - เพิ่ม stat จริงให้ตัวละคร
+                }
+                else
+                {
+                    Debug.LogWarning($"[UpgradeLobby] ❌ Failed to upgrade {statType}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[UpgradeLobby] ❌ Cannot upgrade {statType} - insufficient points or max level reached");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error upgrading stat: {e.Message}");
+        }
     }
 
     // ✅ Method สำหรับใช้ CharacterProgressData (fallback)
-   
+
 }

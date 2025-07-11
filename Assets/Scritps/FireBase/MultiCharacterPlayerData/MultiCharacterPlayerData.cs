@@ -2,7 +2,13 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
-
+public enum StatType
+{
+    STR,    // Strength - HP, ATK, CRIT DAMAGE
+    DEX,    // Dexterity - Attack Speed, Evasion, Crit Chance  
+    INT,    // Intelligence - Magic Attack, Mana, Cooldown Reduction
+    MAS     // Mastery - Hit Rate, Life Steal, Movement Speed
+}
 #region Saved Inventory Data Classes
 /// <summary>
 /// ข้อมูลไอเทมที่บันทึกใน shared inventory
@@ -1129,6 +1135,8 @@ public class CharacterProgressData
     {
         InitializeEquipmentSystem();
         InitializeStatsSystem();
+        InitializeStatPointSystem(); // 🆕 เพิ่มบรรทัดนี้
+
     }
 
     /// <summary>
@@ -1151,7 +1159,7 @@ public class CharacterProgressData
 
         Debug.Log($"✅ Stats system initialized for {characterType}");
     }
-
+    
     /// <summary>
     /// 🆕 อัปเดต base stats
     /// </summary>
@@ -1242,30 +1250,7 @@ public class CharacterProgressData
     /// <summary>
     /// 🆕 Debug stats comparison
     /// </summary>
-    public void LogStatsComparison()
-    {
-        Debug.Log($"=== {characterType} STATS COMPARISON ===");
-        Debug.Log($"Has Base Stats: {HasValidBaseStats()}");
-        Debug.Log($"Has Total Stats: {HasValidTotalStats()}");
-
-        if (HasValidBaseStats())
-        {
-            Debug.Log($"Base: HP={baseMaxHp}, ATK={baseAttackDamage}, ARM={baseArmor}");
-        }
-
-        if (HasValidTotalStats())
-        {
-            Debug.Log($"Total: HP={totalMaxHp}, ATK={totalAttackDamage}, ARM={totalArmor}");
-        }
-
-        if (HasValidBaseStats() && HasValidTotalStats())
-        {
-            CalculateEquipmentBonuses(out int hpBonus, out int atkBonus, out int armBonus);
-            Debug.Log($"Equipment Bonuses: HP+{hpBonus}, ATK+{atkBonus}, ARM+{armBonus}");
-        }
-
-        Debug.Log("=====================================");
-    }
+   
 
     // เก็บ methods เดิมไว้เพื่อ backward compatibility
     private void InitializeEquipmentSystem()
@@ -1304,5 +1289,84 @@ public class CharacterProgressData
         {
             characterEquipment.characterType = charType;
         }
+    }
+    #region Stat Point System
+    [Header("🔥 Stat Point System")]
+    public int availableStatPoints = 0;     // จำนวน stat point ที่มี
+    public int totalStatPointsEarned = 0;   // จำนวน stat point ที่ได้มาทั้งหมด
+    public int totalStatPointsUsed = 0;     // จำนวน stat point ที่ใช้ไปแล้ว
+
+    [Header("📈 Upgraded Stats")]
+    public int upgradedSTR = 0;    // จำนวนครั้งที่อัพ STR
+    public int upgradedDEX = 0;    // จำนวนครั้งที่อัพ DEX  
+    public int upgradedINT = 0;    // จำนวนครั้งที่อัพ INT
+    public int upgradedMAS = 0;    // จำนวนครั้งที่อัพ MAS
+
+    [Header("🔍 Stat Point Debug Info")]
+    public bool hasStatPointData = false;
+    public string statPointLastUpdateTime = "";
+    #endregion
+
+    // เพิ่ม methods สำหรับ StatPoint System
+    public void AddStatPoints(int points)
+    {
+        availableStatPoints += points;
+        totalStatPointsEarned += points;
+        hasStatPointData = true;
+        statPointLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[{characterType}] 🎯 Added {points} stat points. Available: {availableStatPoints}");
+    }
+
+    public bool CanUpgradeStat(StatType statType)
+    {
+        if (availableStatPoints <= 0) return false;
+
+        int currentUpgrades = GetStatUpgrades(statType);
+        return currentUpgrades < currentLevel; // ไม่เกินเลเวลปัจจุบัน
+    }
+
+    public int GetStatUpgrades(StatType statType)
+    {
+        switch (statType)
+        {
+            case StatType.STR: return upgradedSTR;
+            case StatType.DEX: return upgradedDEX;
+            case StatType.INT: return upgradedINT;
+            case StatType.MAS: return upgradedMAS;
+            default: return 0;
+        }
+    }
+
+    public bool UpgradeStat(StatType statType, int cost = 1)
+    {
+        if (!CanUpgradeStat(statType)) return false;
+
+        availableStatPoints -= cost;
+        totalStatPointsUsed += cost;
+
+        switch (statType)
+        {
+            case StatType.STR: upgradedSTR++; break;
+            case StatType.DEX: upgradedDEX++; break;
+            case StatType.INT: upgradedINT++; break;
+            case StatType.MAS: upgradedMAS++; break;
+        }
+
+        statPointLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[{characterType}] ⬆️ Upgraded {statType}. Available points: {availableStatPoints}");
+        return true;
+    }
+
+    public void InitializeStatPointSystem()
+    {
+        hasStatPointData = false;
+        statPointLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    public bool HasStatPointData()
+    {
+        return hasStatPointData && (availableStatPoints > 0 || totalStatPointsUsed > 0);
     }
 }

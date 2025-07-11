@@ -578,6 +578,9 @@ public class LevelManager : NetworkBehaviour
         character.CurrentHp = character.MaxHp;
         character.CurrentMana = character.MaxMana;
 
+        // 🆕 เพิ่ม stat point เมื่อ level up
+        AddStatPointOnLevelUp();
+
         // ✅ แก้ไข: Force sync network state หลัง level up
         if (HasStateAuthority)
         {
@@ -603,6 +606,31 @@ public class LevelManager : NetworkBehaviour
 
         // Quick save
         QuickSave();
+    }
+    private void AddStatPointOnLevelUp()
+    {
+        try
+        {
+            if (!HasInputAuthority) return;
+
+            string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(activeCharacterType);
+
+            if (characterData != null)
+            {
+                // ให้ stat point 1 point ต่อ level up
+                characterData.AddStatPoints(1);
+
+                Debug.Log($"🎯 {activeCharacterType} gained 1 stat point! Total available: {characterData.availableStatPoints}");
+
+                // บันทึกลง Firebase
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LevelManager] ❌ Error adding stat point: {e.Message}");
+        }
     }
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_BroadcastLevelUp(int newLevel, int newMaxHp, int newMaxMana)
@@ -740,15 +768,11 @@ public class LevelManager : NetworkBehaviour
         baseAttackSpeed = character.characterStats.attackSpeed;
         baseReductionCoolDown = character.characterStats.reductionCoolDown;
 
-        Debug.Log($"[LevelManager] 📊 Calculated base stats (Level {CurrentLevel}):");
-        Debug.Log($"  Base HP: {baseMaxHp} (SO: {character.characterStats.maxHp} + Level: {levelBonusHp})");
-        Debug.Log($"  Base ATK: {baseAttackDamage} (SO: {character.characterStats.attackDamage} + Level: {levelBonusAttack})");
-        Debug.Log($"  Base ARM: {baseArmor} (SO: {character.characterStats.arrmor} + Level: {levelBonusArmor})");
+       
     }
     public void ResetToBaseStats()
     {
-        Debug.Log($"[LevelManager] ⚠️ ResetToBaseStats is DISABLED to prevent stats bugs");
-        Debug.Log($"[LevelManager] ✅ Keeping current stats as-is");
+       
 
         // ไม่ทำอะไร - เก็บ stats เดิมไว้
         return;
