@@ -28,7 +28,7 @@ public class LobbyManager : MonoBehaviour
     public Button inventoryButton;
     public Button settingsButton;
     public Button logoutButton;
-
+    public Button upgradeButton;
     [Header("Character Selection")]
     public Button characterSelectionButton;
     #endregion
@@ -65,11 +65,17 @@ public class LobbyManager : MonoBehaviour
     // Prefabs สำหรับ Friends UI
     public GameObject friendRequestItemPrefab;
     public GameObject friendItemPrefab;
+
+    [Header("Upgrade")]
+    public GameObject upGradePanel;
+    public Hero localHero { get; private set; }
+
     #endregion
 
     #region External References - การอ้างอิงถึง Manager และ Component อื่นๆ
     [Header("References")]
     public StageSelectionManager stageSelectionManager;
+    public UpgradeLobby upgradeLobby;
     #endregion
 
     #region Private Variables - ตัวแปรภายในสำหรับจัดการข้อมูลและสถานะ
@@ -133,7 +139,7 @@ public class LobbyManager : MonoBehaviour
         // Main lobby buttons
         playButton.onClick.AddListener(ShowStageSelection);
         logoutButton.onClick.AddListener(Logout);
-
+        upgradeButton.onClick.AddListener(ShowUpgradePanel);
         // Party management buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
@@ -202,6 +208,15 @@ public class LobbyManager : MonoBehaviour
         HideAllPanels();
         joinRoomPanel.SetActive(true);
     }
+    void ShowUpgradePanel()
+    {
+        HideAllPanels();
+
+        upGradePanel.SetActive(true);
+
+        // ส่ง localHero ไปให้ UpgradeLobby
+        upgradeLobby.OpenUpgradeLobby();
+    }
 
     void ShowInventory()
     {
@@ -221,6 +236,7 @@ public class LobbyManager : MonoBehaviour
     {
         partyOptionsPanel.SetActive(false);
         joinRoomPanel.SetActive(false);
+        upGradePanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
         
