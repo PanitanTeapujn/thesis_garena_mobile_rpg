@@ -400,6 +400,8 @@ MonoBehaviour:
       completedStages: []
       lastPlayedStage: 
       lastUpdateDate: 2025-07-01 12:01:09
+    hasStageProgressData: 0
+    stageProgressLastSaveTime: 
     friends: []
     pendingFriendRequests: []
     sharedInventory:
@@ -413,6 +415,15 @@ MonoBehaviour:
     hasInventoryData: 0
     inventoryLastSaveTime: 2025-07-01 18:29:29
     totalSharedItems: 0
+    sharedCurrency:
+      gold: 1000
+      gems: 50
+      maxGold: 999999999
+      maxGems: 999999
+      lastUpdateTime: 2025-07-11 18:25:23
+      totalTransactions: 0
+    hasCurrencyData: 0
+    currencyLastSaveTime: 2025-07-11 18:25:23
   isDataLoaded: 0
 --- !u!4 &140433958
 Transform:
@@ -2856,6 +2867,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
+--- !u!1 &1988046129
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1988046130}
+  m_Layer: 0
+  m_Name: fix
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1988046130
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1988046129}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1209.3333, y: 846.6666, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2000875604
 GameObject:
   m_ObjectHideFlags: 0
@@ -3119,3 +3161,4 @@ SceneRoots:
   - {fileID: 1919899005}
   - {fileID: 1612650802}
   - {fileID: 140433958}
+  - {fileID: 1988046130}
