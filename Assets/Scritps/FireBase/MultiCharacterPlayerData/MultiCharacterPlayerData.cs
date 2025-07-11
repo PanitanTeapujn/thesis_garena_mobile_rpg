@@ -1317,14 +1317,26 @@ public class CharacterProgressData
 
         Debug.Log($"[{characterType}] 🎯 Added {points} stat points. Available: {availableStatPoints}");
     }
-
     public bool CanUpgradeStat(StatType statType)
     {
         if (availableStatPoints <= 0) return false;
 
         int currentUpgrades = GetStatUpgrades(statType);
-        return currentUpgrades < currentLevel; // ไม่เกินเลเวลปัจจุบัน
+        if (currentUpgrades >= currentLevel) return false; // ไม่เกินเลเวลปัจจุบัน
+
+        // 🆕 ตรวจสอบว่ามีเงินเพียงพอหรือไม่
+        long upgradeCost = GetStatUpgradeCost(currentUpgrades);
+        var currencyManager = CurrencyManager.FindCurrencyManager();
+
+        if (currencyManager == null || !currencyManager.HasEnoughGold(upgradeCost))
+        {
+            return false;
+        }
+
+        return true;
     }
+
+   
 
     public int GetStatUpgrades(StatType statType)
     {
@@ -1342,6 +1354,17 @@ public class CharacterProgressData
     {
         if (!CanUpgradeStat(statType)) return false;
 
+        int currentUpgrades = GetStatUpgrades(statType);
+        long goldCost = GetStatUpgradeCost(currentUpgrades);
+
+        // 🆕 ใช้เงินก่อนอัพเกรด
+        var currencyManager = CurrencyManager.FindCurrencyManager();
+        if (currencyManager == null || !currencyManager.SpendGold(goldCost))
+        {
+            Debug.LogError($"[{characterType}] ❌ Failed to spend {goldCost} gold for {statType} upgrade");
+            return false;
+        }
+
         availableStatPoints -= cost;
         totalStatPointsUsed += cost;
 
@@ -1355,10 +1378,54 @@ public class CharacterProgressData
 
         statPointLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        Debug.Log($"[{characterType}] ⬆️ Upgraded {statType}. Available points: {availableStatPoints}");
+        Debug.Log($"[{characterType}] ⬆️ Upgraded {statType} for {goldCost} gold. Available points: {availableStatPoints}");
         return true;
     }
+    public long GetStatUpgradeCost(int currentUpgrades)
+    {
+        // สูตรราคา: 100 + (currentUpgrades * 50)
+        return 100 + (currentUpgrades * 50);
+    }
+    // แก้ไขใน CharacterProgressData ResetAllStats method
+    public void ResetAllStats()
+    {
+        // 🆕 คำนวณเงินที่ต้องคืน
+        long totalGoldUsed = 0;
+        for (int i = 0; i < upgradedSTR; i++) totalGoldUsed += GetStatUpgradeCost(i);
+        for (int i = 0; i < upgradedDEX; i++) totalGoldUsed += GetStatUpgradeCost(i);
+        for (int i = 0; i < upgradedINT; i++) totalGoldUsed += GetStatUpgradeCost(i);
+        for (int i = 0; i < upgradedMAS; i++) totalGoldUsed += GetStatUpgradeCost(i);
 
+        // 🆕 คืนเงิน
+        var currencyManager = CurrencyManager.FindCurrencyManager();
+        if (currencyManager != null && totalGoldUsed > 0)
+        {
+            currencyManager.AddGold(totalGoldUsed);
+            Debug.Log($"[{characterType}] 💰 Refunded {totalGoldUsed} gold from stat reset");
+        }
+
+        // คืน stat points ทั้งหมดที่ใช้ไป
+        availableStatPoints += totalStatPointsUsed;
+
+        // รีเซ็ต stat upgrades ทั้งหมด
+        upgradedSTR = 0;
+        upgradedDEX = 0;
+        upgradedINT = 0;
+        upgradedMAS = 0;
+
+        // รีเซ็ต used points
+        totalStatPointsUsed = 0;
+
+        statPointLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[{characterType}] 🔄 Reset all stats! Available points: {availableStatPoints}, Refunded: {totalGoldUsed} gold");
+    }
+
+    // 🆕 Method สำหรับตรวจสอบว่ามี stat ที่อัพไปแล้วหรือไม่
+    public bool HasUpgradedStats()
+    {
+        return upgradedSTR > 0 || upgradedDEX > 0 || upgradedINT > 0 || upgradedMAS > 0;
+    }
     public void InitializeStatPointSystem()
     {
         hasStatPointData = false;

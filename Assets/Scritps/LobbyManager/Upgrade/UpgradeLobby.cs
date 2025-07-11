@@ -36,6 +36,9 @@ public class UpgradeLobby : MonoBehaviour
 
     public Hero localHero { get; set; }
 
+    [Header("🔄 Reset Button")]
+    public Button resetAllStatsButton;
+
 
     [Header("🎯 Stat Point System")]
     public TextMeshProUGUI availableStatPointsText;
@@ -53,7 +56,15 @@ public class UpgradeLobby : MonoBehaviour
     public TextMeshProUGUI intUpgradeText;      // แสดงจำนวนครั้งที่อัพ INT
     public TextMeshProUGUI masUpgradeText;      // แสดงจำนวนครั้งที่อัพ MAS
 
+    [Header("💰 Cost Display")]
+    public TextMeshProUGUI strCostText;        // แสดงราคาอัพ STR
+    public TextMeshProUGUI dexCostText;        // แสดงราคาอัพ DEX
+    public TextMeshProUGUI intCostText;        // แสดงราคาอัพ INT
+    public TextMeshProUGUI masCostText;        // แสดงราคาอัพ MAS
 
+    [Header("💎 Currency Display")]
+    public TextMeshProUGUI currentGoldText;    // แสดงเงินปัจจุบัน
+    public TextMeshProUGUI currentGemsText;    // แสดงเพชรปัจจุบัน
     // Start is called before the first frame update
     void Start()
     {
@@ -69,6 +80,8 @@ public class UpgradeLobby : MonoBehaviour
 
         if (upgradeMASButton != null)
             upgradeMASButton.onClick.AddListener(() => UpgradeStat(StatType.MAS));
+        if (resetAllStatsButton != null)
+            resetAllStatsButton.onClick.AddListener(ResetAllStats);
     }
 
     // Update is called once per frame
@@ -226,6 +239,7 @@ public class UpgradeLobby : MonoBehaviour
         // 🆕 อัปเดต stat point information
         UpdateStatPointDisplay();
         UpdateStatUpgradeButtons();
+        UpdateCurrencyDisplay();      // 🆕 เพิ่มการแสดงเงิน
 
         Debug.Log($"[UpgradeLobby] ✅ Stats updated successfully from Hero object");
     }
@@ -249,7 +263,7 @@ public class UpgradeLobby : MonoBehaviour
                     totalStatPointsEarnedText.text = $"Total Earned: {characterData.totalStatPointsEarned}";
                 }
 
-                // แสดงจำนวนครั้งที่อัพแต่ละ stat
+                // แสดงจำนวนครั้งที่อัพแต่ละ stat พร้อมราคา
                 if (strUpgradeText != null)
                 {
                     strUpgradeText.text = $"STR: {characterData.upgradedSTR}/{localHero.GetCurrentLevel()}";
@@ -269,11 +283,72 @@ public class UpgradeLobby : MonoBehaviour
                 {
                     masUpgradeText.text = $"MAS: {characterData.upgradedMAS}/{localHero.GetCurrentLevel()}";
                 }
+
+                // 🆕 แสดงราคาการอัพเกรดแต่ละ stat
+                if (strCostText != null)
+                {
+                    long strCost = characterData.GetStatUpgradeCost(characterData.upgradedSTR);
+                    strCostText.text = $"Cost: {strCost}g";
+                }
+
+                if (dexCostText != null)
+                {
+                    long dexCost = characterData.GetStatUpgradeCost(characterData.upgradedDEX);
+                    dexCostText.text = $"Cost: {dexCost}g";
+                }
+
+                if (intCostText != null)
+                {
+                    long intCost = characterData.GetStatUpgradeCost(characterData.upgradedINT);
+                    intCostText.text = $"Cost: {intCost}g";
+                }
+
+                if (masCostText != null)
+                {
+                    long masCost = characterData.GetStatUpgradeCost(characterData.upgradedMAS);
+                    masCostText.text = $"Cost: {masCost}g";
+                }
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[UpgradeLobby] ❌ Error updating stat point display: {e.Message}");
+        }
+    }
+    private void UpdateCurrencyDisplay()
+    {
+        try
+        {
+            var currencyManager = CurrencyManager.FindCurrencyManager();
+
+            if (currencyManager != null)
+            {
+                if (currentGoldText != null)
+                {
+                    currentGoldText.text = $"{currencyManager.GetCurrentGold():N0}";
+                }
+
+                if (currentGemsText != null)
+                {
+                    currentGemsText.text = $"{currencyManager.GetCurrentGems():N0}";
+                }
+            }
+            else
+            {
+                if (currentGoldText != null)
+                {
+                    currentGoldText.text = "";
+                }
+
+                if (currentGemsText != null)
+                {
+                    currentGemsText.text = "";
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error updating currency display: {e.Message}");
         }
     }
 
@@ -306,6 +381,12 @@ public class UpgradeLobby : MonoBehaviour
                 {
                     upgradeMASButton.interactable = characterData.CanUpgradeStat(StatType.MAS);
                 }
+
+                // 🆕 อัปเดตสถานะปุ่ม reset
+                if (resetAllStatsButton != null)
+                {
+                    resetAllStatsButton.interactable = characterData.HasUpgradedStats();
+                }
             }
         }
         catch (System.Exception e)
@@ -323,15 +404,22 @@ public class UpgradeLobby : MonoBehaviour
 
             if (characterData != null && characterData.CanUpgradeStat(statType))
             {
+                // 🆕 แสดงราคาก่อนอัพเกรด
+                int currentUpgrades = characterData.GetStatUpgrades(statType);
+                long upgradeCost = characterData.GetStatUpgradeCost(currentUpgrades);
+
+                Debug.Log($"[UpgradeLobby] 💰 Attempting to upgrade {statType} for {upgradeCost} gold");
+
                 bool success = characterData.UpgradeStat(statType);
 
                 if (success)
                 {
-                    Debug.Log($"[UpgradeLobby] ✅ Successfully upgraded {statType}");
+                    Debug.Log($"[UpgradeLobby] ✅ Successfully upgraded {statType} for {upgradeCost} gold");
 
-                    // อัปเดต UI
+                    // อัปเดต UI ทั้งหมด
                     UpdateStatPointDisplay();
                     UpdateStatUpgradeButtons();
+                    UpdateCurrencyDisplay();    // 🆕 อัปเดตการแสดงเงิน
 
                     // บันทึกลง Firebase
                     PersistentPlayerData.Instance.SavePlayerDataAsync();
@@ -340,17 +428,79 @@ public class UpgradeLobby : MonoBehaviour
                 }
                 else
                 {
-                    Debug.LogWarning($"[UpgradeLobby] ❌ Failed to upgrade {statType}");
+                    Debug.LogWarning($"[UpgradeLobby] ❌ Failed to upgrade {statType} - insufficient gold or other error");
                 }
             }
             else
             {
-                Debug.LogWarning($"[UpgradeLobby] ❌ Cannot upgrade {statType} - insufficient points or max level reached");
+                // 🆕 แสดงเหตุผลที่อัพเกรดไม่ได้
+                string reason = "Unknown";
+                if (characterData == null)
+                {
+                    reason = "No character data";
+                }
+                else if (characterData.availableStatPoints <= 0)
+                {
+                    reason = "No stat points available";
+                }
+                else if (characterData.GetStatUpgrades(statType) >= localHero.GetCurrentLevel())
+                {
+                    reason = "Max level reached for this stat";
+                }
+                else
+                {
+                    var currencyManager = CurrencyManager.FindCurrencyManager();
+                    long cost = characterData.GetStatUpgradeCost(characterData.GetStatUpgrades(statType));
+                    if (currencyManager == null || !currencyManager.HasEnoughGold(cost))
+                    {
+                        reason = $"Insufficient gold (need {cost})";
+                    }
+                }
+
+                Debug.LogWarning($"[UpgradeLobby] ❌ Cannot upgrade {statType}: {reason}");
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[UpgradeLobby] ❌ Error upgrading stat: {e.Message}");
+        }
+    }
+    private void ResetAllStats()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+
+            if (characterData != null && characterData.HasUpgradedStats())
+            {
+                // บันทึกค่าก่อน reset เพื่อ debug
+                int beforePoints = characterData.availableStatPoints;
+                int beforeUsed = characterData.totalStatPointsUsed;
+
+                // Reset stats ทั้งหมด
+                characterData.ResetAllStats();
+
+                Debug.Log($"[UpgradeLobby] 🔄 Reset Stats: Points {beforePoints} → {characterData.availableStatPoints}, Used {beforeUsed} → {characterData.totalStatPointsUsed}");
+
+                // อัปเดต UI
+                UpdateStatPointDisplay();
+                UpdateStatUpgradeButtons();
+
+                // บันทึกลง Firebase
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                // TODO: ขั้นตอนที่ 4 - รีเซ็ต stat bonuses จริงในตัวละคร
+
+                Debug.Log($"[UpgradeLobby] ✅ Successfully reset all stats");
+            }
+            else
+            {
+                Debug.LogWarning($"[UpgradeLobby] ❌ No stats to reset");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error resetting stats: {e.Message}");
         }
     }
 
