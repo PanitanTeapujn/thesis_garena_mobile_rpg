@@ -169,12 +169,12 @@ public class UpgradeLobby : MonoBehaviour
         // Health & Mana
         if (inventoryHealthText != null)
         {
-            inventoryHealthText.text = $"HP:{localHero.NetworkedCurrentHp}/{localHero.NetworkedMaxHp}";
+            inventoryHealthText.text = $"HP:{localHero.MaxHp}";
         }
 
         if (inventoryManaText != null)
         {
-            inventoryManaText.text = $"MANA:{localHero.NetworkedCurrentMana}/{localHero.NetworkedMaxMana}";
+            inventoryManaText.text = $"MANA:{localHero.MaxMana}";
         }
 
         // Combat Stats จาก Hero object
@@ -404,7 +404,6 @@ public class UpgradeLobby : MonoBehaviour
 
             if (characterData != null && characterData.CanUpgradeStat(statType))
             {
-                // 🆕 แสดงราคาก่อนอัพเกรด
                 int currentUpgrades = characterData.GetStatUpgrades(statType);
                 long upgradeCost = characterData.GetStatUpgradeCost(currentUpgrades);
 
@@ -416,15 +415,19 @@ public class UpgradeLobby : MonoBehaviour
                 {
                     Debug.Log($"[UpgradeLobby] ✅ Successfully upgraded {statType} for {upgradeCost} gold");
 
+                    // 🆕 Apply stat changes to character immediately
+                    ApplyStatUpgradeToCharacter(statType);
+
                     // อัปเดต UI ทั้งหมด
                     UpdateStatPointDisplay();
                     UpdateStatUpgradeButtons();
-                    UpdateCurrencyDisplay();    // 🆕 อัปเดตการแสดงเงิน
+                    UpdateCurrencyDisplay();
+                    UpgradeLobbyStat(); // Refresh character stats display
 
                     // บันทึกลง Firebase
                     PersistentPlayerData.Instance.SavePlayerDataAsync();
 
-                    // TODO: ขั้นตอนที่ 4 - เพิ่ม stat จริงให้ตัวละคร
+                    Debug.Log($"[UpgradeLobby] 🎯 {statType} upgrade applied successfully!");
                 }
                 else
                 {
@@ -433,36 +436,203 @@ public class UpgradeLobby : MonoBehaviour
             }
             else
             {
-                // 🆕 แสดงเหตุผลที่อัพเกรดไม่ได้
-                string reason = "Unknown";
-                if (characterData == null)
-                {
-                    reason = "No character data";
-                }
-                else if (characterData.availableStatPoints <= 0)
-                {
-                    reason = "No stat points available";
-                }
-                else if (characterData.GetStatUpgrades(statType) >= localHero.GetCurrentLevel())
-                {
-                    reason = "Max level reached for this stat";
-                }
-                else
-                {
-                    var currencyManager = CurrencyManager.FindCurrencyManager();
-                    long cost = characterData.GetStatUpgradeCost(characterData.GetStatUpgrades(statType));
-                    if (currencyManager == null || !currencyManager.HasEnoughGold(cost))
-                    {
-                        reason = $"Insufficient gold (need {cost})";
-                    }
-                }
-
+                string reason = GetUpgradeFailureReason(characterData, statType);
                 Debug.LogWarning($"[UpgradeLobby] ❌ Cannot upgrade {statType}: {reason}");
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[UpgradeLobby] ❌ Error upgrading stat: {e.Message}");
+        }
+    }
+
+    // 🆕 Method สำหรับ apply stat upgrade ไปยัง character
+    private void ApplyStatUpgradeToCharacter(StatType statType)
+    {
+        try
+        {
+            if (localHero == null)
+            {
+                Debug.LogError("[UpgradeLobby] No local hero to apply upgrade to!");
+                return;
+            }
+
+            Debug.Log($"[UpgradeLobby] 🎯 Applying {statType} upgrade to character...");
+
+            // 🔧 ขั้นตอนที่ 1: คำนวณ base stats ใหม่ (รวม stat upgrades)
+            RecalculateBaseStatsWithUpgrades();
+
+            // 🔧 ขั้นตอนที่ 2: Apply base stats ไปยัง character
+            ApplyNewBaseStatsToCharacter();
+
+            // 🔧 ขั้นตอนที่ 3: Apply equipment bonuses ทับ
+            localHero.ApplyLoadedEquipmentStats();
+
+            // 🔧 ขั้นตอนที่ 4: บันทึก base stats และ total stats
+            SaveStatsToFirebase();
+
+            Debug.Log($"[UpgradeLobby] ✅ Applied {statType} upgrade successfully!");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error applying upgrade to character: {e.Message}");
+        }
+    }
+    private void RecalculateBaseStatsWithUpgrades()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null || localHero?.characterStats == null)
+            {
+                Debug.LogError("[UpgradeLobby] Missing data for base stats calculation!");
+                return;
+            }
+
+            // ดึง level bonuses จาก LevelManager
+            var levelManager = localHero.GetComponent<LevelManager>();
+            if (levelManager == null)
+            {
+                Debug.LogError("[UpgradeLobby] No LevelManager found!");
+                return;
+            }
+
+            int currentLevel = levelManager.CurrentLevel;
+            int levelBonus = currentLevel - 1;
+
+            // คำนวณ base stats = ScriptableObject + Level bonuses
+            int baseHp = localHero.characterStats.maxHp + (levelBonus * levelManager.levelUpStats.hpBonusPerLevel);
+            int baseMana = localHero.characterStats.maxMana + (levelBonus * levelManager.levelUpStats.manaBonusPerLevel);
+            int baseAttack = localHero.characterStats.attackDamage + (levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel);
+            int baseMagic = localHero.characterStats.magicDamage + (levelBonus * levelManager.levelUpStats.magicDamageBonusPerLevel);
+            int baseArmor = localHero.characterStats.arrmor + (levelBonus * levelManager.levelUpStats.armorBonusPerLevel);
+            float baseCrit = localHero.characterStats.criticalChance + (levelBonus * levelManager.levelUpStats.criticalChanceBonusPerLevel);
+            float baseCritDmg = localHero.characterStats.criticalDamageBonus;
+            float baseSpeed = localHero.characterStats.moveSpeed + (levelBonus * levelManager.levelUpStats.moveSpeedBonusPerLevel);
+            float baseAtkSpeed = localHero.characterStats.attackSpeed;
+            float baseEvasion = localHero.characterStats.evasionRate;
+            float baseCdr = localHero.characterStats.reductionCoolDown;
+            float baseHit = localHero.characterStats.hitRate;
+            float baseLifeSteal = localHero.characterStats.lifeSteal;
+
+            // 🎯 เพิ่ม stat bonuses จาก upgrades
+            characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
+                                       out float atkSpeedBonus, out float evaBonus, out float critChanceBonus,
+                                       out int magicBonus, out int manaBonus, out float cdrBonus,
+                                       out float hitBonus, out float lifeStealBonus, out float speedBonus);
+
+            // รวม bonuses เข้ากับ base stats
+            baseHp += hpBonus;
+            baseMana += manaBonus;
+            baseAttack += atkBonus;
+            baseMagic += magicBonus;
+            baseCrit += critChanceBonus;
+            baseCritDmg += critDmgBonus;
+            baseSpeed += speedBonus;
+            baseAtkSpeed += atkSpeedBonus;
+            baseEvasion += evaBonus;
+            baseCdr += cdrBonus;
+            baseHit += hitBonus;
+            baseLifeSteal += lifeStealBonus;
+
+            // 🔧 บันทึก base stats ใหม่ลง characterData
+            characterData.UpdateBaseStats(
+                baseHp, baseMana, baseAttack, baseMagic, baseArmor,
+                baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
+                baseAtkSpeed, baseCdr, baseLifeSteal
+            );
+
+            Debug.Log($"[UpgradeLobby] 📊 Recalculated base stats with upgrades:");
+            Debug.Log($"  HP: {baseHp} (+{hpBonus}), ATK: {baseAttack} (+{atkBonus}), MAGIC: {baseMagic} (+{magicBonus})");
+            Debug.Log($"  CRIT: {baseCrit:F1}% (+{critChanceBonus:F1}%), CRIT_DMG: {baseCritDmg:F1}% (+{critDmgBonus:F1}%)");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error recalculating base stats: {e.Message}");
+        }
+    }
+
+    // 🆕 Apply base stats ไปยัง character
+    private void ApplyNewBaseStatsToCharacter()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null || !characterData.HasValidBaseStats())
+            {
+                Debug.LogError("[UpgradeLobby] No valid base stats to apply!");
+                return;
+            }
+
+            // เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+            float hpPercentage = localHero.MaxHp > 0 ? (float)localHero.CurrentHp / localHero.MaxHp : 1f;
+            float manaPercentage = localHero.MaxMana > 0 ? (float)localHero.CurrentMana / localHero.MaxMana : 1f;
+
+            // Apply base stats ไปยัง character
+            localHero.MaxHp = characterData.baseMaxHp;
+            localHero.MaxMana = characterData.baseMaxMana;
+            localHero.AttackDamage = characterData.baseAttackDamage;
+            localHero.MagicDamage = characterData.baseMagicDamage;
+            localHero.Armor = characterData.baseArmor;
+            localHero.CriticalChance = characterData.baseCriticalChance;
+            localHero.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+            localHero.MoveSpeed = characterData.baseMoveSpeed;
+            localHero.HitRate = characterData.baseHitRate;
+            localHero.EvasionRate = characterData.baseEvasionRate;
+            localHero.AttackSpeed = characterData.baseAttackSpeed;
+            localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
+            localHero.LifeSteal = characterData.baseLifeSteal;
+
+            // ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
+            localHero.CurrentHp = Mathf.RoundToInt(localHero.MaxHp * hpPercentage);
+            localHero.CurrentMana = Mathf.RoundToInt(localHero.MaxMana * manaPercentage);
+            localHero.CurrentHp = Mathf.Clamp(localHero.CurrentHp, 1, localHero.MaxHp);
+            localHero.CurrentMana = Mathf.Clamp(localHero.CurrentMana, 0, localHero.MaxMana);
+
+            // Force update network state
+            localHero.ForceUpdateNetworkState();
+
+            Debug.Log($"[UpgradeLobby] ✅ Applied new base stats to character");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error applying base stats to character: {e.Message}");
+        }
+    }
+
+    // 🆕 บันทึก base stats และ total stats ลง Firebase
+    private void SaveStatsToFirebase()
+    {
+        try
+        {
+            if (PersistentPlayerData.Instance?.multiCharacterData == null)
+            {
+                Debug.LogError("[UpgradeLobby] No multiCharacterData to save!");
+                return;
+            }
+
+            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
+
+            if (characterData != null)
+            {
+                // 🔧 บันทึก total stats (base + equipment bonuses) เหมือน SaveTotalStatsDirectly()
+                characterData.UpdateTotalStats(
+                    localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
+                    localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
+                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal
+                );
+
+                // บันทึกลง Firebase
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                Debug.Log($"[UpgradeLobby] 💾 Saved both base and total stats to Firebase");
+                Debug.Log($"  Total stats: HP={localHero.MaxHp}, ATK={localHero.AttackDamage}, MAGIC={localHero.MagicDamage}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error saving stats to Firebase: {e.Message}");
         }
     }
     private void ResetAllStats()
@@ -473,7 +643,6 @@ public class UpgradeLobby : MonoBehaviour
 
             if (characterData != null && characterData.HasUpgradedStats())
             {
-                // บันทึกค่าก่อน reset เพื่อ debug
                 int beforePoints = characterData.availableStatPoints;
                 int beforeUsed = characterData.totalStatPointsUsed;
 
@@ -482,14 +651,17 @@ public class UpgradeLobby : MonoBehaviour
 
                 Debug.Log($"[UpgradeLobby] 🔄 Reset Stats: Points {beforePoints} → {characterData.availableStatPoints}, Used {beforeUsed} → {characterData.totalStatPointsUsed}");
 
+                // 🆕 Apply การรีเซ็ตไปยัง character
+                ApplyStatResetToCharacter();
+
                 // อัปเดต UI
                 UpdateStatPointDisplay();
                 UpdateStatUpgradeButtons();
+                UpdateCurrencyDisplay();
+                UpgradeLobbyStat(); // Refresh character stats display
 
                 // บันทึกลง Firebase
                 PersistentPlayerData.Instance.SavePlayerDataAsync();
-
-                // TODO: ขั้นตอนที่ 4 - รีเซ็ต stat bonuses จริงในตัวละคร
 
                 Debug.Log($"[UpgradeLobby] ✅ Successfully reset all stats");
             }
@@ -503,6 +675,60 @@ public class UpgradeLobby : MonoBehaviour
             Debug.LogError($"[UpgradeLobby] ❌ Error resetting stats: {e.Message}");
         }
     }
+
+    // 🆕 Method สำหรับ apply การรีเซ็ต stats
+    private void ApplyStatResetToCharacter()
+    {
+        try
+        {
+            if (localHero == null)
+            {
+                Debug.LogError("[UpgradeLobby] No local hero to apply reset to!");
+                return;
+            }
+
+            Debug.Log($"[UpgradeLobby] 🔄 Applying stat reset to character...");
+
+            // 🔧 ขั้นตอนที่ 1: คำนวณ base stats ใหม่ (ไม่มี stat upgrades)
+            RecalculateBaseStatsWithUpgrades(); // method เดียวกัน แต่ upgrades จะเป็น 0 แล้ว
+
+            // 🔧 ขั้นตอนที่ 2: Apply base stats ไปยัง character
+            ApplyNewBaseStatsToCharacter();
+
+            // 🔧 ขั้นตอนที่ 3: Apply equipment bonuses ทับ
+            localHero.ApplyLoadedEquipmentStats();
+
+            // 🔧 ขั้นตอนที่ 4: บันทึก base stats และ total stats
+            SaveStatsToFirebase();
+
+            Debug.Log($"[UpgradeLobby] ✅ Applied stat reset successfully!");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error applying reset to character: {e.Message}");
+        }
+    }
+    private string GetUpgradeFailureReason(CharacterProgressData characterData, StatType statType)
+    {
+        if (characterData == null)
+            return "No character data";
+
+        if (characterData.availableStatPoints <= 0)
+            return "No stat points available";
+
+        if (characterData.GetStatUpgrades(statType) >= localHero.GetCurrentLevel())
+            return "Max level reached for this stat";
+
+        var currencyManager = CurrencyManager.FindCurrencyManager();
+        long cost = characterData.GetStatUpgradeCost(characterData.GetStatUpgrades(statType));
+        if (currencyManager == null || !currencyManager.HasEnoughGold(cost))
+            return $"Insufficient gold (need {cost})";
+
+        return "Unknown";
+    }
+
+    // Helper method สำหรับแสดงเหตุผลที่อัพเกรดไม่ได้
+   
 
     // ✅ Method สำหรับใช้ CharacterProgressData (fallback)
 

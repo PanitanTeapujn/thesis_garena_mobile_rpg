@@ -1209,6 +1209,16 @@ public class Character : NetworkBehaviour
         // รวม attack speed bonus เป็น %
         float totalAttackSpeedBonus = 0f;
 
+        // 🆕 ใช้ค่า AttackSpeed ปัจจุบัน (รวม upgrades แล้ว)
+        if (characterStats != null)
+        {
+            float attackSpeedFromUpgrades = this.AttackSpeed - characterStats.attackSpeed;
+            if (attackSpeedFromUpgrades > 0)
+            {
+                totalAttackSpeedBonus += attackSpeedFromUpgrades;
+            }
+        }
+
         // Equipment bonus (เป็น %)
         if (equipmentManager != null)
         {
@@ -1251,11 +1261,27 @@ public class Character : NetworkBehaviour
         // รวม attack speed bonus เป็น %
         float totalAttackSpeedBonus = 0f;
 
+        // 🆕 เพิ่ม bonus จาก base AttackSpeed (DEX upgrades)
+        if (characterStats != null)
+        {
+            float baseAttackSpeedFromStats = characterStats.attackSpeed;
+            float currentAttackSpeed = this.AttackSpeed; // ค่าปัจจุบัน (รวม upgrades)
+            float attackSpeedFromUpgrades = currentAttackSpeed - baseAttackSpeedFromStats;
+
+            if (attackSpeedFromUpgrades > 0)
+            {
+                totalAttackSpeedBonus += attackSpeedFromUpgrades; // แปลงเป็น %
+                Debug.Log($"[GetAttackSpeedMultiplierForUI] Attack Speed from upgrades: +{attackSpeedFromUpgrades:F1}%");
+            }
+        }
+
+        // Equipment bonus (เป็น %)
         if (equipmentManager != null)
         {
             totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
         }
 
+        // Status effect bonus (เป็น %)
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
@@ -1266,9 +1292,10 @@ public class Character : NetworkBehaviour
         // ✅ แปลง % เป็น multiplier สำหรับ UI
         float multiplier = 1f + (totalAttackSpeedBonus / 100f);
 
+        Debug.Log($"[GetAttackSpeedMultiplierForUI] {CharacterName}: Total Bonus={totalAttackSpeedBonus:F1}%, Multiplier=x{multiplier:F2}");
+
         return multiplier;
     }
-
 
     public virtual float GetEffectiveCriticalDamageBonus()
     {
@@ -1287,8 +1314,8 @@ public class Character : NetworkBehaviour
     // ใน Character.cs - แก้ไข GetEffectiveLifeSteal()
     public virtual float GetEffectiveLifeSteal()
     {
-        // ✅ ใช้ characterStats.lifeSteal แทน this.lifeSteal
-        float baseLifeSteal = characterStats != null ? characterStats.lifeSteal : 0f;
+        // ✅ ใช้ this.LifeSteal ที่ถูกอัพเดตแล้วจาก stat upgrades
+        float baseLifeSteal = this.LifeSteal; // ใช้ค่าจาก property ตรงๆ
 
         // Add equipment lifesteal bonus
         if (equipmentManager != null)
@@ -1296,7 +1323,7 @@ public class Character : NetworkBehaviour
             baseLifeSteal += equipmentManager.GetLifeStealBonus();
         }
 
-        Debug.Log($"[GetEffectiveLifeSteal] {CharacterName}: CharacterStats={characterStats?.lifeSteal ?? 0}, Equipment={equipmentManager?.GetLifeStealBonus() ?? 0}, Total={baseLifeSteal}");
+        Debug.Log($"[GetEffectiveLifeSteal] {CharacterName}: Base={this.LifeSteal:F1}%, Equipment={equipmentManager?.GetLifeStealBonus() ?? 0:F1}%, Total={baseLifeSteal:F1}%");
 
         return Mathf.Clamp(baseLifeSteal, 0f, 100f);
     }

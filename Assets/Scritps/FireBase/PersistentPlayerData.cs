@@ -473,8 +473,8 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
-       int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
-       float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal)
+    int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
+    float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal)
     {
         if (multiCharacterData == null)
         {
@@ -490,7 +490,7 @@ public class PersistentPlayerData : MonoBehaviour
             // เก็บค่าเก่าเพื่อ debug
             int oldHp = character.totalMaxHp;
             int oldAtk = character.totalAttackDamage;
-            int oldArm = character.totalArmor;
+            float oldLifeSteal = character.totalLifeSteal; // 🆕 เพิ่ม debug LifeSteal
 
             character.currentLevel = level;
             character.currentExp = exp;
@@ -507,7 +507,7 @@ public class PersistentPlayerData : MonoBehaviour
             character.totalEvasionRate = evasionRate;
             character.totalAttackSpeed = attackSpeed;
             character.totalReductionCoolDown = reductionCoolDown;
-            character.totalLifeSteal = lifeSteal; // ✅ เพิ่ม
+            character.totalLifeSteal = lifeSteal; // ✅ บันทึก LifeSteal
 
             // Mark ว่ามี total stats
             character.hasTotalStats = true;
@@ -516,7 +516,7 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.Log($"[PersistentPlayerData] 💾 Updated total stats for {characterType}:");
             Debug.Log($"  HP: {oldHp} → {maxHp} (change: {maxHp - oldHp:+#;-#;0})");
             Debug.Log($"  ATK: {oldAtk} → {attackDamage} (change: {attackDamage - oldAtk:+#;-#;0})");
-            Debug.Log($"  ARM: {oldArm} → {armor} (change: {armor - oldArm:+#;-#;0})");
+            Debug.Log($"  LifeSteal: {oldLifeSteal:F1}% → {lifeSteal:F1}% (change: {lifeSteal - oldLifeSteal:+#.#;-#.#;0})"); // 🆕 Debug LifeSteal
             Debug.Log($"  Level: {level}, CRIT: {critChance:F1}%");
 
             // 🆕 บันทึกลง Firebase ทันที
@@ -524,7 +524,7 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
-    
+
     // Note: This method appears to be a duplicate with different parameters - consider removing or renaming
 
     #endregion

@@ -560,7 +560,7 @@ public class SharedCurrencyData
     // Constructor
     public SharedCurrencyData()
     {
-        gold = 1000;  // เงินเริ่มต้น
+        gold = 5000;  // เงินเริ่มต้น
         gems = 50;    // เพชรเริ่มต้น
         maxGold = 999999999;
         maxGems = 999999;
@@ -1430,6 +1430,31 @@ public class CharacterProgressData
     {
         hasStatPointData = false;
         statPointLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+    public void GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
+                          out float atkSpeedBonus, out float evaBonus, out float critChanceBonus,
+                          out int magicBonus, out int manaBonus, out float cdrBonus,
+                          out float hitBonus, out float lifeStealBonus, out float speedBonus)
+    {
+        // STR bonuses: HP +15, ATK +3, CRIT_DAMAGE +2% per point
+        hpBonus = upgradedSTR * 15;
+        atkBonus = upgradedSTR * 3;
+        critDmgBonus = upgradedSTR * 0.5f;
+
+        // DEX bonuses: ATTACK_SPEED +3%, EVASION +1%, CRIT_CHANCE +0.8% per point  
+        atkSpeedBonus = upgradedDEX * 0.5f;
+        evaBonus = upgradedDEX * 0.5f;
+        critChanceBonus = upgradedDEX * 0.5f;
+
+        // INT bonuses: MAGIC_DAMAGE +4, MAX_MANA +8, CDR +1.5% per point
+        magicBonus = upgradedINT * 4;
+        manaBonus = upgradedINT * 8;
+        cdrBonus = upgradedINT * 0.5f;
+
+        // MAS bonuses: HIT_RATE +1.2%, LIFE_STEAL +0.5%, MOVE_SPEED +1.8 per point
+        hitBonus = upgradedMAS * 0.5f;
+        lifeStealBonus = upgradedMAS * 0.5f;
+        speedBonus = upgradedMAS * 0.05f;
     }
 
     public bool HasStatPointData()
