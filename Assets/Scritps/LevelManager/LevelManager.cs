@@ -658,7 +658,7 @@ public class LevelManager : NetworkBehaviour
         int baseAttack = character.characterStats.attackDamage + (levelBonus * levelUpStats.attackDamageBonusPerLevel);
         int baseMagic = character.characterStats.magicDamage + (levelBonus * levelUpStats.magicDamageBonusPerLevel);
         int baseMana = character.characterStats.maxMana + (levelBonus * levelUpStats.manaBonusPerLevel);
-        int baseArmor = character.characterStats.arrmor + (levelBonus * levelUpStats.armorBonusPerLevel);
+        int baseArmors = character.characterStats.arrmor + (levelBonus * levelUpStats.armorBonusPerLevel);
         float baseCrit = character.characterStats.criticalChance + (levelBonus * levelUpStats.criticalChanceBonusPerLevel);
         float baseCritDmg = character.characterStats.criticalDamageBonus;
         float baseSpeed = character.characterStats.moveSpeed + (levelBonus * levelUpStats.moveSpeedBonusPerLevel);
@@ -666,7 +666,7 @@ public class LevelManager : NetworkBehaviour
         float baseEvasion = character.characterStats.evasionRate;
         float baseCdr = character.characterStats.reductionCoolDown;
         float baseHit = character.characterStats.hitRate;
-        float baseLifeSteal = character.characterStats.lifeSteal + (levelBonus * levelUpStats.lifeStealBonusPerLevel);
+        float baseLifeSteals = character.characterStats.lifeSteal + (levelBonus * levelUpStats.lifeStealBonusPerLevel);
 
         // ✅ เพิ่ม stat bonuses จาก upgrades
         try
@@ -692,7 +692,7 @@ public class LevelManager : NetworkBehaviour
                 baseMana += manaBonus;
                 baseCdr += cdrBonus;
                 baseHit += hitBonus;
-                baseLifeSteal += lifeStealBonus;
+                baseLifeSteals += lifeStealBonus;
                 baseSpeed += speedBonus;
 
                 Debug.Log($"[LevelManager] 🎯 Applied stat upgrade bonuses:");
@@ -712,7 +712,7 @@ public class LevelManager : NetworkBehaviour
         baseMaxMana = baseMana;
         baseAttackDamage = baseAttack;
         baseMagicDamage = baseMagic;
-        baseArmor = baseArmor;
+        baseArmor = baseArmors;
         baseCriticalChance = baseCrit;
         baseCriticalDamageBonus = baseCritDmg;
         baseMoveSpeed = baseSpeed;
@@ -720,7 +720,7 @@ public class LevelManager : NetworkBehaviour
         baseEvasionRate = baseEvasion;
         baseReductionCoolDown = baseCdr;
         baseHitRate = baseHit;
-        baseLifeSteal = baseLifeSteal;
+        baseLifeSteal = baseLifeSteals;
 
         Debug.Log($"[LevelManager] 📊 Final base stats (ScriptableObject + Level + Upgrades):");
         Debug.Log($"  HP={baseHp}, ATK={baseAttack}, MAG={baseMagic}, ARM={baseArmor}");

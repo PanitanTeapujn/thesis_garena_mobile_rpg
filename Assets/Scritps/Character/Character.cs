@@ -1534,19 +1534,14 @@ public class Character : NetworkBehaviour
     // ใน Character.cs - แก้ไข GetEffectiveLifeSteal()
     public virtual float GetEffectiveLifeSteal()
     {
-        // ✅ ใช้ this.LifeSteal ที่ถูกอัพเดตแล้วจาก stat upgrades
-        float baseLifeSteal = this.LifeSteal; // ใช้ค่าจาก property ตรงๆ
+        // ✅ ใช้ this.LifeSteal ที่รวม equipment bonus แล้ว - ไม่ต้องบวกซ้ำ
+        float totalLifeSteal = this.LifeSteal; // ค่านี้รวม equipment bonus แล้วจาก EquipmentManager
 
-        // Add equipment lifesteal bonus
-        if (equipmentManager != null)
-        {
-            baseLifeSteal += equipmentManager.GetLifeStealBonus();
-        }
+        Debug.Log($"[GetEffectiveLifeSteal] {CharacterName}: Total LifeSteal={totalLifeSteal:F1}% (already includes equipment bonus)");
 
-        Debug.Log($"[GetEffectiveLifeSteal] {CharacterName}: Base={this.LifeSteal:F1}%, Equipment={equipmentManager?.GetLifeStealBonus() ?? 0:F1}%, Total={baseLifeSteal:F1}%");
-
-        return Mathf.Clamp(baseLifeSteal, 0f, 100f);
+        return Mathf.Clamp(totalLifeSteal, 0f, 100f);
     }
+
     [ContextMenu("Debug Lifesteal Problem")]
     public void DebugLifestealProblem()
     {

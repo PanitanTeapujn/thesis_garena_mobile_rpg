@@ -1453,22 +1453,22 @@ public class CharacterProgressData
         // STR bonuses: HP +15, ATK +3, CRIT_DAMAGE +2% per point
         hpBonus = upgradedSTR * 15;
         atkBonus = upgradedSTR * 3;
-        critDmgBonus = upgradedSTR * 0.5f;
+        critDmgBonus = upgradedSTR * 0.2f;
 
         // DEX bonuses: ATTACK_SPEED +3%, EVASION +1%, CRIT_CHANCE +0.8% per point  
-        atkSpeedBonus = upgradedDEX * 0.5f;
-        evaBonus = upgradedDEX * 0.5f;
-        critChanceBonus = upgradedDEX * 0.5f;
+        atkSpeedBonus = upgradedDEX * 0.2f;
+        evaBonus = upgradedDEX * 0.2f;
+        critChanceBonus = upgradedDEX * 0.2f;
 
         // INT bonuses: MAGIC_DAMAGE +4, MAX_MANA +8, CDR +1.5% per point
         magicBonus = upgradedINT * 4;
         manaBonus = upgradedINT * 8;
-        cdrBonus = upgradedINT * 0.5f;
+        cdrBonus = upgradedINT * 0.2f;
 
         // MAS bonuses: HIT_RATE +1.2%, LIFE_STEAL +0.5%, MOVE_SPEED +1.8 per point
         hitBonus = upgradedMAS * 0.5f;
-        lifeStealBonus = upgradedMAS * 0.5f;
-        speedBonus = upgradedMAS * 0.05f;
+        lifeStealBonus = upgradedMAS * 0.2f;
+        speedBonus = upgradedMAS * 0.01f;
     }
 
     public bool HasStatPointData()
