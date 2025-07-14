@@ -925,7 +925,7 @@ public class LevelManager : NetworkBehaviour
             Debug.Log("[LevelManager] 🚀 Setting character to Level 100...");
 
             // ตั้งค่า level และ exp
-            CurrentLevel = 100;
+            CurrentLevel = 90;
             CurrentExp = 0;
             ExpToNextLevel = CalculateExpToNextLevel(100);
 

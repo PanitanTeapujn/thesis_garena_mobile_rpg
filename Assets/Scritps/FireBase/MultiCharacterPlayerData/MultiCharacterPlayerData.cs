@@ -811,36 +811,47 @@ public class MultiCharacterPlayerData
     }
     private void InitializeDefaultCharacter()
     {
-        CharacterProgressData defaultAssassin = new CharacterProgressData("Assassin"); // 🆕 ใช้ constructor ใหม่
+        CharacterProgressData defaultAssassin = new CharacterProgressData("Assassin");
         defaultAssassin.currentLevel = 1;
         defaultAssassin.currentExp = 0;
         defaultAssassin.expToNextLevel = 100;
 
-        CharacterStats assassinStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
-        if (assassinStats != null)
+        CharacterStats assassinStatsTemplate = Resources.Load<CharacterStats>("Characters/AssassinStats");
+        if (assassinStatsTemplate == null)
         {
-            defaultAssassin.totalMaxHp = assassinStats.maxHp;
-            defaultAssassin.totalMaxMana = assassinStats.maxMana;
-            defaultAssassin.totalAttackDamage = assassinStats.attackDamage;
-            defaultAssassin.totalMagicDamage = assassinStats.magicDamage;
-            defaultAssassin.totalArmor = assassinStats.arrmor;
-            defaultAssassin.totalCriticalChance = assassinStats.criticalChance;
+            Debug.LogError("ไม่พบ AssassinStats!");
+        }
+        else
+        {
+            CharacterStats assassinStats = ScriptableObject.Instantiate(assassinStatsTemplate);
+            Debug.Log("โหลด AssassinStats เรียบร้อย! MoveSpeed = " + assassinStats.moveSpeed);
 
-            defaultAssassin.totalCriticalDamageBonus = assassinStats.criticalDamageBonus;
+            // ✅ Copy ค่า base stat
+            defaultAssassin.baseMoveSpeed = assassinStats.moveSpeed;
+            defaultAssassin.baseMaxHp = assassinStats.maxHp;
+            defaultAssassin.baseMaxMana = assassinStats.maxMana;
+            defaultAssassin.baseAttackDamage = assassinStats.attackDamage;
+            defaultAssassin.baseMagicDamage = assassinStats.magicDamage;
+            defaultAssassin.baseArmor = assassinStats.arrmor;
+            defaultAssassin.baseAttackCoolDown = assassinStats.attackCoolDown;
+            defaultAssassin.baseAttackRange = assassinStats.attackRange;
+            defaultAssassin.baseCriticalChance = assassinStats.criticalChance;
+            defaultAssassin.baseCriticalDamageBonus = assassinStats.criticalDamageBonus;
+            defaultAssassin.baseHitRate = assassinStats.hitRate;
+            defaultAssassin.baseEvasionRate = assassinStats.evasionRate;
+            defaultAssassin.baseAttackSpeed = assassinStats.attackSpeed;
+            defaultAssassin.baseReductionCoolDown = assassinStats.reductionCoolDown;
+            defaultAssassin.baseLifeSteal = assassinStats.lifeSteal;
+            defaultAssassin.attackType = assassinStats.attackType;
 
-            defaultAssassin.totalMoveSpeed = assassinStats.moveSpeed;
-            defaultAssassin.totalAttackRange = assassinStats.attackRange;
-            defaultAssassin.totalAttackCooldown = assassinStats.attackCoolDown;
-            defaultAssassin.totalHitRate = assassinStats.hitRate;
-            defaultAssassin.totalEvasionRate = assassinStats.evasionRate;
-            defaultAssassin.totalAttackSpeed = assassinStats.attackSpeed;
-            defaultAssassin.totalReductionCoolDown = assassinStats.reductionCoolDown;
-
-            Debug.Log($"✅ Default Assassin created with Critical Multiplier: {defaultAssassin.totalCriticalDamageBonus}");
+            // ✅ Update total stats
+            defaultAssassin.UpdateTotalStats();
         }
 
         characters.Add(defaultAssassin);
     }
+
+
 
     public CharacterProgressData CreateDefaultCharacterData(string characterType)
     {
@@ -866,28 +877,7 @@ public class MultiCharacterPlayerData
                 characterStats = Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
                 break;
         }
-
-        if (characterStats != null)
-        {
-            newCharacter.totalMaxHp = characterStats.maxHp;
-            newCharacter.totalMaxMana = characterStats.maxMana;
-            newCharacter.totalAttackDamage = characterStats.attackDamage;
-            newCharacter.totalMagicDamage = characterStats.magicDamage;
-            newCharacter.totalArmor = characterStats.arrmor;
-            newCharacter.totalCriticalChance = characterStats.criticalChance;
-
-            newCharacter.totalCriticalDamageBonus = characterStats.criticalDamageBonus;
-
-            newCharacter.totalMoveSpeed = characterStats.moveSpeed;
-            newCharacter.totalAttackRange = characterStats.attackRange;
-            newCharacter.totalAttackCooldown = characterStats.attackCoolDown;
-            newCharacter.totalHitRate = characterStats.hitRate;
-            newCharacter.totalEvasionRate = characterStats.evasionRate;
-            newCharacter.totalAttackSpeed = characterStats.attackSpeed;
-            newCharacter.totalReductionCoolDown = characterStats.reductionCoolDown;
-
-            Debug.Log($"✅ Created {characterType} with Critical Multiplier: {newCharacter.totalCriticalDamageBonus}");
-        }
+        
         return newCharacter;
     }
     #endregion
@@ -1088,6 +1078,9 @@ public class CharacterProgressData
     public float baseAttackSpeed = 0f;
     public float baseReductionCoolDown = 0f;
     public float baseLifeSteal = 0f;
+    public float baseAttackCoolDown = 0f;
+    public int baseAttackRange = 0;
+    public AttackType attackType;
 
     #endregion
 
@@ -1210,6 +1203,27 @@ public class CharacterProgressData
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
         Debug.Log($"[{characterType}] 📈 Total stats updated: HP={hp}, ATK={atk}, ARM={armor}");
+    }
+    public void UpdateTotalStats()
+    {
+        totalMaxHp = baseMaxHp;
+        totalMaxMana = baseMaxMana;
+        totalAttackDamage = baseAttackDamage;
+        totalMagicDamage = baseMagicDamage;
+        totalArmor = baseArmor;
+        totalCriticalChance = baseCriticalChance;
+        totalCriticalDamageBonus = baseCriticalDamageBonus;
+        totalMoveSpeed = baseMoveSpeed;
+        totalHitRate = baseHitRate;
+        totalEvasionRate = baseEvasionRate;
+        totalAttackSpeed = baseAttackSpeed;
+        totalReductionCoolDown = baseReductionCoolDown;
+        totalLifeSteal = baseLifeSteal;
+
+        hasTotalStats = true;
+        statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[{characterType}] 📈 Total stats updated from base: HP={totalMaxHp}, ATK={totalAttackDamage}, ARM={totalArmor}");
     }
 
     /// <summary>

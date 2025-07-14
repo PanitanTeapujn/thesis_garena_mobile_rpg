@@ -213,7 +213,6 @@ public class FirebaseLoginManager : MonoBehaviour
             Debug.Log($"Registration successful: {user.Email}");
 
             // ✅ สร้างผู้เล่นใหม่ด้วย default Assassin stats ที่ถูกต้อง
-            SetupNewPlayerWithDefaultAssassin();
 
             // Create Firebase data in background
             StartCoroutine(CreateFirebaseDataAsync());
@@ -224,47 +223,7 @@ public class FirebaseLoginManager : MonoBehaviour
     #endregion
 
     #region Player Data Setup - การตั้งค่าข้อมูลผู้เล่นเริ่มต้นและการโหลดข้อมูลด่วน
-    private void SetupNewPlayerWithDefaultAssassin()
-    {
-        string playerName = nameInput.text.Trim();
-        PlayerPrefs.SetString("PlayerName", playerName);
-        PlayerPrefs.SetString("PlayerId", user.UserId);
-
-        // Set default character เป็น Assassin
-        PlayerSelectionData.SaveCharacterSelection(PlayerSelectionData.CharacterType.Assassin);
-        PlayerPrefs.SetString("LastCharacterSelected", "Assassin");
-
-        // ✅ โหลด Assassin stats จาก ScriptableObject
-        CharacterStats assassinStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
-
-        if (assassinStats != null)
-        {
-            // ใช้ stats จาก ScriptableObject
-            PlayerPrefs.SetInt("PlayerLevel", 1);
-            PlayerPrefs.SetInt("PlayerExp", 0);
-            PlayerPrefs.SetInt("PlayerExpToNext", 100);
-            PlayerPrefs.SetInt("PlayerMaxHp", assassinStats.maxHp);
-            PlayerPrefs.SetInt("PlayerMaxMana", assassinStats.maxMana);
-            PlayerPrefs.SetInt("PlayerAttackDamage", assassinStats.attackDamage);
-            PlayerPrefs.SetInt("PlayerMagicDamage", assassinStats.magicDamage);
-            PlayerPrefs.SetInt("PlayerArmor", assassinStats.arrmor);
-            PlayerPrefs.SetFloat("PlayerCritChance", assassinStats.criticalChance);
-
-            // 🔧 ✅ แก้ไข: ใช้ค่าคงที่ Critical Multiplier
-            PlayerPrefs.SetFloat("PlayerCriticalMultiplier", assassinStats.criticalDamageBonus); // ค่าที่ต้องการ
-
-            PlayerPrefs.SetFloat("PlayerMoveSpeed", assassinStats.moveSpeed);
-            PlayerPrefs.SetFloat("PlayerHitRate", assassinStats.hitRate);
-            PlayerPrefs.SetFloat("PlayerEvasionRate", assassinStats.evasionRate);
-            PlayerPrefs.SetFloat("PlayerAttackSpeed", assassinStats.attackSpeed);
-            PlayerPrefs.SetFloat("PlayerReductionCoolDown", assassinStats.reductionCoolDown);
-
-            Debug.Log($"✅ New player setup with fixed Critical Multiplier: 0.1f (was {assassinStats.criticalDamageBonus})");
-        }
-
-        PlayerPrefs.Save();
-        Debug.Log($"✅ New player setup completed for {playerName}");
-    }
+    
 
     private void SetupPlayerDataQuick()
     {
@@ -328,28 +287,7 @@ public class FirebaseLoginManager : MonoBehaviour
         };
 
         // Save character data
-        var charactersDict = new Dictionary<string, object>();
-        foreach (var character in newPlayerData.characters)
-        {
-            var charDict = new Dictionary<string, object>
-            {
-                {"characterType", character.characterType},
-                {"currentLevel", character.currentLevel},
-                {"currentExp", character.currentExp},
-                {"expToNextLevel", character.expToNextLevel},
-                {"totalMaxHp", character.totalMaxHp},
-                {"totalMaxMana", character.totalMaxMana},
-                {"totalAttackDamage", character.totalAttackDamage},
-                {"totalArmor", character.totalArmor},
-                {"totalCriticalChance", character.totalCriticalChance},
-                {"totalMoveSpeed", character.totalMoveSpeed},
-                {"totalHitRate", character.totalHitRate},
-                {"totalEvasionRate", character.totalEvasionRate},
-                {"totalAttackSpeed", character.totalAttackSpeed}
-            };
-            charactersDict[character.characterType] = charDict;
-        }
-        playerDataDict["characters"] = charactersDict;
+       
 
         var task = playerRef.SetValueAsync(playerDataDict);
         yield return new WaitUntil(() => task.IsCompleted);

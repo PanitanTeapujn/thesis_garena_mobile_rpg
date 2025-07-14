@@ -117,14 +117,14 @@ public class InventorySlot : MonoBehaviour
             itemIcon.sprite = null;
             itemIcon.color = Color.white;
             itemIcon.gameObject.SetActive(false);
-            Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon hidden");
+//Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon hidden");
         }
 
         // ปิด tier background
         if (tierBackground != null)
         {
             tierBackground.enabled = false;
-            Debug.Log($"[InventorySlot] 🎨 Slot {slotIndex}: Tier background disabled");
+           // Debug.Log($"[InventorySlot] 🎨 Slot {slotIndex}: Tier background disabled");
         }
 
         // ซ่อน stack text
@@ -132,21 +132,21 @@ public class InventorySlot : MonoBehaviour
         {
             stackText.text = "";
             stackText.gameObject.SetActive(false);
-            Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text hidden");
+           // Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text hidden");
         }
 
-        Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} empty state complete");
+       // Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} empty state complete");
     }
     public void SetFilledState(Sprite itemSprite, int stackCount = 0)
     {
         if (itemSprite == null)
         {
-            Debug.LogWarning($"[InventorySlot] Trying to fill slot {slotIndex} with null sprite!");
+          //  Debug.LogWarning($"[InventorySlot] Trying to fill slot {slotIndex} with null sprite!");
             SetEmptyState();
             return;
         }
 
-        Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
+       // Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
 
         isEmpty = false;
         isSelected = false;
