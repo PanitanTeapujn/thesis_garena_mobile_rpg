@@ -99,7 +99,6 @@ public class LevelManager : NetworkBehaviour
             }
             else
             {
-                InitializeBasicLevelSystem();
             }
         }
     }
@@ -115,34 +114,77 @@ public class LevelManager : NetworkBehaviour
 
             if (characterData != null && IsCorrectCharacter())
             {
-                Debug.Log($"[LevelManager] 🔄 Simple refresh for {activeCharacterType}...");
+                Debug.Log($"[LevelManager] 🔄 Refreshing character data for {activeCharacterType}...");
 
                 // Apply level และ exp
                 CurrentLevel = characterData.currentLevel;
                 CurrentExp = characterData.currentExp;
                 ExpToNextLevel = characterData.expToNextLevel;
 
-                // ใช้ total stats จาก Firebase โดยตรง (ไม่คำนวณใหม่)
-                character.MaxHp = characterData.totalMaxHp;
-                character.CurrentHp = characterData.totalMaxHp;
-                character.MaxMana = characterData.totalMaxMana;
-                character.CurrentMana = characterData.totalMaxMana;
-                character.AttackDamage = characterData.totalAttackDamage;
-                character.MagicDamage = characterData.totalMagicDamage;
-                character.Armor = characterData.totalArmor;
-                character.CriticalChance = characterData.totalCriticalChance;
-                character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, false);
-                character.MoveSpeed = characterData.totalMoveSpeed;
-                character.HitRate = characterData.totalHitRate;
-                character.EvasionRate = characterData.totalEvasionRate;
-                character.AttackSpeed = characterData.totalAttackSpeed;
-                character.ReductionCoolDown = characterData.totalReductionCoolDown;
-                character.LifeSteal = characterData.totalLifeSteal; // ✅ Apply LifeSteal
+                // ✅ ตรวจสอบว่าเป็นการโหลดครั้งแรกหรือไม่
+                bool isFirstLoad = (character.CurrentHp == 0 || character.MaxHp == 0);
+                float hpPercentage = isFirstLoad ? 1f : (character.MaxHp > 0 ? (float)character.CurrentHp / character.MaxHp : 1f);
+                float manaPercentage = isFirstLoad ? 1f : (character.MaxMana > 0 ? (float)character.CurrentMana / character.MaxMana : 1f);
+
+                if (isFirstLoad)
+                {
+                    Debug.Log("[LevelManager] First login detected - setting full HP/Mana");
+                }
+
+                // ✅ ใช้ base stats แทน total stats เพื่อป้องกันการซ้ำ
+                if (characterData.HasValidBaseStats())
+                {
+                    Debug.Log("[LevelManager] Using base stats from Firebase");
+
+                    character.MaxHp = characterData.baseMaxHp;
+                    character.MaxMana = characterData.baseMaxMana;
+                    character.AttackDamage = characterData.baseAttackDamage;
+                    character.MagicDamage = characterData.baseMagicDamage;
+                    character.Armor = characterData.baseArmor;
+                    character.CriticalChance = characterData.baseCriticalChance;
+                    character.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+                    character.MoveSpeed = characterData.baseMoveSpeed;
+                    character.HitRate = characterData.baseHitRate;
+                    character.EvasionRate = characterData.baseEvasionRate;
+                    character.AttackSpeed = characterData.baseAttackSpeed;
+                    character.ReductionCoolDown = characterData.baseReductionCoolDown;
+                    character.LifeSteal = characterData.baseLifeSteal;
+
+                    // ✅ ปรับ HP/Mana ตามเปอร์เซ็นต์ที่คำนวณ
+                    character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
+                    character.CurrentMana = Mathf.RoundToInt(character.MaxMana * manaPercentage);
+                    character.CurrentHp = Mathf.Clamp(character.CurrentHp, 1, character.MaxHp);
+                    character.CurrentMana = Mathf.Clamp(character.CurrentMana, 0, character.MaxMana);
+
+                    Debug.Log($"[LevelManager] ✅ Applied base stats from Firebase: HP={character.CurrentHp}/{character.MaxHp} ({hpPercentage:P0})");
+                }
+                else
+                {
+                    Debug.LogWarning("[LevelManager] No valid base stats, using total stats as fallback");
+
+                    // ใช้ total stats เป็น fallback (กรณีข้อมูลเก่า)
+                    character.MaxHp = characterData.totalMaxHp;
+                    character.MaxMana = characterData.totalMaxMana;
+                    character.AttackDamage = characterData.totalAttackDamage;
+                    character.MagicDamage = characterData.totalMagicDamage;
+                    character.Armor = characterData.totalArmor;
+                    character.CriticalChance = characterData.totalCriticalChance;
+                    character.UpdateCriticalDamageBonus(characterData.totalCriticalDamageBonus, false);
+                    character.MoveSpeed = characterData.totalMoveSpeed;
+                    character.HitRate = characterData.totalHitRate;
+                    character.EvasionRate = characterData.totalEvasionRate;
+                    character.AttackSpeed = characterData.totalAttackSpeed;
+                    character.ReductionCoolDown = characterData.totalReductionCoolDown;
+                    character.LifeSteal = characterData.totalLifeSteal;
+
+                    // ✅ ปรับ HP/Mana ตามเปอร์เซ็นต์ที่คำนวณ
+                    character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
+                    character.CurrentMana = Mathf.RoundToInt(character.MaxMana * manaPercentage);
+                    character.CurrentHp = Mathf.Clamp(character.CurrentHp, 1, character.MaxHp);
+                    character.CurrentMana = Mathf.Clamp(character.CurrentMana, 0, character.MaxMana);
+                }
 
                 character.ForceUpdateNetworkState();
-
-                Debug.Log($"[LevelManager] ✅ Applied Firebase total stats directly:");
-                Debug.Log($"  HP={character.MaxHp}, ATK={character.AttackDamage}, LifeSteal={character.LifeSteal:F1}%");
 
                 // แจ้ง stats changed
                 Character.RaiseOnStatsChanged();
@@ -276,14 +318,7 @@ public class LevelManager : NetworkBehaviour
     }
 
 
-    private void FallbackToDefault()
-    {
-        if (!IsInitialized && HasInputAuthority)
-        {
-            Debug.Log("Using fallback default stats");
-            InitializeBasicLevelSystem();
-        }
-    }
+   
 
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -313,104 +348,8 @@ public class LevelManager : NetworkBehaviour
 
         Debug.Log($"🔧 Broadcasted base stats including LifeSteal: {lifeSteal:F1}%");
     }
-    private System.Collections.IEnumerator DelayedEquipmentStatsApplication()
-    {
-        Debug.Log("[LevelManager] ⚠️ DelayedEquipmentStatsApplication is now DISABLED");
-        Debug.Log("[LevelManager] ✅ Equipment stats are handled by Character component directly");
-        yield break;
-    }
-    private void RecalculateStatsWithEquipment()
-    {
-        Debug.Log("[LevelManager] ⚠️ RecalculateStatsWithEquipment is now DISABLED to prevent stats bugs");
-        Debug.Log("[LevelManager] ✅ Using Firebase total stats directly - no recalculation needed");
 
-        // เฉพาะแจ้ง stats changed
-        Character.RaiseOnStatsChanged();
 
-        // ไม่ทำ complex calculation ที่ทำให้ stats บัค
-        return;
-    }
-    private void SaveTotalStatsAfterRecalculation()
-    {
-        try
-        {
-            if (!HasInputAuthority) return;
-
-            Debug.Log("[LevelManager] 💾 Saving total stats after equipment recalculation...");
-
-            string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-
-            if (PersistentPlayerData.Instance.multiCharacterData != null)
-            {
-                // อัปเดต total stats (รวม equipment bonuses) ลง Firebase
-                PersistentPlayerData.Instance.UpdateLevelAndStats(
-                    CurrentLevel,
-                    CurrentExp,
-                    ExpToNextLevel,
-                    character.MaxHp,                    // total HP (รวม equipment)
-                    character.MaxMana,                  // total Mana (รวม equipment)
-                    character.AttackDamage,            // total Attack (รวม equipment)
-                    character.MagicDamage,             // total Magic (รวม equipment)
-                    character.Armor,                   // total Armor (รวม equipment)
-                    character.CriticalChance,          // total Crit (รวม equipment)
-                    character.CriticalDamageBonus,     // total Crit Damage (รวม equipment)
-                    character.MoveSpeed,               // total Move Speed (รวม equipment)
-                    character.HitRate,                 // total Hit Rate (รวม equipment)
-                    character.EvasionRate,             // total Evasion (รวม equipment)
-                    character.AttackSpeed,             // total Attack Speed (รวม equipment)
-                    character.ReductionCoolDown ,       // total CDR (รวม equipment)
-                    character.LifeSteal
-                ); 
-
-                Debug.Log($"[LevelManager] ✅ Total stats saved to Firebase for {activeCharacterType}");
-                Debug.Log($"  Saved: HP={character.MaxHp}, ATK={character.AttackDamage}, ARM={character.Armor}");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LevelManager] ❌ Error saving total stats after recalculation: {e.Message}");
-        }
-    }
-    private void SaveUpdatedStatsToFirebase()
-    {
-        try
-        {
-            if (!HasInputAuthority) return;
-
-            Debug.Log("[LevelManager] 💾 Saving updated stats to Firebase...");
-
-            string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-
-            if (PersistentPlayerData.Instance.multiCharacterData != null)
-            {
-                // อัปเดต total stats ลง Firebase
-                PersistentPlayerData.Instance.UpdateLevelAndStats(
-                    CurrentLevel,
-                    CurrentExp,
-                    ExpToNextLevel,
-                    character.MaxHp,
-                    character.MaxMana,
-                    character.AttackDamage,
-                    character.MagicDamage,
-                    character.Armor,
-                    character.CriticalChance,
-                    character.CriticalDamageBonus,
-                    character.MoveSpeed,
-                    character.HitRate,
-                    character.EvasionRate,
-                    character.AttackSpeed,
-                    character.ReductionCoolDown,
-                    character.LifeSteal
-                );
-
-                Debug.Log($"[LevelManager] ✅ Updated stats saved for {activeCharacterType}");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LevelManager] ❌ Error saving updated stats: {e.Message}");
-        }
-    }
 
     /// <summary>
     /// 🆕 Apply เฉพาะ base stats (ไม่รวม equipment bonuses)
@@ -418,38 +357,44 @@ public class LevelManager : NetworkBehaviour
     // 🆕 แก้ไข ApplyBaseStatsOnly ให้คำนวณ base stats ก่อน
     private void ApplyBaseStatsOnly(int level, int exp, int expToNext, int maxHp, int maxMana,
      int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
-     float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal) // ✅ เพิ่ม LifeSteal parameter
+     float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal)
     {
         CurrentLevel = level;
         CurrentExp = exp;
         ExpToNextLevel = expToNext;
 
-        // เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+        // ✅ เก็บ HP/Mana percentage ก่อนเปลี่ยน stats - แต่ให้ default เป็น 100%
         float hpPercentage = character.MaxHp > 0 ? (float)character.CurrentHp / character.MaxHp : 1f;
         float manaPercentage = character.MaxMana > 0 ? (float)character.CurrentMana / character.MaxMana : 1f;
 
-        // คำนวณ base stats จาก ScriptableObject + Level bonuses
-        CalculateBaseStatsFromLevel();
+        // ✅ ตรวจสอบถ้าเป็นการโหลดครั้งแรกหลัง login
+        bool isFirstLoad = (character.CurrentHp == 0 || character.MaxHp == 0);
+        if (isFirstLoad)
+        {
+            hpPercentage = 1f;
+            manaPercentage = 1f;
+            Debug.Log("[LevelManager] First load detected, setting full HP/Mana");
+        }
 
-        // บันทึก base stats ใน CharacterProgressData
-        SaveBaseStatsToFirebase();
+        // ✅ คำนวณ base stats ใหม่จาก ScriptableObject + Level bonuses + Stat upgrades
+        CalculateBaseStatsWithUpgrades();
 
-        // ใช้ total stats จาก Firebase (รวม equipment แล้ว)
-        character.MaxHp = maxHp;
-        character.MaxMana = maxMana;
-        character.AttackDamage = attackDamage;
-        character.MagicDamage = magicDamage;
-        character.Armor = armor;
-        character.CriticalChance = critChance;
-        character.UpdateCriticalDamageBonus(critDamageBonus, false);
-        character.MoveSpeed = moveSpeed;
-        character.HitRate = hitRate;
-        character.EvasionRate = evasionRate;
-        character.AttackSpeed = attackSpeed;
-        character.ReductionCoolDown = reductionCoolDown;
-        character.LifeSteal = lifeSteal; // ✅ Apply LifeSteal
+        // ✅ Apply base stats ไปยัง character
+        character.MaxHp = baseMaxHp;
+        character.MaxMana = baseMaxMana;
+        character.AttackDamage = baseAttackDamage;
+        character.MagicDamage = baseMagicDamage;
+        character.Armor = baseArmor;
+        character.CriticalChance = baseCriticalChance;
+        character.UpdateCriticalDamageBonus(baseCriticalDamageBonus, false);
+        character.MoveSpeed = baseMoveSpeed;
+        character.HitRate = baseHitRate;
+        character.EvasionRate = baseEvasionRate;
+        character.AttackSpeed = baseAttackSpeed;
+        character.ReductionCoolDown = baseReductionCoolDown;
+        character.LifeSteal = baseLifeSteal;
 
-        // ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
+        // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์
         character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
         character.CurrentMana = Mathf.RoundToInt(character.MaxMana * manaPercentage);
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 1, character.MaxHp);
@@ -458,65 +403,10 @@ public class LevelManager : NetworkBehaviour
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
-        Debug.Log($"[LevelManager] ✅ Applied stats: Base calculated, Total from Firebase, LifeSteal={lifeSteal:F1}%");
-    }
-    private void SaveBaseStatsToFirebase()
-    {
-        try
-        {
-            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
-
-            // บันทึก base stats
-            characterData.UpdateBaseStats(
-                baseMaxHp, baseMaxMana, baseAttackDamage, baseMagicDamage, baseArmor,
-                baseCriticalChance, baseCriticalDamageBonus, baseMoveSpeed,
-                baseHitRate, baseEvasionRate, baseAttackSpeed, baseReductionCoolDown,baseLifeSteal
-            );
-
-            Debug.Log($"[LevelManager] 💾 Base stats saved to Firebase");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LevelManager] ❌ Error saving base stats: {e.Message}");
-        }
-    }
-    private void CalculateBaseStatsFromLevel()
-    {
-        CalculateBaseStatsWithUpgrades();
+        Debug.Log($"[LevelManager] ✅ Applied base stats: HP={baseMaxHp}, Current HP={character.CurrentHp}/{character.MaxHp} ({hpPercentage:P0})");
     }
 
 
-    private void InitializeBasicLevelSystem()
-    {
-        if (IsInitialized) return;
-
-        // Use ScriptableObject stats as fallback
-        if (character.characterStats != null)
-        {
-            character.MaxHp = character.characterStats.maxHp;
-            character.CurrentHp = character.MaxHp;
-            character.MaxMana = character.characterStats.maxMana;
-            character.CurrentMana = character.MaxMana;
-            character.AttackDamage = character.characterStats.attackDamage;
-            character.MagicDamage = character.characterStats.magicDamage;
-            character.Armor = character.characterStats.arrmor;
-            character.CriticalChance = character.characterStats.criticalChance;
-            character.CriticalDamageBonus = character.characterStats.criticalDamageBonus;
-            character.MoveSpeed = character.characterStats.moveSpeed;
-            character.HitRate = character.characterStats.hitRate;
-            character.EvasionRate = character.characterStats.evasionRate;
-            character.AttackSpeed = character.characterStats.attackSpeed;
-            character.ReductionCoolDown = character.characterStats.reductionCoolDown;
-        }
-
-        CurrentLevel = 1;
-        CurrentExp = 0;
-        ExpToNextLevel = expSettings.baseExpToNextLevel;
-        IsInitialized = true;
-
-        Debug.Log($"✅ Initialized basic level system for {character.CharacterName}");
-    }
 
     // ========== Experience System (Simplified) ==========
     public virtual void GainExp(int expAmount)
@@ -538,13 +428,14 @@ public class LevelManager : NetworkBehaviour
         QuickSave();
     }
 
+    // แก้ไขใน LevelManager.cs - LevelUp method
     private void LevelUp()
     {
         CurrentExp -= ExpToNextLevel;
         CurrentLevel++;
         ExpToNextLevel = CalculateExpToNextLevel(CurrentLevel);
 
-        // Apply stat bonuses
+        // Apply stat bonuses (แบบเดิม)
         character.MaxHp += levelUpStats.hpBonusPerLevel;
         character.MaxMana += levelUpStats.manaBonusPerLevel;
         character.AttackDamage += levelUpStats.attackDamageBonusPerLevel;
@@ -561,7 +452,10 @@ public class LevelManager : NetworkBehaviour
         // 🆕 เพิ่ม stat point เมื่อ level up
         AddStatPointOnLevelUp();
 
-        // ✅ แก้ไข: Force sync network state หลัง level up
+        // ✅ บันทึก current stats เป็น total stats (รวม equipment แล้ว)
+        SaveCurrentStatsAfterLevelUp();
+
+        // ✅ Force sync network state หลัง level up
         if (HasStateAuthority)
         {
             character.NetworkedMaxHp = character.MaxHp;
@@ -583,10 +477,45 @@ public class LevelManager : NetworkBehaviour
         // Fire events
         OnLevelUp?.Invoke(character, CurrentLevel);
         OnStatsIncreased?.Invoke(character, levelUpStats);
-
-        // Quick save
-        QuickSave();
     }
+    private void SaveCurrentStatsAfterLevelUp()
+    {
+        if (!HasInputAuthority) return;
+
+        try
+        {
+            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
+
+            if (characterData != null)
+            {
+                // บันทึก level และ exp
+                characterData.currentLevel = CurrentLevel;
+                characterData.currentExp = CurrentExp;
+                characterData.expToNextLevel = ExpToNextLevel;
+
+                // ✅ บันทึก total stats ปัจจุบัน (รวม equipment แล้ว) - ไม่แตะ base stats
+                characterData.UpdateTotalStats(
+                    character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
+                    character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
+                    character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown, character.LifeSteal
+                );
+
+                // บันทึกลง Firebase
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                Debug.Log($"[LevelManager] 💾 Saved total stats after level up (preserving equipment bonuses)");
+                Debug.Log($"  Total stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LevelManager] ❌ Error saving stats after level up: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ apply base stats
+   
     private void AddStatPointOnLevelUp()
     {
         try
@@ -712,55 +641,24 @@ public class LevelManager : NetworkBehaviour
         else
         {
             Debug.LogWarning($"[LevelManager] No data found for {characterType}, using defaults");
-            InitializeBasicLevelSystem();
         }
     }
 
 
-    private void CalculateAndStoreBaseStats()
-    {
-        if (character?.characterStats == null)
-        {
-            Debug.LogError("[LevelManager] No characterStats available for base calculation!");
-            return;
-        }
 
-        // คำนวณ base stats = ScriptableObject stats + Level bonuses
-        int levelBonusHp = (CurrentLevel - 1) * levelUpStats.hpBonusPerLevel;
-        int levelBonusMana = (CurrentLevel - 1) * levelUpStats.manaBonusPerLevel;
-        int levelBonusAttack = (CurrentLevel - 1) * levelUpStats.attackDamageBonusPerLevel;
-        int levelBonusMagic = (CurrentLevel - 1) * levelUpStats.magicDamageBonusPerLevel;
-        int levelBonusArmor = (CurrentLevel - 1) * levelUpStats.armorBonusPerLevel;
-        float levelBonusCrit = (CurrentLevel - 1) * levelUpStats.criticalChanceBonusPerLevel;
-        float levelBonusSpeed = (CurrentLevel - 1) * levelUpStats.moveSpeedBonusPerLevel;
-
-        // เก็บ base stats (ScriptableObject + Level bonuses)
-        baseMaxHp = character.characterStats.maxHp + levelBonusHp;
-        baseMaxMana = character.characterStats.maxMana + levelBonusMana;
-        baseAttackDamage = character.characterStats.attackDamage + levelBonusAttack;
-        baseMagicDamage = character.characterStats.magicDamage + levelBonusMagic;
-        baseArmor = character.characterStats.arrmor + levelBonusArmor;
-        baseCriticalChance = character.characterStats.criticalChance + levelBonusCrit;
-        baseCriticalDamageBonus = character.characterStats.criticalDamageBonus;
-        baseMoveSpeed = character.characterStats.moveSpeed + levelBonusSpeed;
-        baseHitRate = character.characterStats.hitRate;
-        baseEvasionRate = character.characterStats.evasionRate;
-        baseAttackSpeed = character.characterStats.attackSpeed;
-        baseReductionCoolDown = character.characterStats.reductionCoolDown;
-
-       
-    }
     private void CalculateBaseStatsWithUpgrades()
     {
         if (character?.characterStats == null) return;
 
-        // คำนวณ base stats = ScriptableObject + Level bonuses
+        // ✅ ใช้ ScriptableObject เป็นหลัก ไม่ใช้ stats ปัจจุบันของ character
         int levelBonus = CurrentLevel - 1;
 
+        // ✅ คำนวณจาก ScriptableObject + Level bonuses เท่านั้น
         int baseHp = character.characterStats.maxHp + (levelBonus * levelUpStats.hpBonusPerLevel);
         int baseAttack = character.characterStats.attackDamage + (levelBonus * levelUpStats.attackDamageBonusPerLevel);
         int baseMagic = character.characterStats.magicDamage + (levelBonus * levelUpStats.magicDamageBonusPerLevel);
         int baseMana = character.characterStats.maxMana + (levelBonus * levelUpStats.manaBonusPerLevel);
+        int baseArmor = character.characterStats.arrmor + (levelBonus * levelUpStats.armorBonusPerLevel);
         float baseCrit = character.characterStats.criticalChance + (levelBonus * levelUpStats.criticalChanceBonusPerLevel);
         float baseCritDmg = character.characterStats.criticalDamageBonus;
         float baseSpeed = character.characterStats.moveSpeed + (levelBonus * levelUpStats.moveSpeedBonusPerLevel);
@@ -768,9 +666,9 @@ public class LevelManager : NetworkBehaviour
         float baseEvasion = character.characterStats.evasionRate;
         float baseCdr = character.characterStats.reductionCoolDown;
         float baseHit = character.characterStats.hitRate;
-        float baseLifeSteal = character.characterStats.lifeSteal;
+        float baseLifeSteal = character.characterStats.lifeSteal + (levelBonus * levelUpStats.lifeStealBonusPerLevel);
 
-        // 🆕 เพิ่ม stat bonuses จาก upgrades
+        // ✅ เพิ่ม stat bonuses จาก upgrades
         try
         {
             string activeCharacterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
@@ -797,7 +695,11 @@ public class LevelManager : NetworkBehaviour
                 baseLifeSteal += lifeStealBonus;
                 baseSpeed += speedBonus;
 
-                Debug.Log($"[LevelManager] 🎯 Applied stat upgrade bonuses: STR={characterData.upgradedSTR}, DEX={characterData.upgradedDEX}, INT={characterData.upgradedINT}, MAS={characterData.upgradedMAS}");
+                Debug.Log($"[LevelManager] 🎯 Applied stat upgrade bonuses:");
+                Debug.Log($"  STR={characterData.upgradedSTR} → HP+{hpBonus}, ATK+{atkBonus}, CRIT_DMG+{critDmgBonus:F1}%");
+                Debug.Log($"  DEX={characterData.upgradedDEX} → AS+{atkSpeedBonus:F1}%, EVA+{evaBonus:F1}%, CRIT+{critChanceBonus:F1}%");
+                Debug.Log($"  INT={characterData.upgradedINT} → MAG+{magicBonus}, MANA+{manaBonus}, CDR+{cdrBonus:F1}%");
+                Debug.Log($"  MAS={characterData.upgradedMAS} → HIT+{hitBonus:F1}%, LST+{lifeStealBonus:F1}%, SPD+{speedBonus:F1}");
             }
         }
         catch (System.Exception e)
@@ -805,12 +707,12 @@ public class LevelManager : NetworkBehaviour
             Debug.LogError($"[LevelManager] ❌ Error applying stat bonuses: {e.Message}");
         }
 
-        // บันทึก base stats ที่คำนวณแล้ว
+        // ✅ บันทึก base stats ที่คำนวณแล้ว
         baseMaxHp = baseHp;
         baseMaxMana = baseMana;
         baseAttackDamage = baseAttack;
         baseMagicDamage = baseMagic;
-        baseArmor = character.characterStats.arrmor + (levelBonus * levelUpStats.armorBonusPerLevel);
+        baseArmor = baseArmor;
         baseCriticalChance = baseCrit;
         baseCriticalDamageBonus = baseCritDmg;
         baseMoveSpeed = baseSpeed;
@@ -820,7 +722,9 @@ public class LevelManager : NetworkBehaviour
         baseHitRate = baseHit;
         baseLifeSteal = baseLifeSteal;
 
-        Debug.Log($"[LevelManager] 📊 Final base stats with upgrades: HP={baseHp}, ATK={baseAttack}, MAGIC={baseMagic}");
+        Debug.Log($"[LevelManager] 📊 Final base stats (ScriptableObject + Level + Upgrades):");
+        Debug.Log($"  HP={baseHp}, ATK={baseAttack}, MAG={baseMagic}, ARM={baseArmor}");
+        Debug.Log($"  CRIT={baseCrit:F1}%, CRIT_DMG={baseCritDmg:F1}%, LifeSteal={baseLifeSteal:F1}%");
     }
     public void ResetToBaseStats()
     {

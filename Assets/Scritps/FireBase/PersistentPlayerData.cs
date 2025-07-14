@@ -2929,88 +2929,7 @@ public class PersistentPlayerData : MonoBehaviour
         }
     }
 
-    private void ForceRefreshUISimple(Character character)
-    {
-        try
-        {
-            // 1. หา InventoryGridManager และ refresh
-            var inventoryGridManager = FindObjectOfType<InventoryGridManager>();
-            if (inventoryGridManager != null)
-            {
-                inventoryGridManager.ForceUpdateFromCharacter();
-                Debug.Log("[ForceRefreshUISimple] ✅ Inventory grid refreshed");
-            }
-
-            // 2. หา EquipmentSlotManager และ refresh  
-            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
-            if (equipmentSlotManager != null)
-            {
-                equipmentSlotManager.ForceRefreshFromCharacter();
-                Debug.Log("[ForceRefreshUISimple] ✅ Equipment slots refreshed");
-            }
-
-            // 3. แจ้ง Character.OnStatsChanged event
-            Character.RaiseOnStatsChanged();
-
-            Debug.Log("[ForceRefreshUISimple] ✅ All inventory UI refreshed");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ForceRefreshUISimple] ❌ Error: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Coroutine สำหรับ refresh UI หลัง load
-    /// </summary>
-    private IEnumerator ForceRefreshUICoroutine(Character character)
-    {
-        // รอ 2 frames เพื่อให้ระบบต่างๆ พร้อม
-        yield return null;
-        yield return null;
-
-        try
-        {
-            // 1. หา InventoryGridManager และ refresh
-            var inventoryGridManager = FindObjectOfType<InventoryGridManager>();
-            if (inventoryGridManager != null)
-            {
-                inventoryGridManager.ForceUpdateFromCharacter();
-                inventoryGridManager.ForceSyncAllSlots();
-                Debug.Log("[ForceRefreshUICoroutine] ✅ Inventory grid refreshed");
-            }
-
-            // 2. หา EquipmentSlotManager และ refresh  
-            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
-            if (equipmentSlotManager != null)
-            {
-                equipmentSlotManager.ForceRefreshFromCharacter();
-                Debug.Log("[ForceRefreshUICoroutine] ✅ Equipment slots refreshed");
-            }
-            else
-            {
-                // หาจาก CombatUIManager
-                var combatUIManager = FindObjectOfType<CombatUIManager>();
-                if (combatUIManager?.equipmentSlotManager != null)
-                {
-                    combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
-                    Debug.Log("[ForceRefreshUICoroutine] ✅ Equipment slots refreshed (via CombatUIManager)");
-                }
-            }
-
-            // 3. แจ้ง Character.OnStatsChanged event
-            Character.RaiseOnStatsChanged();
-
-            // 4. Force update Canvas
-            Canvas.ForceUpdateCanvases();
-
-            Debug.Log("[ForceRefreshUICoroutine] ✅ All inventory UI refreshed");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ForceRefreshUICoroutine] ❌ Error: {e.Message}");
-        }
-    }
+  
 
     /// <summary>
     /// ให้ starter items ถ้าจำเป็น (ไม่มีข้อมูลใน Firebase)
@@ -3223,49 +3142,11 @@ public class PersistentPlayerData : MonoBehaviour
 
             Debug.Log($"[PersistentPlayerData] 💾 Saving base stats for {characterType} Level {levelManager.CurrentLevel}");
 
-            // 🆕 คำนวณ base stats (ScriptableObject + Level bonuses)
-            if (character.characterStats != null)
-            {
-                int levelBonusHp = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.hpBonusPerLevel;
-                int levelBonusMana = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.manaBonusPerLevel;
-                int levelBonusAttack = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.attackDamageBonusPerLevel;
-                int levelBonusMagic = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.magicDamageBonusPerLevel;
-                int levelBonusArmor = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.armorBonusPerLevel;
-                float levelBonusCrit = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.criticalChanceBonusPerLevel;
-                float levelBonusSpeed = (levelManager.CurrentLevel - 1) * levelManager.levelUpStats.moveSpeedBonusPerLevel;
+            // ✅ คำนวณ base stats (ScriptableObject + Level bonuses + Stat upgrades)
+            CalculateAndSaveBaseStats(character, levelManager, characterData);
 
-                // 🆕 เก็บ base stats ใน characterData (ชื่อใหม่เพื่อแยกจาก total stats)
-                characterData.baseMaxHp = character.characterStats.maxHp + levelBonusHp;
-                characterData.baseMaxMana = character.characterStats.maxMana + levelBonusMana;
-                characterData.baseAttackDamage = character.characterStats.attackDamage + levelBonusAttack;
-                characterData.baseMagicDamage = character.characterStats.magicDamage + levelBonusMagic;
-                characterData.baseArmor = character.characterStats.arrmor + levelBonusArmor;
-                characterData.baseCriticalChance = character.characterStats.criticalChance + levelBonusCrit;
-                characterData.baseCriticalDamageBonus = character.characterStats.criticalDamageBonus;
-                characterData.baseMoveSpeed = character.characterStats.moveSpeed + levelBonusSpeed;
-                characterData.baseHitRate = character.characterStats.hitRate;
-                characterData.baseEvasionRate = character.characterStats.evasionRate;
-                characterData.baseAttackSpeed = character.characterStats.attackSpeed;
-                characterData.baseReductionCoolDown = character.characterStats.reductionCoolDown;
-
-                Debug.Log($"[PersistentPlayerData] Base stats calculated: HP={characterData.baseMaxHp}, ATK={characterData.baseAttackDamage}");
-            }
-
-            // 🆕 เก็บ total stats (base + equipment) สำหรับแสดงใน UI
-            characterData.totalMaxHp = character.MaxHp;
-            characterData.totalMaxMana = character.MaxMana;
-            characterData.totalAttackDamage = character.AttackDamage;
-            characterData.totalMagicDamage = character.MagicDamage;
-            characterData.totalArmor = character.Armor;
-            characterData.totalCriticalChance = character.CriticalChance;
-            characterData.totalCriticalDamageBonus = character.CriticalDamageBonus;
-            characterData.totalMoveSpeed = character.MoveSpeed;
-            characterData.totalHitRate = character.HitRate;
-            characterData.totalEvasionRate = character.EvasionRate;
-            characterData.totalAttackSpeed = character.AttackSpeed;
-            characterData.totalReductionCoolDown = character.ReductionCoolDown;
-
-            Debug.Log($"[PersistentPlayerData] Total stats saved: HP={characterData.totalMaxHp}, ATK={characterData.totalAttackDamage}");
+            // ✅ บันทึก total stats (base + equipment bonuses) แยกต่างหาก
+            SaveCurrentTotalStats(character, characterData);
 
             // บันทึกลง Firebase
             SavePlayerDataAsync();
@@ -3276,6 +3157,78 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.LogError($"[PersistentPlayerData] ❌ Error saving base stats: {e.Message}");
         }
+    }
+    private void CalculateAndSaveBaseStats(Character character, LevelManager levelManager, CharacterProgressData characterData)
+    {
+        if (character.characterStats == null)
+        {
+            Debug.LogError("[PersistentPlayerData] No characterStats ScriptableObject!");
+            return;
+        }
+
+        // ✅ คำนวณ base stats จาก ScriptableObject + Level bonuses เท่านั้น
+        int levelBonus = levelManager.CurrentLevel - 1;
+
+        int baseHp = character.characterStats.maxHp + (levelBonus * levelManager.levelUpStats.hpBonusPerLevel);
+        int baseMana = character.characterStats.maxMana + (levelBonus * levelManager.levelUpStats.manaBonusPerLevel);
+        int baseAttack = character.characterStats.attackDamage + (levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel);
+        int baseMagic = character.characterStats.magicDamage + (levelBonus * levelManager.levelUpStats.magicDamageBonusPerLevel);
+        int baseArmor = character.characterStats.arrmor + (levelBonus * levelManager.levelUpStats.armorBonusPerLevel);
+        float baseCrit = character.characterStats.criticalChance + (levelBonus * levelManager.levelUpStats.criticalChanceBonusPerLevel);
+        float baseCritDmg = character.characterStats.criticalDamageBonus;
+        float baseSpeed = character.characterStats.moveSpeed + (levelBonus * levelManager.levelUpStats.moveSpeedBonusPerLevel);
+        float baseHit = character.characterStats.hitRate;
+        float baseEvasion = character.characterStats.evasionRate;
+        float baseAtkSpeed = character.characterStats.attackSpeed;
+        float baseCdr = character.characterStats.reductionCoolDown;
+        float baseLifeSteal = character.characterStats.lifeSteal + (levelBonus * levelManager.levelUpStats.lifeStealBonusPerLevel);
+
+        // ✅ เพิ่ม stat bonuses จาก upgrades
+        characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
+                                   out float atkSpeedBonus, out float evaBonus, out float critChanceBonus,
+                                   out int magicBonus, out int manaBonus, out float cdrBonus,
+                                   out float hitBonus, out float lifeStealBonus, out float speedBonus);
+
+        // รวม bonuses เข้ากับ base stats
+        baseHp += hpBonus;
+        baseMana += manaBonus;
+        baseAttack += atkBonus;
+        baseMagic += magicBonus;
+        baseCrit += critChanceBonus;
+        baseCritDmg += critDmgBonus;
+        baseSpeed += speedBonus;
+        baseAtkSpeed += atkSpeedBonus;
+        baseEvasion += evaBonus;
+        baseCdr += cdrBonus;
+        baseHit += hitBonus;
+        baseLifeSteal += lifeStealBonus;
+
+        // ✅ บันทึก base stats ลง characterData
+        characterData.UpdateBaseStats(
+            baseHp, baseMana, baseAttack, baseMagic, baseArmor,
+            baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
+            baseAtkSpeed, baseCdr, baseLifeSteal
+        );
+
+        Debug.Log($"[PersistentPlayerData] 📊 Calculated PURE base stats (ScriptableObject + Level + Upgrades only):");
+        Debug.Log($"  ScriptableObject base: HP={character.characterStats.maxHp}, ATK={character.characterStats.attackDamage}");
+        Debug.Log($"  + Level {levelManager.CurrentLevel} bonuses: HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}, ATK+{levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel}");
+        Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
+        Debug.Log($"  = Final base stats: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
+    }
+
+    // ✅ เพิ่ม method สำหรับบันทึก total stats แยกต่างหาก
+    private void SaveCurrentTotalStats(Character character, CharacterProgressData characterData)
+    {
+        // บันทึก total stats (base + equipment bonuses)
+        characterData.UpdateTotalStats(
+            character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
+            character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
+            character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown, character.LifeSteal
+        );
+
+        Debug.Log($"[PersistentPlayerData] 📈 Saved total stats:");
+        Debug.Log($"  Total: HP={character.MaxHp}, ATK={character.AttackDamage}, LifeSteal={character.LifeSteal:F1}%");
     }
     public void LoadStatsForCharacter(Character character, LevelManager levelManager)
     {

@@ -459,23 +459,270 @@ public class UpgradeLobby : MonoBehaviour
 
             Debug.Log($"[UpgradeLobby] 🎯 Applying {statType} upgrade to character...");
 
-            // 🔧 ขั้นตอนที่ 1: คำนวณ base stats ใหม่ (รวม stat upgrades)
-            RecalculateBaseStatsWithUpgrades();
+            // ✅ ขั้นตอนที่ 1: คำนวณ base stats ใหม่ (รวม stat upgrades)
+            ApplyStatUpgradesToBaseStats();
 
-            // 🔧 ขั้นตอนที่ 2: Apply base stats ไปยัง character
-            ApplyNewBaseStatsToCharacter();
+            // ✅ ขั้นตอนที่ 2: Apply base stats ไปยัง character
+            ApplyCalculatedBaseStatsToCharacter();
 
-            // 🔧 ขั้นตอนที่ 3: Apply equipment bonuses ทับ
+            // ✅ ขั้นตอนที่ 3: Apply equipment bonuses ทับ
             localHero.ApplyLoadedEquipmentStats();
 
-            // 🔧 ขั้นตอนที่ 4: บันทึก base stats และ total stats
-            SaveStatsToFirebase();
+            // ✅ ขั้นตอนที่ 4: บันทึก total stats
+            SaveUpdatedBaseAndTotalStats();
 
             Debug.Log($"[UpgradeLobby] ✅ Applied {statType} upgrade successfully!");
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[UpgradeLobby] ❌ Error applying upgrade to character: {e.Message}");
+        }
+    }
+    // ✅ เพิ่ม method สำหรับคำนวณ base stats จาก total stats ปัจจุบัน
+   
+
+    // ✅ เพิ่ม method สำหรับ apply stat upgrades เข้ากับ base stats
+    private void ApplyStatUpgradesToBaseStats()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null) return;
+
+            var levelManager = localHero.GetComponent<LevelManager>();
+            if (levelManager == null || localHero?.characterStats == null) return;
+
+            int currentLevel = levelManager.CurrentLevel;
+            int levelBonus = currentLevel - 1;
+
+            // ✅ คำนวณ base stats ใหม่จาก ScriptableObject + Level bonuses + Stat upgrades
+            int baseHp = localHero.characterStats.maxHp + (levelBonus * levelManager.levelUpStats.hpBonusPerLevel);
+            int baseMana = localHero.characterStats.maxMana + (levelBonus * levelManager.levelUpStats.manaBonusPerLevel);
+            int baseAttack = localHero.characterStats.attackDamage + (levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel);
+            int baseMagic = localHero.characterStats.magicDamage + (levelBonus * levelManager.levelUpStats.magicDamageBonusPerLevel);
+            int baseArmor = localHero.characterStats.arrmor + (levelBonus * levelManager.levelUpStats.armorBonusPerLevel);
+            float baseCrit = localHero.characterStats.criticalChance + (levelBonus * levelManager.levelUpStats.criticalChanceBonusPerLevel);
+            float baseCritDmg = localHero.characterStats.criticalDamageBonus;
+            float baseSpeed = localHero.characterStats.moveSpeed + (levelBonus * levelManager.levelUpStats.moveSpeedBonusPerLevel);
+            float baseAtkSpeed = localHero.characterStats.attackSpeed;
+            float baseEvasion = localHero.characterStats.evasionRate;
+            float baseCdr = localHero.characterStats.reductionCoolDown;
+            float baseHit = localHero.characterStats.hitRate;
+            float baseLifeSteal = localHero.characterStats.lifeSteal;
+
+            // ✅ เพิ่ม stat bonuses จาก upgrades
+            characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
+                                       out float atkSpeedBonus, out float evaBonus, out float critChanceBonus,
+                                       out int magicBonus, out int manaBonus, out float cdrBonus,
+                                       out float hitBonus, out float lifeStealBonus, out float speedBonus);
+
+            // รวม bonuses เข้ากับ base stats
+            baseHp += hpBonus;
+            baseMana += manaBonus;
+            baseAttack += atkBonus;
+            baseMagic += magicBonus;
+            baseCrit += critChanceBonus;
+            baseCritDmg += critDmgBonus;
+            baseSpeed += speedBonus;
+            baseAtkSpeed += atkSpeedBonus;
+            baseEvasion += evaBonus;
+            baseCdr += cdrBonus;
+            baseHit += hitBonus;
+            baseLifeSteal += lifeStealBonus;
+
+            // บันทึก base stats ใหม่
+            characterData.UpdateBaseStats(
+                baseHp, baseMana, baseAttack, baseMagic, baseArmor,
+                baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
+                baseAtkSpeed, baseCdr, baseLifeSteal
+            );
+
+            Debug.Log($"[UpgradeLobby] 🎯 Updated base stats with upgrades:");
+            Debug.Log($"  ScriptableObject: HP={localHero.characterStats.maxHp}, ATK={localHero.characterStats.attackDamage}");
+            Debug.Log($"  + Level {currentLevel}: HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}, ATK+{levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel}");
+            Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
+            Debug.Log($"  = Final base: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error applying stat upgrades: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม method สำหรับ apply base stats ที่คำนวณแล้วไปยัง character
+    private void ApplyCalculatedBaseStatsToCharacter()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null || !characterData.HasValidBaseStats()) return;
+
+            // ✅ เก็บ HP/Mana percentage ก่อนเปลี่ยน stats - ให้ความสำคัญกับการรักษาเปอร์เซ็นต์
+            float hpPercentage = localHero.MaxHp > 0 ? (float)localHero.CurrentHp / localHero.MaxHp : 1f;
+            float manaPercentage = localHero.MaxMana > 0 ? (float)localHero.CurrentMana / localHero.MaxMana : 1f;
+
+            // ✅ ถ้า HP น้อยเกินไป (น่าจะเป็นจากการคำนวณผิดพลาด) ให้ใช้ 100%
+            if (hpPercentage < 0.5f && localHero.CurrentHp > 0)
+            {
+                Debug.LogWarning($"[UpgradeLobby] HP percentage too low ({hpPercentage:P0}), using 100% instead");
+                hpPercentage = 1f;
+            }
+
+            Debug.Log($"[UpgradeLobby] Preserving HP: {localHero.CurrentHp}/{localHero.MaxHp} = {hpPercentage:P0}");
+
+            // Apply base stats ไปยัง character
+            localHero.MaxHp = characterData.baseMaxHp;
+            localHero.MaxMana = characterData.baseMaxMana;
+            localHero.AttackDamage = characterData.baseAttackDamage;
+            localHero.MagicDamage = characterData.baseMagicDamage;
+            localHero.Armor = characterData.baseArmor;
+            localHero.CriticalChance = characterData.baseCriticalChance;
+            localHero.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+            localHero.MoveSpeed = characterData.baseMoveSpeed;
+            localHero.HitRate = characterData.baseHitRate;
+            localHero.EvasionRate = characterData.baseEvasionRate;
+            localHero.AttackSpeed = characterData.baseAttackSpeed;
+            localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
+            localHero.LifeSteal = characterData.baseLifeSteal;
+
+            // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
+            localHero.CurrentHp = Mathf.RoundToInt(localHero.MaxHp * hpPercentage);
+            localHero.CurrentMana = Mathf.RoundToInt(localHero.MaxMana * manaPercentage);
+            localHero.CurrentHp = Mathf.Clamp(localHero.CurrentHp, 1, localHero.MaxHp);
+            localHero.CurrentMana = Mathf.Clamp(localHero.CurrentMana, 0, localHero.MaxMana);
+
+            // Force update network state
+            localHero.ForceUpdateNetworkState();
+
+            Debug.Log($"[UpgradeLobby] ✅ Applied calculated base stats: New HP={localHero.CurrentHp}/{localHero.MaxHp} ({(float)localHero.CurrentHp / localHero.MaxHp:P0})");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error applying base stats to character: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม method สำหรับบันทึก base และ total stats
+    private void SaveUpdatedBaseAndTotalStats()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null) return;
+
+            // บันทึก total stats (หลัง apply equipment แล้ว)
+            characterData.UpdateTotalStats(
+                localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
+                localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
+                localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal
+            );
+
+            // บันทึกลง Firebase
+            PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+            Debug.Log($"[UpgradeLobby] 💾 Saved updated base and total stats");
+            Debug.Log($"  Base: HP={characterData.baseMaxHp}, ATK={characterData.baseAttackDamage}");
+            Debug.Log($"  Total: HP={localHero.MaxHp}, ATK={localHero.AttackDamage}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error saving stats: {e.Message}");
+        }
+    }
+    private void ApplyPureBaseStatsToCharacter()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null || !characterData.HasValidBaseStats())
+            {
+                Debug.LogError("[UpgradeLobby] No valid base stats to apply!");
+                return;
+            }
+
+            // ✅ เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+            float hpPercentage = localHero.MaxHp > 0 ? (float)localHero.CurrentHp / localHero.MaxHp : 1f;
+            float manaPercentage = localHero.MaxMana > 0 ? (float)localHero.CurrentMana / localHero.MaxMana : 1f;
+
+            // ✅ ถ้า HP น้อยเกินไป ให้ใช้ 100% (เป็น fallback สำหรับกรณี reset)
+            if (hpPercentage < 0.5f)
+            {
+                Debug.Log($"[UpgradeLobby] Reset detected or low HP, using 100% HP/Mana");
+                hpPercentage = 1f;
+                manaPercentage = 1f;
+            }
+
+            // ✅ Reset character ให้เป็น base stats เท่านั้น (ไม่รวม equipment)
+            localHero.MaxHp = characterData.baseMaxHp;
+            localHero.MaxMana = characterData.baseMaxMana;
+            localHero.AttackDamage = characterData.baseAttackDamage;
+            localHero.MagicDamage = characterData.baseMagicDamage;
+            localHero.Armor = characterData.baseArmor;
+            localHero.CriticalChance = characterData.baseCriticalChance;
+            localHero.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+            localHero.MoveSpeed = characterData.baseMoveSpeed;
+            localHero.HitRate = characterData.baseHitRate;
+            localHero.EvasionRate = characterData.baseEvasionRate;
+            localHero.AttackSpeed = characterData.baseAttackSpeed;
+            localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
+            localHero.LifeSteal = characterData.baseLifeSteal;
+
+            // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์ที่คำนวณ
+            localHero.CurrentHp = Mathf.RoundToInt(localHero.MaxHp * hpPercentage);
+            localHero.CurrentMana = Mathf.RoundToInt(localHero.MaxMana * manaPercentage);
+            localHero.CurrentHp = Mathf.Clamp(localHero.CurrentHp, 1, localHero.MaxHp);
+            localHero.CurrentMana = Mathf.Clamp(localHero.CurrentMana, 0, localHero.MaxMana);
+
+            // Force update network state
+            localHero.ForceUpdateNetworkState();
+
+            Debug.Log($"[UpgradeLobby] ✅ Applied pure base stats: HP={localHero.CurrentHp}/{localHero.MaxHp} ({hpPercentage:P0})");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error applying base stats to character: {e.Message}");
+        }
+    }
+
+    // ✅ แก้ไข method สำหรับบันทึก base stats และ total stats แยกกัน
+    private void SaveBaseAndTotalStatsToFirebase()
+    {
+        try
+        {
+            if (PersistentPlayerData.Instance?.multiCharacterData == null)
+            {
+                Debug.LogError("[UpgradeLobby] No multiCharacterData to save!");
+                return;
+            }
+
+            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
+
+            if (characterData != null)
+            {
+                // ✅ 1. บันทึก base stats (ก่อน apply equipment)
+                Debug.Log($"[UpgradeLobby] 💾 Saving base stats...");
+                // base stats อยู่ใน characterData.base* แล้วจาก RecalculateBaseStatsWithUpgrades()
+
+                // ✅ 2. บันทึก total stats (หลัง apply equipment) 
+                Debug.Log($"[UpgradeLobby] 💾 Saving total stats...");
+                characterData.UpdateTotalStats(
+                    localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
+                    localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
+                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal
+                );
+
+                // ✅ 3. บันทึกลง Firebase
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                Debug.Log($"[UpgradeLobby] 💾 Saved both base and total stats to Firebase");
+                Debug.Log($"  Base: HP={characterData.baseMaxHp}, ATK={characterData.baseAttackDamage}");
+                Debug.Log($"  Total: HP={localHero.MaxHp}, ATK={localHero.AttackDamage}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[UpgradeLobby] ❌ Error saving stats to Firebase: {e.Message}");
         }
     }
     private void RecalculateBaseStatsWithUpgrades()
@@ -500,7 +747,7 @@ public class UpgradeLobby : MonoBehaviour
             int currentLevel = levelManager.CurrentLevel;
             int levelBonus = currentLevel - 1;
 
-            // คำนวณ base stats = ScriptableObject + Level bonuses
+            // ✅ คำนวณ base stats จาก ScriptableObject + Level bonuses เท่านั้น
             int baseHp = localHero.characterStats.maxHp + (levelBonus * levelManager.levelUpStats.hpBonusPerLevel);
             int baseMana = localHero.characterStats.maxMana + (levelBonus * levelManager.levelUpStats.manaBonusPerLevel);
             int baseAttack = localHero.characterStats.attackDamage + (levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel);
@@ -513,7 +760,7 @@ public class UpgradeLobby : MonoBehaviour
             float baseEvasion = localHero.characterStats.evasionRate;
             float baseCdr = localHero.characterStats.reductionCoolDown;
             float baseHit = localHero.characterStats.hitRate;
-            float baseLifeSteal = localHero.characterStats.lifeSteal;
+            float baseLifeSteal = localHero.characterStats.lifeSteal + (levelBonus * levelManager.levelUpStats.lifeStealBonusPerLevel);
 
             // 🎯 เพิ่ม stat bonuses จาก upgrades
             characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
@@ -543,8 +790,10 @@ public class UpgradeLobby : MonoBehaviour
             );
 
             Debug.Log($"[UpgradeLobby] 📊 Recalculated base stats with upgrades:");
-            Debug.Log($"  HP: {baseHp} (+{hpBonus}), ATK: {baseAttack} (+{atkBonus}), MAGIC: {baseMagic} (+{magicBonus})");
-            Debug.Log($"  CRIT: {baseCrit:F1}% (+{critChanceBonus:F1}%), CRIT_DMG: {baseCritDmg:F1}% (+{critDmgBonus:F1}%)");
+            Debug.Log($"  Original ScriptableObject: HP={localHero.characterStats.maxHp}, ATK={localHero.characterStats.attackDamage}");
+            Debug.Log($"  + Level bonuses (Level {currentLevel}): HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}, ATK+{levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel}");
+            Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
+            Debug.Log($"  = Final base stats: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
         }
         catch (System.Exception e)
         {
@@ -553,88 +802,7 @@ public class UpgradeLobby : MonoBehaviour
     }
 
     // 🆕 Apply base stats ไปยัง character
-    private void ApplyNewBaseStatsToCharacter()
-    {
-        try
-        {
-            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
-            if (characterData == null || !characterData.HasValidBaseStats())
-            {
-                Debug.LogError("[UpgradeLobby] No valid base stats to apply!");
-                return;
-            }
-
-            // เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
-            float hpPercentage = localHero.MaxHp > 0 ? (float)localHero.CurrentHp / localHero.MaxHp : 1f;
-            float manaPercentage = localHero.MaxMana > 0 ? (float)localHero.CurrentMana / localHero.MaxMana : 1f;
-
-            // Apply base stats ไปยัง character
-            localHero.MaxHp = characterData.baseMaxHp;
-            localHero.MaxMana = characterData.baseMaxMana;
-            localHero.AttackDamage = characterData.baseAttackDamage;
-            localHero.MagicDamage = characterData.baseMagicDamage;
-            localHero.Armor = characterData.baseArmor;
-            localHero.CriticalChance = characterData.baseCriticalChance;
-            localHero.UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
-            localHero.MoveSpeed = characterData.baseMoveSpeed;
-            localHero.HitRate = characterData.baseHitRate;
-            localHero.EvasionRate = characterData.baseEvasionRate;
-            localHero.AttackSpeed = characterData.baseAttackSpeed;
-            localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
-            localHero.LifeSteal = characterData.baseLifeSteal;
-
-            // ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
-            localHero.CurrentHp = Mathf.RoundToInt(localHero.MaxHp * hpPercentage);
-            localHero.CurrentMana = Mathf.RoundToInt(localHero.MaxMana * manaPercentage);
-            localHero.CurrentHp = Mathf.Clamp(localHero.CurrentHp, 1, localHero.MaxHp);
-            localHero.CurrentMana = Mathf.Clamp(localHero.CurrentMana, 0, localHero.MaxMana);
-
-            // Force update network state
-            localHero.ForceUpdateNetworkState();
-
-            Debug.Log($"[UpgradeLobby] ✅ Applied new base stats to character");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[UpgradeLobby] ❌ Error applying base stats to character: {e.Message}");
-        }
-    }
-
-    // 🆕 บันทึก base stats และ total stats ลง Firebase
-    private void SaveStatsToFirebase()
-    {
-        try
-        {
-            if (PersistentPlayerData.Instance?.multiCharacterData == null)
-            {
-                Debug.LogError("[UpgradeLobby] No multiCharacterData to save!");
-                return;
-            }
-
-            string characterType = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-            var characterData = PersistentPlayerData.Instance.GetOrCreateCharacterData(characterType);
-
-            if (characterData != null)
-            {
-                // 🔧 บันทึก total stats (base + equipment bonuses) เหมือน SaveTotalStatsDirectly()
-                characterData.UpdateTotalStats(
-                    localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
-                    localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
-                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal
-                );
-
-                // บันทึกลง Firebase
-                PersistentPlayerData.Instance.SavePlayerDataAsync();
-
-                Debug.Log($"[UpgradeLobby] 💾 Saved both base and total stats to Firebase");
-                Debug.Log($"  Total stats: HP={localHero.MaxHp}, ATK={localHero.AttackDamage}, MAGIC={localHero.MagicDamage}");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[UpgradeLobby] ❌ Error saving stats to Firebase: {e.Message}");
-        }
-    }
+   
     private void ResetAllStats()
     {
         try
@@ -689,17 +857,17 @@ public class UpgradeLobby : MonoBehaviour
 
             Debug.Log($"[UpgradeLobby] 🔄 Applying stat reset to character...");
 
-            // 🔧 ขั้นตอนที่ 1: คำนวณ base stats ใหม่ (ไม่มี stat upgrades)
+            // ✅ ขั้นตอนที่ 1: คำนวณ base stats ใหม่ (ไม่มี stat upgrades)
             RecalculateBaseStatsWithUpgrades(); // method เดียวกัน แต่ upgrades จะเป็น 0 แล้ว
 
-            // 🔧 ขั้นตอนที่ 2: Apply base stats ไปยัง character
-            ApplyNewBaseStatsToCharacter();
+            // ✅ ขั้นตอนที่ 2: Apply base stats ไปยัง character
+            ApplyPureBaseStatsToCharacter();
 
-            // 🔧 ขั้นตอนที่ 3: Apply equipment bonuses ทับ
+            // ✅ ขั้นตอนที่ 3: Apply equipment bonuses ทับ
             localHero.ApplyLoadedEquipmentStats();
 
-            // 🔧 ขั้นตอนที่ 4: บันทึก base stats และ total stats
-            SaveStatsToFirebase();
+            // ✅ ขั้นตอนที่ 4: บันทึก base stats และ total stats
+            SaveBaseAndTotalStatsToFirebase();
 
             Debug.Log($"[UpgradeLobby] ✅ Applied stat reset successfully!");
         }

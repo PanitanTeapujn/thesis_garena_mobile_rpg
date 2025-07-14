@@ -475,6 +475,7 @@ public class Character : NetworkBehaviour
     }
     private IEnumerator SimpleLoadEquipmentOnly()
     {
+        Debug.Log("[Character] 🔄 Starting simple equipment load...");
 
         bool shouldHaveEquipment = false;
         try
@@ -485,31 +486,38 @@ public class Character : NetworkBehaviour
         }
         catch (System.Exception e)
         {
+            Debug.LogError($"[Character] Error checking equipment data: {e.Message}");
             yield break;
         }
 
         if (shouldHaveEquipment)
         {
+            Debug.Log("[Character] Equipment data found, loading...");
 
-            try
-            {
-                // เคลียร์ equipment ปัจจุบัน
-                ClearAllEquipmentForLoad();
-            }
-            catch (System.Exception e)
-            {
-                yield break;
-            }
+            // ✅ ขั้นตอนที่ 1: บันทึก current HP/Mana percentage ก่อนทำอะไร
+            float initialHpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float initialManaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
+            Debug.Log($"[Character] 📊 Initial HP/Mana state: HP={CurrentHp}/{MaxHp} ({initialHpPercentage:P0}), Mana={CurrentMana}/{MaxMana} ({initialManaPercentage:P0})");
+
+            // ✅ ขั้นตอนที่ 2: Apply base stats ก่อน (รวม stat upgrades แล้ว)
+            ApplyBaseStatsBeforeEquipment();
 
             yield return new WaitForSeconds(0.2f);
 
+            // ✅ ขั้นตอนที่ 3: เคลียร์ equipment ปัจจุบัน
+            ClearAllEquipmentForLoad();
+
+            yield return new WaitForSeconds(0.2f);
+
+            // ✅ ขั้นตอนที่ 4: โหลด equipment จาก Firebase
             try
             {
-                // โหลด equipment จาก Firebase (ไม่แตะ stats)
                 PersistentPlayerData.Instance.LoadInventoryData(this);
             }
             catch (System.Exception e)
             {
+                Debug.LogError($"[Character] Error loading equipment: {e.Message}");
                 yield break;
             }
 
@@ -523,58 +531,270 @@ public class Character : NetworkBehaviour
             }
             catch (System.Exception e)
             {
+                Debug.LogError($"[Character] Error counting equipment: {e.Message}");
                 yield break;
             }
 
+            Debug.Log($"[Character] Equipment loaded: {equipmentCount} items");
 
             if (equipmentCount > 0)
             {
+                // ✅ ขั้นตอนที่ 5: Apply equipment bonuses ทับ base stats (โดยรักษา HP percentage)
+                ApplyLoadedEquipmentStatsWithPreservedHP(initialHpPercentage, initialManaPercentage);
                 ForceUpdateEquipmentSlotsNow();
             }
             else
             {
+                Debug.Log("[Character] No equipment found after loading");
+
+                // ✅ ถ้าไม่มี equipment ให้รักษา HP percentage เดิม
+                CurrentHp = Mathf.RoundToInt(MaxHp * initialHpPercentage);
+                CurrentMana = Mathf.RoundToInt(MaxMana * initialManaPercentage);
+                CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+                CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+                ForceUpdateNetworkState();
+                Debug.Log($"[Character] Preserved HP without equipment: {CurrentHp}/{MaxHp} ({(float)CurrentHp / MaxHp:P0})");
             }
         }
         else
         {
+            Debug.Log("[Character] No equipment data to load");
+
+            // ✅ ถ้าไม่มี equipment ให้ apply base stats เฉยๆ และรักษา HP percentage
+            float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
+            ApplyBaseStatsBeforeEquipment();
+
+            // รักษา HP percentage
+            CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+            CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+            CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+            CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+            ForceUpdateNetworkState();
         }
     }
-
-
-
-  
-
-
-
-    public void ApplyLoadedEquipmentStats()
+    private void ApplyLoadedEquipmentStatsWithPreservedHP(float preservedHpPercentage, float preservedManaPercentage)
     {
-        // ✅ เปิดใช้งานอีกครั้ง แต่ใช้วิธีที่ปลอดภัย
         try
         {
+            Debug.Log($"[Character] ⚔️ Applying equipment with preserved HP: {preservedHpPercentage:P0}");
 
-            // คำนวณ total stats จาก equipment ทั้งหมด
-            ApplyAllEquipmentStats();
+            // เก็บ base stats ก่อน apply equipment
+            int baseHp = MaxHp;
+            int baseMana = MaxMana;
+            int baseAttack = AttackDamage;
+            float baseLifeSteal = LifeSteal;
+
+            // ✅ Apply เฉพาะ equipment bonuses
+            ApplyEquipmentBonusesOnly();
+
+            // ✅ ใช้ preserved percentage แทนการคำนวณใหม่
+            CurrentHp = Mathf.RoundToInt(MaxHp * preservedHpPercentage);
+            CurrentMana = Mathf.RoundToInt(MaxMana * preservedManaPercentage);
+            CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+            CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+            // Debug การเปลี่ยนแปลง
+            int hpBonus = MaxHp - baseHp;
+            int manaBonus = MaxMana - baseMana;
+            int atkBonus = AttackDamage - baseAttack;
+            float lifeStealBonus = LifeSteal - baseLifeSteal;
+
+            Debug.Log($"[Character] ✅ Equipment bonuses applied with preserved HP:");
+            Debug.Log($"  HP: {baseHp} + {hpBonus} = {MaxHp}");
+            Debug.Log($"  Mana: {baseMana} + {manaBonus} = {MaxMana}");
+            Debug.Log($"  ATK: {baseAttack} + {atkBonus} = {AttackDamage}");
+            Debug.Log($"  LifeSteal: {baseLifeSteal:F1}% + {lifeStealBonus:F1}% = {LifeSteal:F1}%");
+            Debug.Log($"  Final HP: {CurrentHp}/{MaxHp} ({preservedHpPercentage:P0}) - PRESERVED");
 
             // Force update network state
             ForceUpdateNetworkState();
 
             // แจ้ง stats changed
             OnStatsChanged?.Invoke();
-
         }
         catch (System.Exception e)
         {
+            Debug.LogError($"[Character] ❌ Error applying equipment with preserved HP: {e.Message}");
         }
     }
-    /// </summary>
+
+
+    // ใน Character.cs - เพิ่ม method ใหม่สำหรับ apply base stats ก่อน load equipment
+    // แก้ไขใน Character.cs - ApplyBaseStatsBeforeEquipment method
+
+    private void ApplyBaseStatsBeforeEquipment()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null)
+            {
+                Debug.LogWarning("[Character] No character data for base stats");
+                return;
+            }
+
+            if (characterData.HasValidBaseStats())
+            {
+                Debug.Log("[Character] 📊 Applying base stats before equipment load...");
+
+                // ✅ เก็บ HP/Mana percentage ก่อนเปลี่ยน stats - แต่ให้ default เป็น 100% ถ้ายังไม่มีข้อมูล
+                float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+                float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
+                // ✅ ถ้าเป็นการโหลดครั้งแรกหลัง login ให้ใช้ 100%
+                bool isFirstLoad = (CurrentHp == 0 || MaxHp == 0);
+                if (isFirstLoad)
+                {
+                    hpPercentage = 1f;
+                    manaPercentage = 1f;
+                    Debug.Log("[Character] First load detected, using 100% HP/Mana");
+                }
+
+                // Apply base stats
+                MaxHp = characterData.baseMaxHp;
+                MaxMana = characterData.baseMaxMana;
+                AttackDamage = characterData.baseAttackDamage;
+                MagicDamage = characterData.baseMagicDamage;
+                Armor = characterData.baseArmor;
+                CriticalChance = characterData.baseCriticalChance;
+                UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+                MoveSpeed = characterData.baseMoveSpeed;
+                HitRate = characterData.baseHitRate;
+                EvasionRate = characterData.baseEvasionRate;
+                AttackSpeed = characterData.baseAttackSpeed;
+                ReductionCoolDown = characterData.baseReductionCoolDown;
+                LifeSteal = characterData.baseLifeSteal;
+
+                // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์
+                CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+                CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+                CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+                CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+                ForceUpdateNetworkState();
+
+                Debug.Log($"[Character] ✅ Applied base stats: HP={MaxHp}, ATK={AttackDamage}, Current HP={CurrentHp}/{MaxHp} ({hpPercentage:P0})");
+            }
+            else
+            {
+                Debug.LogWarning("[Character] No valid base stats found, keeping current stats");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying base stats: {e.Message}");
+        }
+    }
+
+
+
+
+
+
+    // แก้ไขใน Character.cs - ApplyLoadedEquipmentStats method
+
+    public void ApplyLoadedEquipmentStats()
+    {
+        try
+        {
+            Debug.Log($"[Character] ⚔️ Applying equipment bonuses only...");
+
+            // ✅ เก็บ HP/Mana percentage ก่อน apply equipment
+            float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
+            Debug.Log($"[Character] Before equipment: HP={CurrentHp}/{MaxHp} ({hpPercentage:P0}), Mana={CurrentMana}/{MaxMana} ({manaPercentage:P0})");
+
+            // เก็บ base stats ก่อน apply equipment
+            int baseHp = MaxHp;
+            int baseMana = MaxMana;
+            int baseAttack = AttackDamage;
+            float baseLifeSteal = LifeSteal;
+
+            // ✅ Apply เฉพาะ equipment bonuses (ไม่รวม stat upgrades)
+            ApplyEquipmentBonusesOnly();
+
+            // ✅ ปรับ CurrentHp และ CurrentMana ตาม MaxHp/MaxMana ใหม่
+            CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+            CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+            CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+            CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+            // Debug การเปลี่ยนแปลง
+            int hpBonus = MaxHp - baseHp;
+            int manaBonus = MaxMana - baseMana;
+            int atkBonus = AttackDamage - baseAttack;
+            float lifeStealBonus = LifeSteal - baseLifeSteal;
+
+            Debug.Log($"[Character] ✅ Equipment bonuses applied:");
+            Debug.Log($"  HP: {baseHp} + {hpBonus} = {MaxHp}");
+            Debug.Log($"  ATK: {baseAttack} + {atkBonus} = {AttackDamage}");
+            Debug.Log($"  LifeSteal: {baseLifeSteal:F1}% + {lifeStealBonus:F1}% = {LifeSteal:F1}%");
+            Debug.Log($"  Current HP: {CurrentHp}/{MaxHp} ({(float)CurrentHp / MaxHp:P0})");
+            Debug.Log($"  Current Mana: {CurrentMana}/{MaxMana} ({(float)CurrentMana / MaxMana:P0})");
+
+            // Force update network state
+            ForceUpdateNetworkState();
+
+            // แจ้ง stats changed
+            OnStatsChanged?.Invoke();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying equipment stats: {e.Message}");
+        }
+    }
+
+    private void ApplyEquipmentBonusesOnly()
+    {
+        try
+        {
+            if (equipmentManager == null) return;
+
+            // ดึง equipment stats
+            EquipmentStats equipmentStats = equipmentManager.GetTotalStats();
+
+            Debug.Log($"[Character] 📊 Equipment bonuses to apply:");
+            Debug.Log($"  HP+{equipmentStats.maxHpBonus}, Mana+{equipmentStats.maxManaBonus}");
+            Debug.Log($"  ATK+{equipmentStats.attackDamageBonus}, MAG+{equipmentStats.magicDamageBonus}");
+            Debug.Log($"  ARM+{equipmentStats.armorBonus}, LifeSteal+{equipmentStats.lifeStealBonus:F1}%");
+
+            // Apply equipment bonuses
+            MaxHp += equipmentStats.maxHpBonus;
+            MaxMana += equipmentStats.maxManaBonus;
+            AttackDamage += equipmentStats.attackDamageBonus;
+            MagicDamage += equipmentStats.magicDamageBonus;
+            Armor += equipmentStats.armorBonus;
+            CriticalChance += equipmentStats.criticalChanceBonus;
+            UpdateCriticalDamageBonus(CriticalDamageBonus + equipmentStats.criticalMultiplierBonus, false);
+            MoveSpeed += equipmentStats.moveSpeedBonus;
+            HitRate += equipmentStats.hitRateBonus;
+            EvasionRate += equipmentStats.evasionRateBonus;
+            AttackSpeed += equipmentStats.attackSpeedBonus;
+            ReductionCoolDown += equipmentStats.reductionCoolDownBonus;
+            LifeSteal += equipmentStats.lifeStealBonus;
+
+            Debug.Log($"[Character] 📊 After applying equipment bonuses:");
+            Debug.Log($"  MaxHP={MaxHp}, MaxMana={MaxMana}");
+            Debug.Log($"  ATK={AttackDamage}, MAG={MagicDamage}, ARM={Armor}");
+            Debug.Log($"  LifeSteal={LifeSteal:F1}%");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying equipment bonuses: {e.Message}");
+        }
+    }
     public void ApplyLoadedEquipmentStatsWithReset()
     {
         try
         {
 
             // 🆕 เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
-            float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
-            float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+            
 
             // 1. Reset กลับเป็น base stats ก่อน
 
@@ -588,8 +808,8 @@ public class Character : NetworkBehaviour
             ApplyAllEquipmentStats();
 
             // 🆕 ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม (ทำซ้ำเพื่อความแน่ใจ)
-            CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
-            CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+            CurrentHp = MaxHp ;
+            CurrentMana = MaxMana ;
             CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
             CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
 
@@ -599,7 +819,7 @@ public class Character : NetworkBehaviour
             int armBonus = Armor - baseArmor;
             float critBonus = CriticalChance - baseCriticalChance;
 
-         
+
 
             // 5. Force update network state
             ForceUpdateNetworkState();
@@ -611,20 +831,20 @@ public class Character : NetworkBehaviour
         {
         }
     }
-   
-
-   
-
-   
-
-   
 
 
-   
 
-  
 
-   
+
+
+
+
+
+
+
+
+
+
     #region 🆕 Auto-Fix System
 
     /// <summary>
@@ -1596,7 +1816,58 @@ public class Character : NetworkBehaviour
             }
         }
     }
+    public void ApplyBaseStatsOnly()
+    {
+        try
+        {
+            var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+            if (characterData == null || !characterData.HasValidBaseStats())
+            {
+                Debug.LogError("[Character] No valid base stats to apply!");
+                return;
+            }
 
+            Debug.Log($"[Character] 📊 Applying base stats only (no equipment bonuses)...");
+
+            // เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+            float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+            float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
+
+            // Apply เฉพาะ base stats (ไม่รวม equipment bonuses)
+            MaxHp = characterData.baseMaxHp;
+            MaxMana = characterData.baseMaxMana;
+            AttackDamage = characterData.baseAttackDamage;
+            MagicDamage = characterData.baseMagicDamage;
+            Armor = characterData.baseArmor;
+            CriticalChance = characterData.baseCriticalChance;
+            UpdateCriticalDamageBonus(characterData.baseCriticalDamageBonus, false);
+            MoveSpeed = characterData.baseMoveSpeed;
+            HitRate = characterData.baseHitRate;
+            EvasionRate = characterData.baseEvasionRate;
+            AttackSpeed = characterData.baseAttackSpeed;
+            ReductionCoolDown = characterData.baseReductionCoolDown;
+            LifeSteal = characterData.baseLifeSteal;
+
+            // ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
+            CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+            CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
+            CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp);
+            CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
+
+            // Force update network state
+            ForceUpdateNetworkState();
+
+            Debug.Log($"[Character] ✅ Applied base stats only:");
+            Debug.Log($"  HP={MaxHp}, ATK={AttackDamage}, LifeSteal={LifeSteal:F1}%");
+
+            // แจ้ง stats changed
+            OnStatsChanged?.Invoke();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] ❌ Error applying base stats: {e.Message}");
+        }
+    }
     private void ForceUpdateEquipmentSlotsNow()
     {
         EquipmentSlotManager equipmentSlotManager = GetComponent<EquipmentSlotManager>();
@@ -1641,11 +1912,11 @@ public class Character : NetworkBehaviour
             return;
         }
 
-        // 🆕 เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
-        float hpPercentage = maxHp > 0 ? (float)currentHp / maxHp : 1f;
-        float manaPercentage = maxMana > 0 ? (float)currentMana / maxMana : 1f;
+        // ✅ เก็บ HP/Mana percentage ก่อนเปลี่ยน stats
+        float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
+        float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
 
-        // 🆕 Debug stats ก่อน apply
+        Debug.Log($"[Character] Before applying all equipment: HP={CurrentHp}/{MaxHp} ({hpPercentage:P0})");
 
         // คำนวณ total stats จาก characterEquippedItems ทั้งหมด
         EquipmentStats totalStats = CalculateTotalEquipmentStats();
@@ -1661,31 +1932,17 @@ public class Character : NetworkBehaviour
         // ส่ง total stats ไปให้ EquipmentManager ครั้งเดียว
         equipmentManager.EquipItem(totalEquipmentData);
 
-        // 🆕 ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
-        currentHp = Mathf.RoundToInt(maxHp * hpPercentage);
-        currentMana = Mathf.RoundToInt(maxMana * manaPercentage);
+        // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม และ MaxHp/MaxMana ใหม่
+        CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
+        CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
 
-        // 🆕 ตรวจสอบไม่ให้เกินขีดจำกัด
-        currentHp = Mathf.Clamp(currentHp, 1, maxHp); // อย่างน้อย 1 HP
-        currentMana = Mathf.Clamp(currentMana, 0, maxMana);
+        // ✅ ตรวจสอบไม่ให้เกินขีดจำกัด
+        CurrentHp = Mathf.Clamp(CurrentHp, 1, MaxHp); // อย่างน้อย 1 HP
+        CurrentMana = Mathf.Clamp(CurrentMana, 0, MaxMana);
 
-        // 🆕 Debug stats หลัง apply
-
+        Debug.Log($"[Character] After applying all equipment: HP={CurrentHp}/{MaxHp} ({(float)CurrentHp / MaxHp:P0})");
     }
-    [ContextMenu("Debug Lifesteal Stats")]
-    public void DebugLifestealStats()
-    {
-        Debug.Log($"=== {CharacterName} LIFESTEAL DEBUG ===");
-        Debug.Log($"Base Lifesteal: {LifeSteal:F1}%");
 
-        if (equipmentManager != null)
-        {
-            Debug.Log($"Equipment Lifesteal Bonus: {equipmentManager.GetLifeStealBonus():F1}%");
-        }
-
-        Debug.Log($"Effective Lifesteal: {GetEffectiveLifeSteal():F1}%");
-        Debug.Log("=====================================");
-    }
     private EquipmentStats CalculateTotalEquipmentStats()
     {
         EquipmentStats totalStats = new EquipmentStats();
