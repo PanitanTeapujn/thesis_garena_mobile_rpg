@@ -50,8 +50,13 @@ public class InventorySlot : MonoBehaviour
 
     private void Start()
     {
-        SetEmptyState();
+        // ✅ ลบบรรทัดนี้ออก - ไม่ต้อง force empty
+        // SetEmptyState();
+
+        // ✅ เพิ่มบรรทัดนี้แทน - ให้ sync จาก character ทันที
+        StartCoroutine(DelayedSyncFromCharacter());
     }
+
     #endregion
 
     #region Component Setup
@@ -98,6 +103,64 @@ public class InventorySlot : MonoBehaviour
     #endregion
 
     #region Slot State Management
+    private System.Collections.IEnumerator DelayedSyncFromCharacter()
+    {
+        // รอ 2 frames เพื่อให้ InventoryGridManager connect character เสร็จ
+        yield return null;
+        yield return null;
+
+        // ลอง sync จาก character
+        TryInitialSyncFromCharacter();
+    }
+    private void TryInitialSyncFromCharacter()
+    {
+        // หา Character จาก InventoryGridManager
+        InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
+        if (gridManager?.OwnerCharacter == null)
+        {
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: No character yet, setting empty");
+            SetEmptyState();
+            return;
+        }
+
+        Inventory inventory = gridManager.OwnerCharacter.GetInventory();
+        if (inventory == null)
+        {
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: No inventory yet, setting empty");
+            SetEmptyState();
+            return;
+        }
+
+        // ตรวจสอบว่า slot index ถูกต้องหรือไม่
+        if (slotIndex < 0 || slotIndex >= inventory.CurrentSlots)
+        {
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: Out of range, setting empty");
+            SetEmptyState();
+            return;
+        }
+
+        InventoryItem item = inventory.GetItem(slotIndex);
+
+        Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync from character...");
+
+        if (item == null || item.IsEmpty)
+        {
+            SetEmptyState();
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: Character data is EMPTY");
+        }
+        else
+        {
+            Sprite itemIcon = item.itemData.ItemIcon;
+            int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+            SetFilledState(itemIcon, stackCount);
+
+            Color tierColor = item.itemData.GetTierColor();
+            SetTierBackground(tierColor);
+
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync SUCCESS - {item.itemData.ItemName} x{item.stackCount}");
+        }
+    }
     public void SetEmptyState()
     {
         Debug.Log($"[InventorySlot] 🧹 Setting empty state for slot {slotIndex}");
@@ -117,14 +180,12 @@ public class InventorySlot : MonoBehaviour
             itemIcon.sprite = null;
             itemIcon.color = Color.white;
             itemIcon.gameObject.SetActive(false);
-//Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon hidden");
         }
 
         // ปิด tier background
         if (tierBackground != null)
         {
             tierBackground.enabled = false;
-           // Debug.Log($"[InventorySlot] 🎨 Slot {slotIndex}: Tier background disabled");
         }
 
         // ซ่อน stack text
@@ -132,21 +193,20 @@ public class InventorySlot : MonoBehaviour
         {
             stackText.text = "";
             stackText.gameObject.SetActive(false);
-           // Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text hidden");
         }
 
-       // Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} empty state complete");
+        // ✅ เพิ่มบรรทัดนี้ - Force sync หลัง set state
+        ForceRefreshThisSlot();
     }
     public void SetFilledState(Sprite itemSprite, int stackCount = 0)
     {
         if (itemSprite == null)
         {
-          //  Debug.LogWarning($"[InventorySlot] Trying to fill slot {slotIndex} with null sprite!");
             SetEmptyState();
             return;
         }
 
-       // Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
+        Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
 
         isEmpty = false;
         isSelected = false;
@@ -161,7 +221,7 @@ public class InventorySlot : MonoBehaviour
         if (itemIcon != null)
         {
             itemIcon.sprite = itemSprite;
-            itemIcon.color = Color.white; // สีขาวเสมอ
+            itemIcon.color = Color.white;
             itemIcon.gameObject.SetActive(true);
             Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon activated");
         }
@@ -186,9 +246,70 @@ public class InventorySlot : MonoBehaviour
             }
         }
 
+        // ✅ เพิ่มบรรทัดนี้ - Force sync หลัง set state
+        ForceRefreshThisSlot();
+
         Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} filled state complete");
     }
+    private void ForceRefreshThisSlot()
+    {
+        try
+        {
+            // Force layout rebuild
+            if (GetComponent<RectTransform>() != null)
+            {
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(GetComponent<RectTransform>());
+            }
 
+            // Force canvas update
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log($"[InventorySlot] 🔄 Force refreshed slot {slotIndex}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[InventorySlot] Error refreshing slot {slotIndex}: {e.Message}");
+        }
+    }
+    public void ForceSyncFromCharacterNow()
+    {
+        // หา Character จาก InventoryGridManager
+        InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
+        if (gridManager?.OwnerCharacter == null)
+        {
+            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No character to sync from");
+            return;
+        }
+
+        Inventory inventory = gridManager.OwnerCharacter.GetInventory();
+        if (inventory == null)
+        {
+            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No inventory to sync from");
+            return;
+        }
+
+        InventoryItem item = inventory.GetItem(slotIndex);
+
+        Debug.Log($"[InventorySlot] 🔄 Force syncing slot {slotIndex} from character...");
+
+        if (item == null || item.IsEmpty)
+        {
+            SetEmptyState();
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to EMPTY");
+        }
+        else
+        {
+            Sprite itemIcon = item.itemData.ItemIcon;
+            int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+            SetFilledState(itemIcon, stackCount);
+
+            Color tierColor = item.itemData.GetTierColor();
+            SetTierBackground(tierColor);
+
+            Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to {item.itemData.ItemName} x{item.stackCount}");
+        }
+    }
     public void SetTierBorder(Color tierColor)
     {
         if (itemIcon != null)
@@ -321,19 +442,20 @@ public class InventorySlot : MonoBehaviour
     #region Button Events
     private void OnSlotClicked()
     {
-        // ✅ ตรวจสอบสถานะจริงจาก character inventory ก่อน
-        SyncWithCharacterInventory();
-
         Debug.Log($"[InventorySlot] Slot {slotIndex} clicked - Empty: {isEmpty}, Selected: {isSelected}");
 
         // แจ้ง InventoryGridManager ว่า slot นี้ถูกกด
         OnSlotSelected?.Invoke(slotIndex);
 
-        // 🆕 ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด
+        // ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด
         if (!isEmpty)
         {
             ShowItemDetailForThisSlot();
         }
+    }
+    public void ForceUpdateVisuals()
+    {
+        ForceSyncFromCharacterNow();
     }
     private void ShowItemDetailForThisSlot()
     {

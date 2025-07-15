@@ -351,9 +351,11 @@ public class CombatUIManager : MonoBehaviour
         if (inventoryGridManager != null)
         {
             inventoryGridManager.SetOwnerCharacter(hero);
+            // ✅ เพิ่มบรรทัดนี้ - Force load items ทันที
+            inventoryGridManager.ForceLoadFromCharacterAfterConnection();
 
-            // ✅ ใช้ StartCoroutine แทน direct call
-            StartCoroutine(DelayedInventorySetup());
+            // ✅ เพิ่มบรรทัดนี้ - Force update ทันที
+            inventoryGridManager.ForceUpdateFromCharacter();
 
             Debug.Log($"[CombatUI] Connected inventory grid to {hero.CharacterName}");
         }
@@ -759,25 +761,23 @@ public class CombatUIManager : MonoBehaviour
         {
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
-
             // อัพเดท Character Stats ทันทีที่เปิด Panel
             if (localHero != null)
             {
                 UpdateInventoryCharacterStats();
             }
 
-            // ✅ เพิ่มบรรทัดนี้เพื่อ force update inventory grid
+            // ✅ เปลี่ยนจาก ForceUpdateFromCharacter เป็น ForceLoadFromCharacterAfterConnection
             if (inventoryGridManager != null)
             {
-                inventoryGridManager.ForceUpdateFromCharacter();
-                Debug.Log("[CombatUI] Forced inventory grid update");
+                inventoryGridManager.ForceLoadFromCharacterAfterConnection();
+                Debug.Log("[CombatUI] Forced inventory reload on panel open");
             }
 
             Debug.Log("Inventory panel opened");
         }
     }
-
-    public void CloseInventory()
+        public void CloseInventory()
     {
         if (inventoryPanel != null)
         {

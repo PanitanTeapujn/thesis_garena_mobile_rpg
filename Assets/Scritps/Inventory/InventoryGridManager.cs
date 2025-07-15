@@ -169,7 +169,6 @@ public class InventoryGridManager : MonoBehaviour
 
     private void CreateInventoryGrid()
     {
-        // ✅ แทนที่จะ force activate panel ให้ใช้วิธีที่ clean กว่า
         bool needsCanvasRefresh = !IsParentCanvasActive();
 
         // ลบ slots เก่าถ้ามี
@@ -199,16 +198,62 @@ public class InventoryGridManager : MonoBehaviour
             CreateSlot(i);
         }
 
-        // ✅ ใช้ Canvas.ForceUpdateCanvases แทน panel activation
         if (needsCanvasRefresh)
         {
             StartCoroutine(ForceCanvasRefreshRoutine());
         }
 
-        // โหลด items จาก character inventory
-        LoadItemsFromCharacterInventory();
+        // ✅ เพิ่ม immediate sync หลังสร้าง slots เสร็จ
+        if (ownerCharacter != null)
+        {
+            StartCoroutine(ImmediateSyncAllSlotsAfterCreate());
+        }
 
         Debug.Log($"[InventoryGrid] Created {allSlots.Count} inventory slots");
+    }
+    private System.Collections.IEnumerator ImmediateSyncAllSlotsAfterCreate()
+    {
+        // รอ 2 frames เพื่อให้ slots สร้างเสร็จ
+        yield return null;
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔄 Immediate sync all slots after creation...");
+
+        if (ownerCharacter?.GetInventory() != null)
+        {
+            Inventory inventory = ownerCharacter.GetInventory();
+
+            for (int i = 0; i < allSlots.Count && i < inventory.CurrentSlots; i++)
+            {
+                InventorySlot slot = allSlots[i];
+                InventoryItem item = inventory.GetItem(i);
+
+                if (slot != null)
+                {
+                    if (item == null || item.IsEmpty)
+                    {
+                        slot.SetEmptyState();
+                    }
+                    else
+                    {
+                        Sprite itemIcon = item.itemData.ItemIcon;
+                        int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+                        slot.SetFilledState(itemIcon, stackCount);
+
+                        Color tierColor = item.itemData.GetTierColor();
+                        slot.SetTierBackground(tierColor);
+
+                        Debug.Log($"[InventoryGrid] Immediate sync slot {i}: {item.itemData.ItemName}");
+                    }
+                }
+            }
+
+            // Force canvas update
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log("[InventoryGrid] ✅ Immediate sync completed for all slots");
+        }
     }
     private bool IsParentCanvasActive()
     {
@@ -295,14 +340,50 @@ public class InventoryGridManager : MonoBehaviour
 
         // ✅ Setup components ทันทีที่สร้าง
         slot.ForceSetupComponents();
-        slot.SetEmptyState();
+
+        // ✅ ลบบรรทัดนี้ออก - ไม่ให้ SetEmptyState ทันที
+        // slot.SetEmptyState();
 
         allSlots.Add(slot);
 
-        // ✅ เพิ่มการ ensure ว่า slot พร้อมใช้งาน
-        EnsureSlotIsReady(slot);
+        // ✅ เพิ่มบรรทัดนี้ - ถ้ามี character แล้วให้ sync ทันที
+        if (ownerCharacter != null)
+        {
+            StartCoroutine(DelayedSyncSlotFromCharacter(slot, slotIndex));
+        }
 
-        Debug.Log($"[InventoryGrid] Created slot {slotIndex} with components ready");
+        Debug.Log($"[InventoryGrid] Created slot {slotIndex} without forcing empty state");
+    }
+    private System.Collections.IEnumerator DelayedSyncSlotFromCharacter(InventorySlot slot, int slotIndex)
+    {
+        // รอ 1 frame เพื่อให้ slot setup เสร็จ
+        yield return null;
+
+        if (ownerCharacter?.GetInventory() != null)
+        {
+            InventoryItem item = ownerCharacter.GetInventory().GetItem(slotIndex);
+
+            if (item == null || item.IsEmpty)
+            {
+                slot.SetEmptyState();
+            }
+            else
+            {
+                Sprite itemIcon = item.itemData.ItemIcon;
+                int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+                slot.SetFilledState(itemIcon, stackCount);
+
+                Color tierColor = item.itemData.GetTierColor();
+                slot.SetTierBackground(tierColor);
+
+                Debug.Log($"[InventoryGrid] Slot {slotIndex} synced with item: {item.itemData.ItemName}");
+            }
+        }
+        else
+        {
+            slot.SetEmptyState();
+        }
     }
     private void EnsureSlotIsReady(InventorySlot slot)
     {
@@ -606,6 +687,7 @@ public class InventoryGridManager : MonoBehaviour
             {
                 UpdateGridFromCharacterInventory();
             }
+            ForceLoadFromCharacterAfterConnection();
 
             Debug.Log($"[InventoryGrid] Successfully connected to {ownerCharacter.CharacterName}'s inventory");
         }
@@ -708,13 +790,42 @@ public class InventoryGridManager : MonoBehaviour
 
         Inventory characterInventory = ownerCharacter.GetInventory();
 
+        Debug.Log($"[InventoryGrid] Loading {characterInventory.UsedSlots} items from character inventory...");
+
         for (int i = 0; i < totalSlots && i < characterInventory.CurrentSlots; i++)
         {
             InventoryItem item = characterInventory.GetItem(i);
             UpdateSlotFromInventoryItem(i, item);
-        }
-    }
 
+            // ✅ เพิ่มบรรทัดนี้ - Force sync ทุก slot ทันที
+            if (i < allSlots.Count && allSlots[i] != null)
+            {
+                allSlots[i].ForceSyncFromCharacterNow();
+            }
+        }
+
+        // ✅ เพิ่ม force refresh ทั้ง grid
+        ForceRefreshAllSlots();
+
+        Debug.Log("[InventoryGrid] ✅ Completed loading all items with force sync");
+    }
+    public void ForceRefreshAllSlots()
+    {
+        Debug.Log("[InventoryGrid] 🔄 Force refreshing all slots...");
+
+        foreach (InventorySlot slot in allSlots)
+        {
+            if (slot != null)
+            {
+                slot.ForceSyncFromCharacterNow();
+            }
+        }
+
+        // Force canvas update
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[InventoryGrid] ✅ All slots force refreshed");
+    }
     // เพิ่ม method สำหรับอัปเดต slot จาก inventory item
     private void UpdateSlotFromInventoryItem(int slotIndex, InventoryItem item)
     {
@@ -758,15 +869,13 @@ public class InventoryGridManager : MonoBehaviour
 
             slot.SetFilledState(itemIcon, showStackCount ? stackCount : 0);
 
-            // 🆕 เปลี่ยนจาก SetRarityColor เป็น SetTierBackground
             Color tierColor = item.itemData.GetTierColor();
             slot.SetTierBackground(tierColor);
 
-            Debug.Log($"[InventoryGrid] Updated slot {slotIndex}: {item.itemData.ItemName} x{stackCount}, isEmpty after update: {slot.IsEmpty}");
         }
 
-        // Force refresh canvas หลังจาก update
-        StartCoroutine(DelayedCanvasRefresh());
+        // ✅ เพิ่มบรรทัดนี้ - Force sync slot ทันที
+        slot.ForceSyncFromCharacterNow();
     }
     private IEnumerator DelayedCanvasRefresh()
     {
@@ -823,7 +932,26 @@ public class InventoryGridManager : MonoBehaviour
     }
 
     // เพิ่ม method สำหรับ set character manually
-   
+    public void ForceLoadFromCharacterAfterConnection()
+    {
+        if (ownerCharacter == null) return;
+
+        Debug.Log("[InventoryGrid] Force loading items after character connection...");
+
+        // ตรวจสอบว่ามี slots แล้วหรือยัง
+        if (allSlots.Count == 0)
+        {
+            CreateInventoryGrid();
+        }
+
+        // โหลด items ทันที
+        LoadItemsFromCharacterInventory();
+
+        // ✅ เพิ่มบรรทัดนี้ - Force refresh ทุก slot
+        ForceRefreshAllSlots();
+
+        Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed");
+    }
 
     private void OnDestroy()
     {
@@ -910,188 +1038,8 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log($"[InventoryGrid] Spacing changed to {spacing}");
     }
     #endregion
-    [ContextMenu("🔄 Force Sync All Slots")]
-    private void TestForceSyncAllSlots()
-    {
-        ForceSyncAllSlots();
-    }
+   
+   
 
-    [ContextMenu("📋 Compare Slot vs Inventory")]
-    private void CompareSlotVsInventory()
-    {
-        // ลองหา character อีกครั้งถ้ายังไม่มี
-        if (ownerCharacter == null)
-        {
-            ownerCharacter = FindCharacterMultipleWays();
-        }
-
-        if (ownerCharacter?.GetInventory() == null)
-        {
-            Debug.LogWarning($"[InventoryGrid] No character ({ownerCharacter?.CharacterName ?? "null"}) or inventory found");
-
-            // แสดงข้อมูล debug
-            Debug.Log("=== CHARACTER DEBUG INFO ===");
-            Character[] allCharacters = FindObjectsOfType<Character>();
-            Debug.Log($"Total Characters found: {allCharacters.Length}");
-
-            foreach (Character character in allCharacters)
-            {
-                Inventory inv = character.GetInventory();
-                Debug.Log($"  - {character.CharacterName}: HasInventory={inv != null}, Items={inv?.UsedSlots ?? 0}");
-            }
-
-            Hero[] allHeroes = FindObjectsOfType<Hero>();
-            Debug.Log($"Total Heroes found: {allHeroes.Length}");
-
-            foreach (Hero hero in allHeroes)
-            {
-                Debug.Log($"  - {hero.CharacterName}: HasInputAuthority={hero.HasInputAuthority}, IsSpawned={hero.IsSpawned}");
-            }
-
-            return;
-        }
-
-        Inventory inventory = ownerCharacter.GetInventory();
-        Debug.Log($"=== SLOT vs INVENTORY COMPARISON ({ownerCharacter.CharacterName}) ===");
-
-        for (int i = 0; i < Mathf.Min(allSlots.Count, inventory.CurrentSlots); i++)
-        {
-            InventorySlot slot = allSlots[i];
-            InventoryItem item = inventory.GetItem(i);
-
-            string slotState = slot?.IsEmpty == true ? "Empty" : "Filled";
-            string invState = item?.IsEmpty != false ? "Empty" : $"{item.itemData.ItemName} x{item.stackCount}";
-
-            bool matches = (slot?.IsEmpty == true) == (item?.IsEmpty != false);
-            string status = matches ? "✅ MATCH" : "❌ MISMATCH";
-
-            Debug.Log($"Slot {i}: {status} - Slot={slotState}, Inventory={invState}");
-        }
-    }
-    [ContextMenu("🔗 Debug Character Connection")]
-    private void DebugCharacterConnection()
-    {
-        Debug.Log("=== CHARACTER CONNECTION DEBUG ===");
-        Debug.Log($"Current Owner Character: {ownerCharacter?.CharacterName ?? "None"}");
-        Debug.Log($"Auto Detect Character: {autoDetectCharacter}");
-        Debug.Log($"All Slots Count: {allSlots.Count}");
-
-        // ลองหา character ด้วยวิธีต่างๆ
-        Debug.Log("\n--- Finding Characters ---");
-
-        // 1. จาก parent
-        Character parentChar = GetComponentInParent<Character>();
-        Debug.Log($"From Parent: {parentChar?.CharacterName ?? "None"}");
-
-        // 2. จาก UI Manager
-        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
-        Debug.Log($"UI Manager found: {uiManager != null}");
-        Debug.Log($"UI Manager Local Hero: {uiManager?.localHero?.CharacterName ?? "None"}");
-
-        // 3. จาก Heroes
-        Hero[] heroes = FindObjectsOfType<Hero>();
-        Debug.Log($"Total Heroes: {heroes.Length}");
-        foreach (Hero hero in heroes)
-        {
-            Debug.Log($"  Hero: {hero.CharacterName}, HasInput: {hero.HasInputAuthority}, Spawned: {hero.IsSpawned}, HasInventory: {hero.GetInventory() != null}");
-        }
-
-        // 4. จาก Characters
-        Character[] characters = FindObjectsOfType<Character>();
-        Debug.Log($"Total Characters: {characters.Length}");
-        foreach (Character character in characters)
-        {
-            Debug.Log($"  Character: {character.CharacterName}, HasInventory: {character.GetInventory() != null}");
-        }
-    }
-
-    [ContextMenu("🔧 Force Find and Connect Character")]
-    private void ForceFindAndConnectCharacter()
-    {
-        Debug.Log("[InventoryGrid] Force finding and connecting character...");
-
-        Character foundCharacter = FindCharacterMultipleWays();
-
-        if (foundCharacter != null)
-        {
-            SetOwnerCharacter(foundCharacter);
-            Debug.Log($"✅ Successfully connected to: {foundCharacter.CharacterName}");
-        }
-        else
-        {
-            Debug.LogError("❌ No character found to connect!");
-        }
-    }
-
-    [ContextMenu("🏗️ Force Recreate Grid")]
-    private void ForceRecreateGrid()
-    {
-        Debug.Log("[InventoryGrid] Force recreating grid...");
-
-        ClearExistingSlots();
-        CreateInventoryGrid();
-
-        Debug.Log($"✅ Grid recreated with {allSlots.Count} slots");
-    }
-
-    [ContextMenu("🏗️ Test: Force Create Slots Now")]
-    private void TestForceCreateSlotsNow()
-    {
-        Debug.Log("[InventoryGrid] Testing force create slots...");
-
-        // หา inventory panel
-        GameObject panel = GetInventoryPanel();
-        bool wasActive = panel != null ? panel.activeSelf : true;
-
-        Debug.Log($"Inventory Panel: {(panel != null ? "Found" : "Not Found")}, Active: {wasActive}");
-
-        if (panel != null && !wasActive)
-        {
-            panel.SetActive(true);
-            Debug.Log("Force activated panel for testing");
-        }
-
-        // ลบ slots เก่า
-        ClearExistingSlots();
-
-        // สร้าง slots ใหม่
-        int slotsToCreate = ownerCharacter != null ? ownerCharacter.GetInventorySlotCount() : 24;
-        for (int i = 0; i < slotsToCreate; i++)
-        {
-            CreateSlot(i);
-        }
-
-        Debug.Log($"Created {allSlots.Count} slots");
-
-        // คืนสถานะ panel
-        if (panel != null && !wasActive)
-        {
-            StartCoroutine(DelayedDeactivatePanel(panel));
-        }
-    }
-
-    [ContextMenu("👁️ Test: Check Slots Existence")]
-    private void TestCheckSlotsExistence()
-    {
-        Debug.Log($"=== SLOTS EXISTENCE CHECK ===");
-        Debug.Log($"Total Slots: {allSlots.Count}");
-        Debug.Log($"Owner Character: {ownerCharacter?.CharacterName ?? "None"}");
-
-        GameObject panel = GetInventoryPanel();
-        Debug.Log($"Inventory Panel: {(panel != null ? panel.name : "Not Found")}");
-        Debug.Log($"Panel Active: {panel?.activeSelf ?? false}");
-
-        for (int i = 0; i < Mathf.Min(5, allSlots.Count); i++)
-        {
-            InventorySlot slot = allSlots[i];
-            if (slot != null)
-            {
-                Debug.Log($"Slot {i}: GameObject={slot.gameObject.name}, Active={slot.gameObject.activeSelf}, Empty={slot.IsEmpty}");
-            }
-            else
-            {
-                Debug.Log($"Slot {i}: NULL");
-            }
-        }
-    }
+   
 }
