@@ -6171,12 +6171,12 @@ RectTransform:
   - {fileID: 8192020152087396775}
   - {fileID: 2708314809871565530}
   - {fileID: 4991680120608955310}
-  m_Father: {fileID: 4632346372526608946}
+  m_Father: {fileID: 294170506690012504}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -794.1001, y: -861}
-  m_SizeDelta: {x: 433.9765, y: 83.797}
+  m_AnchoredPosition: {x: -15.000122, y: -409}
+  m_SizeDelta: {x: 643.2528, y: 11.2108}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8934347283863176401
 CanvasRenderer:
@@ -10702,9 +10702,9 @@ PrefabInstance:
     m_RemovedGameObjects:
     - {fileID: 3277823309945998110, guid: 626b7f9b95e2a3e43b3ecd78d6590652, type: 3}
     m_AddedGameObjects:
-    - targetCorrespondingSourceObject: {fileID: 9114694838764087593, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
+    - targetCorrespondingSourceObject: {fileID: 4188798822140190275, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
-      insertIndex: -1
+      insertIndex: 8
       addedObject: {fileID: 6202208706769471855}
     - targetCorrespondingSourceObject: {fileID: 4229358487516917192, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
@@ -10890,12 +10890,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!224 &4632346372526608946 stripped
-RectTransform:
-  m_CorrespondingSourceObject: {fileID: 9114694838764087593, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
-    type: 3}
-  m_PrefabInstance: {fileID: 4482349166686255899}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &5118306845175720755 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8733429812850069544, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
