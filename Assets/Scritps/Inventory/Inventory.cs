@@ -260,8 +260,8 @@ public class Inventory : NetworkBehaviour
         {
             Debug.Log("[Inventory] 🔄 Force updating inventory grid display only...");
 
-            // หา InventoryGridManager
-            InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
+            // หา InventoryGridManager หลายวิธี
+            InventoryGridManager gridManager = FindInventoryGridManagerMultipleWays();
 
             if (gridManager != null)
             {
@@ -278,12 +278,139 @@ public class Inventory : NetworkBehaviour
             }
             else
             {
-                Debug.LogWarning("[Inventory] InventoryGridManager not found");
+                Debug.LogWarning("[Inventory] InventoryGridManager not found, attempting to create...");
+
+                // ลองสร้าง grid ใหม่ผ่าน CombatUIManager
+                AttemptToCreateInventoryGrid();
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[Inventory] Error updating grid display: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับหา InventoryGridManager หลายวิธี
+    private InventoryGridManager FindInventoryGridManagerMultipleWays()
+    {
+        InventoryGridManager gridManager = null;
+
+        // วิธีที่ 1: หาจาก FindObjectOfType
+        gridManager = FindObjectOfType<InventoryGridManager>();
+        if (gridManager != null)
+        {
+            Debug.Log("[Inventory] Found InventoryGridManager via FindObjectOfType");
+            return gridManager;
+        }
+
+        // วิธีที่ 2: หาจาก CombatUIManager
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager != null)
+        {
+            gridManager = uiManager.GetInventoryGridManager();
+            if (gridManager != null)
+            {
+                Debug.Log("[Inventory] Found InventoryGridManager via CombatUIManager");
+                return gridManager;
+            }
+        }
+
+        // วิธีที่ 3: หาจาก inventory panels ใน scene
+        GameObject[] allGameObjects = FindObjectsOfType<GameObject>();
+        foreach (GameObject obj in allGameObjects)
+        {
+            if (obj.name.ToLower().Contains("inventory"))
+            {
+                gridManager = obj.GetComponentInChildren<InventoryGridManager>();
+                if (gridManager != null)
+                {
+                    Debug.Log($"[Inventory] Found InventoryGridManager in {obj.name}");
+                    return gridManager;
+                }
+            }
+        }
+
+        Debug.LogWarning("[Inventory] InventoryGridManager not found with any method");
+        return null;
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับลองสร้าง grid
+    private void AttemptToCreateInventoryGrid()
+    {
+        try
+        {
+            // หา CombatUIManager และลองสร้าง grid
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                Debug.Log("[Inventory] Requesting CombatUIManager to create inventory grid...");
+                uiManager.ForceSetupInventoryGrid();
+
+                // รอแล้วลองหาใหม่
+                StartCoroutine(RetryFindGridAfterCreate());
+            }
+            else
+            {
+                Debug.LogError("[Inventory] No CombatUIManager found to create inventory grid!");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Inventory] Error attempting to create inventory grid: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม Coroutine สำหรับลองหา grid หลังสร้าง
+    private System.Collections.IEnumerator RetryFindGridAfterCreate()
+    {
+        // รอ 1 วินาที
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log("[Inventory] Retrying to find InventoryGridManager after creation attempt...");
+
+        InventoryGridManager gridManager = FindInventoryGridManagerMultipleWays();
+
+        if (gridManager != null)
+        {
+            Debug.Log("[Inventory] ✅ Successfully found InventoryGridManager after retry!");
+
+            // Set character ถ้ายังไม่ได้ set
+            if (gridManager.OwnerCharacter == null)
+            {
+                gridManager.SetOwnerCharacter(character);
+            }
+
+            // Force refresh ทันที
+            gridManager.ForceRefreshAllSlots();
+
+            // แจ้ง ItemDeleteManager ให้ refresh references
+            RefreshItemDeleteManagerReferences();
+        }
+        else
+        {
+            Debug.LogError("[Inventory] ❌ Still cannot find InventoryGridManager after retry!");
+        }
+    }
+
+    // ✅ เพิ่ม method สำหรับแจ้ง ItemDeleteManager
+    private void RefreshItemDeleteManagerReferences()
+    {
+        try
+        {
+            ItemDeleteManager deleteManager = FindObjectOfType<ItemDeleteManager>();
+            if (deleteManager != null)
+            {
+                deleteManager.ForceRefreshReferences();
+                Debug.Log("[Inventory] ✅ Refreshed ItemDeleteManager references");
+            }
+            else
+            {
+                Debug.LogWarning("[Inventory] ItemDeleteManager not found");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Inventory] Error refreshing ItemDeleteManager: {e.Message}");
         }
     }
     private void OnDestroy()

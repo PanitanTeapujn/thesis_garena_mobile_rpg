@@ -87,6 +87,10 @@ public class CombatUIManager : MonoBehaviour
     public List<EquipmentSlot> equipmentSlots = new List<EquipmentSlot>(); // Head, Armor, Weapon, Pants, Shoes, Rune
     public List<EquipmentSlot> potionSlots = new List<EquipmentSlot>();    // Potion quick slots (5 slots)
     public EquipmentSlotManager equipmentSlotManager; // Manager สำหรับจัดการ equipment slots
+    [Header("🗑️ Delete System")]
+    public Button deleteButton;                    // ปุ่มถังขยะ
+    public ItemDeleteManager itemDeleteManager;   // Manager สำหรับระบบลบ
+    private bool isDeleteModeActive = false;
 
     public Hero localHero { get; private set; }
     private SingleInputController inputController;
@@ -151,7 +155,31 @@ public class CombatUIManager : MonoBehaviour
                 UpdateInventoryCharacterStats();
             }
         }
+
+        // ✅ เพิ่มการตรวจสอบ ItemDeleteManager connection
+        CheckItemDeleteManagerConnection();
     }
+    // ✅ เพิ่ม method ใหม่สำหรับตรวจสอบ ItemDeleteManager
+    private void CheckItemDeleteManagerConnection()
+    {
+        // ตรวจสอบทุก 2 วินาที
+        if (Time.time - lastDeleteManagerCheck > 2f)
+        {
+            lastDeleteManagerCheck = Time.time;
+
+            if (itemDeleteManager != null && localHero != null)
+            {
+                // ตรวจสอบว่า ItemDeleteManager มี reference ที่ถูกต้องหรือไม่
+                if (itemDeleteManager.GetComponent<ItemDeleteManager>() != null)
+                {
+                    // Force refresh references
+                    itemDeleteManager.ForceRefreshReferences();
+                }
+            }
+        }
+    }
+
+    private float lastDeleteManagerCheck = 0f; // เพิ่มตัวแปรนี้ใน class level
 
     // เพิ่ม Coroutine สำหรับหา InputController
     private IEnumerator FindInputControllerRoutine()
@@ -297,20 +325,30 @@ public class CombatUIManager : MonoBehaviour
         {
             SetupInventoryGrid();
             Debug.Log("[CombatUI] Force setup inventory grid completed");
+
+            // ✅ Refresh ItemDeleteManager หลัง force setup
+            RefreshItemDeleteManagerReferences();
         }
         else
         {
             Debug.Log("[CombatUI] Inventory grid already exists");
+
+            // ✅ แม้ grid มีอยู่แล้ว ก็ยัง refresh ItemDeleteManager
+            RefreshItemDeleteManagerReferences();
+
+            // ✅ Force update grid ด้วย
+            if (localHero != null)
+            {
+                inventoryGridManager.ForceUpdateFromCharacter();
+            }
         }
     }
+
 
     // ✅ แก้ไข SetupInventoryGrid ให้รอนานกว่า
     private void SetupInventoryGrid()
     {
         Debug.Log("=== Setting up Inventory Grid ===");
-
-        // ✅ ลบการ force activate panel ออก
-        // ให้ grid สร้างได้โดยไม่ต้อง activate
 
         // หา Inventory Grid Parent ถ้าไม่ได้ assign
         if (inventoryGridParent == null)
@@ -346,20 +384,63 @@ public class CombatUIManager : MonoBehaviour
             StartCoroutine(WaitForHeroAndSetupGrid());
         }
 
+        // ✅ Refresh ItemDeleteManager references
+        RefreshItemDeleteManagerReferences();
+
         Debug.Log("✅ Inventory Grid setup complete");
     }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ refresh ItemDeleteManager
+    private void RefreshItemDeleteManagerReferences()
+    {
+        if (itemDeleteManager != null)
+        {
+            Debug.Log("[CombatUI] 🔄 Refreshing ItemDeleteManager references...");
+            itemDeleteManager.ForceRefreshReferences();
+
+            // ตั้งค่า target character ใหม่
+            if (localHero != null)
+            {
+                itemDeleteManager.SetTargetCharacter(localHero);
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[CombatUI] ItemDeleteManager not assigned in Inspector!");
+
+            // ลองหา ItemDeleteManager อัตโนมัติ
+            itemDeleteManager = FindObjectOfType<ItemDeleteManager>();
+            if (itemDeleteManager != null)
+            {
+                Debug.Log("[CombatUI] ✅ Found ItemDeleteManager automatically");
+                itemDeleteManager.ForceRefreshReferences();
+
+                if (localHero != null)
+                {
+                    itemDeleteManager.SetTargetCharacter(localHero);
+                }
+            }
+        }
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ refresh ItemDeleteManager
+
+
     private void ConnectInventoryToHero(Hero hero)
     {
         if (inventoryGridManager != null)
         {
             inventoryGridManager.SetOwnerCharacter(hero);
-            // ✅ เพิ่มบรรทัดนี้ - Force load items ทันที
+            // ✅ เพิ่มการ force load items ทันที
             inventoryGridManager.ForceLoadFromCharacterAfterConnection();
 
-            // ✅ เพิ่มบรรทัดนี้ - Force update ทันที
+            // ✅ เพิ่มการ force update ทันที
             inventoryGridManager.ForceUpdateFromCharacter();
 
             Debug.Log($"[CombatUI] Connected inventory grid to {hero.CharacterName}");
+
+            // ✅ Refresh ItemDeleteManager หลัง connect hero
+            RefreshItemDeleteManagerReferences();
         }
     }
 
@@ -483,14 +564,24 @@ public class CombatUIManager : MonoBehaviour
         {
             Debug.Log($"[CombatUI] Selected inventory slot: {slotIndex}");
 
-            // 🆕 แสดง item detail ถ้ามี item ใน slot
+            // ✅ ปรับปรุงการตรวจสอบโหมดลบ
+            if (itemDeleteManager != null && itemDeleteManager.IsDeleteMode)
+            {
+                Debug.Log("[CombatUI] In delete mode - blocking ItemDetailPanel");
+
+                // ซ่อน ItemDetailPanel ถ้าเปิดอยู่
+                HideItemDetail();
+
+                // ไม่แสดง ItemDetailPanel ในโหมดลบ
+                return;
+            }
+
+            // แสดง item detail ตามปกติถ้าไม่ได้อยู่ในโหมดลบ
             ShowItemDetailForSlot(slotIndex);
         }
         else
         {
             Debug.Log("[CombatUI] No slot selected");
-
-            // 🆕 ซ่อน item detail panel
             HideItemDetail();
         }
     }
@@ -527,7 +618,7 @@ public class CombatUIManager : MonoBehaviour
 
         Debug.Log("=== Setting up UI Button Events ===");
         SetupPotionButtons();
-
+        SetupDeleteButton();
         if (attackButton != null)
         {
             attackButton.onClick.RemoveAllListeners();
@@ -611,7 +702,62 @@ public class CombatUIManager : MonoBehaviour
 
       
     }
+    private void SetupDeleteButton()
+    {
+        if (deleteButton != null)
+        {
+            deleteButton.onClick.RemoveAllListeners();
+            deleteButton.onClick.AddListener(() => {
+                Debug.Log("Delete button pressed");
+                OnDeleteButtonClicked();
+            });
+            Debug.Log("✅ Delete button event setup complete");
+        }
+        else
+        {
+            Debug.LogWarning("❌ Delete button not assigned in Inspector!");
+        }
+    }
+    private void OnDeleteButtonClicked()
+    {
+        if (itemDeleteManager != null)
+        {
+            itemDeleteManager.OnDeleteButtonClicked();
+        }
+        else
+        {
+            Debug.LogError("[CombatUI] ItemDeleteManager not assigned!");
+        }
+    }
 
+    // เพิ่ม method นี้สำหรับ ItemDeleteManager เรียกใช้
+    public void SetDeleteModeActive(bool active)
+    {
+        isDeleteModeActive = active;
+
+        // อัปเดตสีของปุ่มลบ
+        if (deleteButton != null)
+        {
+            var buttonImage = deleteButton.GetComponent<Image>();
+            if (buttonImage != null)
+            {
+                buttonImage.color = active ? Color.red : Color.white;
+            }
+        }
+
+        // ✅ ซ่อน ItemDetailPanel เมื่อเข้าโหมดลบ
+        if (active)
+        {
+            HideItemDetail();
+            Debug.Log("[CombatUI] Delete mode ACTIVE - ItemDetailPanel hidden");
+        }
+        else
+        {
+            Debug.Log("[CombatUI] Delete mode INACTIVE");
+        }
+
+        Debug.Log($"[CombatUI] Delete mode: {(active ? "ACTIVE" : "INACTIVE")}");
+    }
     public void UpdatePotionButtons()
     {
         if (localHero == null) return;
@@ -787,6 +933,10 @@ public class CombatUIManager : MonoBehaviour
             Debug.Log("Inventory panel opened");
         }
     }
+    public bool IsDeleteModeActive()
+    {
+        return isDeleteModeActive;
+    }
     public void CloseInventory()
     {
         if (inventoryPanel != null)
@@ -815,14 +965,44 @@ public class CombatUIManager : MonoBehaviour
         localHero = hero;
         Debug.Log($"Local hero set: {hero.CharacterName} - HP: {hero.CurrentHp}/{hero.MaxHp}");
 
-        // ✅ เชื่อมต่อ Inventory Grid
+        // เชื่อมต่อ Inventory Grid
         ConnectInventoryToHero(hero);
 
-        // 🆕 เชื่อมต่อ Equipment Slots ผ่าน EquipmentSlotManager
+        // เชื่อมต่อ Equipment Slots ผ่าง EquipmentSlotManager
         ConnectEquipmentSlotsToHero(hero);
+
+        // 🆕 เชื่อมต่อ ItemDeleteManager
+        ConnectDeleteManagerToHero(hero);
+
+        // ✅ เพิ่มการ force refresh references
+        RefreshItemDeleteManagerReferences();
 
         UpdateUI();
     }
+    private void ConnectDeleteManagerToHero(Hero hero)
+    {
+        if (itemDeleteManager != null)
+        {
+            itemDeleteManager.SetTargetCharacter(hero);
+            itemDeleteManager.ForceRefreshReferences();
+            Debug.Log($"[CombatUI] Connected ItemDeleteManager to {hero.CharacterName}");
+        }
+        else
+        {
+            Debug.LogWarning("[CombatUI] ItemDeleteManager not assigned in Inspector!");
+
+            // ลองหาอัตโนมัติ
+            itemDeleteManager = FindObjectOfType<ItemDeleteManager>();
+            if (itemDeleteManager != null)
+            {
+                itemDeleteManager.SetTargetCharacter(hero);
+                itemDeleteManager.ForceRefreshReferences();
+                Debug.Log($"[CombatUI] Auto-found and connected ItemDeleteManager to {hero.CharacterName}");
+            }
+        }
+    }
+
+
     private void ConnectEquipmentSlotsToHero(Hero hero)
     {
         // หา EquipmentSlotManager จาก Character

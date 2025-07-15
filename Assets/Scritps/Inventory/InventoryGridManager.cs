@@ -690,6 +690,9 @@ public class InventoryGridManager : MonoBehaviour
             ForceLoadFromCharacterAfterConnection();
 
             Debug.Log($"[InventoryGrid] Successfully connected to {ownerCharacter.CharacterName}'s inventory");
+
+            // ✅ เพิ่มบรรทัดนี้ - แจ้ง ItemDeleteManager
+            NotifyItemDeleteManagerForRefresh();
         }
     }
     // เพิ่ม method สำหรับ handle character inventory events
@@ -989,10 +992,23 @@ public class InventoryGridManager : MonoBehaviour
         // โหลด items ทันที
         LoadItemsFromCharacterInventory();
 
-        // ✅ เพิ่มบรรทัดนี้ - Force refresh ทุก slot
+        // ✅ Force refresh ทุก slot
         ForceRefreshAllSlots();
 
+        // ✅ เพิ่มบรรทัดนี้ - แจ้ง ItemDeleteManager หลัง load เสร็จ
+        NotifyItemDeleteManagerForRefresh();
+
         Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed");
+    }
+    public bool IsProperlyConnected()
+    {
+        bool hasCharacter = ownerCharacter != null;
+        bool hasInventory = ownerCharacter?.GetInventory() != null;
+        bool hasSlots = allSlots != null && allSlots.Count > 0;
+
+        Debug.Log($"[InventoryGrid] Connection Status - Character: {hasCharacter}, Inventory: {hasInventory}, Slots: {hasSlots}");
+
+        return hasCharacter && hasInventory && hasSlots;
     }
 
     private void OnDestroy()
@@ -1053,6 +1069,28 @@ public class InventoryGridManager : MonoBehaviour
         {
             // Trigger layout rebuild สำหรับ slot นี้
             UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(slot.GetComponent<RectTransform>());
+        }
+    }
+    public void NotifyItemDeleteManagerForRefresh()
+    {
+        Debug.Log("[InventoryGrid] 📢 Notifying ItemDeleteManager to refresh references...");
+
+        try
+        {
+            ItemDeleteManager deleteManager = FindObjectOfType<ItemDeleteManager>();
+            if (deleteManager != null)
+            {
+                deleteManager.ForceRefreshReferences();
+                Debug.Log("[InventoryGrid] ✅ Successfully notified ItemDeleteManager");
+            }
+            else
+            {
+                Debug.LogWarning("[InventoryGrid] ItemDeleteManager not found for notification");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[InventoryGrid] Error notifying ItemDeleteManager: {e.Message}");
         }
     }
     #region Runtime Grid Modification

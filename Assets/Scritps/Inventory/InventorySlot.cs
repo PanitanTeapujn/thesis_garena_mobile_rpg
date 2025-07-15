@@ -23,6 +23,7 @@ public class InventorySlot : MonoBehaviour
 
     // Events
     public System.Action<int> OnSlotSelected;
+    public static System.Action<int> OnSlotClickedForDelete;
 
     // Properties
     public int SlotIndex
@@ -444,10 +445,13 @@ public class InventorySlot : MonoBehaviour
     {
         Debug.Log($"[InventorySlot] Slot {slotIndex} clicked - Empty: {isEmpty}, Selected: {isSelected}");
 
+        // 🆕 แจ้ง static event สำหรับ ItemDeleteManager
+        OnSlotClickedForDelete?.Invoke(slotIndex);
+
         // แจ้ง InventoryGridManager ว่า slot นี้ถูกกด
         OnSlotSelected?.Invoke(slotIndex);
 
-        // ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด
+        // ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด (จะถูก block ใน CombatUIManager ถ้าอยู่ในโหมดลบ)
         if (!isEmpty)
         {
             ShowItemDetailForThisSlot();
