@@ -82,7 +82,7 @@ public class CombatUIManager : MonoBehaviour
     [Header("🆕 Item Detail Panel")]
     public GameObject itemDetailPanel;              // Panel สำหรับแสดงรายละเอียดไอเทม
     public ItemDetailPanel itemDetailManager;      // Manager สำหรับจัดการ panel
-
+   
     [Header("🆕 Equipment Slots (ลากจาก UI มาใส่)")]
     public List<EquipmentSlot> equipmentSlots = new List<EquipmentSlot>(); // Head, Armor, Weapon, Pants, Shoes, Rune
     public List<EquipmentSlot> potionSlots = new List<EquipmentSlot>();    // Potion quick slots (5 slots)
@@ -234,12 +234,14 @@ public class CombatUIManager : MonoBehaviour
             // Setup Item Info Panel
             SetupItemDetailPanel();
 
+
         }
         else
         {
             Debug.LogError("❌ Inventory Panel not assigned in Inspector!");
         }
     }
+  
     private void SetupItemDetailPanel()
     {
         Debug.Log("=== Setting up Item Detail Panel ===");
@@ -798,8 +800,11 @@ public class CombatUIManager : MonoBehaviour
                 inventoryGridManager.DeselectAllSlots();
             }
 
-            // 🆕 ซ่อน item detail panel ด้วย
+            // ซ่อน item detail panel ด้วย
             HideItemDetail();
+
+            // ✅ เพิ่มบรรทัดนี้ - ปิด delete mode เมื่อปิด inventory
+           
 
             Debug.Log("Inventory panel closed");
         }

@@ -707,7 +707,7 @@ public class Inventory : NetworkBehaviour
         return true;
     }
 
-    private void AutoSaveInventoryData(string action)
+    public void AutoSaveInventoryData(string action)
     {
         try
         {
@@ -719,11 +719,12 @@ public class Inventory : NetworkBehaviour
                 bool isRemoveOrEquipAction = action.Contains("RemoveItem") ||
                                             action.Contains("Equip") ||
                                             action.Contains("Use") ||
-                                            action.Contains("from slot");
+                                            action.Contains("from slot") ||
+                                            action.Contains("DeleteItems"); // ✅ เพิ่มบรรทัดนี้
 
                 if (isRemoveOrEquipAction)
                 {
-                    // 🆕 **Force save ทันทีสำหรับ remove/equip actions**
+                    // 🆕 **Force save ทันทีสำหรับ remove/equip/delete actions**
                     PersistentPlayerData.Instance.ForceSaveInventoryAfterEquip(character, action);
                     Debug.Log($"[Inventory] ✅ Force save completed for: {action}");
                 }

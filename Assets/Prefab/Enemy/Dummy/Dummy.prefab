@@ -35,7 +35,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.59, y: 0, z: 0}
-  m_LocalScale: {x: 5, y: 5, z: 5}
+  m_LocalScale: {x: 0.4, y: 0.4, z: 0.4}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -81,7 +81,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: -1014042275, guid: 0c1e734fa85636743af3bc22c6d99ba8, type: 3}
+  m_Sprite: {fileID: 21300000, guid: aa84f7c0a853f2d42967471580102efd, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -138,7 +138,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.77, y: 1.56, z: 0.2}
+  m_Size: {x: 8.62, y: 15.38, z: 0.2}
   m_Center: {x: -0.2, y: 0.3, z: 0}
 --- !u!114 &1153582897584543797
 MonoBehaviour:
@@ -247,7 +247,7 @@ MonoBehaviour:
   circlingSpeed: 0.5
   isCollidingWithPlayer: 0
   showDebugInfo: 0
-  showPatrolGizmos: 1
+  showPatrolGizmos: 0
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: 0}
