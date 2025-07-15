@@ -761,23 +761,31 @@ public class CombatUIManager : MonoBehaviour
         {
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
+
             // อัพเดท Character Stats ทันทีที่เปิด Panel
             if (localHero != null)
             {
                 UpdateInventoryCharacterStats();
+
+                // ✅ เพิ่มบรรทัดนี้ - Force load จาก Firebase ทุกครั้งที่เปิด inventory
+                var inventory = localHero.GetInventory();
+                if (inventory != null)
+                {
+                    inventory.ForceLoadFromFirebase();
+                }
             }
 
-            // ✅ เปลี่ยนจาก ForceUpdateFromCharacter เป็น ForceLoadFromCharacterAfterConnection
+            // Force update inventory grid
             if (inventoryGridManager != null)
             {
-                inventoryGridManager.ForceLoadFromCharacterAfterConnection();
-                Debug.Log("[CombatUI] Forced inventory reload on panel open");
+                inventoryGridManager.ForceRefreshAllSlots();
+                Debug.Log("[CombatUI] Forced inventory refresh on panel open");
             }
 
             Debug.Log("Inventory panel opened");
         }
     }
-        public void CloseInventory()
+    public void CloseInventory()
     {
         if (inventoryPanel != null)
         {

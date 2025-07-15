@@ -175,23 +175,30 @@ public class Character : NetworkBehaviour
     }
 
 
-    private void LoadPlayerDataIfAvailable()
+    public void LoadPlayerDataIfAvailable()
     {
         if (PersistentPlayerData.Instance == null)
         {
+            Debug.LogWarning($"[Character] {CharacterName}: PersistentPlayerData not available");
             return;
         }
 
-        // ตรวจสอบว่ามีข้อมูลใน Firebase หรือไม่
+        Debug.Log($"[Character] {CharacterName}: Loading player data...");
+
+        // โหลด stats ผ่าน LevelManager (แบบเดิม)
+        var levelManager = GetComponent<LevelManager>();
+        if (levelManager != null)
+        {
+            PersistentPlayerData.Instance.LoadStatsForCharacter(this, levelManager);
+        }
+
+        // โหลด inventory และ equipment (แบบเดิม)
         if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
         {
+            PersistentPlayerData.Instance.LoadInventoryData(this);
+        }
 
-            // 🆕 ใช้ Coroutine เพื่อ delay การโหลด
-            StartCoroutine(DelayedLoadPlayerData());
-        }
-        else
-        {
-        }
+        Debug.Log($"[Character] {CharacterName}: Player data loaded");
     }
     private System.Collections.IEnumerator DelayedLoadPlayerData()
     {

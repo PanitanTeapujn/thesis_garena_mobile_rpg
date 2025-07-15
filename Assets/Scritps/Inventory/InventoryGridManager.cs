@@ -813,18 +813,60 @@ public class InventoryGridManager : MonoBehaviour
     {
         Debug.Log("[InventoryGrid] 🔄 Force refreshing all slots...");
 
+        if (ownerCharacter?.GetInventory() == null)
+        {
+            Debug.LogWarning("[InventoryGrid] No character inventory to refresh from");
+            return;
+        }
+
+        Inventory inventory = ownerCharacter.GetInventory();
+
+        // ✅ Debug inventory ก่อน refresh
+        Debug.Log($"[InventoryGrid] Inventory has {inventory.UsedSlots}/{inventory.CurrentSlots} items");
+
+        for (int i = 0; i < 5 && i < inventory.CurrentSlots; i++)
+        {
+            var item = inventory.GetItem(i);
+            string itemInfo = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
+            Debug.Log($"[InventoryGrid] Slot {i}: {itemInfo}");
+        }
+
+        // Refresh ทุก slot พร้อม debug
+        int refreshedCount = 0;
         foreach (InventorySlot slot in allSlots)
         {
             if (slot != null)
             {
-                slot.ForceSyncFromCharacterNow();
+                // ดึงข้อมูลจาก character inventory
+                int slotIndex = slot.SlotIndex;
+                if (slotIndex >= 0 && slotIndex < inventory.CurrentSlots)
+                {
+                    var item = inventory.GetItem(slotIndex);
+
+                    // Debug ก่อน sync
+                    string beforeState = slot.IsEmpty ? "EMPTY" : "FILLED";
+                    string inventoryState = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
+
+                    // Force sync
+                    slot.ForceSyncFromCharacterNow();
+
+                    // Debug หลัง sync
+                    string afterState = slot.IsEmpty ? "EMPTY" : "FILLED";
+
+                    if (beforeState != afterState)
+                    {
+                        Debug.Log($"[InventoryGrid] Slot {slotIndex}: {beforeState} → {afterState} (Inventory: {inventoryState})");
+                    }
+
+                    refreshedCount++;
+                }
             }
         }
 
         // Force canvas update
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log("[InventoryGrid] ✅ All slots force refreshed");
+        Debug.Log($"[InventoryGrid] ✅ Refreshed {refreshedCount} slots");
     }
     // เพิ่ม method สำหรับอัปเดต slot จาก inventory item
     private void UpdateSlotFromInventoryItem(int slotIndex, InventoryItem item)

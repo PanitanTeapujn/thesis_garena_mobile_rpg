@@ -1448,10 +1448,10 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.Log($"[LoadInventoryData] 📥 Starting inventory load for {character.CharacterName}");
 
-            // 1. Load Character Equipment FIRST (ป้องกันไม่ให้อาวุธหลุดไป inventory)
+            // 1. Load Character Equipment FIRST (แบบเดิม)
             bool equipmentLoaded = LoadCharacterEquipmentDataFirst(character);
 
-            // 2. Load Shared Inventory AFTER equipment (เพื่อไม่ให้ overlap)
+            // 2. Load Shared Inventory AFTER equipment (แบบเดิม)  
             bool inventoryLoaded = LoadSharedInventoryDataSafe(character);
 
             if (inventoryLoaded || equipmentLoaded)
@@ -1459,6 +1459,9 @@ public class PersistentPlayerData : MonoBehaviour
                 Debug.Log($"[LoadInventoryData] ✅ Load completed - Equipment: {equipmentLoaded}, Inventory: {inventoryLoaded}");
                 ForceRefreshInventoryUI(character);
                 NotifyLevelManagerEquipmentLoaded(character);
+
+                // ✅ เพิ่มแค่บรรทัดนี้ - force update grid หลังโหลดเสร็จ
+                StartCoroutine(DelayedGridRefresh(character));
             }
             else
             {
@@ -1470,6 +1473,38 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.LogError($"[LoadInventoryData] ❌ Error: {e.Message}");
             GiveStarterItemsIfNeeded(character);
+        }
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ delayed grid refresh เท่านั้น
+    private System.Collections.IEnumerator DelayedGridRefresh(Character character)
+    {
+        // รอ 1 วินาทีเพื่อให้ stats และ equipment settle เสร็จ
+        yield return new WaitForSeconds(1f);
+
+        try
+        {
+            Debug.Log("[DelayedGridRefresh] 🔄 Refreshing inventory grid display...");
+
+            // หา InventoryGridManager และ refresh display เท่านั้น
+            var gridManager = FindObjectOfType<InventoryGridManager>();
+
+            if (gridManager != null)
+            {
+                if (gridManager.OwnerCharacter == null)
+                {
+                    gridManager.SetOwnerCharacter(character);
+                }
+
+                // ✅ แค่ refresh display - ไม่โหลดข้อมูลซ้ำ
+                gridManager.ForceRefreshAllSlots();
+
+                Debug.Log("[DelayedGridRefresh] ✅ Grid display refreshed");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[DelayedGridRefresh] ❌ Error: {e.Message}");
         }
     }
     private bool LoadSharedInventoryDataSafe(Character character)

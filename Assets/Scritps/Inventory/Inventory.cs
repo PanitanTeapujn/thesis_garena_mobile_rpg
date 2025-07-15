@@ -152,14 +152,19 @@ public class Inventory : NetworkBehaviour
         yield return null;
         yield return null;
 
-        // ตรวจสอบและโหลดข้อมูลก่อนให้ starter items
         if (PersistentPlayerData.Instance != null)
         {
+            // รอให้ Character loading เสร็จก่อน
+            yield return new WaitForSeconds(2f);
+
             if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
             {
-                Debug.Log("[Inventory] Loading saved inventory data...");
-                // ข้อมูลจะถูกโหลดโดย Character.LoadPlayerDataIfAvailable() แล้ว
-                starterItemsGiven = true; // กันไม่ให้ให้ starter items
+                Debug.Log("[Inventory] Found saved data, force loading from Firebase...");
+
+                // ✅ เปลี่ยนจาก ForceUpdateInventoryGridOnly เป็น ForceLoadFromFirebase
+                ForceLoadFromFirebase();
+
+                starterItemsGiven = true;
             }
             else
             {
@@ -173,7 +178,114 @@ public class Inventory : NetworkBehaviour
             GiveStarterItems();
         }
     }
+    public void ForceLoadFromFirebase()
+    {
+        Debug.Log("[Inventory] 🔄 Force loading inventory from Firebase...");
 
+        if (PersistentPlayerData.Instance?.multiCharacterData?.sharedInventory == null)
+        {
+            Debug.LogWarning("[Inventory] No Firebase inventory data to load");
+            return;
+        }
+
+        var sharedData = PersistentPlayerData.Instance.multiCharacterData.sharedInventory;
+
+        if (sharedData.items == null || sharedData.items.Count == 0)
+        {
+            Debug.LogWarning("[Inventory] Firebase inventory is empty");
+            return;
+        }
+
+        Debug.Log($"[Inventory] Loading {sharedData.items.Count} items from Firebase...");
+
+        // เคลียร์ inventory ปัจจุบัน
+        ClearInventory();
+
+        // โหลด items จาก Firebase
+        int loadedCount = 0;
+        foreach (var savedItem in sharedData.items)
+        {
+            if (savedItem == null || !savedItem.IsValid()) continue;
+
+            // หา ItemData จาก database
+            ItemData itemData = GetItemDataById(savedItem.itemId);
+            if (itemData == null)
+            {
+                Debug.LogWarning($"[Inventory] Item not found: {savedItem.itemId} ({savedItem.itemName})");
+                continue;
+            }
+
+            // เพิ่ม item ลง inventory ที่ slot ที่ถูกต้อง
+            if (savedItem.slotIndex >= 0 && savedItem.slotIndex < maxSlots)
+            {
+                items[savedItem.slotIndex].itemData = itemData;
+                items[savedItem.slotIndex].stackCount = savedItem.stackCount;
+                items[savedItem.slotIndex].slotIndex = savedItem.slotIndex;
+
+                loadedCount++;
+                Debug.Log($"[Inventory] Loaded {itemData.ItemName} x{savedItem.stackCount} to slot {savedItem.slotIndex}");
+
+                // แจ้ง UI ทันที
+                OnInventoryItemChanged?.Invoke(character, savedItem.slotIndex, items[savedItem.slotIndex]);
+            }
+        }
+
+        Debug.Log($"[Inventory] ✅ Force loaded {loadedCount} items from Firebase");
+
+        // Force update grid
+        ForceUpdateInventoryGridOnly();
+    }
+
+    // ✅ เพิ่ม helper method
+    private ItemData GetItemDataById(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return null;
+
+        var database = ItemDatabase.Instance;
+        if (database?.GetAllItems() != null)
+        {
+            foreach (var item in database.GetAllItems())
+            {
+                if (item?.ItemId == itemId)
+                {
+                    return item;
+                }
+            }
+        }
+        return null;
+    }
+    private void ForceUpdateInventoryGridOnly()
+    {
+        try
+        {
+            Debug.Log("[Inventory] 🔄 Force updating inventory grid display only...");
+
+            // หา InventoryGridManager
+            InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
+
+            if (gridManager != null)
+            {
+                // Set character ถ้ายังไม่ได้ set
+                if (gridManager.OwnerCharacter == null)
+                {
+                    gridManager.SetOwnerCharacter(character);
+                }
+
+                // ✅ แค่ force refresh display - ไม่โหลดข้อมูลใหม่
+                gridManager.ForceRefreshAllSlots();
+
+                Debug.Log("[Inventory] ✅ Inventory grid display updated");
+            }
+            else
+            {
+                Debug.LogWarning("[Inventory] InventoryGridManager not found");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Inventory] Error updating grid display: {e.Message}");
+        }
+    }
     private void OnDestroy()
     {
         Character.OnStatsChanged -= OnCharacterStatsChanged;
