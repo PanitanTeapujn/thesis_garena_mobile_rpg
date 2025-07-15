@@ -128,6 +128,20 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("หน่วงเวลาก่อนทำลาย enemy (วินาที)")]
     [Range(0f, 5f)]
     public float destroyDelay = 1f;
+    [Header("🔄 Loading System Integration")]
+    [Tooltip("รอให้ Loading Panel เสร็จก่อนเริ่ม spawn")]
+    public bool waitForLoadingComplete = true;
+
+    [Tooltip("เวลารอสูงสุดหาก Loading Panel ไม่เจอ (วินาที)")]
+    public float maxLoadingWaitTime = 30f;
+
+    [Tooltip("แสดง debug ข้อมูลการรอ loading")]
+    public bool showLoadingDebug = true;
+
+    // เพิ่มตัวแปร private
+    private bool isLoadingComplete = false;
+    private LoadingPanelManager loadingPanelManager;
+    private float loadingStartTime;
 
     public int currentSessionKills { get; private set; } = 0; // เปลี่ยนเป็น property
     private int requiredKillsForStage ;
@@ -170,6 +184,8 @@ public class EnemySpawner : NetworkBehaviour
         InitializeSpawnCounts();
         InitializeBossConditions();
         ValidateSettings();
+        InitializeLoadingSystem();
+
         if (StageRewardTracker.Instance != null)
         {
             StageRewardTracker.Instance.StartStageTracking(currentStageName);
@@ -222,7 +238,120 @@ public class EnemySpawner : NetworkBehaviour
         Debug.Log($"🎯 [FINAL] Stage: {currentStageName}, Required: {requiredKillsForStage}, Session: {currentSessionKills}");
 
     }
+    private void InitializeLoadingSystem()
+    {
+        if (!waitForLoadingComplete)
+        {
+            isLoadingComplete = true;
+            if (showLoadingDebug)
+            {
+                Debug.Log("🔄 [EnemySpawner] Loading wait disabled - spawning enabled immediately");
+            }
+            return;
+        }
 
+        // หา LoadingPanelManager
+        loadingPanelManager = FindObjectOfType<LoadingPanelManager>();
+        loadingStartTime = Time.time;
+
+        if (loadingPanelManager == null)
+        {
+            Debug.LogWarning("🔄 [EnemySpawner] LoadingPanelManager not found! Will wait for max time then start spawning");
+            StartCoroutine(WaitForMaxTime());
+        }
+        else
+        {
+            if (showLoadingDebug)
+            {
+                Debug.Log("🔄 [EnemySpawner] Found LoadingPanelManager - monitoring loading progress");
+            }
+            StartCoroutine(MonitorLoadingProgress());
+        }
+    }
+
+    // 🆕 เพิ่ม Coroutine สำหรับตรวจสอบ loading progress
+    private IEnumerator MonitorLoadingProgress()
+    {
+        if (loadingPanelManager == null)
+        {
+            yield break;
+        }
+
+        while (!isLoadingComplete)
+        {
+            // เช็คว่า loading เสร็จหรือยัง
+            if (loadingPanelManager.IsLoadingComplete())
+            {
+                OnLoadingComplete();
+                yield break;
+            }
+
+            // เช็ค timeout
+            if (Time.time - loadingStartTime > maxLoadingWaitTime)
+            {
+                Debug.LogWarning($"🔄 [EnemySpawner] Loading timeout after {maxLoadingWaitTime}s - starting spawning anyway");
+                OnLoadingComplete();
+                yield break;
+            }
+
+            // แสดง debug progress
+            if (showLoadingDebug && Time.time % 1f < 0.1f) // เปลี่ยนจาก 2f เป็น 1f (debug บ่อยขึ้น)
+            {
+                float progress = loadingPanelManager.GetCurrentProgress();
+                float elapsed = Time.time - loadingStartTime;
+                Debug.Log($"🔄 [EnemySpawner] Loading progress: {(progress * 100f):F0}% (elapsed: {elapsed:F1}s)");
+            }
+
+            yield return new WaitForSeconds(0.05f); // เช็คทุก 0.05 วินาที (เร็วกว่าเดิม)
+        }
+    }
+
+
+    // 🆕 เพิ่ม Coroutine สำหรับ timeout
+    private IEnumerator WaitForMaxTime()
+    {
+        yield return new WaitForSeconds(maxLoadingWaitTime);
+
+        if (!isLoadingComplete)
+        {
+            Debug.LogWarning($"🔄 [EnemySpawner] Max loading wait time ({maxLoadingWaitTime}s) reached - starting spawning");
+            OnLoadingComplete();
+        }
+    }
+
+    // 🆕 เรียกเมื่อ loading เสร็จ
+    private void OnLoadingComplete()
+    {
+        isLoadingComplete = true;
+
+        // เริ่ม spawning
+        nextSpawnTime = Time.time + 0.2f;// รอ 1 วินาทีหลัง loading เสร็จ
+        nextWaveTime = Time.time + 1f;
+        nextMultiSpawnTime = Time.time + 0.5f;
+        if (showLoadingDebug)
+        {
+            float totalWaitTime = Time.time - loadingStartTime;
+            Debug.Log($"✅ [EnemySpawner] Loading complete! Total wait time: {totalWaitTime:F1}s - Starting enemy spawning");
+        }
+
+        // เรียก event หรือ callback อื่นๆ ถ้าต้องการ
+        OnSpawningEnabled();
+    }
+
+    // 🆕 เรียกเมื่อเริ่ม spawning
+    private void OnSpawningEnabled()
+    {
+        if (showLoadingDebug)
+        {
+            Debug.Log($"🏁 [EnemySpawner] Enemy spawning enabled for stage: {currentStageName}");
+            Debug.Log($"🎯 Target kills: {requiredKillsForStage}, Max enemies: {maxTotalEnemies}");
+
+            if (multiSpawnMode != MultiSpawnMode.Off)
+            {
+                Debug.Log($"🌊 Multi-spawn mode: {multiSpawnMode} ({spawnPointCount} points, {enemiesPerPoint} per point)");
+            }
+        }
+    }
     private void InitializeSpawnPoints()
     {
         availableSpawnPoints.Clear();
@@ -258,6 +387,21 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (Runner == null || !Runner.IsServer) return;
 
+        // 🆕 เช็คว่า loading เสร็จหรือยัง
+        if (waitForLoadingComplete && !isLoadingComplete)
+        {
+            // แสดง debug loading status (ไม่บ่อยเกินไป)
+            if (showLoadingDebug && Time.time % 3f < 0.1f)
+            {
+                float elapsed = Time.time - loadingStartTime;
+                string status = loadingPanelManager != null ?
+                    $"progress: {(loadingPanelManager.GetCurrentProgress() * 100f):F0}%" :
+                    "no LoadingPanelManager";
+                Debug.Log($"🔄 [EnemySpawner] Still waiting for loading ({elapsed:F1}s) - {status}");
+            }
+            return; // หยุดการทำงานจนกว่า loading จะเสร็จ
+        }
+
         // เช็คสถานะด่านก่อน
         CheckStageCompletionStatus();
 
@@ -275,12 +419,11 @@ public class EnemySpawner : NetworkBehaviour
             return;
         }
 
-        // 🔍 Debug ก่อนเรียก CleanupDeadEnemies
+        // ส่วนที่เหลือเหมือนเดิม...
         if (showDebugInfo && Time.time % 2f < 0.1f && activeEnemies.Count > 0)
         {
             Debug.Log($"🔍 About to call CleanupDeadEnemies. Active enemies: {activeEnemies.Count}");
 
-            // ตรวจสอบสถานะของแต่ละ enemy
             for (int i = 0; i < activeEnemies.Count; i++)
             {
                 var enemy = activeEnemies[i];
@@ -315,6 +458,59 @@ public class EnemySpawner : NetworkBehaviour
         else
         {
             HandleNormalSpawning();
+        }
+    }
+    public void ForceStartSpawning()
+    {
+        if (showLoadingDebug)
+        {
+            Debug.Log("🔄 [EnemySpawner] Force starting spawning (bypassing loading wait)");
+        }
+        OnLoadingComplete();
+    }
+    public void ResetToWaitForLoading()
+    {
+        isLoadingComplete = false;
+        nextSpawnTime = float.MaxValue;
+        nextWaveTime = float.MaxValue;
+        nextMultiSpawnTime = float.MaxValue;
+        loadingStartTime = Time.time;
+
+        if (showLoadingDebug)
+        {
+            Debug.Log("🔄 [EnemySpawner] Reset to wait for loading state");
+        }
+
+        // เริ่มตรวจสอบ loading ใหม่
+        if (waitForLoadingComplete)
+        {
+            InitializeLoadingSystem();
+        }
+    }
+
+    /// <summary>
+    /// เช็คว่า spawning พร้อมหรือยัง
+    /// </summary>
+    public bool IsSpawningReady()
+    {
+        return !waitForLoadingComplete || isLoadingComplete;
+    }
+
+    /// <summary>
+    /// ตั้งค่าให้รอ loading หรือไม่
+    /// </summary>
+    public void SetWaitForLoading(bool shouldWait)
+    {
+        waitForLoadingComplete = shouldWait;
+
+        if (!shouldWait && !isLoadingComplete)
+        {
+            OnLoadingComplete();
+        }
+
+        if (showLoadingDebug)
+        {
+            Debug.Log($"🔄 [EnemySpawner] Wait for loading set to: {shouldWait}");
         }
     }
     public void OnEnemyDeath(NetworkEnemy deadEnemy, string enemyTypeName)

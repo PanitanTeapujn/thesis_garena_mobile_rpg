@@ -815,6 +815,7 @@ public class MultiCharacterPlayerData
         defaultAssassin.currentLevel = 1;
         defaultAssassin.currentExp = 0;
         defaultAssassin.expToNextLevel = 100;
+        defaultAssassin.AddStatPoints(1);
 
         CharacterStats assassinStatsTemplate = Resources.Load<CharacterStats>("Characters/AssassinStats");
         if (assassinStatsTemplate == null)
@@ -859,7 +860,6 @@ public class MultiCharacterPlayerData
         newCharacter.currentLevel = 1;
         newCharacter.currentExp = 0;
         newCharacter.expToNextLevel = 100;
-
         CharacterStats characterStats = null;
 
         switch (characterType)
@@ -877,7 +877,7 @@ public class MultiCharacterPlayerData
                 characterStats = Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
                 break;
         }
-        
+
         return newCharacter;
     }
     #endregion
