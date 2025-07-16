@@ -10,36 +10,37 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Shadow Dagger
+  m_Name: Shadow Daggers
   m_EditorClassIdentifier: 
-  itemId: "\tMask of Shadows"
-  itemName: "\tMask of Shadows"
-  itemIcon: {fileID: 21300000, guid: 3253ad9deab97584d9f92d6a2fad17b4, type: 3}
-  itemType: 1
+  itemId: Shadow Daggers
+  itemName: Shadow Daggers
+  itemIcon: {fileID: 21300000, guid: b906fea0feef57a4ab4ae21578cc1c5a, type: 3}
+  itemType: 0
   tier: 5
   description: 
   sellPrice: 0
   buyPrice: 0
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
   stats:
-    attackDamageBonus: 0
+    attackDamageBonus: 40
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 8
+    criticalChanceBonus: 10
     criticalDamageBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 10
+    attackSpeedBonus: 20
     hitRateBonus: 0
-    evasionRateBonus: 5
+    evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
-    lifeStealBonus: 0
+    lifeStealBonus: 10
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

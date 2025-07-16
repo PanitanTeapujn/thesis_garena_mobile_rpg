@@ -304,11 +304,12 @@ MonoBehaviour:
     armorBonusPerLevel: 2
     criticalChanceBonusPerLevel: 0.5
     moveSpeedBonusPerLevel: 0.1
+    lifeStealBonusPerLevel: 0
   expSettings:
     baseExpToNextLevel: 100
     expGrowthRate: 1.2
     maxLevel: 100
-    baseEnemyExp: 25
+    baseEnemyExp: 500
     enemyExpLevelMultiplier: 1.1
   _CurrentLevel: 1
   _CurrentExp: 0
@@ -381,6 +382,7 @@ MonoBehaviour:
   evasionRate: 0
   attackSpeed: 0
   reductionCoolDown: 0
+  lifeSteal: 0
   attackType: 0
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
@@ -388,6 +390,7 @@ MonoBehaviour:
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
   _IsStatsReady: 0
+  _NetworkedLifeSteal: 0
   isStatsLoaded: 0
   isSpawnComplete: 0
   healthRegenPerSecond: 0.5

@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: SlimeFire
   moveSpeed: 3
-  maxHp: 100
+  maxHp: 60
   maxMana: 0
   attackDamage: 0
-  magicDamage: 10
+  magicDamage: 3
   arrmor: 15
   attackCoolDown: 1
   attackRange: 1
@@ -27,4 +27,5 @@ MonoBehaviour:
   evasionRate: 15
   attackSpeed: 1
   reductionCoolDown: 0
+  lifeSteal: 0
   attackType: 1

@@ -38,7 +38,9 @@ public class ShopLooby : MonoBehaviour
     public Transform beginJourneyContainer;
     public GameObject shopItemPrefab;
     public ScrollRect beginJourneyScrollRect;
-
+    [Header("🏆 Legend Shop")]
+    public Transform legendShopContainer;
+    public List<ShopItemData> legendShopItems = new List<ShopItemData>();
     [Header("Shop Item Detail Panel")]
     public GameObject shopItemDetailPanel;
     public Image detailItemIcon;
@@ -50,7 +52,9 @@ public class ShopLooby : MonoBehaviour
     public TextMeshProUGUI detailItemPrice;
     public Button buyButton;
     public Button closeDetailButton;
-
+    private List<ShopItemData> currentShopItems = new List<ShopItemData>();
+    private Transform currentShopContainer;
+    private string currentShopName = "Begin Journey";
     [Header("🆕 Purchase Quantity Panel")]
     public GameObject purchaseQuantityPanel;
     public Image quantityItemIcon;
@@ -101,16 +105,23 @@ public class ShopLooby : MonoBehaviour
     #region Unity Lifecycle
     void Start()
     {
-        UpdateCurrencyDisplay();
+        StartCoroutine(CurrencyUpdateLoop());
 
         InitializeShop();
         SetupEventListeners();
         SetupShopData();
     }
+    void OnEnable()
+    {
+        // ✅ **อัพเดท currency เมื่อเปิด shop**
+        UpdateCurrencyDisplay();
+    }
 
     void OnDestroy()
     {
         RemoveEventListeners();
+        StopAllCoroutines();
+
     }
     #endregion
 
@@ -131,40 +142,55 @@ public class ShopLooby : MonoBehaviour
         HideItemDetailPanel();
         HidePurchaseQuantityPanel(); // ✅ เพิ่มบรรทัดนี้
     }
-    public void UpdateCurrencyDisplay()
+    private IEnumerator CurrencyUpdateLoop()
+    {
+        while (true)
+        {
+            UpdateCurrencyDisplay();
+            yield return new WaitForSeconds(0.5f); // อัพเดททุก 0.5 วินาที
+        }
+    }
+    private void UpdateCurrencyDisplay()
     {
         try
         {
-            var currencyManager = CurrencyManager.FindCurrencyManager();
+            // ✅ **หา CurrencyManager ใหม่ทุกครั้งถ้าไม่มี**
+            if (currencyManager == null)
+            {
+                currencyManager = CurrencyManager.FindCurrencyManager();
+            }
 
             if (currencyManager != null)
             {
                 if (currentGoldText != null)
                 {
-                    currentGoldText.text = $"{currencyManager.GetCurrentGold():N0}";
+                    long currentGold = currencyManager.GetCurrentGold();
+                    currentGoldText.text = $"{currentGold:N0}";
                 }
 
                 if (currentGemsText != null)
                 {
-                    currentGemsText.text = $"{currencyManager.GetCurrentGems():N0}";
+                    int currentGems = currencyManager.GetCurrentGems();
+                    currentGemsText.text = $"{currentGems:N0}";
                 }
             }
             else
             {
+                // ✅ **แสดง "Loading..." แทน empty string**
                 if (currentGoldText != null)
                 {
-                    currentGoldText.text = "";
+                    currentGoldText.text = "Loading...";
                 }
 
                 if (currentGemsText != null)
                 {
-                    currentGemsText.text = "";
+                    currentGemsText.text = "Loading...";
                 }
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[UpgradeLobby] ❌ Error updating currency display: {e.Message}");
+            Debug.LogError($"[ShopLooby] ❌ Error updating currency display: {e.Message}");
         }
     }
     // ✅ เพิ่ม method ใหม่สำหรับหา Player Character
@@ -246,7 +272,7 @@ public class ShopLooby : MonoBehaviour
         if (quantitySlider != null)
             quantitySlider.onValueChanged.AddListener(OnQuantitySliderChanged);
 
-        // ✅ Phase 3: Enhanced shop listeners
+        // Enhanced shop listeners
         if (refreshShopButton != null)
             refreshShopButton.onClick.AddListener(RefreshShopItems);
         if (searchInputField != null)
@@ -291,34 +317,63 @@ public class ShopLooby : MonoBehaviour
 
     private void SetupShopData()
     {
-        // ✅ Auto setup layout ก่อนสร้างไอเท็ม
+        // ✅ Auto setup layout สำหรับทั้งสอง container
         AutoSetupLayout();
 
         // ✅ Phase 3: Setup enhanced shop features
         SetupFiltersAndSorting();
 
-        // ถ้าไม่มีข้อมูลใน Inspector ให้สร้างจาก ItemDatabase
-        if (beginJourneyItems.Count == 0)
-        {
-            LoadBeginJourneyItemsFromDatabase();
-        }
+        // ✅ **เริ่มต้นด้วย Begin Journey**
+        SwitchToBeginJourneyShop();
+    }
+    private void SwitchToBeginJourneyShop()
+    {
+        currentShopItems = beginJourneyItems;
+        currentShopContainer = beginJourneyContainer;
+        currentShopName = "Begin Journey";
 
-        // ✅ Phase 3: Copy to allShopItems และ apply filters
+        // ✅ **อัพเดทระบบ filter และ pagination**
         allShopItems = new List<ShopItemData>(beginJourneyItems);
         ApplyFiltersAndPagination();
+
+        Debug.Log($"[ShopLooby] ✅ Switched to Begin Journey Shop - {beginJourneyItems.Count} items");
+    }
+
+    // ✅ **9. เพิ่ม method สำหรับเปลี่ยนไป Legend Shop**
+    private void SwitchToLegendShop()
+    {
+        currentShopItems = legendShopItems;
+        currentShopContainer = legendShopContainer;
+        currentShopName = "Legend Shop";
+
+        // ✅ **อัพเดทระบบ filter และ pagination**
+        allShopItems = new List<ShopItemData>(legendShopItems);
+        ApplyFiltersAndPagination();
+
+        Debug.Log($"[ShopLooby] ✅ Switched to Legend Shop - {legendShopItems.Count} items");
     }
 
     // ✅ เพิ่ม method สำหรับตั้งค่า Layout อัตโนมัติ
     private void AutoSetupLayout()
     {
-        if (beginJourneyContainer == null)
+        // ✅ **Setup Begin Journey Container**
+        SetupContainer(beginJourneyContainer, "Begin Journey", 8, new Vector2(150, 200));
+
+        // ✅ **Setup Legend Shop Container**
+        SetupContainer(legendShopContainer, "Legend Shop", 8, new Vector2(150, 200));
+    }
+
+    // ✅ **12. เพิ่ม helper method สำหรับ setup container**
+    private void SetupContainer(Transform container, string containerName, int columns, Vector2 cellSize)
+    {
+        if (container == null)
         {
-            Debug.LogError("[ShopLooby] beginJourneyContainer is null! Please assign it in Inspector");
+            Debug.LogError($"[ShopLooby] {containerName} container is null! Please assign it in Inspector");
             return;
         }
 
-        // ลบ Layout Group เก่า (ถ้ามี)
-        var existingLayouts = beginJourneyContainer.GetComponents<LayoutGroup>();
+        // ลบ Layout Group เก่า
+        var existingLayouts = container.GetComponents<LayoutGroup>();
         for (int i = 0; i < existingLayouts.Length; i++)
         {
             if (Application.isPlaying)
@@ -329,24 +384,33 @@ public class ShopLooby : MonoBehaviour
 
         // เพิ่ม Grid Layout Group
         GridLayoutGroup gridLayout = beginJourneyContainer.gameObject.AddComponent<GridLayoutGroup>();
+        GridLayoutGroup gridLayoutlegen = legendShopContainer.gameObject.AddComponent<GridLayoutGroup>();
         gridLayout.cellSize = new Vector2(150, 200);
         gridLayout.spacing = new Vector2(10, 5);
         gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
         gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
         gridLayout.childAlignment = TextAnchor.UpperLeft;
         gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = 8; // 3 คอลัมน์
+        gridLayout.constraintCount = 8; // 3 คอลัมน์gridLayout.cellSize = new Vector2(150, 200);
+
+        gridLayoutlegen.cellSize = new Vector2(150, 200);
+        gridLayoutlegen.spacing = new Vector2(10, 5);
+        gridLayoutlegen.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        gridLayoutlegen.startAxis = GridLayoutGroup.Axis.Horizontal;
+        gridLayoutlegen.childAlignment = TextAnchor.UpperLeft;
+        gridLayoutlegen.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        gridLayoutlegen.constraintCount = 8; // 3 คอลัมน์
 
         // เพิ่ม Content Size Fitter
-        ContentSizeFitter fitter = beginJourneyContainer.GetComponent<ContentSizeFitter>();
+        ContentSizeFitter fitter = container.GetComponent<ContentSizeFitter>();
         if (fitter == null)
         {
-            fitter = beginJourneyContainer.gameObject.AddComponent<ContentSizeFitter>();
+            fitter = container.gameObject.AddComponent<ContentSizeFitter>();
         }
         fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        Debug.Log("[ShopLooby] ✅ Auto setup grid layout completed - 3 columns with 150x200 cells");
+        Debug.Log($"[ShopLooby] ✅ {containerName} container setup completed - {columns} columns with {cellSize} cells");
     }
 
     private void LoadBeginJourneyItemsFromDatabase()
@@ -517,7 +581,6 @@ public class ShopLooby : MonoBehaviour
 
     private void CreateShopItemUI(ShopItemData shopItemData)
     {
-        // ✅ เพิ่มการตรวจสอบก่อนสร้าง UI
         if (shopItemData == null)
         {
             Debug.LogError("[ShopLooby] shopItemData is null, cannot create UI!");
@@ -530,9 +593,16 @@ public class ShopLooby : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[ShopLooby] 🔨 Creating shop item UI for: {shopItemData.itemData.ItemName}");
+        // ✅ **ใช้ currentShopContainer แทน beginJourneyContainer**
+        if (currentShopContainer == null)
+        {
+            Debug.LogError("[ShopLooby] currentShopContainer is null!");
+            return;
+        }
 
-        GameObject shopItemObj = Instantiate(shopItemPrefab, beginJourneyContainer);
+        Debug.Log($"[ShopLooby] 🔨 Creating {currentShopName} item UI for: {shopItemData.itemData.ItemName}");
+
+        GameObject shopItemObj = Instantiate(shopItemPrefab, currentShopContainer);
         ShopItemUI shopItemUI = shopItemObj.GetComponent<ShopItemUI>();
 
         if (shopItemUI == null)
@@ -540,34 +610,148 @@ public class ShopLooby : MonoBehaviour
             shopItemUI = shopItemObj.AddComponent<ShopItemUI>();
         }
 
-        // ✅ ตรวจสอบอีกครั้งก่อนส่งไป setup
-        if (shopItemData.itemData == null)
-        {
-            Debug.LogError($"[ShopLooby] ItemData became null during UI creation!");
-            Destroy(shopItemObj);
-            return;
-        }
-
         shopItemUI.SetupShopItem(shopItemData, this);
-        Debug.Log($"[ShopLooby] ✅ Shop item UI created successfully for: {shopItemData.itemData.ItemName}");
+        Debug.Log($"[ShopLooby] ✅ {currentShopName} item UI created successfully for: {shopItemData.itemData.ItemName}");
     }
+
     #endregion
 
     #region Panel Management
     private void ShowBeginJourneyPanel()
     {
         SetActivePanel(beginJourneyPanel);
-        // ✅ ล้างข้อมูลเมื่อเปลี่ยน tab
         ClearSelectedItem();
+        SwitchToBeginJourneyShop();
         Debug.Log("[ShopLooby] Showing Begin Journey panel");
     }
 
     private void ShowLegendShopPanel()
     {
         SetActivePanel(legendShopPanel);
-        // ✅ ล้างข้อมูลเมื่อเปลี่ยน tab
         ClearSelectedItem();
+        SwitchToLegendShop();
         Debug.Log("[ShopLooby] Showing Legend Shop panel");
+    }
+
+
+    // ✅ **6. เพิ่ม method สำหรับโหลด Legend Shop items**
+    private void LoadLegendShopItems()
+    {
+        // ✅ **ถ้ายังไม่ได้โหลด หรือต้องการ refresh**
+        if (legendShopItems.Count == 0)
+        {
+            LoadLegendShopItemsFromDatabase();
+        }
+
+        // ✅ **ใช้ระบบเดิมในการแสดงผล**
+        DisplayLegendShopItems();
+    }
+
+    // ✅ **7. เพิ่ม method สำหรับโหลด Legend items จาก database**
+    private void LoadLegendShopItemsFromDatabase()
+    {
+        ItemDatabase database = ItemDatabase.Instance;
+        legendShopItems.Clear();
+
+        var allItems = database.GetAllItems();
+        Debug.Log($"[ShopLooby] Loading legend shop items from {allItems.Count} total items");
+
+        foreach (var item in allItems)
+        {
+            if (item == null)
+            {
+                Debug.LogWarning("[ShopLooby] Found null item in database!");
+                continue;
+            }
+
+            // ✅ **กรองเฉพาะไอเทม Legend**
+            if (IsLegendShopItem(item))
+            {
+                ShopItemData newShopItem = new ShopItemData(item);
+
+                if (newShopItem.itemData == null)
+                {
+                    Debug.LogError($"[ShopLooby] ShopItemData creation failed for item: {item.ItemName}");
+                    continue;
+                }
+
+                legendShopItems.Add(newShopItem);
+
+                string currencyType = newShopItem.currencyType == CurrencyType.Gold ? "Gold" : "Gems";
+                Debug.Log($"[ShopLooby] ✅ Added legend item: {item.ItemName} ({item.ItemType}) - Price: {newShopItem.price} {currencyType}");
+            }
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Loaded {legendShopItems.Count} items for Legend shop");
+    }
+
+    // ✅ **8. เพิ่ม method สำหรับกำหนดว่าไอเทมไหนเป็น Legend**
+    private bool IsLegendShopItem(ItemData item)
+    {
+        // ✅ **เอาเฉพาะ Epic และ Legendary**
+        if (item.Tier == ItemTier.Epic || item.Tier == ItemTier.Legendary)
+            return true;
+
+        // ✅ **เอา Rare ที่เป็น Weapon หรือ Armor**
+        if (item.Tier == ItemTier.Rare &&
+            (item.ItemType == ItemType.Weapon || item.ItemType == ItemType.Armor))
+            return true;
+
+        // ✅ **เอา Rune ทุกระดับ**
+        if (item.ItemType == ItemType.Rune)
+            return true;
+
+        return false;
+    }
+
+    // ✅ **9. เพิ่ม method สำหรับแสดง Legend Shop items**
+    private void DisplayLegendShopItems()
+    {
+        if (legendShopContainer == null)
+        {
+            Debug.LogError("[ShopLooby] legendShopContainer is null! Please assign it in Inspector");
+            return;
+        }
+
+        // ✅ **ลบ items เก่า**
+        foreach (Transform child in legendShopContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // ✅ **สร้าง items ใหม่**
+        foreach (var shopItemData in legendShopItems)
+        {
+            CreateLegendShopItemUI(shopItemData);
+        }
+
+        Debug.Log($"[ShopLooby] Displayed {legendShopItems.Count} legend shop items");
+    }
+
+    // ✅ **10. เพิ่ม method สำหรับสร้าง Legend Shop item UI**
+    private void CreateLegendShopItemUI(ShopItemData shopItemData)
+    {
+        if (shopItemData == null || shopItemData.itemData == null)
+        {
+            Debug.LogError("[ShopLooby] Invalid legend shop item data!");
+            return;
+        }
+
+        Debug.Log($"[ShopLooby] 🏆 Creating legend shop item UI for: {shopItemData.itemData.ItemName}");
+
+        // ✅ **ใช้ prefab เดียวกัน**
+        GameObject shopItemObj = Instantiate(shopItemPrefab, legendShopContainer);
+        ShopItemUI shopItemUI = shopItemObj.GetComponent<ShopItemUI>();
+
+        if (shopItemUI == null)
+        {
+            shopItemUI = shopItemObj.AddComponent<ShopItemUI>();
+        }
+
+        // ✅ **ใช้ method เดียวกัน**
+        shopItemUI.SetupShopItem(shopItemData, this);
+
+        Debug.Log($"[ShopLooby] ✅ Legend shop item UI created: {shopItemData.itemData.ItemName}");
     }
 
     private void ShowSellPanel()
@@ -1064,7 +1248,7 @@ public class ShopLooby : MonoBehaviour
             return;
         }
 
-        // ✅ ตรวจสอบเงินตามสกุลเงิน
+        // ตรวจสอบเงินตามสกุลเงิน
         long totalPrice = selectedShopItem.price * selectedQuantity;
         bool hasEnoughCurrency = false;
 
@@ -1084,7 +1268,7 @@ public class ShopLooby : MonoBehaviour
             return;
         }
 
-        // ตรวจสอบ Character และ Inventory (เหมือนเดิม)
+        // ตรวจสอบ Character และ Inventory
         if (playerCharacter == null)
         {
             FindPlayerCharacter();
@@ -1120,12 +1304,14 @@ public class ShopLooby : MonoBehaviour
             Debug.Log($"[ShopLooby] ✅ Successfully purchased: {selectedQuantity}x {selectedShopItem.itemData.ItemName} for {totalPrice} {currencyName}");
             ShowMessage($"Purchased {selectedQuantity}x {selectedShopItem.itemData.ItemName}!");
             HidePurchaseQuantityPanel();
+
+            // ✅ **อัพเดท currency ทันที**
+            UpdateCurrencyDisplay();
         }
         else
         {
             ShowMessage("Purchase failed!");
         }
-        UpdateCurrencyDisplay();
     }
     private bool ProcessQuantityPurchase(ShopItemData shopItem, Inventory inventory, int quantity)
     {
@@ -1244,28 +1430,7 @@ public class ShopLooby : MonoBehaviour
     }
 
     // ✅ เพิ่ม method สำหรับ debug
-    [ContextMenu("Debug Character & Inventory")]
-    private void DebugCharacterAndInventory()
-    {
-        Debug.Log("=== CHARACTER & INVENTORY DEBUG ===");
-
-        Character[] allCharacters = FindObjectsOfType<Character>();
-        Debug.Log($"Total Characters in scene: {allCharacters.Length}");
-
-        for (int i = 0; i < allCharacters.Length; i++)
-        {
-            Character character = allCharacters[i];
-            Inventory inventory = character.GetInventory();
-            Debug.Log($"Character {i}: {character.CharacterName}");
-            Debug.Log($"  - GameObject: {character.gameObject.name}");
-            Debug.Log($"  - HasInputAuthority: {character.HasInputAuthority}");
-            Debug.Log($"  - Inventory: {(inventory != null ? "Found" : "NULL")}");
-            Debug.Log($"  - Tag: {character.gameObject.tag}");
-        }
-
-        Debug.Log($"Current playerCharacter: {(playerCharacter?.CharacterName ?? "NULL")}");
-        Debug.Log($"Current playerInventory: {(playerCharacter?.GetInventory() != null ? "Found" : "NULL")}");
-    }
+   
     #region Phase 3: Enhanced Shop Features
 
     private void SetupFiltersAndSorting()
@@ -1407,10 +1572,13 @@ public class ShopLooby : MonoBehaviour
 
     private void DisplayCurrentPage()
     {
-        // Clear existing items
-        foreach (Transform child in beginJourneyContainer)
+        // ✅ **ลบ items เก่าจาก currentShopContainer**
+        if (currentShopContainer != null)
         {
-            Destroy(child.gameObject);
+            foreach (Transform child in currentShopContainer)
+            {
+                Destroy(child.gameObject);
+            }
         }
 
         // Calculate items for current page
@@ -1422,7 +1590,9 @@ public class ShopLooby : MonoBehaviour
         {
             CreateShopItemUI(filteredItems[i]);
         }
+
     }
+
 
     // Event handlers
     private void OnSearchTextChanged(string searchText)
@@ -1478,10 +1648,23 @@ public class ShopLooby : MonoBehaviour
 
     private void RefreshShopItems()
     {
-        LoadBeginJourneyItemsFromDatabase();
-        allShopItems = new List<ShopItemData>(beginJourneyItems);
+        // ✅ **Refresh current shop data**
+        allShopItems = new List<ShopItemData>(currentShopItems);
         ApplyFiltersAndPagination();
+
+        Debug.Log($"[ShopLooby] ✅ {currentShopName} items refreshed");
     }
+    public void RefreshLegendShop()
+    {
+        LoadLegendShopItemsFromDatabase();
+
+        // ✅ **แสดงผลใหม่ถ้าอยู่ใน legend panel**
+        if (legendShopPanel != null && legendShopPanel.activeSelf)
+        {
+            DisplayLegendShopItems();
+        }
+    }
+
 
     private void PreviousPage()
     {
