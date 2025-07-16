@@ -204,6 +204,7 @@ public class ItemData : ScriptableObject
     [SerializeField] public long buyPrice = 0;       // ราคาซื้อ (เงินที่ต้องจ่ายเมื่อซื้อจาก shop)
     [SerializeField] public bool isSellable = true;  // สามารถขายได้หรือไม่
     [SerializeField] public bool isTradeable = true; // สามารถแลกเปลี่ยนได้หรือไม่
+    [SerializeField] public CurrencyType buyCurrencyType = CurrencyType.Gold; // ✅ เพิ่มบรรทัดนี้
 
 
     [Header("Stack Settings")]
@@ -231,6 +232,8 @@ public class ItemData : ScriptableObject
     public long BuyPrice => buyPrice;
     public bool IsSellable => isSellable;
     public bool IsTradeable => isTradeable;
+    public CurrencyType BuyCurrencyType => buyCurrencyType; // ✅ เพิ่มบรรทัดนี้
+
     #endregion
 
     #region Validation
@@ -261,7 +264,33 @@ public class ItemData : ScriptableObject
         return $"{typePrefix}_{cleanName}_{randomSuffix}";
     }
     #endregion
+    public string GetBuyPriceDisplayText()
+    {
+        if (buyPrice <= 0) return "FREE";
 
+        string currencyIcon = buyCurrencyType == CurrencyType.Gold ? "💰" : "💎";
+        return $"{currencyIcon} {buyPrice:N0}";
+    }
+    public string GetSellPriceDisplayText()
+    {
+        if (sellPrice <= 0) return "Cannot Sell";
+
+        // ขายได้เฉพาะ Gold เท่านั้น
+        return $"💰 {sellPrice:N0}";
+    }
+    public bool CanAfford(long playerGold, int playerGems)
+    {
+        if (buyPrice <= 0) return true; // ฟรี
+
+        if (buyCurrencyType == CurrencyType.Gold)
+        {
+            return playerGold >= buyPrice;
+        }
+        else // Gems
+        {
+            return playerGems >= buyPrice;
+        }
+    }
     #region Utility Methods
     public Color GetTierColor()
     {
@@ -380,6 +409,8 @@ public class ItemData : ScriptableObject
         firebaseData.tier = (int)tier;
         firebaseData.description = description;
         firebaseData.sellPrice = sellPrice;
+        firebaseData.buyCurrencyType = (int)buyCurrencyType; // ✅ เพิ่มบรรทัดนี้
+
         firebaseData.buyPrice = buyPrice;
         firebaseData.isSellable = isSellable;
         firebaseData.isTradeable = isTradeable;
@@ -421,6 +452,8 @@ public class ItemData : ScriptableObject
 
         item.sellPrice = firebaseData.sellPrice;
         item.buyPrice = firebaseData.buyPrice;
+        item.buyCurrencyType = (CurrencyType)firebaseData.buyCurrencyType; // ✅ เพิ่มบรรทัดนี้
+
         item.isSellable = firebaseData.isSellable;
         item.isTradeable = firebaseData.isTradeable;
 
@@ -469,6 +502,8 @@ public class FirebaseItemData
     public long buyPrice = 0;
     public bool isSellable = true;
     public bool isTradeable = true;
+    public int buyCurrencyType = 0; // ✅ เพิ่มบรรทัดนี้ (CurrencyType as int)
+
     #region Stats (Flattened for Firebase)
     public int attackDamageBonus = 0;
     public int magicDamageBonus = 0;

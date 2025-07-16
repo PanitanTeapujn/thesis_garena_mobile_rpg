@@ -79,6 +79,7 @@ public class LobbyManager : MonoBehaviour
     [Header("References")]
     public StageSelectionManager stageSelectionManager;
     public UpgradeLobby upgradeLobby;
+    public ShopLooby shopLooby;
     #endregion
 
     #region Private Variables - ตัวแปรภายในสำหรับจัดการข้อมูลและสถานะ
@@ -225,7 +226,6 @@ public class LobbyManager : MonoBehaviour
 
         HideAllPanels();
         shopPanel.SetActive(true);
-
    }
     
 

@@ -19,9 +19,10 @@ MonoBehaviour:
   tier: 5
   description: 
   sellPrice: 0
-  buyPrice: 0
+  buyPrice: 500
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
   stats:

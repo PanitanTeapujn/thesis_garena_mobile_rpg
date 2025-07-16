@@ -18,10 +18,11 @@ MonoBehaviour:
   itemType: 6
   tier: 5
   description: 
-  sellPrice: 0
+  sellPrice: 100
   buyPrice: 0
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 99
   isStackable: 1
   stats:

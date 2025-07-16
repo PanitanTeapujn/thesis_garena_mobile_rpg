@@ -46,7 +46,8 @@ public class ShopItemUI : MonoBehaviour
         // แสดงราคา
         if (itemPrice != null)
         {
-            itemPrice.text = $" {data.price:N0}Gold";
+            string currencyText = data.currencyType == CurrencyType.Gold ? "Gold" : "Gems";
+            itemPrice.text = $"{data.price:N0} {currencyText}";
         }
 
         // ตั้งค่า tier background
