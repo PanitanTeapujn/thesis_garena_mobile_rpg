@@ -15,7 +15,9 @@ public enum SortOption
     PriceLowHigh,
     PriceHighLow,
     TierLowHigh,
-    TierHighLow
+    TierHighLow,
+    TypeAZ,         // ✅ เพิ่มที่หายไป
+    TypeZA          // ✅ เพิ่มที่หายไป
 }
 
 public class ShopLooby : MonoBehaviour
@@ -110,13 +112,52 @@ public class ShopLooby : MonoBehaviour
         InitializeShop();
         SetupEventListeners();
         SetupShopData();
+        StartCoroutine(DelayedShopSetup());
+
     }
-    void OnEnable()
+    #region Delayed Setup Methods
+    // ✅ **เพิ่ม Coroutine สำหรับ setup ที่ต้องรอ**
+    private IEnumerator DelayedShopSetup()
     {
-        // ✅ **อัพเดท currency เมื่อเปิด shop**
-        UpdateCurrencyDisplay();
+        // รอ 2 frames ให้ UI components พร้อม
+        yield return null;
+        yield return null;
+
+        Debug.Log("[ShopLooby] 🔄 Starting delayed shop setup...");
+
+        SetupShopData();
+
+        Debug.Log("[ShopLooby] ✅ Delayed shop setup completed");
     }
 
+    private IEnumerator DelayedDropdownSetup()
+    {
+        // รอ 2 frames ให้ UI setup เสร็จ
+        yield return null;
+        yield return null;
+
+        Debug.Log("[ShopLooby] 🔄 Starting delayed dropdown setup...");
+
+        // Force setup dropdowns อีกครั้ง
+        SetupFiltersAndSorting();
+
+        // รอ 1 frame แล้ว debug state
+        yield return null;
+
+        Debug.Log("[ShopLooby] ✅ Delayed dropdown setup completed");
+    }
+    #endregion
+    void OnEnable()
+    {
+        UpdateCurrencyDisplay();
+
+        // ✅ **Setup dropdown อีกครั้งเมื่อเปิด shop**
+        StartCoroutine(DelayedDropdownSetup());
+    }
+
+    #region Debug Methods
+  
+    #endregion
     void OnDestroy()
     {
         RemoveEventListeners();
@@ -320,10 +361,16 @@ public class ShopLooby : MonoBehaviour
         // ✅ Auto setup layout สำหรับทั้งสอง container
         AutoSetupLayout();
 
-        // ✅ Phase 3: Setup enhanced shop features
-        SetupFiltersAndSorting();
+        // ✅ **ไม่ setup dropdown ตรงนี้ เพราะจะทำใน DelayedDropdownSetup แล้ว**
+        // SetupFiltersAndSorting(); // ← ลบบรรทัดนี้
 
-        // ✅ **เริ่มต้นด้วย Begin Journey**
+        // ถ้าไม่มีข้อมูลใน Inspector ให้สร้างจาก ItemDatabase
+        if (beginJourneyItems.Count == 0)
+        {
+            LoadBeginJourneyItemsFromDatabase();
+        }
+
+        // ✅ เริ่มต้นด้วย Begin Journey
         SwitchToBeginJourneyShop();
     }
     private void SwitchToBeginJourneyShop()
@@ -1430,61 +1477,114 @@ public class ShopLooby : MonoBehaviour
     }
 
     // ✅ เพิ่ม method สำหรับ debug
-   
+
     #region Phase 3: Enhanced Shop Features
 
     private void SetupFiltersAndSorting()
     {
-        // Setup category filter dropdown
+        Debug.Log("[ShopLooby] 🔧 Setting up filters and sorting...");
+
+        // ✅ **Setup category filter dropdown with safety checks**
         if (categoryFilter != null)
         {
-            categoryFilter.ClearOptions();
-            List<string> categoryOptions = new List<string> { "All" };
-            foreach (ItemType itemType in System.Enum.GetValues(typeof(ItemType)))
+            try
             {
-                categoryOptions.Add(itemType.ToString());
+                categoryFilter.ClearOptions();
+                List<string> categoryOptions = new List<string> { "All" };
+                foreach (ItemType itemType in System.Enum.GetValues(typeof(ItemType)))
+                {
+                    categoryOptions.Add(itemType.ToString());
+                }
+                categoryFilter.AddOptions(categoryOptions);
+                categoryFilter.value = 0;
+                categoryFilter.RefreshShownValue();
+
+                Debug.Log($"[ShopLooby] ✅ Category filter setup: {categoryOptions.Count} options");
             }
-            categoryFilter.AddOptions(categoryOptions);
-            categoryFilter.value = 0; // All
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[ShopLooby] ❌ Category filter setup failed: {e.Message}");
+            }
         }
 
-        // ✅ **FIX: Setup tier filter dropdown - แก้ไขการสร้าง dropdown options**
+        // ✅ **Setup tier filter dropdown with safety checks**
         if (tierFilter != null)
         {
-            tierFilter.ClearOptions();
-            List<string> tierOptions = new List<string> { "All" }; // index 0 = All
-
-            // เพิ่ม tier options โดยเรียงตาม enum values
-            foreach (ItemTier tier in System.Enum.GetValues(typeof(ItemTier)))
+            try
             {
-                tierOptions.Add(tier.ToString());
+                tierFilter.ClearOptions();
+                List<string> tierOptions = new List<string> { "All" };
+
+                foreach (ItemTier tier in System.Enum.GetValues(typeof(ItemTier)))
+                {
+                    tierOptions.Add(tier.ToString());
+                }
+
+                tierFilter.AddOptions(tierOptions);
+                tierFilter.value = 0;
+                tierFilter.RefreshShownValue();
+
+                Debug.Log($"[ShopLooby] ✅ Tier filter setup: {tierOptions.Count} options");
+                Debug.Log($"[ShopLooby] Tier options: {string.Join(", ", tierOptions)}");
             }
-            // ตอนนี้ dropdown จะมี: All(0), Common(1), Uncommon(2), Rare(3), Epic(4), Legendary(5)
-            // ซึ่งตรงกับ enum values: Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5
-
-            tierFilter.AddOptions(tierOptions);
-            tierFilter.value = 0; // All
-
-            Debug.Log($"[ShopLooby] Tier filter setup completed. Options: {string.Join(", ", tierOptions)}");
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[ShopLooby] ❌ Tier filter setup failed: {e.Message}");
+            }
         }
 
-        // Setup sort dropdown
+        // ✅ **Setup sort dropdown with safety checks**
         if (sortDropdown != null)
         {
-            sortDropdown.ClearOptions();
-            List<string> sortOptions = new List<string>
-        {
-            "Name A-Z", "Name Z-A",
-            "Price Low-High", "Price High-Low",
-            "Tier Low-High", "Tier High-Low"
-        };
-            sortDropdown.AddOptions(sortOptions);
-            sortDropdown.value = 0; // Name A-Z
+            try
+            {
+                sortDropdown.ClearOptions();
+                List<string> sortOptions = new List<string>
+            {
+                "Name A-Z", "Name Z-A",
+                "Price Low-High", "Price High-Low",
+                "Tier Low-High", "Tier High-Low"
+            };
+                sortDropdown.AddOptions(sortOptions);
+                sortDropdown.value = 0;
+                sortDropdown.RefreshShownValue();
+
+                Debug.Log($"[ShopLooby] ✅ Sort dropdown setup: {sortOptions.Count} options");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[ShopLooby] ❌ Sort dropdown setup failed: {e.Message}");
+            }
         }
+
+        Debug.Log("[ShopLooby] 🎉 Filters and sorting setup completed!");
+    }
+    private bool AreDropdownsReady()
+    {
+        bool categoryReady = categoryFilter == null || categoryFilter.options.Count > 0;
+        bool tierReady = tierFilter == null || tierFilter.options.Count > 0;
+        bool sortReady = sortDropdown == null || sortDropdown.options.Count > 0;
+
+        bool allReady = categoryReady && tierReady && sortReady;
+
+        Debug.Log($"[ShopLooby] Dropdown readiness check:");
+        Debug.Log($"  - Category: {(categoryReady ? "✅" : "❌")} ({categoryFilter?.options.Count ?? 0} options)");
+        Debug.Log($"  - Tier: {(tierReady ? "✅" : "❌")} ({tierFilter?.options.Count ?? 0} options)");
+        Debug.Log($"  - Sort: {(sortReady ? "✅" : "❌")} ({sortDropdown?.options.Count ?? 0} options)");
+        Debug.Log($"  - All Ready: {(allReady ? "✅" : "❌")}");
+
+        return allReady;
     }
 
     private void ApplyFiltersAndPagination()
     {
+        // ✅ **ตรวจสอบว่า dropdown พร้อมหรือยัง**
+        if (!AreDropdownsReady())
+        {
+            Debug.LogWarning("[ShopLooby] ⚠️ Dropdowns not ready, skipping filter application");
+            return;
+        }
+
         // Start with all items
         filteredItems = new List<ShopItemData>(allShopItems);
 
@@ -1502,14 +1602,10 @@ public class ShopLooby : MonoBehaviour
             filteredItems = filteredItems.Where(item => item.itemData.ItemType == selectedType).ToList();
         }
 
-        // ✅ **FIX: Apply tier filter - แก้ไขการแปลงค่า enum**
+        // Apply tier filter
         if (tierFilter != null && tierFilter.value > 0)
         {
-            // เนื่องจาก ItemTier เริ่มต้นที่ 1 (Common=1, Uncommon=2, ...)
-            // และ dropdown เริ่มต้นที่ 0 (All=0, Common=1, Uncommon=2, ...)
-            // เราต้องแปลงค่า dropdown ให้ตรงกับ enum
-            ItemTier selectedTier = (ItemTier)tierFilter.value; // ไม่ต้อง -1 เพราะ enum เริ่มต้นที่ 1
-
+            ItemTier selectedTier = (ItemTier)tierFilter.value;
             filteredItems = filteredItems.Where(item => item.itemData.Tier == selectedTier).ToList();
 
             Debug.Log($"[ShopLooby] Tier filter applied: {selectedTier} (dropdown value: {tierFilter.value})");
@@ -1550,6 +1646,7 @@ public class ShopLooby : MonoBehaviour
         }
     }
 
+
     private void UpdatePagination()
     {
         int totalPages = Mathf.CeilToInt((float)filteredItems.Count / itemsPerPage);
@@ -1572,9 +1669,10 @@ public class ShopLooby : MonoBehaviour
 
     private void DisplayCurrentPage()
     {
-        // ✅ **ลบ items เก่าจาก currentShopContainer**
+        // ✅ **ใช้ currentShopContainer แทน beginJourneyContainer**
         if (currentShopContainer != null)
         {
+            // ลบ items เก่า
             foreach (Transform child in currentShopContainer)
             {
                 Destroy(child.gameObject);
@@ -1590,7 +1688,6 @@ public class ShopLooby : MonoBehaviour
         {
             CreateShopItemUI(filteredItems[i]);
         }
-
     }
 
 
@@ -1648,10 +1745,19 @@ public class ShopLooby : MonoBehaviour
 
     private void RefreshShopItems()
     {
-        // ✅ **Refresh current shop data**
-        allShopItems = new List<ShopItemData>(currentShopItems);
-        ApplyFiltersAndPagination();
+        // ✅ **โหลดข้อมูลตาม shop ปัจจุบัน**
+        if (currentShopName == "Begin Journey")
+        {
+            LoadBeginJourneyItemsFromDatabase();
+            allShopItems = new List<ShopItemData>(beginJourneyItems);
+        }
+        else if (currentShopName == "Legend Shop")
+        {
+            LoadLegendShopItemsFromDatabase();
+            allShopItems = new List<ShopItemData>(legendShopItems);
+        }
 
+        ApplyFiltersAndPagination();
         Debug.Log($"[ShopLooby] ✅ {currentShopName} items refreshed");
     }
     public void RefreshLegendShop()
@@ -1704,7 +1810,7 @@ public class ShopItemData
     public ShopItemData(ItemData item)
     {
         itemData = item;
-        price = item.BuyPrice > 0 ? item.BuyPrice : GetDefaultPrice(item);
+        price = item.BuyPrice;
         currencyType = item.BuyCurrencyType;
         isAvailable = true;
         stockLimit = -1;
@@ -1730,35 +1836,7 @@ public class ShopItemData
     }
 
     // ✅ กำหนดราคาเริ่มต้นถ้าไม่ได้ set ใน ItemData
-    private long GetDefaultPrice(ItemData item)
-    {
-        if (item.BuyCurrencyType == CurrencyType.Gems)
-        {
-            // ราคา Gem (ถูกกว่า Gold)
-            return item.Tier switch
-            {
-                ItemTier.Common => 5,
-                ItemTier.Uncommon => 10,
-                ItemTier.Rare => 25,
-                ItemTier.Epic => 50,
-                ItemTier.Legendary => 100,
-                _ => 10
-            };
-        }
-        else
-        {
-            // ราคา Gold
-            return item.Tier switch
-            {
-                ItemTier.Common => 100,
-                ItemTier.Uncommon => 250,
-                ItemTier.Rare => 500,
-                ItemTier.Epic => 1500,
-                ItemTier.Legendary => 3000,
-                _ => 250
-            };
-        }
-    }
+   
 
     public bool IsValid()
     {
