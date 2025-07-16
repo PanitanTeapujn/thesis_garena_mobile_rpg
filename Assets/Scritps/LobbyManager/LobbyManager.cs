@@ -24,11 +24,12 @@ public class LobbyManager : MonoBehaviour
 
     [Header("Main Lobby Buttons")]
     public Button playButton;
-    public Button shopButton;
-    public Button inventoryButton;
+/*    public Button lobbyFriendsButton;
+*/    public Button inventoryButton;
     public Button settingsButton;
     public Button logoutButton;
     public Button upgradeButton;
+    public Button shopButton;
     [Header("Character Selection")]
     public Button characterSelectionButton;
     #endregion
@@ -70,6 +71,8 @@ public class LobbyManager : MonoBehaviour
     public GameObject upGradePanel;
     public Hero localHero { get; private set; }
 
+    [Header("Shop")]
+    public GameObject shopPanel;
     #endregion
 
     #region External References - การอ้างอิงถึง Manager และ Component อื่นๆ
@@ -148,7 +151,7 @@ public class LobbyManager : MonoBehaviour
         // Join room panel buttons
         joinButton.onClick.AddListener(JoinRoom);
         backToPartyButton.onClick.AddListener(ShowPartyOptions);
-
+        shopButton.onClick.AddListener(ShowShopPanel);
         // Feature buttons
         if (inventoryButton != null)
             inventoryButton.onClick.AddListener(ShowInventory);
@@ -217,6 +220,14 @@ public class LobbyManager : MonoBehaviour
         // ส่ง localHero ไปให้ UpgradeLobby
         upgradeLobby.OpenUpgradeLobby();
     }
+    void ShowShopPanel()
+    {
+
+        HideAllPanels();
+        shopPanel.SetActive(true);
+
+   }
+    
 
     void ShowInventory()
     {
@@ -237,6 +248,7 @@ public class LobbyManager : MonoBehaviour
         partyOptionsPanel.SetActive(false);
         joinRoomPanel.SetActive(false);
         upGradePanel.SetActive(false);
+        shopPanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
         
