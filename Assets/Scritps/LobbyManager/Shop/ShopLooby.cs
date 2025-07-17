@@ -1684,8 +1684,8 @@ public class ShopLooby : MonoBehaviour
                 return;
             }
 
-            // ตรวจสอบ requirements อีกครั้ง
-            if (!CheckTradeRequirements(selectedTradeItem))
+            // ✅ **ตรวจสอบ requirements อีกครั้งก่อนลบ**
+            if (!selectedTradeItem.resultItem.CanPlayerTrade(playerInventory, currencyManager))
             {
                 ShowMessage("Error: Trade requirements not met!");
                 return;
@@ -1700,7 +1700,21 @@ public class ShopLooby : MonoBehaviour
 
             Debug.Log($"[ShopLooby] Processing trade for: {selectedTradeItem.resultItem.ItemName}");
 
-            // ลบ required items
+            // ✅ **ดึงข้อมูล trade recipe**
+            var tradeRecipe = selectedTradeItem.resultItem.TradeRecipe;
+
+            // ✅ **Debug trade requirements**
+            Debug.Log($"[ShopLooby] Trade requirements - Gold: {tradeRecipe.requiredGold}, Items: {tradeRecipe.requiredItems.Count}");
+
+            foreach (var req in tradeRecipe.requiredItems)
+            {
+                if (req.IsValid())
+                {
+                    Debug.Log($"[ShopLooby] Required: {req.requiredItem.ItemName} x{req.requiredQuantity}");
+                }
+            }
+
+            // ✅ **ลบ required items ก่อน - เพื่อให้แน่ใจว่าลบได้**
             bool itemsRemoved = RemoveTradeRequirements(playerInventory);
             if (!itemsRemoved)
             {
@@ -1708,27 +1722,30 @@ public class ShopLooby : MonoBehaviour
                 return;
             }
 
-            // ลบเงิน
-            if (selectedTradeItem.requiredGold > 0)
+            // ✅ **ลบเงินหลังจากลบ items สำเร็จ**
+            if (tradeRecipe.requiredGold > 0)
             {
-                if (!currencyManager.SpendGold(selectedTradeItem.requiredGold))
+                long goldBefore = currencyManager.GetCurrentGold();
+
+                if (!currencyManager.SpendGold(tradeRecipe.requiredGold))
                 {
                     ShowMessage("Error: Failed to spend gold!");
-                    // พยายาม restore items ที่ลบไป (ไม่ implement ในขั้นนี้)
                     return;
                 }
+
+                long goldAfter = currencyManager.GetCurrentGold();
+                Debug.Log($"[ShopLooby] ✅ Spent {tradeRecipe.requiredGold} gold - Before: {goldBefore}, After: {goldAfter}");
             }
 
-            // เพิ่มไอเทมใหม่
+            // ✅ **เพิ่มไอเทมใหม่**
             bool itemAdded = playerInventory.AddItem(selectedTradeItem.resultItem, 1);
             if (!itemAdded)
             {
                 ShowMessage("Error: Failed to add result item!");
-                // พยายาม restore ทุกอย่าง (ไม่ implement ในขั้นนี้)
                 return;
             }
 
-            // สำเร็จ
+            // ✅ **สำเร็จ**
             string tradeMessage = $"Successfully traded for {selectedTradeItem.resultItem.ItemName}!";
             ShowMessage(tradeMessage);
 
@@ -1739,6 +1756,17 @@ public class ShopLooby : MonoBehaviour
 
             // อัพเดท UI
             UpdateCurrencyDisplay();
+
+            // ✅ **บังคับใช้ ForceSaveInventoryAfterEquip แทน SafeAutoSaveInventory**
+            if (playerInventory != null)
+            {
+                // ใช้ ForceSaveInventoryAfterEquip เพื่อให้ save ทันทีและแน่ใจว่า item ถูกลบจริง
+                PersistentPlayerData.Instance?.ForceSaveInventoryAfterEquip(
+                    playerCharacter,
+                    $"Trade - {selectedTradeItem.resultItem.ItemName} (removed required items)"
+                );
+                Debug.Log($"[ShopLooby] ✅ Force saved inventory after trade");
+            }
 
         }
         catch (System.Exception e)
@@ -1752,45 +1780,109 @@ public class ShopLooby : MonoBehaviour
     {
         Debug.Log("[ShopLooby] 🔄 Removing trade requirements...");
 
+        if (selectedTradeItem?.resultItem?.TradeRecipe == null)
+        {
+            Debug.LogError("[ShopLooby] ❌ No trade recipe found!");
+            return false;
+        }
+
+        var tradeRecipe = selectedTradeItem.resultItem.TradeRecipe;
+
+        if (tradeRecipe.requiredItems == null || tradeRecipe.requiredItems.Count == 0)
+        {
+            Debug.Log("[ShopLooby] No item requirements to remove");
+            return true;
+        }
+
+        // ✅ **Debug inventory ก่อนลบ**
+        Debug.Log($"[ShopLooby] Inventory before removal: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
+
         // เก็บรายการที่ต้องลบ
         List<(int slotIndex, int removeCount)> itemsToRemove = new List<(int, int)>();
 
-        // หาไอเทมที่ต้องลบ
-        foreach (var requirement in selectedTradeItem.requiredItems)
+        // ✅ **ใช้ tradeRecipe.requiredItems แทน selectedTradeItem.requiredItems**
+        foreach (var requirement in tradeRecipe.requiredItems)
         {
-            int stillNeed = requirement.quantity;
+            if (!requirement.IsValid())
+            {
+                Debug.LogWarning($"[ShopLooby] Invalid requirement: {requirement}");
+                continue;
+            }
 
+            int stillNeed = requirement.requiredQuantity;
+            Debug.Log($"[ShopLooby] Need to remove {stillNeed} of {requirement.requiredItem.ItemName}");
+
+            // หา items ที่ต้องลบ
             for (int i = 0; i < inventory.CurrentSlots && stillNeed > 0; i++)
             {
                 InventoryItem item = inventory.GetItem(i);
-                if (item != null && !item.IsEmpty && item.itemData.ItemId == requirement.itemData.ItemId)
+                if (item != null && !item.IsEmpty && item.itemData.ItemId == requirement.requiredItem.ItemId)
                 {
                     int canRemove = Mathf.Min(stillNeed, item.stackCount);
                     itemsToRemove.Add((i, canRemove));
                     stillNeed -= canRemove;
+
+                    Debug.Log($"[ShopLooby] Will remove {canRemove} from slot {i} (has {item.stackCount})");
                 }
             }
 
             if (stillNeed > 0)
             {
-                Debug.LogError($"[ShopLooby] Cannot find enough {requirement.itemData.ItemName}");
+                Debug.LogError($"[ShopLooby] ❌ Cannot find enough {requirement.requiredItem.ItemName}. Still need: {stillNeed}");
                 return false;
             }
+        }
+
+        // ✅ **แสดงรายการที่จะลบ**
+        Debug.Log($"[ShopLooby] About to remove {itemsToRemove.Count} item stacks:");
+        foreach (var (slotIndex, removeCount) in itemsToRemove)
+        {
+            InventoryItem item = inventory.GetItem(slotIndex);
+            Debug.Log($"[ShopLooby] - Slot {slotIndex}: {item.itemData.ItemName} x{removeCount}");
         }
 
         // ลบไอเทมตามรายการที่เก็บไว้
         foreach (var (slotIndex, removeCount) in itemsToRemove)
         {
-            if (!inventory.RemoveItem(slotIndex, removeCount))
+            InventoryItem slotItem = inventory.GetItem(slotIndex);
+            if (slotItem == null || slotItem.IsEmpty)
             {
-                Debug.LogError($"[ShopLooby] Failed to remove {removeCount} items from slot {slotIndex}");
+                Debug.LogError($"[ShopLooby] ❌ Slot {slotIndex} is empty during removal!");
                 return false;
             }
 
-            Debug.Log($"[ShopLooby] Removed {removeCount} items from slot {slotIndex}");
+            Debug.Log($"[ShopLooby] Removing {removeCount} {slotItem.itemData.ItemName} from slot {slotIndex}");
+
+            // ✅ **ใช้ RemoveItem แทนการลบโดยตรง**
+            bool removeSuccess = inventory.RemoveItem(slotIndex, removeCount);
+
+            if (!removeSuccess)
+            {
+                Debug.LogError($"[ShopLooby] ❌ Failed to remove {removeCount} items from slot {slotIndex}");
+                return false;
+            }
+
+            Debug.Log($"[ShopLooby] ✅ Successfully removed {removeCount} items from slot {slotIndex}");
         }
 
-        Debug.Log("[ShopLooby] ✅ All trade requirements removed");
+        // ✅ **Debug inventory หลังลบ**
+        Debug.Log($"[ShopLooby] Inventory after removal: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
+
+        // ✅ **บังคับ Force Save ทันทีหลังจากลบ items**
+        if (PersistentPlayerData.Instance != null)
+        {
+            Character character = inventory.GetComponent<Character>();
+            if (character != null)
+            {
+                PersistentPlayerData.Instance.ForceSaveInventoryAfterEquip(
+                    character,
+                    "Trade - Removed required items"
+                );
+                Debug.Log("[ShopLooby] ✅ Force saved inventory after removing trade requirements");
+            }
+        }
+
+        Debug.Log("[ShopLooby] ✅ All trade requirements removed successfully");
         return true;
     }
     private void CleanupTradeMode()
