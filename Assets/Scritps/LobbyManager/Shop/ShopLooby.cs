@@ -87,7 +87,25 @@ public class ShopLooby : MonoBehaviour
     public TextMeshProUGUI currentGemsText;    // แสดงเพชรปัจจุบัน
     [Header("🆕 Sorting")]
     public TMP_Dropdown sortDropdown;
-
+    [Header("🛒 Sell Panel")]
+    public Transform sellInventoryContainer;        // Container สำหรับแสดง inventory ใน sell panel
+    public GameObject sellItemPrefab;              // Prefab สำหรับแสดง item ที่ขายได้ (ใช้ shopItemPrefab ได้)
+    public ScrollRect sellScrollRect;
+    [Header("🛒 Sell Item Detail")]
+    public GameObject sellItemDetailPanel;         // Panel แสดงรายละเอียดไอเทมที่จะขาย
+    public Image sellDetailItemIcon;
+    public TextMeshProUGUI sellDetailItemName;
+    public TextMeshProUGUI sellDetailItemType;
+    public TextMeshProUGUI sellDetailItemTier;
+    public TextMeshProUGUI sellDetailItemDescription;
+    public TextMeshProUGUI sellDetailItemStats;
+    public TextMeshProUGUI sellDetailSellPrice;    // ราคาขาย
+    public Button sellButton;                      // ปุ่มขาย
+    public Button closeSellDetailButton;
+    private List<InventoryItem> sellableItems = new List<InventoryItem>();
+    private InventoryItem selectedSellItem;
+    private int selectedSellSlotIndex = -1;
+    // Scroll rect สำหรับ sell panel
     [Header("Shop Data")]
     public List<ShopItemData> beginJourneyItems = new List<ShopItemData>();
     private ShopItemData selectedShopItem;
@@ -147,16 +165,27 @@ public class ShopLooby : MonoBehaviour
         Debug.Log("[ShopLooby] ✅ Delayed dropdown setup completed");
     }
     #endregion
+    
     void OnEnable()
     {
         UpdateCurrencyDisplay();
 
-        // ✅ **Setup dropdown อีกครั้งเมื่อเปิด shop**
+        // ✅ ลองหา character ใหม่เมื่อเปิด panel
+        if (playerCharacter == null)
+        {
+            playerCharacter = FindPlayerCharacterForSell();
+            if (playerCharacter != null)
+            {
+                Debug.Log($"[ShopLooby] Found character on panel enable: {playerCharacter.CharacterName}");
+            }
+        }
+
+        // Setup dropdown อีกครั้งเมื่อเปิด shop
         StartCoroutine(DelayedDropdownSetup());
     }
 
     #region Debug Methods
-  
+
     #endregion
     void OnDestroy()
     {
@@ -313,6 +342,11 @@ public class ShopLooby : MonoBehaviour
         if (quantitySlider != null)
             quantitySlider.onValueChanged.AddListener(OnQuantitySliderChanged);
 
+        if (sellButton != null)
+            sellButton.onClick.AddListener(OnSellButtonClicked);
+        if (closeSellDetailButton != null)
+            closeSellDetailButton.onClick.AddListener(HideSellItemDetailPanel);
+
         // Enhanced shop listeners
         if (refreshShopButton != null)
             refreshShopButton.onClick.AddListener(RefreshShopItems);
@@ -354,6 +388,11 @@ public class ShopLooby : MonoBehaviour
             cancelPurchaseButton.onClick.RemoveAllListeners();
         if (quantitySlider != null)
             quantitySlider.onValueChanged.RemoveAllListeners();
+
+        if (sellButton != null)
+            sellButton.onClick.RemoveAllListeners();
+        if (closeSellDetailButton != null)
+            closeSellDetailButton.onClick.RemoveAllListeners();
     }
 
     private void SetupShopData()
@@ -459,7 +498,13 @@ public class ShopLooby : MonoBehaviour
 
         Debug.Log($"[ShopLooby] ✅ {containerName} container setup completed - {columns} columns with {cellSize} cells");
     }
-
+    private void OnSellButtonClicked()
+    {
+        if (selectedSellItem != null)
+        {
+            ShowSellQuantityPanel();
+        }
+    }
     private void LoadBeginJourneyItemsFromDatabase()
     {
         ItemDatabase database = ItemDatabase.Instance;
@@ -804,9 +849,277 @@ public class ShopLooby : MonoBehaviour
     private void ShowSellPanel()
     {
         SetActivePanel(sellPanel);
-        // ✅ ล้างข้อมูลเมื่อเปลี่ยน tab
         ClearSelectedItem();
-        Debug.Log("[ShopLooby] Showing Sell panel");
+
+        // Clear selection data
+        selectedSellItem = null;
+        selectedSellSlotIndex = -1;
+        selectedQuantity = 1;
+
+        // Find character
+        if (playerCharacter == null)
+            playerCharacter = FindPlayerCharacterForSell();
+
+        if (playerCharacter?.GetInventory() == null)
+        {
+            ShowMessage("Player inventory not found!");
+            return;
+        }
+
+        RefreshSellPanel();
+    }
+    private void LoadSellableItems()
+    {
+        sellableItems.Clear();
+
+        if (playerCharacter?.GetInventory() == null)
+        {
+            ShowMessage("No inventory found!");
+            return;
+        }
+
+        Inventory playerInventory = playerCharacter.GetInventory();
+
+        for (int i = 0; i < playerInventory.CurrentSlots; i++)
+        {
+            InventoryItem item = playerInventory.GetItem(i);
+            if (item != null && !item.IsEmpty && item.itemData != null &&
+                item.itemData.IsSellable && item.itemData.SellPrice > 0)
+            {
+                sellableItems.Add(item);
+            }
+        }
+
+        DisplaySellableItems();
+    }
+
+    private Character FindPlayerCharacterForSell()
+    {
+        Character foundCharacter = null;
+
+        // วิธีที่ 1: ใช้ method ที่มีอยู่แล้ว
+        if (playerCharacter != null)
+        {
+            return playerCharacter;
+        }
+
+        // วิธีที่ 2: หาจาก CombatUIManager
+        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+        if (uiManager != null && uiManager.localHero != null)
+        {
+            foundCharacter = uiManager.localHero;
+            Debug.Log("[ShopLooby] Found character from CombatUIManager");
+            return foundCharacter;
+        }
+
+        // วิธีที่ 3: หาจาก Hero ที่มี InputAuthority
+        Hero[] heroes = FindObjectsOfType<Hero>();
+        foreach (Hero hero in heroes)
+        {
+            if (hero.HasInputAuthority && hero.IsSpawned)
+            {
+                foundCharacter = hero;
+                Debug.Log("[ShopLooby] Found character from Hero with InputAuthority");
+                return foundCharacter;
+            }
+        }
+
+        // วิธีที่ 4: หาจาก tag "Player"
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+        {
+            foundCharacter = playerObj.GetComponent<Character>();
+            if (foundCharacter != null)
+            {
+                Debug.Log("[ShopLooby] Found character from Player tag");
+                return foundCharacter;
+            }
+        }
+
+        // วิธีที่ 5: หา Character ใดๆ ที่มี Inventory
+        Character[] characters = FindObjectsOfType<Character>();
+        foreach (Character character in characters)
+        {
+            if (character.GetInventory() != null)
+            {
+                foundCharacter = character;
+                Debug.Log("[ShopLooby] Found character with Inventory component");
+                return foundCharacter;
+            }
+        }
+
+        Debug.LogError("[ShopLooby] No character found with any method!");
+        return null;
+    }
+    private void DisplaySellableItems()
+    {
+        if (sellInventoryContainer == null) return;
+
+        if (sellableItems.Count == 0)
+        {
+            ShowMessage("No sellable items in your inventory!");
+            return;
+        }
+
+        foreach (InventoryItem item in sellableItems)
+        {
+            if (item?.itemData != null)
+                CreateSellItemUI(item);
+        }
+    }
+    private void CreateSellItemUI(InventoryItem inventoryItem)
+    {
+        if (inventoryItem?.itemData == null || !inventoryItem.itemData.IsSellable) return;
+
+        GameObject prefabToUse = sellItemPrefab ?? shopItemPrefab;
+        if (prefabToUse == null) return;
+
+        try
+        {
+            GameObject sellItemObj = Instantiate(prefabToUse, sellInventoryContainer);
+            ShopItemUI sellItemUI = sellItemObj.GetComponent<ShopItemUI>() ?? sellItemObj.AddComponent<ShopItemUI>();
+
+            ShopItemData sellItemData = new ShopItemData(inventoryItem.itemData);
+            sellItemData.price = inventoryItem.itemData.SellPrice;
+            sellItemData.currencyType = CurrencyType.Gold;
+
+            sellItemUI.SetupShopItem(sellItemData, this);
+
+            // Create local copy to avoid reference issues
+            InventoryItem localItem = new InventoryItem(inventoryItem.itemData, inventoryItem.stackCount, inventoryItem.slotIndex);
+
+            Button itemButton = sellItemObj.GetComponent<Button>() ?? sellItemObj.GetComponentInChildren<Button>();
+            if (itemButton != null)
+            {
+                itemButton.onClick.RemoveAllListeners();
+                itemButton.onClick.AddListener(() => OnSellItemClicked(localItem));
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShopLooby] Error creating sell item UI: {e.Message}");
+        }
+    }
+
+    private void OnSellItemClicked(InventoryItem inventoryItem)
+    {
+        if (inventoryItem?.itemData == null)
+        {
+            ShowMessage("Error: Invalid item!");
+            return;
+        }
+
+        // Check if item still exists in inventory
+        if (playerCharacter?.GetInventory() != null)
+        {
+            Inventory inventory = playerCharacter.GetInventory();
+            InventoryItem currentItem = inventory.GetItem(inventoryItem.slotIndex);
+
+            if (currentItem?.itemData != inventoryItem.itemData)
+            {
+                ShowMessage("Item is no longer available!");
+                RefreshSellPanel();
+                return;
+            }
+        }
+
+        if (!inventoryItem.itemData.IsSellable || inventoryItem.itemData.SellPrice <= 0)
+        {
+            ShowMessage("This item cannot be sold!");
+            return;
+        }
+
+        selectedSellItem = inventoryItem;
+        selectedSellSlotIndex = inventoryItem.slotIndex;
+
+        ShowSellQuantityPanel();
+    }
+
+    private void ShowSellQuantityPanel()
+    {
+        if (selectedSellItem?.itemData == null)
+        {
+            Debug.LogError("[ShopLooby] No sell item selected");
+            return;
+        }
+
+        if (purchaseQuantityPanel == null)
+        {
+            Debug.LogError("[ShopLooby] purchaseQuantityPanel not assigned!");
+            return;
+        }
+
+        Debug.Log($"[ShopLooby] Showing sell quantity panel for: {selectedSellItem.itemData.ItemName}");
+
+        // ซ่อน sell detail panel ถ้าเปิดอยู่
+        HideSellItemDetailPanel();
+
+        // แสดง quantity panel
+        purchaseQuantityPanel.SetActive(true);
+
+        // Setup UI สำหรับ sell mode
+        SetupSellQuantityPanelUI();
+    }
+    private void SetupSellQuantityPanelUI()
+    {
+        if (selectedSellItem?.itemData == null) return;
+
+        ItemData itemData = selectedSellItem.itemData;
+        int maxSellQuantity = selectedSellItem.stackCount;
+
+        if (quantityItemIcon != null)
+            quantityItemIcon.sprite = itemData.ItemIcon;
+
+        if (quantityItemName != null)
+        {
+            quantityItemName.text = $"SELL: {itemData.ItemName}";
+            quantityItemName.color = itemData.GetTierColor();
+        }
+
+        if (quantityItemPrice != null)
+            quantityItemPrice.text = $"💰 {itemData.SellPrice:N0} Gold each";
+
+        if (quantitySlider != null)
+        {
+            quantitySlider.minValue = 1;
+            quantitySlider.maxValue = maxSellQuantity;
+            quantitySlider.value = 1;
+        }
+
+        if (maxAffordableText != null)
+        {
+            long currentGold = currencyManager?.GetCurrentGold() ?? 0;
+            maxAffordableText.text = $"Current Gold: {currentGold:N0}\nMax to sell: {maxSellQuantity}";
+        }
+
+        if (confirmPurchaseButton != null)
+        {
+            TextMeshProUGUI buttonText = confirmPurchaseButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+                buttonText.text = "SELL";
+
+            confirmPurchaseButton.interactable = true;
+            ColorBlock colors = confirmPurchaseButton.colors;
+            colors.normalColor = Color.green;
+            confirmPurchaseButton.colors = colors;
+        }
+
+        selectedQuantity = 1;
+        maxAffordableQuantity = maxSellQuantity;
+        UpdateSellQuantityDisplay();
+    }
+    private void UpdateSellQuantityDisplay()
+    {
+        if (selectedSellItem?.itemData == null) return;
+
+        if (quantityValueText != null)
+            quantityValueText.text = selectedQuantity.ToString();
+
+        if (totalPriceText != null)
+        {
+            long totalSellPrice = selectedSellItem.itemData.SellPrice * selectedQuantity;
+            totalPriceText.text = $"Total: {totalSellPrice:N0} Gold";
+        }
     }
 
     // ✅ เพิ่ม helper method
@@ -1234,7 +1547,11 @@ public class ShopLooby : MonoBehaviour
     private void OnQuantitySliderChanged(float value)
     {
         selectedQuantity = (int)value;
-        UpdateQuantityDisplay();
+
+        if (selectedSellItem != null)
+            UpdateSellQuantityDisplay();
+        else
+            UpdateQuantityDisplay();
     }
 
     private void UpdateQuantityDisplay()
@@ -1283,14 +1600,34 @@ public class ShopLooby : MonoBehaviour
 
     private void OnConfirmPurchaseClicked()
     {
+        if (selectedSellItem != null)
+        {
+            ProcessSellTransaction();
+        }
+        else if (selectedShopItem != null)
+        {
+            ProcessPurchaseTransaction();
+        }
+        else
+        {
+            ShowMessage("No item selected!");
+        }
+    }
+
+    private void ProcessPurchaseTransaction()
+    {
+        Debug.Log("[ShopLooby] 🔄 Starting purchase transaction...");
+
         if (selectedShopItem == null || selectedShopItem.itemData == null || selectedQuantity <= 0)
         {
+            Debug.LogError("[ShopLooby] ❌ Invalid purchase data!");
             ShowMessage("Error: Invalid purchase data!");
             return;
         }
 
         if (currencyManager == null)
         {
+            Debug.LogError("[ShopLooby] ❌ Currency manager not found!");
             ShowMessage("Error: Currency system not found!");
             return;
         }
@@ -1311,6 +1648,7 @@ public class ShopLooby : MonoBehaviour
         if (!hasEnoughCurrency)
         {
             string currencyName = selectedShopItem.currencyType == CurrencyType.Gold ? "gold" : "gems";
+            Debug.LogWarning($"[ShopLooby] ❌ Not enough {currencyName} for purchase");
             ShowMessage($"Not enough {currencyName}!");
             return;
         }
@@ -1321,6 +1659,7 @@ public class ShopLooby : MonoBehaviour
             FindPlayerCharacter();
             if (playerCharacter == null)
             {
+                Debug.LogError("[ShopLooby] ❌ Player character not found!");
                 ShowMessage("Error: Player character not found!");
                 return;
             }
@@ -1329,17 +1668,9 @@ public class ShopLooby : MonoBehaviour
         Inventory playerInventory = playerCharacter.GetInventory();
         if (playerInventory == null)
         {
-            playerInventory = playerCharacter.GetComponent<Inventory>();
-            if (playerInventory == null)
-            {
-                playerInventory = playerCharacter.GetComponentInChildren<Inventory>();
-            }
-
-            if (playerInventory == null)
-            {
-                ShowMessage("Error: Player inventory not found!");
-                return;
-            }
+            Debug.LogError("[ShopLooby] ❌ Player inventory not found!");
+            ShowMessage("Error: Player inventory not found!");
+            return;
         }
 
         // ซื้อไอเทม
@@ -1352,14 +1683,120 @@ public class ShopLooby : MonoBehaviour
             ShowMessage($"Purchased {selectedQuantity}x {selectedShopItem.itemData.ItemName}!");
             HidePurchaseQuantityPanel();
 
-            // ✅ **อัพเดท currency ทันที**
+            // อัพเดท currency ทันที
             UpdateCurrencyDisplay();
         }
         else
         {
+            Debug.LogError("[ShopLooby] ❌ Purchase failed!");
             ShowMessage("Purchase failed!");
         }
     }
+    private void ProcessSellTransaction()
+    {
+        try
+        {
+            // Basic validation
+            if (selectedSellItem?.itemData == null || selectedQuantity <= 0)
+            {
+                ShowMessage("Error: Invalid sell data!");
+                return;
+            }
+
+            // Find systems
+            if (currencyManager == null)
+                currencyManager = CurrencyManager.FindCurrencyManager();
+            if (playerCharacter == null)
+                playerCharacter = FindPlayerCharacterForSell();
+
+            if (currencyManager == null || playerCharacter == null)
+            {
+                ShowMessage("Error: System not found!");
+                return;
+            }
+
+            Inventory playerInventory = playerCharacter.GetInventory();
+            if (playerInventory == null)
+            {
+                ShowMessage("Error: Inventory not found!");
+                return;
+            }
+
+            // Validate slot and item
+            if (selectedSellSlotIndex < 0 || selectedSellSlotIndex >= playerInventory.CurrentSlots)
+            {
+                ShowMessage("Error: Invalid slot!");
+                return;
+            }
+
+            InventoryItem slotItem = playerInventory.GetItem(selectedSellSlotIndex);
+            if (slotItem?.itemData == null || slotItem.itemData.ItemId != selectedSellItem.itemData.ItemId)
+            {
+                ShowMessage("Error: Item mismatch!");
+                RefreshSellPanel();
+                return;
+            }
+
+            if (selectedQuantity > slotItem.stackCount)
+            {
+                ShowMessage($"Error: Not enough items! Available: {slotItem.stackCount}");
+                return;
+            }
+
+            // Process transaction
+            long totalSellPrice = selectedSellItem.itemData.SellPrice * selectedQuantity;
+
+            // Remove item first
+            if (!playerInventory.RemoveItem(selectedSellSlotIndex, selectedQuantity))
+            {
+                ShowMessage("Failed to remove items!");
+                return;
+            }
+
+            // Add gold
+            if (!currencyManager.AddGold(totalSellPrice))
+            {
+                ShowMessage("Failed to add gold!");
+                playerInventory.AddItem(selectedSellItem.itemData, selectedQuantity); // Revert
+                return;
+            }
+
+            // Success
+            ShowMessage($"Sold {selectedQuantity}x {selectedSellItem.itemData.ItemName} for {totalSellPrice:N0} gold!");
+
+            // Cleanup
+            selectedSellItem = null;
+            selectedSellSlotIndex = -1;
+            selectedQuantity = 1;
+
+            if (purchaseQuantityPanel != null)
+                purchaseQuantityPanel.SetActive(false);
+
+            if (sellPanel != null && sellPanel.activeSelf)
+                RefreshSellPanel();
+
+            UpdateCurrencyDisplay();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShopLooby] Sell transaction error: {e.Message}");
+            ShowMessage("Sell transaction failed!");
+        }
+    }
+    private void RefreshSellPanel()
+    {
+        if (sellInventoryContainer == null) return;
+
+        // Clear old items
+        for (int i = sellInventoryContainer.childCount - 1; i >= 0; i--)
+        {
+            Destroy(sellInventoryContainer.GetChild(i).gameObject);
+        }
+
+        // Reload items
+        LoadSellableItems();
+    }
+  
     private bool ProcessQuantityPurchase(ShopItemData shopItem, Inventory inventory, int quantity)
     {
         try
@@ -1433,24 +1870,37 @@ public class ShopLooby : MonoBehaviour
             return inventory.FreeSlots >= quantity;
         }
     }
+   
 
+    private void HideSellItemDetailPanel()
+    {
+        if (sellItemDetailPanel != null)
+        {
+            sellItemDetailPanel.SetActive(false);
+        }
+    }
     private void OnCancelPurchaseClicked()
     {
         HidePurchaseQuantityPanel();
-        Debug.Log("[ShopLooby] Purchase cancelled");
-    }
 
+        // ล้างข้อมูล sell item
+        selectedSellItem = null;
+        selectedSellSlotIndex = -1;
+
+        Debug.Log("[ShopLooby] Purchase/Sell cancelled");
+    }
+   
     public void HidePurchaseQuantityPanel()
     {
         if (purchaseQuantityPanel != null)
-        {
             purchaseQuantityPanel.SetActive(false);
-        }
+
         selectedQuantity = 1;
-        // ✅ ล้าง selectedShopItem ตรงนี้แทน เมื่อปิด quantity panel เรียบร้อยแล้ว
         selectedShopItem = null;
-        Debug.Log("[ShopLooby] Purchase quantity panel hidden");
+        selectedSellItem = null;
+        selectedSellSlotIndex = -1;
     }
+
 
     // ✅ เก็บ method เก่าไว้สำหรับ backward compatibility
     private bool ProcessPurchase(ShopItemData shopItem, Inventory inventory)
@@ -1567,11 +2017,7 @@ public class ShopLooby : MonoBehaviour
 
         bool allReady = categoryReady && tierReady && sortReady;
 
-        Debug.Log($"[ShopLooby] Dropdown readiness check:");
-        Debug.Log($"  - Category: {(categoryReady ? "✅" : "❌")} ({categoryFilter?.options.Count ?? 0} options)");
-        Debug.Log($"  - Tier: {(tierReady ? "✅" : "❌")} ({tierFilter?.options.Count ?? 0} options)");
-        Debug.Log($"  - Sort: {(sortReady ? "✅" : "❌")} ({sortDropdown?.options.Count ?? 0} options)");
-        Debug.Log($"  - All Ready: {(allReady ? "✅" : "❌")}");
+      
 
         return allReady;
     }

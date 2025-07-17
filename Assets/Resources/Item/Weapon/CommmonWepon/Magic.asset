@@ -18,6 +18,11 @@ MonoBehaviour:
   itemType: 0
   tier: 1
   description: 
+  sellPrice: 200
+  buyPrice: 100
+  isSellable: 1
+  isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
   stats:
@@ -35,6 +40,7 @@ MonoBehaviour:
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0
