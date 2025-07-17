@@ -17,13 +17,13 @@ MonoBehaviour:
     requiredGold: 1000
     requiredItems:
     - requiredItem: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
-      requiredQuantity: 10
+      requiredQuantity: 30
       description: 
     - requiredItem: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
-      requiredQuantity: 1
+      requiredQuantity: 5
       description: 
     - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
-      requiredQuantity: 2
+      requiredQuantity: 20
       description: 
     tradeName: 
     tradeDescription: 

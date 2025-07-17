@@ -34644,17 +34644,17 @@ MonoBehaviour:
   legendShopContainer: {fileID: 1644590100}
   legendShopItems:
   - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
-    price: 500
+    price: 1000
     currencyType: 1
     isAvailable: 1
     stockLimit: -1
   - itemData: {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
-    price: 500
+    price: 600
     currencyType: 1
     isAvailable: 1
     stockLimit: -1
   - itemData: {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
-    price: 100000
+    price: 150000
     currencyType: 0
     isAvailable: 1
     stockLimit: -1
@@ -34669,7 +34669,7 @@ MonoBehaviour:
     isAvailable: 1
     stockLimit: -1
   - itemData: {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
-    price: 95000
+    price: 200000
     currencyType: 0
     isAvailable: 1
     stockLimit: -1

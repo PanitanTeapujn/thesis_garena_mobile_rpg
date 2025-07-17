@@ -19,8 +19,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: LiSlime
-  itemName: LiSlime
+  itemId: Slime Ge
+  itemName: Slime Ge
   itemIcon: {fileID: 21300000, guid: 5976ff7c7572c8d4faa1db9696723c09, type: 3}
   itemType: 7
   tier: 1

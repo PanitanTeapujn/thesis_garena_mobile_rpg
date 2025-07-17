@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
   m_Name: SlimeItem
   m_EditorClassIdentifier: 
-  overallDropChance: 80
+  overallDropChance: 30
   maxItemDrops: 1
-  dropChanceLevelBonus: 1.5
+  dropChanceLevelBonus: 0
   itemDrops:
   - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
     dropChance: 20
@@ -37,7 +37,7 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
     dropChance: 20
     minQuantity: 1
-    maxQuantity: 3
+    maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
   - itemData: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}

@@ -22,11 +22,8 @@ MonoBehaviour:
     - requiredItem: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
       requiredQuantity: 5
       description: 
-    - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
-      requiredQuantity: 1
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
-      requiredQuantity: 1
+    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+      requiredQuantity: 20
       description: 
     tradeName: 
     tradeDescription: 

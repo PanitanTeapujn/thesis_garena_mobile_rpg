@@ -16,8 +16,8 @@ MonoBehaviour:
     isTradeableItem: 1
     requiredGold: 10
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
-      requiredQuantity: 5
+    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+      requiredQuantity: 2
       description: 
     tradeName: 
     tradeDescription: 
@@ -28,8 +28,8 @@ MonoBehaviour:
   itemType: 6
   tier: 1
   description: 
-  sellPrice: 80
-  buyPrice: 100
+  sellPrice: 100
+  buyPrice: 120
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
