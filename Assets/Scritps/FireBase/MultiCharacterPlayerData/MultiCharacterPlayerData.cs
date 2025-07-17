@@ -560,7 +560,7 @@ public class SharedCurrencyData
     // Constructor
     public SharedCurrencyData()
     {
-        gold = 50000;  // เงินเริ่มต้น
+        gold = 5000;  // เงินเริ่มต้น
         gems = 500;    // เพชรเริ่มต้น
         maxGold = 999999999;
         maxGems = 999999;

@@ -14,16 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 1500
+    requiredGold: 1000
     requiredItems:
     - requiredItem: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
-      requiredQuantity: 20
+      requiredQuantity: 30
       description: 
     - requiredItem: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
       requiredQuantity: 5
       description: 
-    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
-      requiredQuantity: 10
+    - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
+      requiredQuantity: 1
       description: 
     - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
       requiredQuantity: 1
@@ -33,12 +33,12 @@ MonoBehaviour:
     tradeCategory: 0
   itemId: Emerald Drip Pants
   itemName: Emerald Drip Pants
-  itemIcon: {fileID: 21300000, guid: 4f7e218e2fe580f409e850ab3e929e68, type: 3}
+  itemIcon: {fileID: 21300000, guid: d480ea06efd3dd74e9e6708c0025eab2, type: 3}
   itemType: 3
   tier: 3
   description: 
-  sellPrice: 18000
-  buyPrice: 20000
+  sellPrice: 5500
+  buyPrice: 6000
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -47,18 +47,18 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 30
+    armorBonus: 10
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    maxHpBonus: 500
-    maxManaBonus: 500
-    moveSpeedBonus: 0.2
+    maxHpBonus: 150
+    maxManaBonus: 150
+    moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 10
+    evasionRateBonus: 0
     reductionCoolDownBonus: 0
-    physicalResistanceBonus: 20
-    magicalResistanceBonus: 20
+    physicalResistanceBonus: 10
+    magicalResistanceBonus: 10
     lifeStealBonus: 0
     healAmount: 0
     manaAmount: 0
