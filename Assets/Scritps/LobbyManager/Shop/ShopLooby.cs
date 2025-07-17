@@ -102,6 +102,9 @@ public class ShopLooby : MonoBehaviour
     public TextMeshProUGUI sellDetailSellPrice;    // ราคาขาย
     public Button sellButton;                      // ปุ่มขาย
     public Button closeSellDetailButton;
+    public Button sellAllButton;                    // ✅ เพิ่มปุ่ม Sell All
+    private List<InventoryItem> selectedSellAllItems = new List<InventoryItem>();
+    private bool isSellAllMode = false;
     private List<InventoryItem> sellableItems = new List<InventoryItem>();
     private InventoryItem selectedSellItem;
     private int selectedSellSlotIndex = -1;
@@ -346,7 +349,8 @@ public class ShopLooby : MonoBehaviour
             sellButton.onClick.AddListener(OnSellButtonClicked);
         if (closeSellDetailButton != null)
             closeSellDetailButton.onClick.AddListener(HideSellItemDetailPanel);
-
+        if (sellAllButton != null)
+            sellAllButton.onClick.AddListener(OnSellAllButtonClicked);
         // Enhanced shop listeners
         if (refreshShopButton != null)
             refreshShopButton.onClick.AddListener(RefreshShopItems);
@@ -393,6 +397,8 @@ public class ShopLooby : MonoBehaviour
             sellButton.onClick.RemoveAllListeners();
         if (closeSellDetailButton != null)
             closeSellDetailButton.onClick.RemoveAllListeners();
+        if (sellAllButton != null)
+            sellAllButton.onClick.RemoveAllListeners();
     }
 
     private void SetupShopData()
@@ -848,13 +854,13 @@ public class ShopLooby : MonoBehaviour
 
     private void ShowSellPanel()
     {
+        Debug.Log("[ShopLooby] 📋 Showing Sell panel...");
+
         SetActivePanel(sellPanel);
         ClearSelectedItem();
 
-        // Clear selection data
-        selectedSellItem = null;
-        selectedSellSlotIndex = -1;
-        selectedQuantity = 1;
+        // ✅ ล้างข้อมูล Sell All
+        CleanupSellAllMode();
 
         // Find character
         if (playerCharacter == null)
@@ -863,10 +869,12 @@ public class ShopLooby : MonoBehaviour
         if (playerCharacter?.GetInventory() == null)
         {
             ShowMessage("Player inventory not found!");
+            UpdateSellAllButton();
             return;
         }
 
-        RefreshSellPanel();
+        // ✅ ใช้ ForceRefreshSellPanel แทน
+        ForceRefreshSellPanel();
     }
     private void LoadSellableItems()
     {
@@ -958,6 +966,7 @@ public class ShopLooby : MonoBehaviour
         if (sellableItems.Count == 0)
         {
             ShowMessage("No sellable items in your inventory!");
+            UpdateSellAllButton(); // ✅ เพิ่มบรรทัดนี้
             return;
         }
 
@@ -966,6 +975,8 @@ public class ShopLooby : MonoBehaviour
             if (item?.itemData != null)
                 CreateSellItemUI(item);
         }
+
+        UpdateSellAllButton(); // ✅ เพิ่มบรรทัดนี้
     }
     private void CreateSellItemUI(InventoryItem inventoryItem)
     {
@@ -1300,8 +1311,8 @@ public class ShopLooby : MonoBehaviour
             }
             else
             {
-                string currencyName = selectedShopItem.currencyType == CurrencyType.Gold ? "GOLD" : "GEMS";
-                buyButtonText.text = $"NOT ENOUGH {currencyName}";
+                buyButtonText.text = "BUY";
+
             }
         }
     }
@@ -1600,7 +1611,11 @@ public class ShopLooby : MonoBehaviour
 
     private void OnConfirmPurchaseClicked()
     {
-        if (selectedSellItem != null)
+        if (isSellAllMode && selectedSellAllItems.Count > 0)
+        {
+            ProcessSellAllTransaction();
+        }
+        else if (selectedSellItem != null)
         {
             ProcessSellTransaction();
         }
@@ -1613,7 +1628,222 @@ public class ShopLooby : MonoBehaviour
             ShowMessage("No item selected!");
         }
     }
+    private void ProcessSellAllTransaction()
+    {
+        try
+        {
+            // ตรวจสอบระบบ
+            if (currencyManager == null)
+                currencyManager = CurrencyManager.FindCurrencyManager();
+            if (playerCharacter == null)
+                playerCharacter = FindPlayerCharacterForSell();
 
+            if (currencyManager == null || playerCharacter == null)
+            {
+                ShowMessage("Error: System not found!");
+                return;
+            }
+
+            Inventory playerInventory = playerCharacter.GetInventory();
+            if (playerInventory == null)
+            {
+                ShowMessage("Error: Inventory not found!");
+                return;
+            }
+
+            Debug.Log("[ShopLooby] 🔄 Starting Sell All transaction...");
+
+            // ✅ รีเฟรช sellableItems ให้ล่าสุดก่อน
+            RefreshSellableItemsList();
+
+            if (sellableItems.Count == 0)
+            {
+                ShowMessage("No sellable items found!");
+                return;
+            }
+
+            // ✅ คำนวณรายการและราคารวม
+            long totalValue = 0;
+            int totalItemsSold = 0;
+            var soldItems = new List<(string name, int count, long price)>();
+
+            Debug.Log($"[ShopLooby] Processing {sellableItems.Count} sellable items...");
+
+            // ✅ ลบและขายทีละชิ้น พร้อมเก็บบันทึก
+            foreach (var sellItem in sellableItems.ToList()) // ToList() เพื่อหลีกเลี่ยง modification during iteration
+            {
+                if (sellItem?.itemData == null) continue;
+
+                // ตรวจสอบว่า item ยังอยู่ใน slot หรือไม่
+                InventoryItem currentItem = playerInventory.GetItem(sellItem.slotIndex);
+                if (currentItem?.itemData?.ItemId != sellItem.itemData.ItemId)
+                {
+                    Debug.LogWarning($"[ShopLooby] Item {sellItem.itemData.ItemName} no longer in slot {sellItem.slotIndex}");
+                    continue;
+                }
+
+                // ลบ item ทั้งหมดใน slot
+                int quantityToSell = currentItem.stackCount;
+                long itemValue = sellItem.itemData.SellPrice * quantityToSell;
+
+                Debug.Log($"[ShopLooby] Selling {quantityToSell}x {sellItem.itemData.ItemName} for {itemValue} gold");
+
+                // ✅ ลบ item ทั้งหมดใน slot
+                if (playerInventory.RemoveItem(sellItem.slotIndex, quantityToSell))
+                {
+                    totalValue += itemValue;
+                    totalItemsSold += quantityToSell;
+                    soldItems.Add((sellItem.itemData.ItemName, quantityToSell, itemValue));
+                    Debug.Log($"[ShopLooby] ✅ Sold {quantityToSell}x {sellItem.itemData.ItemName}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[ShopLooby] ❌ Failed to sell {sellItem.itemData.ItemName}");
+                }
+            }
+
+            if (totalItemsSold == 0)
+            {
+                ShowMessage("Failed to sell any items!");
+                return;
+            }
+
+            // ✅ เพิ่มเงิน
+            Debug.Log($"[ShopLooby] Adding {totalValue} gold to player...");
+            if (!currencyManager.AddGold(totalValue))
+            {
+                ShowMessage("Failed to add gold!");
+                Debug.LogError("[ShopLooby] ❌ Failed to add gold - transaction may be incomplete!");
+                return;
+            }
+
+            // ✅ สำเร็จ - แสดงผลลัพธ์
+            Debug.Log($"[ShopLooby] ✅ Sell All completed: {totalItemsSold} items for {totalValue} gold");
+            ShowMessage($"Sold {totalItemsSold} items for {totalValue:N0} gold!");
+
+            // ✅ ปิด panels และล้างข้อมูล
+            CleanupSellAllMode();
+
+            // ✅ รีเฟรช UI ทันที
+            ForceRefreshSellPanel();
+
+            // ✅ อัปเดท currency display
+            UpdateCurrencyDisplay();
+
+            Debug.Log("[ShopLooby] 🎉 Sell All transaction completed successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShopLooby] ❌ Sell All transaction error: {e.Message}");
+            ShowMessage("Sell All transaction failed!");
+            CleanupSellAllMode();
+        }
+    }
+    private void RefreshSellableItemsList()
+    {
+        Debug.Log("[ShopLooby] 🔄 Refreshing sellable items list...");
+
+        sellableItems.Clear();
+
+        if (playerCharacter?.GetInventory() == null)
+            return;
+
+        Inventory playerInventory = playerCharacter.GetInventory();
+
+        // หาของทุกชิ้นที่ขายได้ใหม่
+        for (int i = 0; i < playerInventory.CurrentSlots; i++)
+        {
+            InventoryItem item = playerInventory.GetItem(i);
+
+            if (item != null && !item.IsEmpty && item.itemData != null &&
+                item.itemData.IsSellable && item.itemData.SellPrice > 0)
+            {
+                sellableItems.Add(item);
+            }
+        }
+
+        Debug.Log($"[ShopLooby] Found {sellableItems.Count} sellable items");
+    }
+
+    // ===== เพิ่ม method ล้างข้อมูล Sell All =====
+
+    private void CleanupSellAllMode()
+    {
+        Debug.Log("[ShopLooby] 🧹 Cleaning up Sell All mode...");
+
+        selectedSellAllItems.Clear();
+        isSellAllMode = false;
+        selectedQuantity = 1;
+        selectedShopItem = null;
+        selectedSellItem = null;
+        selectedSellSlotIndex = -1;
+
+        // ปิด quantity panel
+        if (purchaseQuantityPanel != null)
+        {
+            purchaseQuantityPanel.SetActive(false);
+        }
+
+        // แสดง slider และ quantity text กลับมา
+        if (quantitySlider != null)
+            quantitySlider.gameObject.SetActive(true);
+        if (quantityValueText != null)
+            quantityValueText.gameObject.SetActive(true);
+    }
+
+    // ===== เพิ่ม method Force Refresh UI =====
+
+    private void ForceRefreshSellPanel()
+    {
+        Debug.Log("[ShopLooby] 🔄 Force refreshing sell panel UI...");
+
+        try
+        {
+            if (sellInventoryContainer == null)
+            {
+                Debug.LogWarning("[ShopLooby] sellInventoryContainer is null!");
+                return;
+            }
+
+            // ✅ ลบ UI เก่าออกทั้งหมด
+            int childCount = sellInventoryContainer.childCount;
+            for (int i = childCount - 1; i >= 0; i--)
+            {
+                Transform child = sellInventoryContainer.GetChild(i);
+                if (child != null)
+                {
+                    Destroy(child.gameObject);
+                }
+            }
+
+            Debug.Log($"[ShopLooby] Destroyed {childCount} old sell item UIs");
+
+            // ✅ รอ 1 frame ให้ UI ลบเสร็จ
+            StartCoroutine(DelayedLoadSellItems());
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShopLooby] Error force refreshing sell panel: {e.Message}");
+        }
+    }
+
+    // ===== เพิ่ม Coroutine สำหรับ delayed load =====
+
+    private System.Collections.IEnumerator DelayedLoadSellItems()
+    {
+        // รอ 1 frame ให้ UI ลบเสร็จ
+        yield return null;
+
+        Debug.Log("[ShopLooby] 🔄 Loading sell items after delay...");
+
+        // รีเฟรช sellableItems อีกครั้ง
+        RefreshSellableItemsList();
+
+        // แสดง UI ใหม่
+        DisplaySellableItems();
+
+        Debug.Log("[ShopLooby] ✅ Sell panel refreshed completely");
+    }
     private void ProcessPurchaseTransaction()
     {
         Debug.Log("[ShopLooby] 🔄 Starting purchase transaction...");
@@ -1773,7 +2003,7 @@ public class ShopLooby : MonoBehaviour
                 purchaseQuantityPanel.SetActive(false);
 
             if (sellPanel != null && sellPanel.activeSelf)
-                RefreshSellPanel();
+                ForceRefreshSellPanel();
 
             UpdateCurrencyDisplay();
         }
@@ -1785,18 +2015,168 @@ public class ShopLooby : MonoBehaviour
     }
     private void RefreshSellPanel()
     {
+        Debug.Log("[ShopLooby] 🔄 Refreshing sell panel...");
+
         if (sellInventoryContainer == null) return;
 
-        // Clear old items
-        for (int i = sellInventoryContainer.childCount - 1; i >= 0; i--)
+        // ใช้ ForceRefreshSellPanel แทน
+        ForceRefreshSellPanel();
+    }
+    private void OnSellAllButtonClicked()
+    {
+        Debug.Log("[ShopLooby] 🛒 Sell All button clicked!");
+
+        // ✅ รีเฟรช sellableItems ก่อน
+        RefreshSellableItemsList();
+
+        // ตรวจสอบว่ามีของขายหรือไม่
+        if (sellableItems.Count == 0)
         {
-            Destroy(sellInventoryContainer.GetChild(i).gameObject);
+            ShowMessage("No sellable items found!");
+            return;
         }
 
-        // Reload items
-        LoadSellableItems();
+        // ✅ คำนวณรายการที่จะขายแบบ realtime
+        var sellList = CalculateSellAllItems();
+
+        if (sellList.Count == 0)
+        {
+            ShowMessage("No valid items to sell!");
+            return;
+        }
+
+        long totalValue = sellList.Sum(item => item.itemData.SellPrice * item.stackCount);
+        int totalItems = sellList.Sum(item => item.stackCount);
+
+        Debug.Log($"[ShopLooby] Sell All: {totalItems} items worth {totalValue} gold");
+
+        // แสดง confirmation dialog
+        ShowSellAllConfirmation(sellList, totalItems, totalValue);
     }
-  
+
+    // ===== 5. เพิ่ม method คำนวณรายการขาย =====
+
+    private List<InventoryItem> CalculateSellAllItems()
+    {
+        Debug.Log("[ShopLooby] 🔢 Calculating sell all items...");
+
+        List<InventoryItem> sellList = new List<InventoryItem>();
+
+        if (playerCharacter?.GetInventory() == null)
+            return sellList;
+
+        Inventory playerInventory = playerCharacter.GetInventory();
+
+        // ✅ หาของทุกชิ้นที่ขายได้ใหม่ (ไม่ใช้ cache)
+        for (int i = 0; i < playerInventory.CurrentSlots; i++)
+        {
+            InventoryItem item = playerInventory.GetItem(i);
+
+            if (item != null && !item.IsEmpty && item.itemData != null &&
+                item.itemData.IsSellable && item.itemData.SellPrice > 0)
+            {
+                sellList.Add(item);
+            }
+        }
+
+        Debug.Log($"[ShopLooby] Found {sellList.Count} items to sell");
+        return sellList;
+    }
+
+    // ===== 6. เพิ่ม method แสดง confirmation =====
+
+    private void ShowSellAllConfirmation(List<InventoryItem> sellList, int totalItems, long totalValue)
+    {
+        // ใช้ purchaseQuantityPanel แต่ปรับเป็น confirmation mode
+        if (purchaseQuantityPanel == null)
+        {
+            Debug.LogError("[ShopLooby] purchaseQuantityPanel not assigned!");
+            return;
+        }
+
+        purchaseQuantityPanel.SetActive(true);
+
+        // Setup UI สำหรับ Sell All confirmation
+        SetupSellAllConfirmationUI(sellList, totalItems, totalValue);
+    }
+
+    // ===== 7. เพิ่ม method setup UI confirmation =====
+
+    private void SetupSellAllConfirmationUI(List<InventoryItem> sellList, int totalItems, long totalValue)
+    {
+        // แสดงไอคอน (ใช้ไอคอนทั่วไป)
+        if (quantityItemIcon != null)
+        {
+            quantityItemIcon.gameObject.SetActive(false);
+        }
+
+        // แสดงชื่อ
+        if (quantityItemName != null)
+        {
+            quantityItemName.text = "SELL ALL ITEMS";
+            quantityItemName.color = Color.yellow;
+        }
+
+        // แสดงรายละเอียด
+        if (quantityItemPrice != null)
+        {
+            quantityItemPrice.text = $" Total: {totalValue:N0} Gold";
+        }
+
+        // ซ่อน slider (ไม่ต้องเลือกจำนวน)
+        if (quantitySlider != null)
+        {
+            quantitySlider.gameObject.SetActive(false);
+        }
+
+        // ซ่อน quantity text
+        if (quantityValueText != null)
+        {
+            quantityValueText.gameObject.SetActive(false);
+        }
+
+        // แสดงข้อมูลรายการ
+        if (maxAffordableText != null)
+        {
+            string itemList = "";
+            for (int i = 0; i < Mathf.Min(5, sellList.Count); i++)
+            {
+                var item = sellList[i];
+                itemList += $"• {item.itemData.ItemName} x{item.stackCount}\n";
+            }
+
+            if (sellList.Count > 5)
+            {
+                itemList += $"... and {sellList.Count - 5} more items";
+            }
+
+            maxAffordableText.text = $"Items to sell ({totalItems} total):\n{itemList}";
+        }
+
+        // แสดงราคารวม
+        if (totalPriceText != null)
+        {
+            totalPriceText.text = $"Total Value: {totalValue:N0} Gold";
+        }
+
+        // ตั้งค่าปุ่ม Confirm
+        if (confirmPurchaseButton != null)
+        {
+            TextMeshProUGUI buttonText = confirmPurchaseButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+                buttonText.text = "SELL ALL";
+
+            confirmPurchaseButton.interactable = true;
+            ColorBlock colors = confirmPurchaseButton.colors;
+            colors.normalColor = Color.red; // สีแดงเพื่อให้เห็นว่าเป็นการขายทั้งหมด
+            confirmPurchaseButton.colors = colors;
+        }
+
+        // เก็บข้อมูลสำหรับประมวลผล
+        selectedSellAllItems = sellList;
+        isSellAllMode = true;
+    }
+
     private bool ProcessQuantityPurchase(ShopItemData shopItem, Inventory inventory, int quantity)
     {
         try
@@ -1882,24 +2262,64 @@ public class ShopLooby : MonoBehaviour
     private void OnCancelPurchaseClicked()
     {
         HidePurchaseQuantityPanel();
-
-        // ล้างข้อมูล sell item
-        selectedSellItem = null;
-        selectedSellSlotIndex = -1;
-
-        Debug.Log("[ShopLooby] Purchase/Sell cancelled");
+        Debug.Log("[ShopLooby] Purchase/Sell/Sell All cancelled");
     }
-   
+
     public void HidePurchaseQuantityPanel()
     {
         if (purchaseQuantityPanel != null)
             purchaseQuantityPanel.SetActive(false);
 
+        // Reset all modes
         selectedQuantity = 1;
         selectedShopItem = null;
         selectedSellItem = null;
         selectedSellSlotIndex = -1;
+        selectedSellAllItems.Clear();
+        isSellAllMode = false;
+
+        // แสดง slider และ quantity text กลับมา
+        if (quantitySlider != null)
+            quantitySlider.gameObject.SetActive(true);
+        if (quantityValueText != null)
+            quantityValueText.gameObject.SetActive(true);
     }
+    private void UpdateSellAllButton()
+    {
+        if (sellAllButton == null) return;
+
+        // ✅ รีเฟรช sellableItems ก่อน
+        RefreshSellableItemsList();
+
+        // เปิด/ปิดปุ่มตามจำนวนของที่ขายได้
+        bool hasSellableItems = sellableItems.Count > 0;
+        sellAllButton.interactable = hasSellableItems;
+
+        // เปลี่ยนสีปุ่ม
+        ColorBlock colors = sellAllButton.colors;
+        colors.normalColor = hasSellableItems ? Color.white : Color.gray;
+        sellAllButton.colors = colors;
+
+        // อัปเดตข้อความ
+        TextMeshProUGUI buttonText = sellAllButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (buttonText != null)
+        {
+            if (hasSellableItems)
+            {
+                long totalValue = sellableItems.Sum(item => item.itemData.SellPrice * item.stackCount);
+                buttonText.text = $"SELL ALL ({totalValue:N0} Gold)";
+            }
+            else
+            {
+                buttonText.text = "SELL ALL";
+            }
+        }
+
+        Debug.Log($"[ShopLooby] Updated Sell All button: {hasSellableItems} ({sellableItems.Count} items)");
+    }
+
+    // ===== 14. แก้ไข DisplaySellableItems เพื่อให้ update ปุ่ม =====
+
 
 
     // ✅ เก็บ method เก่าไว้สำหรับ backward compatibility

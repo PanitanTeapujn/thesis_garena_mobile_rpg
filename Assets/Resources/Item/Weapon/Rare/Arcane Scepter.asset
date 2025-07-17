@@ -18,8 +18,8 @@ MonoBehaviour:
   itemType: 0
   tier: 3
   description: 
-  sellPrice: 7500
-  buyPrice: 0
+  sellPrice: 5000
+  buyPrice: 7500
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
