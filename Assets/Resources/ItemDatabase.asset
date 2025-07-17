@@ -68,6 +68,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a8cb289f65e01f24296c6d23beb24ebd, type: 2}
   - {fileID: 11400000, guid: 040cf83aed18772409c4a13f2e6a9dfa, type: 2}
   - {fileID: 11400000, guid: 1ce9ba711b68f914b8362e6e6a4917f8, type: 2}
+  - {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
+  - {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
+  - {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+  - {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
+  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
+  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
+  - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
+  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
   weapons:
   - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
   - {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
@@ -85,6 +96,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
   - {fileID: 11400000, guid: 92b4c5e0144b248479337dee64bf07b0, type: 2}
   - {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
+  - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
+  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
   headItems:
   - {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
   - {fileID: 11400000, guid: 4303658d61923eb449483d2736fd5f67, type: 2}
@@ -94,6 +107,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d0660a08dab62d94bb08c9ca10de275b, type: 2}
   - {fileID: 11400000, guid: 6618b40d61c48f64caabc0dd8351c64e, type: 2}
   - {fileID: 11400000, guid: b48d3e4819115de4b93f3d9292613ad1, type: 2}
+  - {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
   armorItems:
   - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
   - {fileID: 11400000, guid: 31d5441768d79c54faee54144fed1476, type: 2}
@@ -113,6 +127,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 71e5755254cedaa4bb8e4cce40c6a134, type: 2}
   - {fileID: 11400000, guid: e745e079c25a47c499afb6f4b129506d, type: 2}
   - {fileID: 11400000, guid: eeda5bc38457dc845b4dc3c12dc7d741, type: 2}
+  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
   shoesItems:
   - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
   - {fileID: 11400000, guid: 5ece6d75590e9ab499ec1b106a3c5bda, type: 2}
@@ -122,6 +139,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0c7bcbfd303485b439782276171e27a4, type: 2}
   - {fileID: 11400000, guid: bf9fee0df52857f4588010e1e1dffef6, type: 2}
   - {fileID: 11400000, guid: a8cb289f65e01f24296c6d23beb24ebd, type: 2}
+  - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
   runes: []
   potions:
   - {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
@@ -130,5 +148,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1ce9ba711b68f914b8362e6e6a4917f8, type: 2}
   materials:
   - {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
+  - {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
+  - {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
+  - {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+  - {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
   miscItems:
   - {fileID: 11400000, guid: 99bed587f97fe2446b936576f136e06e, type: 2}

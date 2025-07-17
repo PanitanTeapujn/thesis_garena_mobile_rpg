@@ -12,14 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: Rusty Sword
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
   itemId: Rusty Sword
   itemName: Rusty Sword
   itemIcon: {fileID: 21300000, guid: 4ad16adfdf2d1a441879a598de742eb6, type: 3}
   itemType: 0
   tier: 1
   description: 
-  sellPrice: 300
-  buyPrice: 500
+  sellPrice: 100
+  buyPrice: 180
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0

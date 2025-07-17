@@ -10,18 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: SlimeSkin
+  m_Name: slimecore
   m_EditorClassIdentifier: 
-  itemId: material__6636
-  itemName: SlimeSkin
-  itemIcon: {fileID: 21300000, guid: 2531e15fe967a354d9d28c9cfc1d71ca, type: 3}
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
+  itemId: slimecore
+  itemName: slimecore
+  itemIcon: {fileID: 21300000, guid: 67c2298c30bc14b4483101979894ea0b, type: 3}
   itemType: 7
-  tier: 1
+  tier: 3
   description: 
-  sellPrice: 100
-  buyPrice: 200
+  sellPrice: 1500
+  buyPrice: 2000
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 999
   isStackable: 1
   stats:
@@ -39,6 +47,7 @@ MonoBehaviour:
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

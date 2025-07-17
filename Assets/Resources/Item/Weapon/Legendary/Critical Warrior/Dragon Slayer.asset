@@ -12,6 +12,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: Dragon Slayer
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 1
+    requiredGold: 5000
+    requiredItems:
+    - requiredItem: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
+      requiredQuantity: 50
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
+      requiredQuantity: 5
+      description: 
+    - requiredItem: {fileID: 11400000, guid: db622234496cdd6488025fdca056b20a, type: 2}
+      requiredQuantity: 5
+      description: 
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 4
   itemId: Dragon Slayer
   itemName: Dragon Slayer
   itemIcon: {fileID: 21300000, guid: 23e3487bd159e544bbce0a44b6faadc4, type: 3}
@@ -22,6 +38,7 @@ MonoBehaviour:
   buyPrice: 0
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
   stats:

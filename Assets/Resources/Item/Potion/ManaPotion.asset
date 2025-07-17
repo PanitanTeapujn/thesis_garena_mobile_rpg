@@ -12,14 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: ManaPotion
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 1
+    requiredGold: 10
+    requiredItems:
+    - requiredItem: {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
+      requiredQuantity: 5
+      description: 
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 1
   itemId: ManaPotion
   itemName: ManaPotion
   itemIcon: {fileID: 21300000, guid: b9b402fef77c76b4aa99c6809ccb598c, type: 3}
   itemType: 6
   tier: 1
   description: 
-  sellPrice: 1000
-  buyPrice: 0
+  sellPrice: 80
+  buyPrice: 100
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0

@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using static ShopLooby;
 
 #region Enums
 [System.Serializable]
@@ -188,6 +190,8 @@ public class ItemStats
 [CreateAssetMenu(fileName = "New Item", menuName = "Inventory System/Item Data")]
 public class ItemData : ScriptableObject
 {
+    [Header("🔄 Trade Recipe")]
+    [SerializeField] private TradeRecipeData tradeRecipe = new TradeRecipeData();
     #region Basic Info
     [Header("Basic Information")]
     [SerializeField] public string itemId;
@@ -205,7 +209,11 @@ public class ItemData : ScriptableObject
     [SerializeField] public bool isSellable = true;  // สามารถขายได้หรือไม่
     [SerializeField] public bool isTradeable = true; // สามารถแลกเปลี่ยนได้หรือไม่
     [SerializeField] public CurrencyType buyCurrencyType = CurrencyType.Gold; // ✅ เพิ่มบรรทัดนี้
-
+    #region Trade Properties
+    public TradeRecipeData TradeRecipe => tradeRecipe;
+    public bool IsTradeableItem => tradeRecipe.isTradeableItem;
+    public bool HasValidTradeRecipe => tradeRecipe.IsValid();
+    #endregion
 
     [Header("Stack Settings")]
     [SerializeField] public int maxStackSize = 1;
@@ -480,9 +488,122 @@ public class ItemData : ScriptableObject
         return item;
     }
     #endregion
+    #region Trade Methods
+    public TradeItemData ToTradeItemData()
+    {
+        if (!HasValidTradeRecipe)
+        {
+            Debug.LogWarning($"[ItemData] {ItemName} does not have a valid trade recipe!");
+            return null;
+        }
 
+        var tradeData = new TradeItemData(this, tradeRecipe.requiredGold);
+        tradeData.tradeName = !string.IsNullOrEmpty(tradeRecipe.tradeName) ? tradeRecipe.tradeName : ItemName;
+        tradeData.tradeDescription = tradeRecipe.tradeDescription;
+
+        foreach (var requirement in tradeRecipe.requiredItems)
+        {
+            if (requirement.IsValid())
+            {
+                tradeData.AddRequirement(requirement.requiredItem, requirement.requiredQuantity);
+            }
+        }
+
+        return tradeData;
+    }
+
+    public bool CanPlayerTrade(Inventory playerInventory, CurrencyManager currencyManager)
+    {
+        if (!HasValidTradeRecipe) return false;
+
+        // ตรวจสอบเงิน
+        if (tradeRecipe.requiredGold > 0 && currencyManager != null)
+        {
+            if (!currencyManager.HasEnoughGold(tradeRecipe.requiredGold))
+                return false;
+        }
+
+        // ตรวจสอบ items
+        if (playerInventory != null)
+        {
+            foreach (var requirement in tradeRecipe.requiredItems)
+            {
+                if (!requirement.IsValid()) continue;
+
+                int playerHas = GetItemCountInInventory(playerInventory, requirement.requiredItem);
+                if (playerHas < requirement.requiredQuantity)
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    private int GetItemCountInInventory(Inventory inventory, ItemData itemData)
+    {
+        int totalCount = 0;
+
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            InventoryItem item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty && item.itemData.ItemId == itemData.ItemId)
+            {
+                totalCount += item.stackCount;
+            }
+        }
+
+        return totalCount;
+    }
+
+    public string GetTradeRequirementsStatusText(Inventory playerInventory, CurrencyManager currencyManager)
+    {
+        if (!HasValidTradeRecipe)
+            return "Not tradeable";
+
+        List<string> statusLines = new List<string>();
+
+        // ✅ ตรวจสอบ items requirements
+        if (tradeRecipe.requiredItems != null && tradeRecipe.requiredItems.Count > 0)
+        {
+            foreach (var requirement in tradeRecipe.requiredItems)
+            {
+                if (!requirement.IsValid()) continue;
+
+                int playerHas = 0;
+                if (playerInventory != null)
+                {
+                    playerHas = GetItemCountInInventory(playerInventory, requirement.requiredItem);
+                }
+
+                string status = playerHas >= requirement.requiredQuantity ? "✅" : "❌";
+                statusLines.Add($"{status} {requirement.requiredItem.ItemName}: {playerHas}/{requirement.requiredQuantity}");
+            }
+        }
+
+        // ✅ ตรวจสอบ gold requirements
+        if (tradeRecipe.requiredGold > 0)
+        {
+            long playerGold = 0;
+            if (currencyManager != null)
+            {
+                playerGold = currencyManager.GetCurrentGold();
+            }
+
+            string goldStatus = playerGold >= tradeRecipe.requiredGold ? "✅" : "❌";
+            statusLines.Add($"{goldStatus} Gold: {playerGold:N0}/{tradeRecipe.requiredGold:N0}");
+        }
+
+        // ✅ ถ้าไม่มี requirements ใดๆ
+        if (statusLines.Count == 0)
+        {
+            return "No requirements needed";
+        }
+
+        return string.Join("\n", statusLines);
+    }
+    #endregion
     #region Debug
-   
+
     #endregion
 }
 #endregion
@@ -568,4 +689,90 @@ public class FirebaseItemData
     #endregion
 
     #endregion
+}
+[System.Serializable]
+public class TradeRequirementData
+{
+    [Header("Required Item")]
+    public ItemData requiredItem;
+
+    [Header("Required Quantity")]
+    [Range(1, 999)]
+    public int requiredQuantity = 1;
+
+    [Header("Optional Description")]
+    public string description = "";
+
+    public bool IsValid()
+    {
+        return requiredItem != null && requiredQuantity > 0;
+    }
+}
+
+// ✅ 2. เพิ่ม Trade Recipe Class ใน ItemData.cs
+[System.Serializable]
+public class TradeRecipeData
+{
+    [Header("🔄 Trade Recipe Settings")]
+    [Tooltip("Can this item be obtained through trading?")]
+    public bool isTradeableItem = false;
+
+    [Header("💰 Gold Cost")]
+    [Tooltip("Gold required for this trade")]
+    public long requiredGold = 0;
+
+    [Header("📦 Required Items")]
+    [Tooltip("Items needed for this trade")]
+    public List<TradeRequirementData> requiredItems = new List<TradeRequirementData>();
+
+    [Header("📝 Trade Info")]
+    [Tooltip("Display name for this trade")]
+    public string tradeName = "";
+
+    [TextArea(2, 4)]
+    [Tooltip("Description of this trade")]
+    public string tradeDescription = "";
+
+    [Header("🎯 Trade Category")]
+    [Tooltip("Category for organizing trades")]
+    public TradeCategory tradeCategory = TradeCategory.Equipment;
+
+    public bool IsValid()
+    {
+        return isTradeableItem && requiredItems.Count > 0 && requiredItems.All(req => req.IsValid());
+    }
+
+    public string GetRequirementsText()
+    {
+        if (requiredItems.Count == 0) return "No requirements";
+
+        List<string> requirements = new List<string>();
+
+        foreach (var req in requiredItems)
+        {
+            if (req.IsValid())
+            {
+                requirements.Add($"{req.requiredItem.ItemName} x{req.requiredQuantity}");
+            }
+        }
+
+        if (requiredGold > 0)
+        {
+            requirements.Add($"{requiredGold:N0} Gold");
+        }
+
+        return string.Join("\n", requirements);
+    }
+}
+
+// ✅ 3. เพิ่ม Trade Category Enum
+[System.Serializable]
+public enum TradeCategory
+{
+    Equipment,      // อุปกรณ์
+    Consumables,    // ของใช้
+    Materials,      // วัสดุ
+    Rare,          // ของหายาก
+    Legendary,     // ของตำนาน
+    Special        // พิเศษ
 }

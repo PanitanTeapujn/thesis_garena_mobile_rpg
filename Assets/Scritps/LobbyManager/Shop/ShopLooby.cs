@@ -68,7 +68,13 @@ public class ShopLooby : MonoBehaviour
     public Button confirmPurchaseButton;
     public Button cancelPurchaseButton;
     public TextMeshProUGUI maxAffordableText;
-
+    [Header("🔄 Trade Panel")]
+    public Transform tradeContainer;
+    public GameObject tradePanel;
+    public Button tradeTab;
+    public List<TradeItemData> tradeItems = new List<TradeItemData>();
+    private TradeItemData selectedTradeItem;
+    private bool isTradeMode = false;
     [Header("🆕 Phase 3: Enhanced Shop Features")]
     public Button refreshShopButton;
     public TMP_InputField searchInputField;
@@ -351,6 +357,13 @@ public class ShopLooby : MonoBehaviour
             closeSellDetailButton.onClick.AddListener(HideSellItemDetailPanel);
         if (sellAllButton != null)
             sellAllButton.onClick.AddListener(OnSellAllButtonClicked);
+
+        if (tradeTab != null)
+            tradeTab.onClick.AddListener(ShowTradePanel);
+
+        // ✅ 4. เพิ่มใน RemoveEventListeners() method  
+       
+
         // Enhanced shop listeners
         if (refreshShopButton != null)
             refreshShopButton.onClick.AddListener(RefreshShopItems);
@@ -380,6 +393,10 @@ public class ShopLooby : MonoBehaviour
             legendShopTab.onClick.RemoveAllListeners();
         if (sellTab != null)
             sellTab.onClick.RemoveAllListeners();
+        if (tradeTab != null)
+            tradeTab.onClick.RemoveAllListeners();
+
+
         if (buyButton != null)
             buyButton.onClick.RemoveAllListeners();
         if (closeDetailButton != null)
@@ -392,6 +409,9 @@ public class ShopLooby : MonoBehaviour
             cancelPurchaseButton.onClick.RemoveAllListeners();
         if (quantitySlider != null)
             quantitySlider.onValueChanged.RemoveAllListeners();
+
+
+      
 
         if (sellButton != null)
             sellButton.onClick.RemoveAllListeners();
@@ -1156,6 +1176,7 @@ public class ShopLooby : MonoBehaviour
         if (beginJourneyPanel != null) beginJourneyPanel.SetActive(false);
         if (legendShopPanel != null) legendShopPanel.SetActive(false);
         if (sellPanel != null) sellPanel.SetActive(false);
+        if (tradePanel != null) tradePanel.SetActive(false); // ✅ เพิ่มบรรทัดนี้
 
         if (targetPanel != null) targetPanel.SetActive(true);
     }
@@ -1611,7 +1632,11 @@ public class ShopLooby : MonoBehaviour
 
     private void OnConfirmPurchaseClicked()
     {
-        if (isSellAllMode && selectedSellAllItems.Count > 0)
+        if (isTradeMode && selectedTradeItem != null)
+        {
+            ProcessTradeTransaction();
+        }
+        else if (isSellAllMode && selectedSellAllItems.Count > 0)
         {
             ProcessSellAllTransaction();
         }
@@ -1627,6 +1652,168 @@ public class ShopLooby : MonoBehaviour
         {
             ShowMessage("No item selected!");
         }
+    }
+    private void ProcessTradeTransaction()
+    {
+        try
+        {
+            Debug.Log("[ShopLooby] 🔄 Starting trade transaction...");
+
+            if (selectedTradeItem?.resultItem == null)
+            {
+                ShowMessage("Error: Invalid trade item!");
+                return;
+            }
+
+            // ตรวจสอบระบบต่างๆ
+            if (currencyManager == null)
+                currencyManager = CurrencyManager.FindCurrencyManager();
+            if (playerCharacter == null)
+                playerCharacter = FindPlayerCharacterForSell();
+
+            if (currencyManager == null || playerCharacter == null)
+            {
+                ShowMessage("Error: System not found!");
+                return;
+            }
+
+            Inventory playerInventory = playerCharacter.GetInventory();
+            if (playerInventory == null)
+            {
+                ShowMessage("Error: Inventory not found!");
+                return;
+            }
+
+            // ตรวจสอบ requirements อีกครั้ง
+            if (!CheckTradeRequirements(selectedTradeItem))
+            {
+                ShowMessage("Error: Trade requirements not met!");
+                return;
+            }
+
+            // ตรวจสอบ inventory space
+            if (playerInventory.FreeSlots < 1)
+            {
+                ShowMessage("Error: No inventory space!");
+                return;
+            }
+
+            Debug.Log($"[ShopLooby] Processing trade for: {selectedTradeItem.resultItem.ItemName}");
+
+            // ลบ required items
+            bool itemsRemoved = RemoveTradeRequirements(playerInventory);
+            if (!itemsRemoved)
+            {
+                ShowMessage("Error: Failed to remove required items!");
+                return;
+            }
+
+            // ลบเงิน
+            if (selectedTradeItem.requiredGold > 0)
+            {
+                if (!currencyManager.SpendGold(selectedTradeItem.requiredGold))
+                {
+                    ShowMessage("Error: Failed to spend gold!");
+                    // พยายาม restore items ที่ลบไป (ไม่ implement ในขั้นนี้)
+                    return;
+                }
+            }
+
+            // เพิ่มไอเทมใหม่
+            bool itemAdded = playerInventory.AddItem(selectedTradeItem.resultItem, 1);
+            if (!itemAdded)
+            {
+                ShowMessage("Error: Failed to add result item!");
+                // พยายาม restore ทุกอย่าง (ไม่ implement ในขั้นนี้)
+                return;
+            }
+
+            // สำเร็จ
+            string tradeMessage = $"Successfully traded for {selectedTradeItem.resultItem.ItemName}!";
+            ShowMessage(tradeMessage);
+
+            Debug.Log($"[ShopLooby] ✅ Trade completed: {selectedTradeItem.resultItem.ItemName}");
+
+            // ล้างข้อมูล
+            CleanupTradeMode();
+
+            // อัพเดท UI
+            UpdateCurrencyDisplay();
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShopLooby] ❌ Trade transaction error: {e.Message}");
+            ShowMessage("Trade transaction failed!");
+            CleanupTradeMode();
+        }
+    }
+    private bool RemoveTradeRequirements(Inventory inventory)
+    {
+        Debug.Log("[ShopLooby] 🔄 Removing trade requirements...");
+
+        // เก็บรายการที่ต้องลบ
+        List<(int slotIndex, int removeCount)> itemsToRemove = new List<(int, int)>();
+
+        // หาไอเทมที่ต้องลบ
+        foreach (var requirement in selectedTradeItem.requiredItems)
+        {
+            int stillNeed = requirement.quantity;
+
+            for (int i = 0; i < inventory.CurrentSlots && stillNeed > 0; i++)
+            {
+                InventoryItem item = inventory.GetItem(i);
+                if (item != null && !item.IsEmpty && item.itemData.ItemId == requirement.itemData.ItemId)
+                {
+                    int canRemove = Mathf.Min(stillNeed, item.stackCount);
+                    itemsToRemove.Add((i, canRemove));
+                    stillNeed -= canRemove;
+                }
+            }
+
+            if (stillNeed > 0)
+            {
+                Debug.LogError($"[ShopLooby] Cannot find enough {requirement.itemData.ItemName}");
+                return false;
+            }
+        }
+
+        // ลบไอเทมตามรายการที่เก็บไว้
+        foreach (var (slotIndex, removeCount) in itemsToRemove)
+        {
+            if (!inventory.RemoveItem(slotIndex, removeCount))
+            {
+                Debug.LogError($"[ShopLooby] Failed to remove {removeCount} items from slot {slotIndex}");
+                return false;
+            }
+
+            Debug.Log($"[ShopLooby] Removed {removeCount} items from slot {slotIndex}");
+        }
+
+        Debug.Log("[ShopLooby] ✅ All trade requirements removed");
+        return true;
+    }
+    private void CleanupTradeMode()
+    {
+        Debug.Log("[ShopLooby] 🧹 Cleaning up trade mode...");
+
+        selectedTradeItem = null;
+        isTradeMode = false;
+        selectedQuantity = 1;
+
+        // ปิด quantity panel
+        if (purchaseQuantityPanel != null)
+        {
+            purchaseQuantityPanel.SetActive(false);
+        }
+
+        // แสดง slider และ quantity text กลับมา
+        if (quantitySlider != null)
+            quantitySlider.gameObject.SetActive(true);
+        if (quantityValueText != null)
+            quantityValueText.gameObject.SetActive(true);
+        if (quantityItemIcon != null)
+            quantityItemIcon.gameObject.SetActive(true);
     }
     private void ProcessSellAllTransaction()
     {
@@ -2261,8 +2448,16 @@ public class ShopLooby : MonoBehaviour
     }
     private void OnCancelPurchaseClicked()
     {
-        HidePurchaseQuantityPanel();
-        Debug.Log("[ShopLooby] Purchase/Sell/Sell All cancelled");
+        if (isTradeMode)
+        {
+            CleanupTradeMode();
+        }
+        else
+        {
+            HidePurchaseQuantityPanel();
+        }
+
+        Debug.Log("[ShopLooby] Purchase/Sell/Trade cancelled");
     }
 
     public void HidePurchaseQuantityPanel()
@@ -2277,6 +2472,10 @@ public class ShopLooby : MonoBehaviour
         selectedSellSlotIndex = -1;
         selectedSellAllItems.Clear();
         isSellAllMode = false;
+
+        // ✅ เพิ่ม cleanup สำหรับ trade mode
+        selectedTradeItem = null;
+        isTradeMode = false;
 
         // แสดง slider และ quantity text กลับมา
         if (quantitySlider != null)
@@ -2320,7 +2519,425 @@ public class ShopLooby : MonoBehaviour
 
     // ===== 14. แก้ไข DisplaySellableItems เพื่อให้ update ปุ่ม =====
 
+    #region Trade
+    private void ShowTradePanel()
+    {
+        Debug.Log("[ShopLooby] 🔄 Showing Trade panel...");
 
+        SetActivePanel(tradePanel);
+        ClearSelectedItem();
+        SwitchToTradeShop();
+    }
+
+    private void SwitchToTradeShop()
+    {
+        Debug.Log("[ShopLooby] 🔄 SwitchToTradeShop called!");
+
+        if (tradeContainer == null)
+        {
+            Debug.LogError("[ShopLooby] ❌ tradeContainer is null in SwitchToTradeShop!");
+            return;
+        }
+
+        currentShopContainer = tradeContainer;
+        currentShopName = "Trade";
+
+        // ✅ โหลด trade items เฉพาะเมื่อยังไม่มี หรือ list ว่าง
+        if (tradeItems == null || tradeItems.Count == 0)
+        {
+            Debug.Log("[ShopLooby] Trade items empty, loading...");
+            LoadTradeItems();
+        }
+        else
+        {
+            Debug.Log($"[ShopLooby] Using existing {tradeItems.Count} trade items");
+        }
+
+        // แสดง trade items
+        DisplayTradeItems();
+
+        Debug.Log($"[ShopLooby] ✅ Switched to Trade Shop - {tradeItems.Count} items");
+    }
+    public void RefreshTradeItems()
+    {
+        Debug.Log("[ShopLooby] 🔄 Refreshing trade items...");
+
+        // ✅ Clear เฉพาะเมื่อต้องการ refresh
+        if (tradeItems != null)
+        {
+            tradeItems.Clear();
+        }
+
+        // โหลดใหม่
+        LoadTradeItems();
+
+        // แสดงผลใหม่ถ้าอยู่ใน trade panel
+        if (tradePanel != null && tradePanel.activeSelf)
+        {
+            DisplayTradeItems();
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Trade items refreshed - {tradeItems.Count} items");
+    }
+
+    private void LoadTradeItems()
+    {
+        Debug.Log("[ShopLooby] 🔄 LoadTradeItems called!");
+
+        // ✅ ตรวจสอบว่ามี trade items ใน Inspector หรือไม่
+        if (tradeItems != null && tradeItems.Count > 0)
+        {
+            Debug.Log($"[ShopLooby] Found {tradeItems.Count} pre-configured trade items in Inspector");
+            Debug.Log($"[ShopLooby] ✅ Using {tradeItems.Count} trade items from Inspector");
+            return;
+        }
+
+        // ✅ ถ้าไม่มี items ใน Inspector ให้สร้างจาก ItemData
+        Debug.Log("[ShopLooby] No trade items in Inspector, loading from ItemData trade recipes...");
+
+        tradeItems.Clear();
+        LoadTradeItemsFromDatabase();
+
+        Debug.Log($"[ShopLooby] ✅ Loaded {tradeItems.Count} trade items from ItemData");
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับโหลดจาก ItemData
+    private void LoadTradeItemsFromDatabase()
+    {
+        ItemDatabase database = ItemDatabase.Instance;
+        if (database == null)
+        {
+            Debug.LogWarning("[ShopLooby] ItemDatabase not found!");
+            return;
+        }
+
+        var allItems = database.GetAllItems();
+        if (allItems == null || allItems.Count == 0)
+        {
+            Debug.LogWarning("[ShopLooby] No items found in database!");
+            return;
+        }
+
+        Debug.Log($"[ShopLooby] Scanning {allItems.Count} items for trade recipes...");
+
+        int tradeableCount = 0;
+        foreach (var item in allItems)
+        {
+            if (item == null) continue;
+
+            // ✅ ตรวจสอบว่าไอเทมนี้มี trade recipe หรือไม่
+            if (item.HasValidTradeRecipe)
+            {
+                TradeItemData tradeData = item.ToTradeItemData();
+                if (tradeData != null)
+                {
+                    tradeItems.Add(tradeData);
+                    tradeableCount++;
+
+                    Debug.Log($"[ShopLooby] ✅ Added trade recipe: {tradeData.tradeName} " +
+                             $"(Result: {item.ItemName}, Requirements: {tradeData.requiredItems.Count})");
+                }
+            }
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Found {tradeableCount} tradeable items out of {allItems.Count} total items");
+
+        // ✅ เรียงลำดับตาม trade category
+        SortTradeItemsByCategory();
+    }
+
+
+    // ✅ เพิ่ม method สำหรับเรียงลำดับ trade items
+    private void SortTradeItemsByCategory()
+    {
+        if (tradeItems == null || tradeItems.Count == 0) return;
+
+        // เรียงตาม tier ของผลลัพธ์ (Legendary > Epic > Rare > Uncommon > Common)
+        tradeItems = tradeItems.OrderByDescending(trade => (int)trade.resultItem.Tier)
+                              .ThenBy(trade => trade.resultItem.ItemType)
+                              .ThenBy(trade => trade.resultItem.ItemName)
+                              .ToList();
+
+        Debug.Log("[ShopLooby] ✅ Trade items sorted by category and tier");
+    }
+
+    
+
+    private void DisplayTradeItems()
+    {
+        if (tradeContainer == null)
+        {
+            Debug.LogError("[ShopLooby] tradeContainer is null! Please assign it in Inspector");
+            return;
+        }
+
+        // ✅ ลบ items เก่า
+        foreach (Transform child in tradeContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // ✅ สร้าง UI สำหรับ trade items
+        foreach (var tradeItem in tradeItems)
+        {
+            CreateTradeItemUI(tradeItem);
+        }
+
+        Debug.Log($"[ShopLooby] Displayed {tradeItems.Count} trade items");
+    }
+
+    private void CreateTradeItemUI(TradeItemData tradeItem)
+    {
+        if (tradeItem?.resultItem == null)
+        {
+            Debug.LogError("[ShopLooby] Invalid trade item data!");
+            return;
+        }
+
+        Debug.Log($"[ShopLooby] 🔄 Creating trade item UI for: {tradeItem.resultItem.ItemName}");
+
+        // ✅ ใช้ prefab เดิม
+        GameObject tradeItemObj = Instantiate(shopItemPrefab, tradeContainer);
+        ShopItemUI tradeItemUI = tradeItemObj.GetComponent<ShopItemUI>();
+
+        if (tradeItemUI == null)
+        {
+            tradeItemUI = tradeItemObj.AddComponent<ShopItemUI>();
+        }
+
+        // ✅ สร้าง ShopItemData สำหรับแสดงผล
+        ShopItemData displayData = new ShopItemData(tradeItem.resultItem, tradeItem.requiredGold, CurrencyType.Gold);
+        tradeItemUI.SetupShopItem(displayData, this);
+
+        // ✅ Override button click สำหรับ trade
+        Button itemButton = tradeItemObj.GetComponent<Button>();
+        if (itemButton == null)
+        {
+            itemButton = tradeItemObj.GetComponentInChildren<Button>();
+        }
+
+        if (itemButton != null)
+        {
+            itemButton.onClick.RemoveAllListeners();
+            itemButton.onClick.AddListener(() => OnTradeItemClicked(tradeItem));
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Trade item UI created: {tradeItem.resultItem.ItemName}");
+    }
+
+    public void OnTradeItemClicked(TradeItemData tradeItem)
+    {
+        if (tradeItem?.resultItem == null)
+        {
+            ShowMessage("Error: Invalid trade item!");
+            return;
+        }
+
+        Debug.Log($"[ShopLooby] 🔄 Trade item clicked: {tradeItem.resultItem.ItemName}");
+
+        selectedTradeItem = tradeItem;
+        isTradeMode = true;
+
+        // ✅ ใช้ ItemData method เพื่อตรวจสอบ requirements
+        bool canTrade = tradeItem.resultItem.CanPlayerTrade(
+            playerCharacter?.GetInventory(),
+            currencyManager
+        );
+
+        if (canTrade)
+        {
+            ShowTradeConfirmationPanel();
+        }
+        else
+        {
+            ShowTradeRequirementsPanel();
+        }
+    }
+    private bool CheckTradeRequirements(TradeItemData tradeItem)
+    {
+        if (tradeItem?.resultItem == null) return false;
+
+        // ✅ ใช้ ItemData method
+        return tradeItem.resultItem.CanPlayerTrade(
+            playerCharacter?.GetInventory(),
+            currencyManager
+        );
+    }
+    private void FilterTradeItemsByCategory(TradeCategory category)
+    {
+        if (tradeItems == null || tradeItems.Count == 0) return;
+
+        var filteredTrades = tradeItems.Where(trade =>
+            trade.resultItem.TradeRecipe.tradeCategory == category).ToList();
+
+        Debug.Log($"[ShopLooby] Filtered {filteredTrades.Count} trades for category: {category}");
+
+        // แสดงผลลัพธ์ที่ filter แล้ว
+        DisplayFilteredTradeItems(filteredTrades);
+    }
+    private void DisplayFilteredTradeItems(List<TradeItemData> filteredTrades)
+    {
+        if (tradeContainer == null) return;
+
+        // ลบ items เก่า
+        foreach (Transform child in tradeContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // สร้าง UI สำหรับ filtered items
+        foreach (var tradeItem in filteredTrades)
+        {
+            if (tradeItem != null)
+            {
+                CreateTradeItemUI(tradeItem);
+            }
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Displayed {filteredTrades.Count} filtered trade items");
+    }
+    private int GetItemCountInInventory(Inventory inventory, ItemData itemData)
+    {
+        int totalCount = 0;
+
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            InventoryItem item = inventory.GetItem(i);
+            if (item != null && !item.IsEmpty && item.itemData.ItemId == itemData.ItemId)
+            {
+                totalCount += item.stackCount;
+            }
+        }
+
+        return totalCount;
+    }
+
+    private void ShowTradeRequirementsPanel()
+    {
+        if (selectedTradeItem?.resultItem == null) return;
+
+        Debug.Log($"[ShopLooby] Showing trade requirements for: {selectedTradeItem.resultItem.ItemName}");
+
+        // ✅ ใช้ purchaseQuantityPanel เดิม
+        if (purchaseQuantityPanel == null)
+        {
+            Debug.LogError("[ShopLooby] purchaseQuantityPanel not assigned!");
+            return;
+        }
+
+        purchaseQuantityPanel.SetActive(true);
+
+        // Setup UI สำหรับแสดง requirements
+        SetupTradeRequirementsUI();
+    }
+
+    private void SetupTradeRequirementsUI()
+    {
+        if (selectedTradeItem?.resultItem == null) return;
+
+        ItemData resultItem = selectedTradeItem.resultItem;
+
+        // แสดงไอเทมที่จะได้
+        if (quantityItemIcon != null)
+        {
+            quantityItemIcon.sprite = resultItem.ItemIcon;
+            quantityItemIcon.gameObject.SetActive(true);
+        }
+
+        if (quantityItemName != null)
+        {
+            quantityItemName.text = $"TRADE: {resultItem.ItemName}";
+            quantityItemName.color = resultItem.GetTierColor();
+        }
+
+        // ✅ แสดงข้อความ requirements ที่ถูกต้อง
+        if (quantityItemPrice != null)
+        {
+            quantityItemPrice.gameObject.SetActive(false);
+        }
+
+        // ซ่อน slider
+        if (quantitySlider != null)
+        {
+            quantitySlider.gameObject.SetActive(false);
+        }
+
+        if (quantityValueText != null)
+        {
+            quantityValueText.gameObject.SetActive(false);
+        }
+
+        // ✅ แสดงรายการ requirements ที่แก้ไขแล้ว
+        if (maxAffordableText != null)
+        {
+            string requirementsText = BuildRequirementsDisplayText();
+            maxAffordableText.text = requirementsText;
+        }
+
+        // ✅ แสดงสรุป requirements
+        if (totalPriceText != null)
+        {
+            totalPriceText.gameObject.SetActive(false);
+
+
+        }
+
+        // ตั้งค่าปุ่ม
+        if (confirmPurchaseButton != null)
+        {
+            bool canTrade = CheckTradeRequirements(selectedTradeItem);
+
+            TextMeshProUGUI buttonText = confirmPurchaseButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                buttonText.text = canTrade ? "TRADE" : "No ITEMS";
+            }
+
+            confirmPurchaseButton.interactable = canTrade;
+
+            ColorBlock colors = confirmPurchaseButton.colors;
+            colors.normalColor = canTrade ? Color.green : Color.red;
+            confirmPurchaseButton.colors = colors;
+        }
+    }
+    private string BuildRequirementsDisplayText()
+    {
+        if (selectedTradeItem?.resultItem == null)
+            return "No requirements";
+
+        // ✅ ตรวจสอบว่ามี trade recipe หรือไม่
+        if (!selectedTradeItem.resultItem.HasValidTradeRecipe)
+            return "No trade recipe available";
+
+        // ✅ ตรวจสอบ systems
+        if (currencyManager == null)
+            currencyManager = CurrencyManager.FindCurrencyManager();
+        if (playerCharacter == null)
+            playerCharacter = FindPlayerCharacterForSell();
+
+        // ✅ ถ้าไม่มี inventory ให้แสดงข้อความเตือน
+        if (playerCharacter?.GetInventory() == null)
+        {
+            // แสดงรายการ requirements แต่ไม่มีสถานะ
+            return selectedTradeItem.resultItem.TradeRecipe.GetRequirementsText();
+        }
+
+        // ✅ ใช้ method ที่แก้ไขแล้ว
+        return selectedTradeItem.resultItem.GetTradeRequirementsStatusText(
+            playerCharacter.GetInventory(),
+            currencyManager
+        );
+    }
+
+
+    private void ShowTradeConfirmationPanel()
+    {
+        Debug.Log($"[ShopLooby] Showing trade confirmation for: {selectedTradeItem.resultItem.ItemName}");
+
+        // ใช้ SetupTradeRequirementsUI แต่เปลี่ยนปุ่มเป็น confirm
+        ShowTradeRequirementsPanel();
+    }
+    #endregion
 
     // ✅ เก็บ method เก่าไว้สำหรับ backward compatibility
     private bool ProcessPurchase(ShopItemData shopItem, Inventory inventory)
@@ -2334,7 +2951,82 @@ public class ShopLooby : MonoBehaviour
         // TODO: แสดง popup message ใน UI (อาจจะทำในอนาคต)
     }
     #endregion
+    [System.Serializable]
+    public class TradeRequirement
+    {
+        public ItemData itemData;
+        public int quantity;
 
+        public TradeRequirement(ItemData item, int count)
+        {
+            itemData = item;
+            quantity = count;
+        }
+
+        public bool IsValid()
+        {
+            return itemData != null && quantity > 0;
+        }
+    }
+
+    [System.Serializable]
+    public class TradeItemData
+    {
+        public ItemData resultItem;
+        public List<TradeRequirement> requiredItems = new List<TradeRequirement>();
+        public long requiredGold;
+        public string tradeName;
+        public string tradeDescription;
+
+        public TradeItemData(ItemData result, long gold = 0)
+        {
+            resultItem = result;
+            requiredGold = gold;
+            tradeName = result?.ItemName ?? "Unknown Trade";
+            tradeDescription = "";
+        }
+
+        public void AddRequirement(ItemData item, int quantity)
+        {
+            if (item != null && quantity > 0)
+            {
+                requiredItems.Add(new TradeRequirement(item, quantity));
+            }
+        }
+
+        public bool IsValid()
+        {
+            return resultItem != null && requiredItems.Count > 0;
+        }
+
+        public string GetRequirementsText()
+        {
+            if (requiredItems.Count == 0 && requiredGold <= 0)
+                return "";
+
+            List<string> requirements = new List<string>();
+
+            foreach (var req in requiredItems)
+            {
+                if (req.IsValid())
+                {
+                    requirements.Add($"{req.itemData.ItemName} x{req.quantity}");
+                }
+            }
+
+            if (requiredGold > 0)
+            {
+                requirements.Add($"{requiredGold:N0} Gold");
+            }
+
+            if (requirements.Count == 0)
+            {
+                return "";
+            }
+
+            return string.Join("\n", requirements);
+        }
+    }
     #region Public Methods
     // ✅ เพิ่ม method สำหรับ refresh character reference
     public void RefreshCharacterReference()

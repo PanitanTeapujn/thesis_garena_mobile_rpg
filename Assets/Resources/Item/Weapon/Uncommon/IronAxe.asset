@@ -12,14 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: IronAxe
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
   itemId: IronAxe
   itemName: IronAxe
   itemIcon: {fileID: 21300000, guid: 97eb33f17282b874aafc04781652f343, type: 3}
   itemType: 0
   tier: 2
   description: 
-  sellPrice: 800
-  buyPrice: 700
+  sellPrice: 600
+  buyPrice: 750
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0

@@ -16,26 +16,32 @@ MonoBehaviour:
   maxItemDrops: 5
   dropChanceLevelBonus: 1.5
   itemDrops:
-  - itemData: {fileID: 11400000, guid: 9b5571c5ab683e54dad5b51909377e8a, type: 2}
-    dropChance: 50
+  - itemData: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
+    dropChance: 30
     minQuantity: 1
-    maxQuantity: 1
+    maxQuantity: 3
     minEnemyLevel: 1
     maxEnemyLevel: 50
   - itemData: {fileID: 11400000, guid: e6708dce5fdeb3f47a77b5cadd098795, type: 2}
-    dropChance: 50
+    dropChance: 20
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
   - itemData: {fileID: 11400000, guid: 31d5441768d79c54faee54144fed1476, type: 2}
+    dropChance: 25
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
     dropChance: 50
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
-    dropChance: 50
+  - itemData: {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
+    dropChance: 1
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1

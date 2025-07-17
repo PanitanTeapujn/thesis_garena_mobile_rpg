@@ -534,15 +534,6 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
     quantity: 10
     note: 
-  - itemData: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
-    quantity: 50
-    note: 
-  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
-    quantity: 5
-    note: 
-  - itemData: {fileID: 11400000, guid: db622234496cdd6488025fdca056b20a, type: 2}
-    quantity: 5
-    note: 
   useFallbackItems: 1
   fallbackToTestItems: 1
   testSword: {fileID: 0}

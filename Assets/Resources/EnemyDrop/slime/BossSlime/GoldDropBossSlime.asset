@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 477e21091d74cdf439b1d59cedffb93c, type: 3}
   m_Name: GoldDropBossSlime
   m_EditorClassIdentifier: 
-  minGoldDrop: 800
-  maxGoldDrop: 1000
+  minGoldDrop: 1000
+  maxGoldDrop: 1500
   goldDropChance: 100
   minGemsDrop: 20
   maxGemsDrop: 50

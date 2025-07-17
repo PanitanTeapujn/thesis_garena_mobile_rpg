@@ -12,16 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: Mystic Wand
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
   itemId: Mystic Wand
   itemName: Mystic Wand
   itemIcon: {fileID: 21300000, guid: fb9bcc3943d1ca94497fd61e5e8c2fde, type: 3}
   itemType: 0
   tier: 2
   description: 
-  sellPrice: 0
-  buyPrice: 0
+  sellPrice: 600
+  buyPrice: 700
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
   stats:

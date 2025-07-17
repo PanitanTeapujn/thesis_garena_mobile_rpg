@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 477e21091d74cdf439b1d59cedffb93c, type: 3}
-  m_Name: slime
+  m_Name: slimeGoldDrop
   m_EditorClassIdentifier: 
   minGoldDrop: 20
-  maxGoldDrop: 100
-  goldDropChance: 80
+  maxGoldDrop: 80
+  goldDropChance: 50
   minGemsDrop: 0
   maxGemsDrop: 3
   gemsDropChance: 5
-  goldLevelBonus: 10
+  goldLevelBonus: 0
   dropChanceLevelBonus: 2
   showDropLogs: 1
   guaranteedDropsForTesting: 0
