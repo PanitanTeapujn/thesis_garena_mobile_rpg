@@ -326,7 +326,7 @@ public class LoadingPanelManager : MonoBehaviour
         if (detailText != null)
         {
             // แสดงเปอร์เซ็นต์
-            detailText.text = $"Loading{(progress * 100f):F0}%";
+            detailText.text = $"Loading {(progress * 100f):F0}%";
         }
     }
     private void ShowError(string errorMessage)

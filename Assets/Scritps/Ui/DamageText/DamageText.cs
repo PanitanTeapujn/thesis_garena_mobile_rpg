@@ -33,7 +33,7 @@ public class DamageText : MonoBehaviour
     [Header("Miss Text Settings")]
     public Color missColor = Color.gray;
     public string missText = "MISS";
-    private float baseFontSize = 40f;
+    private float baseFontSize = 20f;
     private void Awake()
     {
         // Setup components if not assigned
