@@ -24,6 +24,15 @@ public class CombatUIManager : MonoBehaviour
     public FixedJoystick movementJoystick;
     public FixedJoystick cameraJoystick;
 
+    [Header("🎯 Skill Cooldown UI")]
+    public Image skill1CooldownOverlay;
+    public Image skill2CooldownOverlay;
+    public Image skill3CooldownOverlay;
+    public Image skill4CooldownOverlay;
+    public TextMeshProUGUI skill1CooldownText;
+    public TextMeshProUGUI skill2CooldownText;
+    public TextMeshProUGUI skill3CooldownText;
+    public TextMeshProUGUI skill4CooldownText;
 
 
     [Header("🧪 Potion Buttons")]
@@ -842,6 +851,88 @@ public class CombatUIManager : MonoBehaviour
             OpenInventory();
         }
     }
+    private void UpdateSkillCooldowns()
+    {
+        if (localHero == null) return;
+
+        // อัพเดท Skill 1
+        UpdateSingleSkillCooldown(
+            localHero.GetSkillCooldownRemaining(1),
+            localHero.skill1Cooldown,
+            skill1Button,
+            skill1CooldownOverlay,
+            skill1CooldownText
+        );
+
+        // อัพเดท Skill 2
+        UpdateSingleSkillCooldown(
+            localHero.GetSkillCooldownRemaining(2),
+            localHero.skill2Cooldown,
+            skill2Button,
+            skill2CooldownOverlay,
+            skill2CooldownText
+        );
+
+        // อัพเดท Skill 3
+        UpdateSingleSkillCooldown(
+            localHero.GetSkillCooldownRemaining(3),
+            localHero.skill3Cooldown,
+            skill3Button,
+            skill3CooldownOverlay,
+            skill3CooldownText
+        );
+
+        // อัพเดท Skill 4
+        UpdateSingleSkillCooldown(
+            localHero.GetSkillCooldownRemaining(4),
+            localHero.skill4Cooldown,
+            skill4Button,
+            skill4CooldownOverlay,
+            skill4CooldownText
+        );
+    }
+    private void UpdateSingleSkillCooldown(float cooldownRemaining, float maxCooldown, Button skillButton, Image cooldownOverlay, TextMeshProUGUI cooldownText)
+    {
+        bool isOnCooldown = cooldownRemaining > 0;
+
+        // ✅ ปุ่มกดได้ตลอด - ไม่แก้ interactable
+        // if (skillButton != null)
+        // {
+        //     skillButton.interactable = !isOnCooldown;
+        // }
+
+        // อัพเดท cooldown overlay
+        if (cooldownOverlay != null)
+        {
+            if (isOnCooldown)
+            {
+                cooldownOverlay.gameObject.SetActive(true);
+                cooldownOverlay.fillAmount = cooldownRemaining / maxCooldown;
+
+                // ✅ เพิ่มสี overlay เพื่อให้เห็นชัดว่าติด cooldown
+                cooldownOverlay.color = new Color(0f, 0f, 0f, 0.7f); // สีดำโปร่งใส
+            }
+            else
+            {
+                cooldownOverlay.gameObject.SetActive(false);
+            }
+        }
+
+        // อัพเดท cooldown text
+        if (cooldownText != null)
+        {
+            if (isOnCooldown)
+            {
+                cooldownText.gameObject.SetActive(true);
+                cooldownText.text = Mathf.Ceil(cooldownRemaining).ToString();
+                cooldownText.color = Color.white; // สีขาวให้เห็นชัด
+            }
+            else
+            {
+                cooldownText.gameObject.SetActive(false);
+            }
+        }
+    }
     private void UpdateSinglePotionButton(int slotIndex, Image iconImage, TextMeshProUGUI countText, Button button, Image cooldownOverlay = null)
     {
         // ดึง potion data จาก character
@@ -1132,6 +1223,7 @@ public class CombatUIManager : MonoBehaviour
     {
         if (localHero == null) return;
         UpdatePotionButtons();
+        UpdateSkillCooldowns(); // เพิ่มบรรทัดนี้
 
         // ใช้ NetworkedCurrentHp/NetworkedMaxHp แทน
         if (healthBar != null && localHero.NetworkedMaxHp > 0)

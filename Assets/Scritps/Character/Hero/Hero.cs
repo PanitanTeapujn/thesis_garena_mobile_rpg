@@ -831,7 +831,29 @@
 
 
     #endregion
+    public float GetSkillCooldownRemaining(int skillNumber)
+    {
+        float currentTime = Time.time;
 
+        switch (skillNumber)
+        {
+            case 1:
+                return Mathf.Max(0, nextSkill1Time - currentTime);
+            case 2:
+                return Mathf.Max(0, nextSkill2Time - currentTime);
+            case 3:
+                return Mathf.Max(0, nextSkill3Time - currentTime);
+            case 4:
+                return Mathf.Max(0, nextSkill4Time - currentTime);
+            default:
+                return 0f;
+        }
+    }
+
+    public bool CanUseSkill(int skillNumber)
+    {
+        return GetSkillCooldownRemaining(skillNumber) <= 0 && !HasStatusEffect(StatusEffectType.Stun);
+    }
     #region Ui
     public void ForceUpdateUI()
         {
