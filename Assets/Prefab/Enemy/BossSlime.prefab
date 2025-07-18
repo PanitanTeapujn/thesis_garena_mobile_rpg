@@ -327,7 +327,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4297e199231b094cb05365d7d51903e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dropSettings: {fileID: 11400000, guid: e4b96738aa5e9b747bccf12d2a9365c2, type: 2}
+  dropSettings: {fileID: 11400000, guid: 61bdef634916ddb47ae75b3271af3308, type: 2}
   goldDropEffectPrefab: {fileID: 0}
   gemsDropEffectPrefab: {fileID: 0}
   dropScatterRadius: 2
@@ -348,8 +348,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemDropSettings: {fileID: 11400000, guid: 79b63d74117c07f4088157cb98d0a37e, type: 2}
-  collectRange: 10
+  itemDropSettings: {fileID: 11400000, guid: 01723f4fee3d85e4f9063c0e66e69448, type: 2}
+  collectRange: 15
   dropDelay: 0
   showDropLogs: 1
 --- !u!114 &1925022699066192109
