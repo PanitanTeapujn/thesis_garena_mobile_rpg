@@ -60,21 +60,25 @@ public class Assassin : Hero
     {
         if (!CanUseSkill(skill1ManaCost)) return;
 
+        // ✅ ตั้ง cooldown เฉพาะเมื่อใช้สกิลสำเร็จแล้ว
+        float effectiveReduction = GetEffectiveReductionCoolDown();
+        float reductionMultiplier = 1f - (effectiveReduction / 100f);
+        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+
+        nextSkill1Time = Time.time + (skill1Cooldown * reductionMultiplier);
+
         UseMana(skill1ManaCost);
 
         // เริ่ม Poison Infusion - ให้ 3 charges
         PoisonInfusionStacks = 3;
 
-        // ✅ 🌟 เปลี่ยน: ให้ Attack Speed Aura แทนการ buff ตัวเอง
         if (statusEffectManager != null)
         {
-            statusEffectManager.ApplyAttackSpeedAura(6f, 0.3f, 12f); // +30% attack speed, 6m radius, 12s
+            statusEffectManager.ApplyAttackSpeedAura(6f, 0.3f, 12f);
             Debug.Log($"✅ Applied Attack Speed Aura (+30% for 12s in 6m radius)");
         }
 
         Debug.Log($"🐍 [Poison Infusion] {CharacterName} gains 3 poison-infused attacks!");
-
-        // Visual effect
         RPC_ShowSkillEffect("PoisonInfusion");
     }
 
@@ -84,19 +88,22 @@ public class Assassin : Hero
         if (!CanUseSkill(skill2ManaCost)) return;
         if (HasStatusEffect(StatusEffectType.Stun)) return;
 
+        // ✅ ตั้ง cooldown เฉพาะเมื่อใช้สกิลสำเร็จแล้ว
+        float effectiveReduction = GetEffectiveReductionCoolDown();
+        float reductionMultiplier = 1f - (effectiveReduction / 100f);
+        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+
+        nextSkill2Time = Time.time + (skill2Cooldown * reductionMultiplier);
+
         UseMana(skill2ManaCost);
 
-        // ✅ 🌟 เปลี่ยน: ให้ Move Speed Aura ก่อน dash
         if (statusEffectManager != null)
         {
-            statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f); // +25% move speed, 5m radius, 10s
+            statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f);
             Debug.Log($"✅ Applied Move Speed Aura (+25% for 10s)");
         }
 
-        // หาทิศทางการ dash (ตามกล้อง)
         Vector3 dashDirection = GetDashDirection();
-
-        // ✅ FIX: ส่ง RPC ไปทุกคนเพื่อ sync visual และ damage
         RPC_PerformToxicDashAll(dashDirection, transform.position);
     }
 
@@ -287,16 +294,21 @@ public class Assassin : Hero
             return;
         }
 
+        // ✅ ตั้ง cooldown เฉพาะเมื่อมีเป้าหมายและใช้สกิลสำเร็จแล้ว
+        float effectiveReduction = GetEffectiveReductionCoolDown();
+        float reductionMultiplier = 1f - (effectiveReduction / 100f);
+        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+
+        nextSkill3Time = Time.time + (skill3Cooldown * reductionMultiplier);
+
         UseMana(skill3ManaCost);
 
-        // ✅ ให้ Critical Aura เพื่อรองรับ Physical Build
         if (statusEffectManager != null)
         {
             statusEffectManager.ApplyCriticalAura(6f, 0.4f, 12f);
             Debug.Log($"✅ Applied Critical Aura (+40% for 12s)");
         }
 
-        // ✅ FIX: ส่ง RPC ไปทุกคนพร้อมกับ sync position
         Vector3 originalPos = transform.position;
         NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
         if (targetNetworkObject != null)
@@ -427,10 +439,16 @@ public class Assassin : Hero
     {
         if (!CanUseSkill(skill4ManaCost)) return;
 
+        // ✅ ตั้ง cooldown เฉพาะเมื่อใช้สกิลสำเร็จแล้ว
+        float effectiveReduction = GetEffectiveReductionCoolDown();
+        float reductionMultiplier = 1f - (effectiveReduction / 100f);
+        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+
+        nextSkill4Time = Time.time + (skill4Cooldown * reductionMultiplier);
+
         UseMana(skill4ManaCost);
 
         Vector3 cloudPosition = transform.position;
-
         RPC_CreatePlagueOutbreak(cloudPosition);
     }
 

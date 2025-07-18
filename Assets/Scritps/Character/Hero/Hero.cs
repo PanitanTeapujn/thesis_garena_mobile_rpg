@@ -64,10 +64,10 @@
         public float skill3Cooldown = 1f;
         public float skill4Cooldown = 1f;
 
-        private float nextSkill1Time = 0f;
-        private float nextSkill2Time = 0f;
-        private float nextSkill3Time = 0f;
-        private float nextSkill4Time = 0f;
+        protected float nextSkill1Time = 0f;
+    protected float nextSkill2Time = 0f;
+    protected float nextSkill3Time = 0f;
+    protected private float nextSkill4Time = 0f;
 
 
         protected override void Start()
@@ -580,7 +580,6 @@
 
     protected virtual void ProcessClassSpecificAbilities()
     {
-        // ✅ เช็คเฉพาะ HasInputAuthority
         if (HasInputAuthority)
         {
             if (GetInput(out networkInputData))
@@ -600,16 +599,15 @@
                 if (networkInputData.attack && Time.time >= nextAttackTime)
                 {
                     TryAttack();
-                    // ✅ ลบการคำนวณ attack cooldown ที่นี่ เพราะ TryAttack() จะจัดการเอง
                 }
 
-                // Skills - ใช้ cooldown reduction เหมือนเดิม
+                // ✅ แก้ไข Skills - เอา cooldown ออกจากตรงนี้
                 if (networkInputData.skill1 && !skill1Consumed)
                 {
                     if (Time.time >= nextSkill1Time)
                     {
+                        // ✅ ไม่ตั้ง cooldown ตรงนี้แล้ว
                         TryUseSkill1();
-                        nextSkill1Time = Time.time + (skill1Cooldown * reductionMultiplier);
                         skill1Consumed = true;
                     }
                 }
@@ -619,7 +617,6 @@
                     if (Time.time >= nextSkill2Time)
                     {
                         TryUseSkill2();
-                        nextSkill2Time = Time.time + (skill2Cooldown * reductionMultiplier);
                         skill2Consumed = true;
                     }
                 }
@@ -629,7 +626,6 @@
                     if (Time.time >= nextSkill3Time)
                     {
                         TryUseSkill3();
-                        nextSkill3Time = Time.time + (skill3Cooldown * reductionMultiplier);
                         skill3Consumed = true;
                     }
                 }
@@ -639,7 +635,6 @@
                     if (Time.time >= nextSkill4Time)
                     {
                         TryUseSkill4();
-                        nextSkill4Time = Time.time + (skill4Cooldown * reductionMultiplier);
                         skill4Consumed = true;
                     }
                 }
