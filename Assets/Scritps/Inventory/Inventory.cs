@@ -84,6 +84,8 @@ public class Inventory : NetworkBehaviour
     [SerializeField] private ItemData testBoots;
     [SerializeField] private ItemData testRune;
     [SerializeField] private List<ItemData> testItems = new List<ItemData>();
+    private static bool isGridReady = false;
+    private Coroutine lightweightSaveCoroutine = null;
 
     [Header("🎯 Item Database")]
     [SerializeField] private bool useItemDatabase = true; // เปิด/ปิดการใช้ database
@@ -416,8 +418,54 @@ public class Inventory : NetworkBehaviour
     private void OnDestroy()
     {
         Character.OnStatsChanged -= OnCharacterStatsChanged;
+
+        // 🆕 Force save ทันทีก่อนทำลาย
+        if (lightweightSaveCoroutine != null)
+        {
+            StopCoroutine(lightweightSaveCoroutine);
+
+            // **บันทึกทันทีก่อนออกจากเกม**
+            try
+            {
+                PersistentPlayerData.Instance?.ForceSaveInventoryAfterEquip(character, "OnDestroy-FinalSave");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Inventory] Final save error: {e.Message}");
+            }
+        }
+    }
+    private void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus) // เมื่อ app ถูก pause
+        {
+            try
+            {
+                PersistentPlayerData.Instance?.ForceSaveInventoryAfterEquip(character, "OnApplicationPause");
+                Debug.Log("[Inventory] 💾 Saved data before app pause");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Inventory] Pause save error: {e.Message}");
+            }
+        }
     }
 
+    private void OnApplicationFocus(bool hasFocus)
+    {
+        if (!hasFocus) // เมื่อ app สูญเสีย focus
+        {
+            try
+            {
+                PersistentPlayerData.Instance?.ForceSaveInventoryAfterEquip(character, "OnApplicationFocus");
+                Debug.Log("[Inventory] 💾 Saved data before app lost focus");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[Inventory] Focus save error: {e.Message}");
+            }
+        }
+    }
     private void InitializeInventory()
     {
         // คำนวณ grid dimensions ก่อน
@@ -517,6 +565,7 @@ public class Inventory : NetworkBehaviour
     }
 
     #region Inventory Management
+    // ใน Inventory.cs - กลับไปใช้ AddItem แบบเดิมแต่ปรับปรุง
     public bool AddItem(ItemData itemData, int count = 1)
     {
         if (itemData == null || count <= 0)
@@ -525,13 +574,13 @@ public class Inventory : NetworkBehaviour
             return false;
         }
 
-        // ✅ Force สร้าง inventory grid ก่อนเพิ่ม item
-        ForceCreateInventoryGridIfNeeded();
+        // 🆕 **เฉพาะการ optimize grid creation เท่านั้น**
+        EnsureGridIsReady();
 
-        // เก็บสถานะก่อนเพิ่ม item สำหรับ validation
+        // เก็บสถานะก่อนเพิ่ม item
         int usedSlotsBefore = UsedSlots;
 
-        // ถ้า item สามารถ stack ได้ ลองหา slot ที่มี item เดียวกันแล้วยังไม่เต็ม
+        // Stack items if possible
         if (itemData.CanStack())
         {
             for (int i = 0; i < currentSlots; i++)
@@ -543,9 +592,7 @@ public class Inventory : NetworkBehaviour
                     slot.stackCount += canAdd;
                     count -= canAdd;
 
-                    Debug.Log($"[Inventory] Stacked {canAdd} {itemData.ItemName} in slot {i}. Total: {slot.stackCount}");
-
-                    // ✅ แจ้ง UI ทันที
+                    // ✅ **เก็บ UI update แบบเดิม**
                     OnInventoryItemChanged?.Invoke(character, i, slot);
 
                     if (HasStateAuthority)
@@ -555,21 +602,21 @@ public class Inventory : NetworkBehaviour
 
                     if (count <= 0)
                     {
-                        // 🆕 Auto-save หลังจากเพิ่ม item สำเร็จ
-                        AutoSaveInventoryData("AddItem - Stack");
-                        return true; // เพิ่มครบแล้ว
+                        // 🆕 **ใช้ delayed save เบาๆ แทน immediate save**
+                        ScheduleLightweightSave("AddItem-Stack", 1f);
+                        return true;
                     }
                 }
             }
         }
 
-        // หาช่องว่างสำหรับ item ที่เหลือ
+        // Add to empty slots
         while (count > 0)
         {
             int emptySlot = FindFirstEmptySlot();
             if (emptySlot == -1)
             {
-                Debug.LogWarning($"[Inventory] No empty slots available! Cannot add {count} {itemData.ItemName}");
+                Debug.LogWarning($"[Inventory] No empty slots available!");
                 return false;
             }
 
@@ -578,9 +625,7 @@ public class Inventory : NetworkBehaviour
             items[emptySlot].stackCount = addCount;
             count -= addCount;
 
-            Debug.Log($"[Inventory] Added {addCount} {itemData.ItemName} to slot {emptySlot}");
-
-            // ✅ แจ้ง UI ทันที
+            // ✅ **เก็บ UI update แบบเดิม**
             OnInventoryItemChanged?.Invoke(character, emptySlot, items[emptySlot]);
 
             if (HasStateAuthority)
@@ -589,20 +634,14 @@ public class Inventory : NetworkBehaviour
             }
         }
 
-        // 🆕 ตรวจสอบว่าเพิ่ม item สำเร็จหรือไม่
+        // Check success
         int usedSlotsAfter = UsedSlots;
         bool addSuccess = usedSlotsAfter > usedSlotsBefore;
 
         if (addSuccess)
         {
-            Debug.Log($"[Inventory] ✅ Successfully added {itemData.ItemName}. Slots: {usedSlotsBefore} → {usedSlotsAfter}");
-
-            // 🆕 Auto-save หลังจากเพิ่ม item สำเร็จ
-            AutoSaveInventoryData("AddItem - New Slot");
-        }
-        else
-        {
-            Debug.LogWarning($"[Inventory] ⚠️ AddItem may have failed for {itemData.ItemName}");
+            // 🆕 **ใช้ delayed save เบาๆ เท่านั้น**
+            ScheduleLightweightSave("AddItem-NewSlot", 1f);
         }
 
         return addSuccess;
@@ -656,7 +695,55 @@ public class Inventory : NetworkBehaviour
             }
         }
     }
+    private void EnsureGridIsReady()
+    {
+        if (isGridReady) return;
 
+        InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
+        if (gridManager != null && gridManager.OwnerCharacter == character)
+        {
+            isGridReady = true;
+            return;
+        }
+
+        // ถ้ายังไม่ ready ให้ setup อย่างเบาๆ
+        if (gridManager != null && gridManager.OwnerCharacter == null)
+        {
+            gridManager.SetOwnerCharacter(character);
+            isGridReady = true;
+        }
+    }
+
+    // 🆕 Method ใหม่สำหรับ lightweight save
+    private void ScheduleLightweightSave(string action, float delay)
+    {
+        // ยกเลิก save เก่า
+        if (lightweightSaveCoroutine != null)
+        {
+            StopCoroutine(lightweightSaveCoroutine);
+        }
+
+        // เริ่ม save ใหม่
+        lightweightSaveCoroutine = StartCoroutine(LightweightSaveCoroutine(action, delay));
+    }
+
+    // 🆕 Coroutine ใหม่สำหรับ save ที่ปลอดภัย
+    private IEnumerator LightweightSaveCoroutine(string action, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        try
+        {
+            // 🚨 **ใช้ SafeAutoSaveInventory เท่านั้น - ไม่ใช้ Force save**
+            PersistentPlayerData.Instance?.SafeAutoSaveInventory(character, action);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Inventory] Lightweight save error: {e.Message}");
+        }
+
+        lightweightSaveCoroutine = null;
+    }
     private IEnumerator VerifyGridCreation(InventoryGridManager gridManager)
     {
         yield return null; // รอ 1 frame
