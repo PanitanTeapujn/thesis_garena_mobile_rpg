@@ -151,12 +151,13 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // แก้ไขใน PersistentPlayerData.cs - LoadDataCoroutine()
+    // แก้ไขใน PersistentPlayerData.cs - LoadDataCoroutine()
     public IEnumerator LoadDataCoroutine()
     {
         if (auth?.CurrentUser == null)
         {
             Debug.LogWarning("[PersistentPlayerData] No authenticated user, loading from backup");
-            LoadFromPlayerPrefsBackup(); // 🆕 เพิ่ม backup loading
+            LoadFromPlayerPrefsBackup();
             yield break;
         }
 
@@ -164,7 +165,6 @@ public class PersistentPlayerData : MonoBehaviour
 
         var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).GetValueAsync();
 
-        // 🔧 เพิ่ม timeout เป็น 30 วินาที
         float timeout = 30f;
         float elapsed = 0f;
 
@@ -173,7 +173,6 @@ public class PersistentPlayerData : MonoBehaviour
             elapsed += Time.deltaTime;
             yield return null;
 
-            // 🆕 แสดง progress ทุก 5 วินาที
             if (Mathf.RoundToInt(elapsed) % 5 == 0 && elapsed % 1f < 0.1f)
             {
                 Debug.Log($"[PersistentPlayerData] Still loading... {elapsed:F1}s");
@@ -185,50 +184,55 @@ public class PersistentPlayerData : MonoBehaviour
             string json = task.Result.GetRawJsonValue();
             bool loaded = false;
 
-            // 🔧 เพิ่มการ validate ข้อมูลมากขึ้น
-            if (!string.IsNullOrEmpty(json) && json.Length > 100) // เพิ่มขนาดขั้นต่ำ
+            if (!string.IsNullOrEmpty(json) && json.Length > 100)
             {
                 try
                 {
                     var tempData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
 
-                    // 🆕 validate ข้อมูลให้เข้มงวดขึ้น
                     if (IsValidPlayerData(tempData))
                     {
                         multiCharacterData = tempData;
                         isDataLoaded = true;
                         loaded = true;
+
+                        // 🆕 เคลียร์ PlayerPrefs เก่าเมื่อโหลดข้อมูลใหม่จาก Firebase สำเร็จ
+                        ClearOldPlayerPrefsData();
+
                         SaveToPlayerPrefs();
 
                         Debug.Log($"✅ Loaded valid data: {multiCharacterData.playerName}");
                         Debug.Log($"  - Characters: {multiCharacterData.characters.Count}");
                         Debug.Log($"  - Active: {multiCharacterData.currentActiveCharacter}");
-                        Debug.Log($"  - Stage Progress: {multiCharacterData.stageProgress?.completedStages.Count ?? 0} completed");
+                        Debug.Log($"  - Gold: {multiCharacterData.sharedCurrency?.gold ?? 0}");
 
-                        // 🆕 บันทึกเป็น backup
                         SaveCompleteBackupToPlayerPrefs();
                     }
                     else
                     {
-                        Debug.LogWarning("[PersistentPlayerData] Invalid data structure, trying backup");
-                        loaded = LoadFromPlayerPrefsBackup();
+                        Debug.LogWarning("[PersistentPlayerData] Invalid data structure, creating new data");
+                        // 🆕 สำหรับบัญชีใหม่ที่ data ไม่ valid - ไม่ใช้ backup เก่า
+                        loaded = false;
                     }
                 }
                 catch (System.Exception e)
                 {
                     Debug.LogError($"[PersistentPlayerData] Failed to parse data: {e.Message}");
-                    loaded = LoadFromPlayerPrefsBackup();
+                    // 🆕 ถ้า parse ไม่ได้ แสดงว่าเป็นบัญชีใหม่ - ไม่ใช้ backup เก่า
+                    loaded = false;
                 }
             }
             else
             {
-                Debug.LogWarning($"[PersistentPlayerData] JSON too small ({json?.Length ?? 0} chars), trying backup");
-                loaded = LoadFromPlayerPrefsBackup();
+                Debug.LogWarning($"[PersistentPlayerData] JSON too small ({json?.Length ?? 0} chars), this might be a new account");
+                loaded = false;
             }
 
             if (!loaded)
             {
-                Debug.LogWarning("[PersistentPlayerData] Creating new data as last resort");
+                Debug.LogWarning("[PersistentPlayerData] Creating new data for new account");
+                // 🆕 เคลียร์ PlayerPrefs เก่าก่อนสร้างข้อมูลใหม่
+                ClearOldPlayerPrefsData();
                 CreateDefaultMultiCharacterData();
             }
             else
@@ -238,29 +242,56 @@ public class PersistentPlayerData : MonoBehaviour
         }
         else if (elapsed >= timeout)
         {
-            Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Trying backup data...");
+            Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Creating new data...");
 
-            bool backupLoaded = LoadFromPlayerPrefsBackup();
-            if (!backupLoaded)
-            {
-                Debug.LogError("[PersistentPlayerData] No backup available, creating new data");
-                CreateDefaultMultiCharacterData();
-            }
+            // 🆕 หาก timeout ให้สร้างข้อมูลใหม่แทนการใช้ backup เก่า
+            ClearOldPlayerPrefsData();
+            CreateDefaultMultiCharacterData();
         }
         else
         {
-            Debug.Log("[PersistentPlayerData] No Firebase data found, trying backup...");
+            Debug.Log("[PersistentPlayerData] No Firebase data found, creating new account data...");
 
-            bool backupLoaded = LoadFromPlayerPrefsBackup();
-            if (!backupLoaded)
-            {
-                CreateDefaultMultiCharacterData();
-            }
+            // 🆕 ไม่มีข้อมูลใน Firebase = บัญชีใหม่
+            ClearOldPlayerPrefsData();
+            CreateDefaultMultiCharacterData();
         }
 
         RegisterPlayerInDirectory();
     }
 
+    // 🆕 เพิ่ม method สำหรับเคลียร์ PlayerPrefs เก่า
+    private void ClearOldPlayerPrefsData()
+    {
+        try
+        {
+            // เคลียร์ข้อมูลพื้นฐาน
+            PlayerPrefs.DeleteKey("PlayerName");
+            PlayerPrefs.DeleteKey("PlayerGold");
+            PlayerPrefs.DeleteKey("PlayerGems");
+            PlayerPrefs.DeleteKey("LastCharacterSelected");
+
+            // เคลียร์ข้อมูล stats
+            PlayerPrefs.DeleteKey("PlayerLevel");
+            PlayerPrefs.DeleteKey("PlayerExp");
+            PlayerPrefs.DeleteKey("PlayerMaxHp");
+            PlayerPrefs.DeleteKey("PlayerAttackDamage");
+
+            // เคลียร์ backup data เก่า
+            PlayerPrefs.DeleteKey("PlayerDataBackup");
+            PlayerPrefs.DeleteKey("PlayerDataBackupDate");
+            PlayerPrefs.DeleteKey("CurrencyLastSave");
+            PlayerPrefs.DeleteKey("InventoryLastSave");
+
+            PlayerPrefs.Save();
+
+            Debug.Log("🧹 Cleared old PlayerPrefs data for new account");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ClearOldPlayerPrefsData] Error: {e.Message}");
+        }
+    }
     // 🆕 เพิ่ม method สำหรับ validate ข้อมูล
     private bool IsValidPlayerData(MultiCharacterPlayerData data)
     {
@@ -340,13 +371,18 @@ public class PersistentPlayerData : MonoBehaviour
     private void CreateDefaultMultiCharacterData()
     {
         multiCharacterData = new MultiCharacterPlayerData();
-        multiCharacterData.playerName = PlayerPrefs.GetString("PlayerName", "Player");
+
+        // 🆕 ใช้ชื่อจาก Firebase Auth หรือ default
+        string newPlayerName = auth?.CurrentUser?.DisplayName ?? "Player";
+        multiCharacterData.playerName = newPlayerName;
         multiCharacterData.currentActiveCharacter = "Assassin";
+
         InitializeCurrencyForNewPlayer();
         isDataLoaded = true;
         SaveToPlayerPrefs();
 
-        Debug.Log($"✅ Created default multi-character data with Assassin for {multiCharacterData.playerName}");
+        Debug.Log($"✅ Created default data for NEW PLAYER: {multiCharacterData.playerName}");
+        Debug.Log($"✅ New player gold: {multiCharacterData.sharedCurrency?.gold ?? 5000}");
     }
     private void InitializeCurrencyForNewPlayer()
     {

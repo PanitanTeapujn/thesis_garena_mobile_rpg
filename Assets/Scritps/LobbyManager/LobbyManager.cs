@@ -179,7 +179,31 @@ public class LobbyManager : MonoBehaviour
 
         SceneManager.LoadScene(sceneToLoad);
     }
+    private IEnumerator LoadAndShowPlayerStats()
+    {
+        Debug.Log("[LobbyManager] Loading multi-character player stats...");
 
+        float timeout = 5f;
+        float elapsed = 0f;
+
+        while (!PersistentPlayerData.Instance.HasValidData() && elapsed < timeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        if (PersistentPlayerData.Instance.HasValidData())
+        {
+            // 🆕 Refresh ทั้งชื่อและ stats
+            RefreshAllPlayerInfo();
+            Debug.Log($"✅ [LobbyManager] Player data loaded successfully - Name: {PersistentPlayerData.Instance.GetPlayerName()}");
+        }
+        else
+        {
+            Debug.LogWarning("[LobbyManager] Timeout loading player data. Using PlayerPrefs fallback.");
+            LoadStatsFromPlayerPrefs();
+        }
+    }
     void HandlePartyGameSelected()
     {
         ShowPartyOptions();
@@ -323,48 +347,44 @@ public class LobbyManager : MonoBehaviour
     #endregion
 
     #region Player Data Management - การจัดการข้อมูลผู้เล่นและการแสดงผล Stats
+    // แก้ไขใน LobbyManager.cs - ShowBasicPlayerInfo()
     private void ShowBasicPlayerInfo()
     {
-        string playerName = PlayerPrefs.GetString("PlayerName", "Unknown");
+        // 🆕 ใช้ข้อมูลจาก PersistentPlayerData แทน PlayerPrefs
+        string playerName = "Player"; // default
+        string savedCharacter = "Assassin"; // default
+        int savedLevel = 1; // default
+
+        if (PersistentPlayerData.Instance != null && PersistentPlayerData.Instance.HasValidData())
+        {
+            // ใช้ข้อมูลจาก Firebase/PersistentPlayerData
+            playerName = PersistentPlayerData.Instance.GetPlayerName();
+            savedCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            savedLevel = PersistentPlayerData.Instance.GetCurrentLevel();
+
+            Debug.Log($"[LobbyManager] Using data from PersistentPlayerData: {playerName}, {savedCharacter}, Level {savedLevel}");
+        }
+        else
+        {
+            // Fallback เฉพาะเมื่อไม่มีข้อมูลใน PersistentPlayerData
+            playerName = PlayerPrefs.GetString("PlayerName", "Player");
+            savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
+            savedLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
+
+            Debug.Log($"[LobbyManager] Using fallback from PlayerPrefs: {playerName}, {savedCharacter}, Level {savedLevel}");
+        }
+
+        // แสดงผลใน UI
         if (playerNameText != null)
             playerNameText.text = playerName;
 
-        string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
         if (characterTypeText != null)
             characterTypeText.text = savedCharacter;
 
         if (playerLevelText != null)
-        {
-            int savedLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
             playerLevelText.text = $"Level {savedLevel}";
-        }
 
         Debug.Log($"[LobbyManager] Basic player info displayed: {savedCharacter}");
-    }
-
-    private IEnumerator LoadAndShowPlayerStats()
-    {
-        Debug.Log("[LobbyManager] Loading multi-character player stats...");
-
-        float timeout = 5f;
-        float elapsed = 0f;
-
-        while (!PersistentPlayerData.Instance.HasValidData() && elapsed < timeout)
-        {
-            elapsed += Time.deltaTime;
-            yield return new WaitForSeconds(0.1f);
-        }
-
-        if (PersistentPlayerData.Instance.HasValidData())
-        {
-            RefreshPlayerStats();
-            Debug.Log($"✅ [LobbyManager] Player stats loaded successfully");
-        }
-        else
-        {
-            Debug.LogWarning("[LobbyManager] Timeout loading player data. Using PlayerPrefs fallback.");
-            LoadStatsFromPlayerPrefs();
-        }
     }
 
     private void LoadStatsFromPlayerPrefs()
@@ -389,6 +409,16 @@ public class LobbyManager : MonoBehaviour
 
         try
         {
+            // 🆕 อัปเดตชื่อผู้เล่นจาก PersistentPlayerData
+            if (PersistentPlayerData.Instance != null && PersistentPlayerData.Instance.HasValidData())
+            {
+                string currentPlayerName = PersistentPlayerData.Instance.GetPlayerName();
+                if (playerNameText != null && !string.IsNullOrEmpty(currentPlayerName))
+                {
+                    playerNameText.text = currentPlayerName;
+                }
+            }
+
             string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
             if (!string.IsNullOrEmpty(activeCharacter) && characterTypeText != null)
             {
@@ -426,6 +456,11 @@ public class LobbyManager : MonoBehaviour
         {
             Debug.LogWarning($"[LobbyManager] Error updating UI: {e.Message}");
         }
+    }
+    public void RefreshAllPlayerInfo()
+    {
+        ShowBasicPlayerInfo(); // Refresh ชื่อและข้อมูลพื้นฐาน
+        RefreshPlayerStats();  // Refresh stats
     }
 
     public void RefreshPlayerStats()
