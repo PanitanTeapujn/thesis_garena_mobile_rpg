@@ -30,6 +30,7 @@ public class LobbyManager : MonoBehaviour
     public Button logoutButton;
     public Button upgradeButton;
     public Button shopButton;
+    public Button gachaButton;
     [Header("Character Selection")]
     public Button characterSelectionButton;
     #endregion
@@ -80,6 +81,12 @@ public class LobbyManager : MonoBehaviour
     public StageSelectionManager stageSelectionManager;
     public UpgradeLobby upgradeLobby;
     public ShopLooby shopLooby;
+    #endregion
+
+    #region Gacha System Integration - เพิ่มในส่วน Header ของ LobbyManager
+    [Header("Gacha System")]
+    public GameObject gachaPanel;
+    public GachaUIManager gachaUIManager;
     #endregion
 
     #region Private Variables - ตัวแปรภายในสำหรับจัดการข้อมูลและสถานะ
@@ -168,6 +175,9 @@ public class LobbyManager : MonoBehaviour
             backFromFriendsButton.onClick.AddListener(BackToMainLobby);
         if (refreshFriendsButton != null)
             refreshFriendsButton.onClick.AddListener(ManualRefreshFriends);
+        //Gacha
+        if (gachaButton != null)
+            gachaButton.onClick.AddListener(ShowGachaPanel);
     }
     #endregion
 
@@ -275,7 +285,10 @@ public class LobbyManager : MonoBehaviour
         shopPanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
-        
+
+        if (gachaPanel != null)
+            gachaPanel.SetActive(false);
+
     }
     #endregion
 
@@ -861,5 +874,33 @@ public class LobbyManager : MonoBehaviour
         }
     }
     #endregion
+    #endregion
+
+    #region Gacha System 
+    void ShowGachaPanel()
+    {
+        Debug.Log("🎰 ShowGachaPanel() called");
+
+        HideAllPanels();
+
+        if (gachaPanel != null)
+        {
+            gachaPanel.SetActive(true);
+
+            // เริ่ม GachaUIManager
+            if (gachaUIManager != null)
+            {
+                gachaUIManager.OpenGachaUI();
+            }
+            else
+            {
+                Debug.LogError(" GachaUIManager reference is missing!");
+            }
+        }
+        else
+        {
+            Debug.LogError(" gachaPanel is NULL!");
+        }
+    }
     #endregion
 }

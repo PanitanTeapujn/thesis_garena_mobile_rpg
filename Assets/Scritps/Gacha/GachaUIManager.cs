@@ -3,19 +3,26 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Collections;
 using TMPro;
+using Fusion;
 
-public class GachaUIManager : MonoBehaviour
+/// <summary>
+/// จัดการ UI ของระบบกาชา - ปรับปรุงให้สอดคล้องกับ LobbyManager และ CurrencyManager
+/// </summary>
+public class GachaUIManager : NetworkBehaviour
 {
-    [Header("Main UI Panels")]
+    #region UI Panels - ใช้ pattern เดียวกับ LobbyManager
+    [Header("🎰 Main UI Panels")]
     public GameObject gachaMainPanel;
     public GameObject gachaResultPanel;
     public GameObject machineSelectionPanel;
+    public GameObject gachaHistoryPanel; // ✅ เพิ่ม history panel
 
-    [Header("Machine Selection")]
+    [Header("🎛️ Machine Selection")]
     public Transform machineButtonContainer;
     public Button machineButtonPrefab;
+    public Button backToLobbyButton; // ✅ เพิ่มปุ่มกลับ lobby
 
-    [Header("Current Machine UI")]
+    [Header("🎯 Current Machine UI")]
     public TextMeshProUGUI machineNameText;
     public TextMeshProUGUI machineDescriptionText;
     public Image machineIconImage;
@@ -23,65 +30,334 @@ public class GachaUIManager : MonoBehaviour
     public TextMeshProUGUI costTenText;
     public Button rollSingleButton;
     public Button rollTenButton;
+    public Button viewHistoryButton; // ✅ เพิ่มปุ่มดู history
 
-    [Header("Results Display")]
+    [Header("💰 Currency Display - เชื่อมต่อกับ CurrencyManager")]
+    public TextMeshProUGUI currentGoldText;
+    public TextMeshProUGUI currentGemsText;
+    public GameObject insufficientCurrencyWarning;
+
+    [Header("🎁 Results Display")]
     public Transform resultItemContainer;
     public GameObject resultItemPrefab;
     public Button closeResultsButton;
+    public Button addToInventoryButton; // ✅ เพิ่มปุ่มเพิ่มเข้า inventory
 
-    [Header("Effects")]
+    [Header("📊 History Panel")]
+    public Transform historyItemContainer;
+    public GameObject historyItemPrefab;
+    public Button closeHistoryButton;
+    public ScrollRect historyScrollRect;
+
+    [Header("🎵 Effects & Audio")]
     public ParticleSystem gachaOpenEffect;
     public AudioSource uiAudioSource;
     public AudioClip buttonClickSound;
     public AudioClip gachaOpenSound;
     public AudioClip rareItemSound;
+    public AudioClip insufficientFundsSound; // ✅ เพิ่มเสียง error
 
-    [Header("Error Display")]
+    [Header("⚠️ Error Display")]
     public GameObject errorPanel;
     public TextMeshProUGUI errorMessageText;
     public Button closeErrorButton;
 
+    [Header("🔗 System References")]
+    public LobbyManager lobbyManager; // ✅ เชื่อมต่อกับ LobbyManager
+    #endregion
+
     #region Private Variables
     private GachaMachine currentMachine;
     private List<Button> machineButtons = new List<Button>();
+    private CurrencyManager currencyManager;
+    private List<GachaReward> pendingRewards = new List<GachaReward>(); // ✅ rewards ที่รอเพิ่มเข้า inventory
+    private List<GachaHistoryEntry> gachaHistory = new List<GachaHistoryEntry>(); // ✅ ประวัติ gacha
+    private Character playerCharacter;
+    private Inventory playerInventory;
+
+    // Network state
+    [Networked] public bool IsGachaInProgress { get; set; } = false;
     #endregion
 
-    #region Initialization
+    #region Initialization - ใช้ pattern เดียวกับ LobbyManager
     void Start()
     {
         InitializeUI();
         SetupButtonEvents();
+        SetupSystemReferences();
         RefreshMachineSelection();
+
+        // Subscribe to currency events
+        CurrencyManager.OnGoldChanged += OnCurrencyChanged;
+        CurrencyManager.OnGemsChanged += OnCurrencyChanged;
+
+        // Subscribe to gacha events
+        GachaSystem.OnGachaCompleted += OnGachaCompleted;
+        GachaSystem.OnRewardsAddedToInventory += OnRewardsAddedToInventory;
+        GachaSystem.OnInventoryFull += OnInventoryFull;
+    }
+
+    void OnDestroy()
+    {
+        // Unsubscribe from events
+        CurrencyManager.OnGoldChanged -= OnCurrencyChanged;
+        CurrencyManager.OnGemsChanged -= OnCurrencyChanged;
+        GachaSystem.OnGachaCompleted -= OnGachaCompleted;
+        GachaSystem.OnRewardsAddedToInventory -= OnRewardsAddedToInventory;
+        GachaSystem.OnInventoryFull -= OnInventoryFull;
+    }
+
+    public override void Spawned()
+    {
+        base.Spawned();
+
+        // Network initialization
+        if (HasInputAuthority)
+        {
+            SetupForLocalPlayer();
+        }
     }
 
     private void InitializeUI()
     {
-        // ซ่อน panels ทั้งหมดตอนเริ่มต้น
-        if (gachaMainPanel != null) gachaMainPanel.SetActive(false);
-        if (gachaResultPanel != null) gachaResultPanel.SetActive(false);
-        if (machineSelectionPanel != null) machineSelectionPanel.SetActive(false);
-        if (errorPanel != null) errorPanel.SetActive(false);
+        // ซ่อน panels ทั้งหมดเหมือน LobbyManager
+        HideAllPanels();
 
-        Debug.Log(" GachaUIManager initialized");
+        Debug.Log("🎨 [GachaUIManager] UI initialized");
     }
 
     private void SetupButtonEvents()
     {
+        // Main gacha buttons
         if (rollSingleButton != null)
-            rollSingleButton.onClick.AddListener(() => RollGacha(1));
+            rollSingleButton.onClick.AddListener(() => RequestGachaRoll(1));
 
         if (rollTenButton != null)
-            rollTenButton.onClick.AddListener(() => RollGacha(10));
+            rollTenButton.onClick.AddListener(() => RequestGachaRoll(10));
 
+        // Panel navigation buttons
         if (closeResultsButton != null)
             closeResultsButton.onClick.AddListener(CloseResults);
 
         if (closeErrorButton != null)
             closeErrorButton.onClick.AddListener(CloseError);
+
+        if (backToLobbyButton != null)
+            backToLobbyButton.onClick.AddListener(BackToLobby);
+
+        if (viewHistoryButton != null)
+            viewHistoryButton.onClick.AddListener(ShowHistory);
+
+        if (closeHistoryButton != null)
+            closeHistoryButton.onClick.AddListener(CloseHistory);
+
+        // Inventory integration
+        if (addToInventoryButton != null)
+            addToInventoryButton.onClick.AddListener(AddPendingRewardsToInventory);
+    }
+
+    private void SetupSystemReferences()
+    {
+        // หา CurrencyManager
+        currencyManager = CurrencyManager.FindCurrencyManager();
+        if (currencyManager == null)
+        {
+            Debug.LogWarning("🎰 [GachaUIManager] CurrencyManager not found!");
+        }
+
+        // หา player character และ inventory
+        playerCharacter = FindPlayerCharacter();
+        if (playerCharacter != null)
+        {
+            playerInventory = playerCharacter.GetComponent<Inventory>();
+            if (playerInventory == null)
+            {
+                Debug.LogWarning("🎰 [GachaUIManager] Player inventory not found!");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("🎰 [GachaUIManager] Player character not found!");
+        }
+
+        // หา LobbyManager ถ้ายังไม่ได้ set
+        if (lobbyManager == null)
+        {
+            lobbyManager = FindObjectOfType<LobbyManager>();
+        }
+    }
+
+    private void SetupForLocalPlayer()
+    {
+        // Load gacha history from Firebase
+        LoadGachaHistoryFromFirebase();
+
+        // Update currency display
+        UpdateCurrencyDisplay();
     }
     #endregion
 
-    #region Machine Selection
+    #region Panel Management - ใช้ pattern เดียวกับ LobbyManager
+    private void HideAllPanels()
+    {
+        if (gachaMainPanel != null) gachaMainPanel.SetActive(false);
+        if (gachaResultPanel != null) gachaResultPanel.SetActive(false);
+        if (machineSelectionPanel != null) machineSelectionPanel.SetActive(false);
+        if (gachaHistoryPanel != null) gachaHistoryPanel.SetActive(false);
+        if (errorPanel != null) errorPanel.SetActive(false);
+        if (insufficientCurrencyWarning != null) insufficientCurrencyWarning.SetActive(false);
+    }
+
+    public void ShowMachineSelection()
+    {
+        HideAllPanels();
+        if (machineSelectionPanel != null)
+        {
+            machineSelectionPanel.SetActive(true);
+            RefreshMachineSelection();
+            UpdateCurrencyDisplay();
+        }
+        PlayButtonSound();
+    }
+
+    public void ShowGachaPanel()
+    {
+        HideAllPanels();
+        if (gachaMainPanel != null)
+        {
+            gachaMainPanel.SetActive(true);
+            UpdateCurrencyDisplay();
+            UpdateMachineUI();
+        }
+        PlayButtonSound();
+    }
+
+    private void ShowHistory()
+    {
+        HideAllPanels();
+        if (gachaHistoryPanel != null)
+        {
+            gachaHistoryPanel.SetActive(true);
+            UpdateHistoryDisplay();
+        }
+        PlayButtonSound();
+    }
+
+    private void CloseHistory()
+    {
+        ShowGachaPanel();
+        PlayButtonSound();
+    }
+
+    private void BackToLobby()
+    {
+        HideAllPanels();
+
+        // ใช้ LobbyManager เพื่อกลับไป lobby
+        if (lobbyManager != null)
+        {
+            lobbyManager.BackToMainLobby();
+        }
+
+        PlayButtonSound();
+    }
+    #endregion
+
+    #region Currency Integration - เชื่อมต่อกับ CurrencyManager
+    private void UpdateCurrencyDisplay()
+    {
+        if (currencyManager == null) return;
+
+        // แสดงจำนวนเงินปัจจุบัน
+        if (currentGoldText != null)
+        {
+            currentGoldText.text = $"Gold: {currencyManager.GetCurrentGold():N0}";
+        }
+
+        if (currentGemsText != null)
+        {
+            currentGemsText.text = $"Gems: {currencyManager.GetCurrentGems():N0}";
+        }
+
+        // อัปเดตสถานะปุ่ม roll
+        UpdateRollButtonStates();
+    }
+
+    private void UpdateRollButtonStates()
+    {
+        if (currentMachine == null || currentMachine.Pool == null) return;
+
+        // ตรวจสอบ currency สำหรับ single roll
+        bool canAffordSingle = CanAffordRoll(1);
+        if (rollSingleButton != null)
+        {
+            rollSingleButton.interactable = canAffordSingle && !IsGachaInProgress;
+        }
+
+        // ตรวจสอบ currency สำหรับ ten rolls
+        bool canAffordTen = CanAffordRoll(10);
+        if (rollTenButton != null)
+        {
+            rollTenButton.interactable = canAffordTen && !IsGachaInProgress;
+        }
+    }
+
+    private bool CanAffordRoll(int rollCount)
+    {
+        if (currentMachine == null || currentMachine.Pool == null || currencyManager == null)
+            return false;
+
+        long cost = rollCount == 1 ?
+            currentMachine.Pool.costPerRoll :
+            currentMachine.Pool.costPerTenRolls;
+
+        // ตรวจสอบตาม currency type
+        if (currentMachine.Pool.costCurrency == "Gems")
+        {
+            return currencyManager.HasEnoughGems((int)cost);
+        }
+        else if (currentMachine.Pool.costCurrency == "Gold")
+        {
+            return currencyManager.HasEnoughGold(cost);
+        }
+
+        return false;
+    }
+
+    private bool SpendCurrency(int rollCount)
+    {
+        if (currentMachine == null || currentMachine.Pool == null || currencyManager == null)
+            return false;
+
+        long cost = rollCount == 1 ?
+            currentMachine.Pool.costPerRoll :
+            currentMachine.Pool.costPerTenRolls;
+
+        // ใช้จ่ายตาม currency type
+        if (currentMachine.Pool.costCurrency == "Gems")
+        {
+            return currencyManager.SpendGems((int)cost);
+        }
+        else if (currentMachine.Pool.costCurrency == "Gold")
+        {
+            return currencyManager.SpendGold(cost);
+        }
+
+        return false;
+    }
+
+    private void OnCurrencyChanged(long oldAmount, long newAmount)
+    {
+        UpdateCurrencyDisplay();
+    }
+
+    private void OnCurrencyChanged(int oldAmount, int newAmount)
+    {
+        UpdateCurrencyDisplay();
+    }
+    #endregion
+
+    #region Machine Management
     public void RefreshMachineSelection()
     {
         ClearMachineButtons();
@@ -93,7 +369,7 @@ public class GachaUIManager : MonoBehaviour
             CreateMachineButton(machine);
         }
 
-        Debug.Log($" Refreshed machine selection: {GachaSystem.Instance.MachineCount} machines");
+        Debug.Log($"🔄 [GachaUIManager] Refreshed machine selection: {GachaSystem.Instance.MachineCount} machines");
     }
 
     private void ClearMachineButtons()
@@ -112,7 +388,7 @@ public class GachaUIManager : MonoBehaviour
         Button newButton = Instantiate(machineButtonPrefab, machineButtonContainer);
         machineButtons.Add(newButton);
 
-        // Setup button text and icon
+        // Setup button display
         TextMeshProUGUI buttonText = newButton.GetComponentInChildren<TextMeshProUGUI>();
         if (buttonText != null)
         {
@@ -123,6 +399,13 @@ public class GachaUIManager : MonoBehaviour
         if (buttonIcon != null && machine.Pool != null && machine.Pool.poolIcon != null)
         {
             buttonIcon.sprite = machine.Pool.poolIcon;
+        }
+
+        // Setup cost display on button
+        TextMeshProUGUI costText = newButton.transform.Find("CostText")?.GetComponent<TextMeshProUGUI>();
+        if (costText != null && machine.Pool != null)
+        {
+            costText.text = $"{machine.Pool.costPerRoll} {machine.Pool.costCurrency}";
         }
 
         // Setup button click event
@@ -136,30 +419,7 @@ public class GachaUIManager : MonoBehaviour
         ShowGachaPanel();
         PlayButtonSound();
 
-        Debug.Log($" Selected machine: {machine.machineName}");
-    }
-    #endregion
-
-    #region UI Display
-    public void ShowMachineSelection()
-    {
-        if (machineSelectionPanel != null)
-        {
-            machineSelectionPanel.SetActive(true);
-            RefreshMachineSelection();
-        }
-    }
-
-    public void ShowGachaPanel()
-    {
-        if (gachaMainPanel != null)
-        {
-            gachaMainPanel.SetActive(true);
-        }
-        if (machineSelectionPanel != null)
-        {
-            machineSelectionPanel.SetActive(false);
-        }
+        Debug.Log($"🎯 [GachaUIManager] Selected machine: {machine.machineName}");
     }
 
     private void UpdateMachineUI()
@@ -183,18 +443,13 @@ public class GachaUIManager : MonoBehaviour
         if (costTenText != null)
             costTenText.text = $"{currentMachine.Pool.costPerTenRolls} {currentMachine.Pool.costCurrency}";
 
-        // Update guarantee display if needed
-        UpdateGuaranteeDisplay();
-    }
-
-    private void UpdateGuaranteeDisplay()
-    {
-        // TODO: แสดงข้อมูล guarantee counter
+        // Update button states
+        UpdateRollButtonStates();
     }
     #endregion
 
-    #region Gacha Operations
-    private void RollGacha(int rollCount)
+    #region Gacha Operations - เชื่อมต่อกับระบบ Currency และ Network
+    private void RequestGachaRoll(int rollCount)
     {
         if (currentMachine == null)
         {
@@ -202,37 +457,140 @@ public class GachaUIManager : MonoBehaviour
             return;
         }
 
+        if (IsGachaInProgress)
+        {
+            ShowErrorMessage("Gacha roll already in progress!");
+            return;
+        }
+
+        if (!CanAffordRoll(rollCount))
+        {
+            ShowInsufficientCurrencyWarning();
+            return;
+        }
+
+        // ✅ Network RPC สำหรับ multiplayer
+        if (HasInputAuthority)
+        {
+            RPC_RequestGachaRoll(currentMachine.machineId, rollCount);
+        }
+
         PlayButtonSound();
+    }
 
-        // TODO: ตรวจสอบ currency ก่อนสุ่ม
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestGachaRoll(string machineId, int rollCount)
+    {
+        // ตรวจสอบอีกครั้งใน server
+        GachaMachine machine = GachaSystem.Instance.GetMachine(machineId);
+        if (machine == null)
+        {
+            RPC_ShowError("Machine not found!");
+            return;
+        }
 
-        // เริ่มสุ่ม
-        Debug.Log($" Rolling {rollCount} times on {currentMachine.machineName}");
+        if (IsGachaInProgress)
+        {
+            RPC_ShowError("Gacha already in progress!");
+            return;
+        }
 
-        // เล่น effect
+        // เริ่ม gacha process
+        RPC_StartGachaRoll(machineId, rollCount);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_StartGachaRoll(string machineId, int rollCount)
+    {
+        IsGachaInProgress = true;
+
+        if (HasInputAuthority)
+        {
+            StartCoroutine(PerformGachaRoll(machineId, rollCount));
+        }
+    }
+
+    private IEnumerator PerformGachaRoll(string machineId, int rollCount)
+    {
+        GachaMachine machine = GachaSystem.Instance.GetMachine(machineId);
+        if (machine == null) yield break;
+
+        // ใช้จ่าย currency
+        bool paymentSuccess = SpendCurrency(rollCount);
+        if (!paymentSuccess)
+        {
+            IsGachaInProgress = false;
+            ShowErrorMessage("Payment failed!");
+            yield break;
+        }
+
+        Debug.Log($"🎲 [GachaUIManager] Rolling {rollCount} times on {machine.machineName}");
+
+        // เล่น effects
+        PlayGachaEffects();
+
+        // รอให้ effect เล่นจบ
+        yield return new WaitForSeconds(1.5f);
+
+        // ทำการสุ่ม
+        List<GachaReward> rewards = machine.Roll(rollCount);
+
+        // เก็บ rewards ไว้เพื่อเพิ่มเข้า inventory ภายหลัง
+        pendingRewards = rewards;
+
+        // บันทึกลง history
+        SaveGachaToHistory(machine, rewards);
+
+        // แสดงผลลัพธ์
+        ShowGachaResults(machine, rewards);
+
+        IsGachaInProgress = false;
+    }
+
+    private void PlayGachaEffects()
+    {
+        // เล่น particle effect
         if (gachaOpenEffect != null)
         {
             gachaOpenEffect.Play();
         }
 
+        // เล่นเสียง
         if (uiAudioSource != null && gachaOpenSound != null)
         {
             uiAudioSource.PlayOneShot(gachaOpenSound);
         }
 
-        // ทำการสุ่ม
-        List<GachaReward> rewards = currentMachine.Roll(rollCount);
-
-        // แสดงผลลัพธ์
-        StartCoroutine(ShowResultsDelayed(rewards));
+        // ปิดปุ่มชั่วคราว
+        UpdateRollButtonStates();
     }
 
-    private IEnumerator ShowResultsDelayed(List<GachaReward> rewards)
+    private void ShowInsufficientCurrencyWarning()
     {
-        // รอให้ effect เล่นจบ
-        yield return new WaitForSeconds(1f);
+        if (insufficientCurrencyWarning != null)
+        {
+            insufficientCurrencyWarning.SetActive(true);
 
-        ShowGachaResults(currentMachine, rewards);
+            // ซ่อนหลัง 3 วินาที
+            StartCoroutine(HideWarningAfterDelay(3f));
+        }
+
+        if (uiAudioSource != null && insufficientFundsSound != null)
+        {
+            uiAudioSource.PlayOneShot(insufficientFundsSound);
+        }
+
+        Debug.LogWarning("💸 [GachaUIManager] Insufficient currency for gacha roll");
+    }
+
+    private IEnumerator HideWarningAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (insufficientCurrencyWarning != null)
+        {
+            insufficientCurrencyWarning.SetActive(false);
+        }
     }
     #endregion
 
@@ -241,11 +599,7 @@ public class GachaUIManager : MonoBehaviour
     {
         if (gachaResultPanel == null) return;
 
-        // ซ่อน panel หลัก
-        if (gachaMainPanel != null)
-            gachaMainPanel.SetActive(false);
-
-        // แสดง result panel
+        HideAllPanels();
         gachaResultPanel.SetActive(true);
 
         // เคลียร์ผลลัพธ์เก่า
@@ -254,7 +608,14 @@ public class GachaUIManager : MonoBehaviour
         // แสดงผลลัพธ์ใหม่
         StartCoroutine(ShowResultsAnimated(rewards));
 
-        Debug.Log($" Showing {rewards.Count} gacha results");
+        // เปิดปุ่มเพิ่มเข้า inventory
+        if (addToInventoryButton != null)
+        {
+            addToInventoryButton.gameObject.SetActive(true);
+            addToInventoryButton.interactable = true;
+        }
+
+        Debug.Log($"🎁 [GachaUIManager] Showing {rewards.Count} gacha results");
     }
 
     private void ClearResultItems()
@@ -269,10 +630,25 @@ public class GachaUIManager : MonoBehaviour
 
     private IEnumerator ShowResultsAnimated(List<GachaReward> rewards)
     {
+        bool hasRareItem = false;
+
         foreach (GachaReward reward in rewards)
         {
             CreateResultItem(reward);
+
+            // เช็คว่ามี rare item หรือไม่
+            if (reward.itemData.Tier >= ItemTier.Rare || reward.isGuaranteed)
+            {
+                hasRareItem = true;
+            }
+
             yield return new WaitForSeconds(0.3f); // แสดงทีละ item
+        }
+
+        // เล่นเสียง rare item ถ้ามี
+        if (hasRareItem && uiAudioSource != null && rareItemSound != null)
+        {
+            uiAudioSource.PlayOneShot(rareItemSound);
         }
     }
 
@@ -302,34 +678,262 @@ public class GachaUIManager : MonoBehaviour
             itemQuantity.text = $"x{reward.quantity}";
         }
 
-        // แสดง special effects สำหรับ rare items
+        // แสดง tier
+        TextMeshProUGUI tierText = itemObj.transform.Find("Tier")?.GetComponent<TextMeshProUGUI>();
+        if (tierText != null)
+        {
+            tierText.text = reward.itemData.GetTierText();
+            tierText.color = reward.itemData.GetTierColor();
+        }
+
+        // แสดง special indicators
+        GameObject newLabel = itemObj.transform.Find("NewLabel")?.gameObject;
+        if (newLabel != null) newLabel.SetActive(reward.isNewItem);
+
+        GameObject guaranteedLabel = itemObj.transform.Find("GuaranteedLabel")?.gameObject;
+        if (guaranteedLabel != null) guaranteedLabel.SetActive(reward.isGuaranteed);
+
+        // เล่น animation สำหรับ rare items
         if (reward.itemData.Tier >= ItemTier.Rare || reward.isGuaranteed)
         {
-            // TODO: เพิ่ม glow effect หรือ animation
+            Animator itemAnimator = itemObj.GetComponent<Animator>();
+            if (itemAnimator != null)
+            {
+                itemAnimator.SetTrigger("RareItemReveal");
+            }
         }
     }
 
     public void ShowRareItemEffect(GachaReward reward)
     {
-        // เล่นเสียง rare item
-        if (uiAudioSource != null && rareItemSound != null)
-        {
-            uiAudioSource.PlayOneShot(rareItemSound);
-        }
-
         // TODO: แสดง special effect สำหรับ rare item
-        Debug.Log($"⭐ RARE ITEM EFFECT: {reward.GetRewardText()}");
+        Debug.Log($"⭐ [GachaUIManager] RARE ITEM EFFECT: {reward.GetRewardText()}");
+
+        // เล่น particle effect พิเศษ
+        // เล่นเสียงพิเศษ
+        // แสดง popup พิเศษ
     }
 
     private void CloseResults()
     {
-        if (gachaResultPanel != null)
-            gachaResultPanel.SetActive(false);
-
-        if (gachaMainPanel != null)
-            gachaMainPanel.SetActive(true);
-
+        ShowGachaPanel();
         PlayButtonSound();
+    }
+    #endregion
+
+    #region Inventory Integration - เชื่อมต่อกับ Inventory system
+    private void AddPendingRewardsToInventory()
+    {
+        if (pendingRewards.Count == 0)
+        {
+            ShowErrorMessage("No rewards to add!");
+            return;
+        }
+
+        if (playerInventory == null)
+        {
+            ShowErrorMessage("Player inventory not found!");
+            return;
+        }
+
+        StartCoroutine(AddRewardsToInventoryCoroutine());
+    }
+
+    private IEnumerator AddRewardsToInventoryCoroutine()
+    {
+        int successCount = 0;
+        int failCount = 0;
+
+        foreach (GachaReward reward in pendingRewards)
+        {
+            if (reward == null || !reward.IsValid()) continue;
+
+            bool success = playerInventory.AddItem(reward.itemData, reward.quantity);
+
+            if (success)
+            {
+                successCount += reward.quantity;
+                Debug.Log($"✅ [GachaUIManager] Added to inventory: {reward.GetRewardText()}");
+            }
+            else
+            {
+                failCount += reward.quantity;
+                Debug.LogWarning($"⚠️ [GachaUIManager] Failed to add: {reward.GetRewardText()}");
+            }
+
+            yield return new WaitForSeconds(0.1f); // หน่วงเวลาเล็กน้อย
+        }
+
+        // แสดงผลลัพธ์
+        if (successCount > 0)
+        {
+            ShowSuccessMessage($"Added {successCount} items to inventory!");
+
+            // ล้าง pending rewards
+            pendingRewards.Clear();
+
+            // ปิดปุ่มเพิ่มเข้า inventory
+            if (addToInventoryButton != null)
+            {
+                addToInventoryButton.interactable = false;
+            }
+        }
+
+        if (failCount > 0)
+        {
+            ShowErrorMessage($"{failCount} items could not be added (inventory full?)");
+        }
+    }
+
+    private Character FindPlayerCharacter()
+    {
+        // หา player character ที่มี authority
+        Character[] characters = FindObjectsOfType<Character>();
+
+        foreach (Character character in characters)
+        {
+            if (character.HasInputAuthority || character.HasStateAuthority)
+            {
+                return character;
+            }
+        }
+
+        // fallback: เอาตัวแรกที่เจอ
+        return characters.Length > 0 ? characters[0] : null;
+    }
+
+    private void OnGachaCompleted(GachaMachine machine, List<GachaReward> rewards)
+    {
+        // Event handler สำหรับเมื่อ gacha เสร็จสิ้น
+        Debug.Log($"🎉 [GachaUIManager] Gacha completed: {rewards.Count} rewards from {machine.machineName}");
+    }
+
+    private void OnRewardsAddedToInventory(List<GachaReward> rewards)
+    {
+        // Event handler สำหรับเมื่อ rewards ถูกเพิ่มเข้า inventory สำเร็จ
+        Debug.Log($"📦 [GachaUIManager] {rewards.Count} rewards added to inventory");
+    }
+
+    private void OnInventoryFull(GachaReward reward)
+    {
+        // Event handler สำหรับเมื่อ inventory เต็ม
+        ShowErrorMessage($"Inventory full! Could not add {reward.GetRewardText()}");
+    }
+    #endregion
+
+    #region History System - บันทึกประวัติ gacha ผ่าน Firebase
+    private void SaveGachaToHistory(GachaMachine machine, List<GachaReward> rewards)
+    {
+        var historyEntry = new GachaHistoryEntry
+        {
+            machineId = machine.machineId,
+            machineName = machine.machineName,
+            rollCount = rewards.Count,
+            timestamp = System.DateTime.Now,
+            rewards = rewards
+        };
+
+        gachaHistory.Add(historyEntry);
+
+        // บันทึกลง Firebase
+        SaveGachaHistoryToFirebase();
+
+        Debug.Log($"📊 [GachaUIManager] Saved gacha history: {machine.machineName} x{rewards.Count}");
+    }
+
+    private void UpdateHistoryDisplay()
+    {
+        if (historyItemContainer == null) return;
+
+        // เคลียร์ history items เก่า
+        foreach (Transform child in historyItemContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // แสดง history ใหม่ (เรียงจากใหม่ไปเก่า)
+        var sortedHistory = new List<GachaHistoryEntry>(gachaHistory);
+        sortedHistory.Reverse();
+
+        foreach (var entry in sortedHistory)
+        {
+            CreateHistoryItem(entry);
+        }
+
+        // Scroll ไปด้านบน
+        if (historyScrollRect != null)
+        {
+            historyScrollRect.verticalNormalizedPosition = 1f;
+        }
+    }
+
+    private void CreateHistoryItem(GachaHistoryEntry entry)
+    {
+        if (historyItemPrefab == null || historyItemContainer == null) return;
+
+        GameObject historyObj = Instantiate(historyItemPrefab, historyItemContainer);
+
+        // Setup history display
+        TextMeshProUGUI timestampText = historyObj.transform.Find("Timestamp")?.GetComponent<TextMeshProUGUI>();
+        if (timestampText != null)
+        {
+            timestampText.text = entry.timestamp.ToString("MM/dd HH:mm");
+        }
+
+        TextMeshProUGUI machineText = historyObj.transform.Find("Machine")?.GetComponent<TextMeshProUGUI>();
+        if (machineText != null)
+        {
+            machineText.text = entry.machineName;
+        }
+
+        TextMeshProUGUI rollCountText = historyObj.transform.Find("RollCount")?.GetComponent<TextMeshProUGUI>();
+        if (rollCountText != null)
+        {
+            rollCountText.text = $"{entry.rollCount} rolls";
+        }
+
+        // แสดง rewards สำคัญ
+        TextMeshProUGUI rewardsText = historyObj.transform.Find("Rewards")?.GetComponent<TextMeshProUGUI>();
+        if (rewardsText != null && entry.rewards.Count > 0)
+        {
+            string rewardSummary = "";
+            int rareCount = 0;
+
+            foreach (var reward in entry.rewards)
+            {
+                if (reward.itemData.Tier >= ItemTier.Rare)
+                {
+                    rareCount++;
+                    if (rewardSummary.Length > 0) rewardSummary += ", ";
+                    rewardSummary += reward.itemData.ItemName;
+                }
+            }
+
+            if (rareCount > 0)
+            {
+                rewardsText.text = $"⭐ {rewardSummary}";
+                rewardsText.color = Color.yellow;
+            }
+            else
+            {
+                rewardsText.text = $"{entry.rewards.Count} items";
+                rewardsText.color = Color.white;
+            }
+        }
+    }
+
+    private void LoadGachaHistoryFromFirebase()
+    {
+        // TODO: Load จาก Firebase
+        // ปัจจุบันยังไม่ implement Firebase integration
+        Debug.Log("🔄 [GachaUIManager] Loading gacha history from Firebase...");
+    }
+
+    private void SaveGachaHistoryToFirebase()
+    {
+        // TODO: Save ไป Firebase
+        // ปัจจุบันยังไม่ implement Firebase integration  
+        Debug.Log("💾 [GachaUIManager] Saving gacha history to Firebase...");
     }
     #endregion
 
@@ -339,9 +943,24 @@ public class GachaUIManager : MonoBehaviour
         if (errorPanel == null || errorMessageText == null) return;
 
         errorMessageText.text = message;
-        errorPanel.SetActive(true);
 
-        Debug.LogWarning($"⚠️ UI Error: {message}");
+        // แสดง error panel ไว้ด้านหน้า
+        errorPanel.SetActive(true);
+        errorPanel.transform.SetAsLastSibling();
+
+        Debug.LogWarning($"⚠️ [GachaUIManager] Error: {message}");
+    }
+
+    private void ShowSuccessMessage(string message)
+    {
+        // TODO: แสดง success popup
+        Debug.Log($"✅ [GachaUIManager] Success: {message}");
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
+    private void RPC_ShowError(string message)
+    {
+        ShowErrorMessage(message);
     }
 
     private void CloseError()
@@ -363,18 +982,21 @@ public class GachaUIManager : MonoBehaviour
     }
     #endregion
 
-    #region Public Interface
+    #region Public Interface - ใช้งานจากระบบอื่น
     public void OpenGachaUI()
     {
         ShowMachineSelection();
+        PlayButtonSound();
+
+        Debug.Log("🎰 [GachaUIManager] Opened gacha UI");
     }
 
     public void CloseGachaUI()
     {
-        if (gachaMainPanel != null) gachaMainPanel.SetActive(false);
-        if (gachaResultPanel != null) gachaResultPanel.SetActive(false);
-        if (machineSelectionPanel != null) machineSelectionPanel.SetActive(false);
-        if (errorPanel != null) errorPanel.SetActive(false);
+        HideAllPanels();
+        PlayButtonSound();
+
+        Debug.Log("🎰 [GachaUIManager] Closed gacha UI");
     }
 
     public void SetCurrentMachine(string machineId)
@@ -388,5 +1010,30 @@ public class GachaUIManager : MonoBehaviour
             }
         }
     }
+
+    public bool IsGachaUIOpen()
+    {
+        return (gachaMainPanel != null && gachaMainPanel.activeSelf) ||
+               (machineSelectionPanel != null && machineSelectionPanel.activeSelf) ||
+               (gachaResultPanel != null && gachaResultPanel.activeSelf);
+    }
     #endregion
 }
+
+#region Data Classes
+[System.Serializable]
+public class GachaHistoryEntry
+{
+    public string machineId;
+    public string machineName;
+    public int rollCount;
+    public System.DateTime timestamp;
+    public List<GachaReward> rewards;
+
+    public GachaHistoryEntry()
+    {
+        rewards = new List<GachaReward>();
+        timestamp = System.DateTime.Now;
+    }
+}
+#endregion
