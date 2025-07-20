@@ -256,7 +256,7 @@ public class GachaUIManager : NetworkBehaviour
         // ใช้ LobbyManager เพื่อกลับไป lobby
         if (lobbyManager != null)
         {
-            lobbyManager.BackToMainLobby();
+            //lobbyManager.BackToMainLobby();
         }
 
         PlayButtonSound();
