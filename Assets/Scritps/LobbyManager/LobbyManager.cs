@@ -879,7 +879,7 @@ public class LobbyManager : MonoBehaviour
     #region Gacha System 
     void ShowGachaPanel()
     {
-        Debug.Log("🎰 ShowGachaPanel() called");
+        Debug.Log(" ShowGachaPanel() called");
 
         HideAllPanels();
 
@@ -902,5 +902,7 @@ public class LobbyManager : MonoBehaviour
             Debug.LogError(" gachaPanel is NULL!");
         }
     }
+
+    
     #endregion
 }

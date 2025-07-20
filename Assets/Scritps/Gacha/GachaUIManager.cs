@@ -256,11 +256,13 @@ public class GachaUIManager : NetworkBehaviour
         // ใช้ LobbyManager เพื่อกลับไป lobby
         if (lobbyManager != null)
         {
-            //lobbyManager.BackToMainLobby();
+            lobbyManager.gachaPanel.SetActive(false);
         }
+
 
         PlayButtonSound();
     }
+
     #endregion
 
     #region Currency Integration - เชื่อมต่อกับ CurrencyManager
