@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a25c8f1f6946dcd4a8cb137e6addc359, type: 3}
+  m_Name: SlimeSet
+  m_EditorClassIdentifier: 
+  setName: SlimeSet
+  setDescription: 
+  setIcon: {fileID: 21300000, guid: 9d6f02363bab23a439a20c03f5cbb323, type: 3}
+  setColor: {r: 0.061599493, g: 1, b: 0, a: 1}
+  setItems:
+  - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
+  - {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
+  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
+  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
+  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  setBonuses:
+  - requiredPieces: 2
+    bonusEffects:
+    - bonusType: 2
+      bonusValue: 5
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 3
+    bonusEffects:
+    - bonusType: 3
+      bonusValue: 15
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 4
+    bonusEffects:
+    - bonusType: 5
+      bonusValue: 15
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    - bonusType: 6
+      bonusValue: 10
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 5
+    bonusEffects:
+    - bonusType: 0
+      bonusValue: 50
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    - bonusType: 1
+      bonusValue: 50
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  setTier: 4

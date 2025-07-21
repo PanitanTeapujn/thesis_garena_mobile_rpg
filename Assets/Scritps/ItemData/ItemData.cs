@@ -219,8 +219,14 @@ public class ItemData : ScriptableObject
     [SerializeField] public int maxStackSize = 1;
     [SerializeField] public bool isStackable = false;
 
+    [Header("🔥 Set Bonus")]
+    [SerializeField] private EquipmentSet belongsToSet = null;
+    [SerializeField] private bool isSetItem = false;
 
-  
+    // Properties
+    public EquipmentSet BelongsToSet => belongsToSet;
+    public bool IsSetItem => isSetItem;
+
     #region Stats
     [Header("Item Stats")]
     [SerializeField] private ItemStats stats = new ItemStats();
@@ -261,6 +267,26 @@ public class ItemData : ScriptableObject
 
         // ตั้งค่า stack ตาม item type
         SetDefaultStackSettings();
+
+        // 🆕 ตรวจสอบ set item
+        ValidateSetItem();
+    }
+    private void ValidateSetItem()
+    {
+        if (belongsToSet != null)
+        {
+            isSetItem = true;
+
+            // ตรวจสอบว่า item นี้อยู่ใน set items list หรือไม่
+            if (!belongsToSet.setItems.Contains(this))
+            {
+                Debug.LogWarning($"[ItemData] {itemName} belongs to set {belongsToSet.setName} but is not in the set's item list!");
+            }
+        }
+        else
+        {
+            isSetItem = false;
+        }
     }
     private string GenerateItemId()
     {
@@ -298,6 +324,70 @@ public class ItemData : ScriptableObject
         {
             return playerGems >= buyPrice;
         }
+    }
+
+
+    public bool IsPartOfSet()
+    {
+        return isSetItem && belongsToSet != null;
+    }
+
+    /// <summary>
+    /// ดึงข้อมูล set ที่เป็นสมาชิก
+    /// </summary>
+    public EquipmentSet GetEquipmentSet()
+    {
+        return belongsToSet;
+    }
+
+    /// <summary>
+    /// ดึงชื่อ set
+    /// </summary>
+    public string GetSetName()
+    {
+        if (IsPartOfSet())
+            return belongsToSet.setName;
+
+        return "No Set";
+    }
+
+    /// <summary>
+    /// ดึงสี set
+    /// </summary>
+    public Color GetSetColor()
+    {
+        if (IsPartOfSet())
+            return belongsToSet.setColor;
+
+        return Color.white;
+    }
+
+    /// <summary>
+    /// ดึงคำอธิบาย set bonus
+    /// </summary>
+    public string GetSetBonusDescription(List<ItemData> equippedItems = null)
+    {
+        if (!IsPartOfSet())
+            return "";
+
+        int equippedPieces = 0;
+        if (equippedItems != null)
+        {
+            equippedPieces = belongsToSet.GetEquippedPiecesCount(equippedItems);
+        }
+
+        return belongsToSet.GetSetBonusInfo(equippedPieces);
+    }
+
+    /// <summary>
+    /// ตรวจสอบว่าเป็น set เดียวกันหรือไม่
+    /// </summary>
+    public bool IsSameSet(ItemData otherItem)
+    {
+        if (!IsPartOfSet() || !otherItem.IsPartOfSet())
+            return false;
+
+        return belongsToSet == otherItem.belongsToSet;
     }
     #region Utility Methods
     public Color GetTierColor()
@@ -392,15 +482,61 @@ public class ItemData : ScriptableObject
     }
     public string GetTierText()
     {
-        switch (tier)
+        string tierText = tier switch
         {
-            case ItemTier.Common: return "Common";
-            case ItemTier.Uncommon: return "Uncommon";
-            case ItemTier.Rare: return "Rare";
-            case ItemTier.Epic: return "Epic";
-            case ItemTier.Legendary: return "Legendary";
-            default: return "Unknown";
+            ItemTier.Common => "Common",
+            ItemTier.Uncommon => "Uncommon",
+            ItemTier.Rare => "Rare",
+            ItemTier.Epic => "Epic",
+            ItemTier.Legendary => "Legendary",
+            _ => "Unknown"
+        };
+
+        // 🆕 เพิ่ม set info ถ้าเป็น set item
+        if (IsPartOfSet())
+        {
+            tierText += $" ({belongsToSet.setName})";
         }
+
+        return tierText;
+    }
+    public string GetDetailedTooltip(List<ItemData> equippedItems = null)
+    {
+        List<string> tooltipLines = new List<string>();
+
+        // Basic info
+        tooltipLines.Add($"<color=#{ColorUtility.ToHtmlStringRGB(GetTierColor())}>{ItemName}</color>");
+        tooltipLines.Add($"<color=grey>{GetTierText()}</color>");
+
+        if (!string.IsNullOrEmpty(Description))
+        {
+            tooltipLines.Add($"<color=white>{Description}</color>");
+        }
+
+        // Stats
+        if (Stats.HasAnyStats())
+        {
+            tooltipLines.Add("");
+            tooltipLines.Add("<color=lightblue>Stats:</color>");
+            tooltipLines.Add($"<color=white>{Stats.GetStatsDescription()}</color>");
+        }
+
+        // Set bonus info
+        if (IsPartOfSet())
+        {
+            tooltipLines.Add("");
+            tooltipLines.Add("<color=orange>Set Bonus:</color>");
+            tooltipLines.Add(GetSetBonusDescription(equippedItems));
+        }
+
+        // Price info
+        if (SellPrice > 0)
+        {
+            tooltipLines.Add("");
+            tooltipLines.Add($"<color=yellow>Sell Price: {GetSellPriceDisplayText()}</color>");
+        }
+
+        return string.Join("\n", tooltipLines);
     }
 
     public bool CanEquipToSlot(ItemType slotType)
@@ -417,11 +553,15 @@ public class ItemData : ScriptableObject
         firebaseData.tier = (int)tier;
         firebaseData.description = description;
         firebaseData.sellPrice = sellPrice;
-        firebaseData.buyCurrencyType = (int)buyCurrencyType; // ✅ เพิ่มบรรทัดนี้
-
         firebaseData.buyPrice = buyPrice;
+        firebaseData.buyCurrencyType = (int)buyCurrencyType;
         firebaseData.isSellable = isSellable;
         firebaseData.isTradeable = isTradeable;
+
+        // 🆕 Set info
+        firebaseData.isSetItem = isSetItem;
+        firebaseData.setName = IsPartOfSet() ? belongsToSet.setName : "";
+
         // Copy stats
         firebaseData.attackDamageBonus = stats.attackDamageBonus;
         firebaseData.magicDamageBonus = stats.magicDamageBonus;
@@ -438,8 +578,6 @@ public class ItemData : ScriptableObject
         firebaseData.physicalResistanceBonus = stats.physicalResistanceBonus;
         firebaseData.magicalResistanceBonus = stats.magicalResistanceBonus;
         firebaseData.lifeStealBonus = stats.lifeStealBonus;
-
-
         firebaseData.healAmount = stats.healAmount;
         firebaseData.manaAmount = stats.manaAmount;
         firebaseData.healPercentage = stats.healPercentage;
@@ -453,17 +591,23 @@ public class ItemData : ScriptableObject
         ItemData item = CreateInstance<ItemData>();
         item.itemId = firebaseData.itemId;
         item.itemName = firebaseData.itemName;
-        item.itemIcon = icon; // จะต้อง load จาก Resources หรือ Addressables
+        item.itemIcon = icon;
         item.itemType = (ItemType)firebaseData.itemType;
         item.tier = (ItemTier)firebaseData.tier;
         item.description = firebaseData.description;
-
         item.sellPrice = firebaseData.sellPrice;
         item.buyPrice = firebaseData.buyPrice;
-        item.buyCurrencyType = (CurrencyType)firebaseData.buyCurrencyType; // ✅ เพิ่มบรรทัดนี้
-
+        item.buyCurrencyType = (CurrencyType)firebaseData.buyCurrencyType;
         item.isSellable = firebaseData.isSellable;
         item.isTradeable = firebaseData.isTradeable;
+
+        // 🆕 Set info
+        item.isSetItem = firebaseData.isSetItem;
+        if (item.isSetItem && !string.IsNullOrEmpty(firebaseData.setName))
+        {
+            // ต้องหา EquipmentSet จาก setName
+            item.belongsToSet = FindEquipmentSetByName(firebaseData.setName);
+        }
 
         // Copy stats
         item.stats.attackDamageBonus = firebaseData.attackDamageBonus;
@@ -480,12 +624,28 @@ public class ItemData : ScriptableObject
         item.stats.reductionCoolDownBonus = firebaseData.reductionCoolDownBonus;
         item.stats.physicalResistanceBonus = firebaseData.physicalResistanceBonus;
         item.stats.magicalResistanceBonus = firebaseData.magicalResistanceBonus;
+        item.stats.lifeStealBonus = firebaseData.lifeStealBonus;
+        item.stats.healAmount = firebaseData.healAmount;
         item.stats.manaAmount = firebaseData.manaAmount;
         item.stats.healPercentage = firebaseData.healPercentage;
         item.stats.manaPercentage = firebaseData.manaPercentage;
-        item.stats.lifeStealBonus = firebaseData.lifeStealBonus;
 
         return item;
+    }
+    private static EquipmentSet FindEquipmentSetByName(string setName)
+    {
+        EquipmentSet[] allSets = Resources.LoadAll<EquipmentSet>("EquipmentSets");
+
+        foreach (var set in allSets)
+        {
+            if (set.setName == setName)
+            {
+                return set;
+            }
+        }
+
+        Debug.LogWarning($"[ItemData] Could not find EquipmentSet with name: {setName}");
+        return null;
     }
     #endregion
     #region Trade Methods
@@ -619,11 +779,17 @@ public class FirebaseItemData
     public int tier;           // ItemTier as int
     public string description;
     #endregion
+    #region Economy
     public long sellPrice = 0;
     public long buyPrice = 0;
     public bool isSellable = true;
     public bool isTradeable = true;
-    public int buyCurrencyType = 0; // ✅ เพิ่มบรรทัดนี้ (CurrencyType as int)
+    public int buyCurrencyType = 0; // CurrencyType as int
+    #endregion
+    #region Set Info
+    public bool isSetItem = false;
+    public string setName = "";
+    #endregion
 
     #region Stats (Flattened for Firebase)
     public int attackDamageBonus = 0;
@@ -641,8 +807,8 @@ public class FirebaseItemData
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
     public float lifeStealBonus = 0f;
-
     #endregion
+    
     #region Potion Stats (เพิ่มใหม่)
     public int healAmount = 0;
     public int manaAmount = 0;
@@ -659,7 +825,10 @@ public class FirebaseItemData
     {
         return (ItemTier)tier;
     }
-  
+    public CurrencyType GetBuyCurrencyType()
+    {
+        return (CurrencyType)buyCurrencyType;
+    }
 
     public ItemStats ToItemStats()
     {
@@ -679,7 +848,6 @@ public class FirebaseItemData
         stats.physicalResistanceBonus = physicalResistanceBonus;
         stats.magicalResistanceBonus = magicalResistanceBonus;
         stats.lifeStealBonus = lifeStealBonus;
-
         stats.healAmount = healAmount;
         stats.manaAmount = manaAmount;
         stats.healPercentage = healPercentage;

@@ -371,19 +371,18 @@ public class EquipmentManager : NetworkBehaviour
     #endregion
 
     #region Network Synchronization  การ sync equipment stats ผ่าน network
-    private void SyncEquipmentStats()
+    private new void SyncEquipmentStats()
     {
         if (HasStateAuthority)
         {
             EquipmentStats totalStats = GetTotalStats();
+
+            // Original stats
             NetworkedAttackDamageBonus = totalStats.attackDamageBonus;
             NetworkedMagicDamageBonus = totalStats.magicDamageBonus;
             NetworkedArmorBonus = totalStats.armorBonus;
             NetworkedCriticalChanceBonus = totalStats.criticalChanceBonus;
-
-            // 🔧 เพิ่ม: Sync Critical Multiplier Bonus
             NetworkedCriticalMultiplierBonus = totalStats.criticalMultiplierBonus;
-
             NetworkedMaxHpBonus = totalStats.maxHpBonus;
             NetworkedMaxManaBonus = totalStats.maxManaBonus;
             NetworkedMoveSpeedBonus = totalStats.moveSpeedBonus;
@@ -395,7 +394,19 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedReductionCoolDown = totalStats.reductionCoolDownBonus;
             NetworkedLifeStealBonus = totalStats.lifeStealBonus;
 
-            Debug.Log($"[Equipment Sync] {character.CharacterName}: Critical Multiplier Bonus = {totalStats.criticalMultiplierBonus}");
+            // Set bonus specific stats
+            NetworkedSetAttackDamageBonus = currentSetBonusStats.attackDamageBonus;
+            NetworkedSetMagicDamageBonus = currentSetBonusStats.magicDamageBonus;
+            NetworkedSetArmorBonus = currentSetBonusStats.armorBonus;
+            NetworkedSetCriticalChanceBonus = currentSetBonusStats.criticalChanceBonus;
+            NetworkedSetCriticalMultiplierBonus = currentSetBonusStats.criticalMultiplierBonus;
+            NetworkedSetMaxHpBonus = currentSetBonusStats.maxHpBonus;
+            NetworkedSetMaxManaBonus = currentSetBonusStats.maxManaBonus;
+            NetworkedSetMoveSpeedBonus = currentSetBonusStats.moveSpeedBonus;
+            NetworkedSetAttackSpeedBonus = currentSetBonusStats.attackSpeedBonus;
+            NetworkedSetLifeStealBonus = currentSetBonusStats.lifeStealBonus;
+
+            Debug.Log($"[Equipment Sync] {character.CharacterName}: Total Stats including Set Bonuses");
         }
     }
     #endregion
@@ -460,31 +471,167 @@ public class EquipmentManager : NetworkBehaviour
         return currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
     }
 
-    public EquipmentStats GetTotalStats()
+    public new EquipmentStats GetTotalStats()
     {
         EquipmentStats total = new EquipmentStats();
-        total.attackDamageBonus = currentEquipmentStats.attackDamageBonus + currentRuneStats.attackDamageBonus;
-        total.magicDamageBonus = currentEquipmentStats.magicDamageBonus + currentRuneStats.magicDamageBonus;
-        total.armorBonus = currentEquipmentStats.armorBonus + currentRuneStats.armorBonus;
-        total.criticalChanceBonus = currentEquipmentStats.criticalChanceBonus + currentRuneStats.criticalChanceBonus;
-        total.criticalMultiplierBonus = currentEquipmentStats.criticalMultiplierBonus + currentRuneStats.criticalMultiplierBonus;
-        total.maxHpBonus = currentEquipmentStats.maxHpBonus + currentRuneStats.maxHpBonus;
-        total.maxManaBonus = currentEquipmentStats.maxManaBonus + currentRuneStats.maxManaBonus;
-        total.moveSpeedBonus = currentEquipmentStats.moveSpeedBonus + currentRuneStats.moveSpeedBonus;
-        total.physicalResistanceBonus = currentEquipmentStats.physicalResistanceBonus + currentRuneStats.physicalResistanceBonus;
-        total.magicalResistanceBonus = currentEquipmentStats.magicalResistanceBonus + currentRuneStats.magicalResistanceBonus;
-        total.hitRateBonus = currentEquipmentStats.hitRateBonus + currentRuneStats.hitRateBonus;
-        total.evasionRateBonus = currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus;
-        total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
-        total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
 
-        // ✅ เพิ่มบรรทัดนี้
-        total.lifeStealBonus = currentEquipmentStats.lifeStealBonus + currentRuneStats.lifeStealBonus;
+        // Equipment stats + Rune stats + Set bonus stats
+        total.attackDamageBonus = currentEquipmentStats.attackDamageBonus + currentRuneStats.attackDamageBonus + currentSetBonusStats.attackDamageBonus;
+        total.magicDamageBonus = currentEquipmentStats.magicDamageBonus + currentRuneStats.magicDamageBonus + currentSetBonusStats.magicDamageBonus;
+        total.armorBonus = currentEquipmentStats.armorBonus + currentRuneStats.armorBonus + currentSetBonusStats.armorBonus;
+        total.criticalChanceBonus = currentEquipmentStats.criticalChanceBonus + currentRuneStats.criticalChanceBonus + currentSetBonusStats.criticalChanceBonus;
+        total.criticalMultiplierBonus = currentEquipmentStats.criticalMultiplierBonus + currentRuneStats.criticalMultiplierBonus + currentSetBonusStats.criticalMultiplierBonus;
+        total.maxHpBonus = currentEquipmentStats.maxHpBonus + currentRuneStats.maxHpBonus + currentSetBonusStats.maxHpBonus;
+        total.maxManaBonus = currentEquipmentStats.maxManaBonus + currentRuneStats.maxManaBonus + currentSetBonusStats.maxManaBonus;
+        total.moveSpeedBonus = currentEquipmentStats.moveSpeedBonus + currentRuneStats.moveSpeedBonus + currentSetBonusStats.moveSpeedBonus;
+        total.physicalResistanceBonus = currentEquipmentStats.physicalResistanceBonus + currentRuneStats.physicalResistanceBonus + currentSetBonusStats.physicalResistanceBonus;
+        total.magicalResistanceBonus = currentEquipmentStats.magicalResistanceBonus + currentRuneStats.magicalResistanceBonus + currentSetBonusStats.magicalResistanceBonus;
+        total.hitRateBonus = currentEquipmentStats.hitRateBonus + currentRuneStats.hitRateBonus + currentSetBonusStats.hitRateBonus;
+        total.evasionRateBonus = currentEquipmentStats.evasionRateBonus + currentRuneStats.evasionRateBonus + currentSetBonusStats.evasionRateBonus;
+        total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus + currentSetBonusStats.attackSpeedBonus;
+        total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus + currentSetBonusStats.reductionCoolDownBonus;
+        total.lifeStealBonus = currentEquipmentStats.lifeStealBonus + currentRuneStats.lifeStealBonus + currentSetBonusStats.lifeStealBonus;
 
         return total;
     }
+    public EquipmentStats GetSetBonusStats()
+    {
+        return currentSetBonusStats;
+    }
     #endregion
+    #region Set Bonus Support
+    [Header("Set Bonus")]
+    public EquipmentStats currentSetBonusStats = new EquipmentStats();
 
+    // Network properties for set bonuses
+    [Networked] public int NetworkedSetAttackDamageBonus { get; set; }
+    [Networked] public int NetworkedSetMagicDamageBonus { get; set; }
+    [Networked] public int NetworkedSetArmorBonus { get; set; }
+    [Networked] public float NetworkedSetCriticalChanceBonus { get; set; }
+    [Networked] public float NetworkedSetCriticalMultiplierBonus { get; set; }
+    [Networked] public int NetworkedSetMaxHpBonus { get; set; }
+    [Networked] public int NetworkedSetMaxManaBonus { get; set; }
+    [Networked] public float NetworkedSetMoveSpeedBonus { get; set; }
+    [Networked] public float NetworkedSetAttackSpeedBonus { get; set; }
+    [Networked] public float NetworkedSetLifeStealBonus { get; set; }
+
+    /// <summary>
+    /// Apply set bonuses to character
+    /// </summary>
+    public virtual void ApplySetBonuses(EquipmentData setBonusEquipment)
+    {
+        if (!HasStateAuthority && !HasInputAuthority) return;
+
+        Debug.Log($"[SetBonus] {character.CharacterName} applying set bonuses");
+
+        // Remove old set bonuses
+        RemoveSetBonusStats();
+
+        // Apply new set bonuses
+        currentSetBonusStats = setBonusEquipment.stats;
+        ApplySetBonusStats();
+
+        // Update resistance bonuses
+        UpdateResistanceBonuses();
+
+        // Sync to network
+        SyncEquipmentStats();
+
+        // Notify other systems
+        OnEquipmentChanged?.Invoke(character, GetTotalStats());
+        if (character != null)
+        {
+            character.OnEquipmentStatsChanged();
+        }
+    }
+
+    /// <summary>
+    /// Clear set bonuses
+    /// </summary>
+    public virtual void ClearSetBonuses()
+    {
+        if (!HasStateAuthority && !HasInputAuthority) return;
+
+        Debug.Log($"[SetBonus] {character.CharacterName} clearing set bonuses");
+
+        RemoveSetBonusStats();
+        currentSetBonusStats = new EquipmentStats();
+        UpdateResistanceBonuses();
+        SyncEquipmentStats();
+
+        OnEquipmentChanged?.Invoke(character, GetTotalStats());
+        if (character != null)
+        {
+            character.OnEquipmentStatsChanged();
+        }
+    }
+
+    private void ApplySetBonusStats()
+    {
+        character.AttackDamage += currentSetBonusStats.attackDamageBonus;
+        character.MagicDamage += currentSetBonusStats.magicDamageBonus;
+        character.Armor += currentSetBonusStats.armorBonus;
+        character.CriticalChance += currentSetBonusStats.criticalChanceBonus;
+        character.CriticalDamageBonus += currentSetBonusStats.criticalMultiplierBonus;
+        character.LifeSteal += currentSetBonusStats.lifeStealBonus;
+        character.MaxHp += currentSetBonusStats.maxHpBonus;
+        character.MaxMana += currentSetBonusStats.maxManaBonus;
+        character.MoveSpeed += currentSetBonusStats.moveSpeedBonus;
+        character.HitRate += currentSetBonusStats.hitRateBonus;
+        character.EvasionRate += currentSetBonusStats.evasionRateBonus;
+        character.AttackSpeed += currentSetBonusStats.attackSpeedBonus;
+        character.ReductionCoolDown += currentSetBonusStats.reductionCoolDownBonus;
+
+        // Ensure current HP/Mana don't exceed new max values
+        character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
+        character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
+
+        Debug.Log($"[SetBonus Applied] {character.CharacterName} - " +
+                  $"ATK+{currentSetBonusStats.attackDamageBonus}, " +
+                  $"HP+{currentSetBonusStats.maxHpBonus}, " +
+                  $"Lifesteal+{currentSetBonusStats.lifeStealBonus}%");
+    }
+
+    private void RemoveSetBonusStats()
+    {
+        character.AttackDamage -= currentSetBonusStats.attackDamageBonus;
+        character.MagicDamage -= currentSetBonusStats.magicDamageBonus;
+        character.Armor -= currentSetBonusStats.armorBonus;
+        character.CriticalChance -= currentSetBonusStats.criticalChanceBonus;
+        character.CriticalDamageBonus -= currentSetBonusStats.criticalMultiplierBonus;
+        character.LifeSteal -= currentSetBonusStats.lifeStealBonus;
+        character.MaxHp -= currentSetBonusStats.maxHpBonus;
+        character.MaxMana -= currentSetBonusStats.maxManaBonus;
+        character.MoveSpeed -= currentSetBonusStats.moveSpeedBonus;
+        character.HitRate -= currentSetBonusStats.hitRateBonus;
+        character.EvasionRate -= currentSetBonusStats.evasionRateBonus;
+        character.AttackSpeed -= currentSetBonusStats.attackSpeedBonus;
+        character.ReductionCoolDown -= currentSetBonusStats.reductionCoolDownBonus;
+
+        // Ensure stats don't go negative
+        character.AttackDamage = Mathf.Max(1, character.AttackDamage);
+        character.MagicDamage = Mathf.Max(1, character.MagicDamage);
+        character.Armor = Mathf.Max(0, character.Armor);
+        character.MaxHp = Mathf.Max(1, character.MaxHp);
+        character.MaxMana = Mathf.Max(0, character.MaxMana);
+        character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
+        character.HitRate = Mathf.Max(5f, character.HitRate);
+        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
+        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+        character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+        character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+        character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+
+        // Adjust current HP/Mana if needed
+        character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
+        character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
+
+        Debug.Log($"[SetBonus Removed] {character.CharacterName} - " +
+                  $"ATK-{currentSetBonusStats.attackDamageBonus}, " +
+                  $"HP-{currentSetBonusStats.maxHpBonus}, " +
+                  $"Lifesteal-{currentSetBonusStats.lifeStealBonus}%");
+    }
+    #endregion
 #if UNITY_EDITOR
     #region Debug Methods (Editor Only)  debug methods สำหรับใช้ใน editor เท่านั้น
     public float GetCriticalMultiplierBonusRaw()

@@ -23,6 +23,7 @@ GameObject:
   - component: {fileID: -7973809261940948947}
   - component: {fileID: 3719753113342829952}
   - component: {fileID: -8694970002882428974}
+  - component: {fileID: 18057414987109292}
   m_Layer: 6
   m_Name: Assassin
   m_TagString: Untagged
@@ -446,6 +447,32 @@ MonoBehaviour:
   _NetworkedReductionCoolDown: 0
   _NetworkedCriticalMultiplierBonus: 0
   _NetworkedLifeStealBonus: 0
+  currentSetBonusStats:
+    attackDamageBonus: 0
+    magicDamageBonus: 0
+    armorBonus: 0
+    criticalChanceBonus: 0
+    criticalMultiplierBonus: 0
+    reductionCoolDownBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+    lifeStealBonus: 0
+  _NetworkedSetAttackDamageBonus: 0
+  _NetworkedSetMagicDamageBonus: 0
+  _NetworkedSetArmorBonus: 0
+  _NetworkedSetCriticalChanceBonus: 0
+  _NetworkedSetCriticalMultiplierBonus: 0
+  _NetworkedSetMaxHpBonus: 0
+  _NetworkedSetMaxManaBonus: 0
+  _NetworkedSetMoveSpeedBonus: 0
+  _NetworkedSetAttackSpeedBonus: 0
+  _NetworkedSetLifeStealBonus: 0
 --- !u!114 &-3790733776071842223
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -534,6 +561,21 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
     quantity: 10
     note: 
+  - itemData: {fileID: 11400000, guid: e745e079c25a47c499afb6f4b129506d, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 92b4c5e0144b248479337dee64bf07b0, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6618b40d61c48f64caabc0dd8351c64e, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: bf9fee0df52857f4588010e1e1dffef6, type: 2}
+    quantity: 1
+    note: 
   useFallbackItems: 1
   fallbackToTestItems: 1
   testSword: {fileID: 0}
@@ -578,3 +620,23 @@ MonoBehaviour:
   _NetworkedGold: 1000
   _NetworkedGems: 50
   _IsInitialized: 0
+--- !u!114 &18057414987109292
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04ea935b6f755fd4c9d78420ab8524a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  allEquipmentSets: []
+  currentSetBonuses: []
+  showDebugInfo: 0
+  autoLoadSetsFromResources: 1
+  resourcePaths:
+  - EquipmentSets
+  - Sets
+  - Items/Sets

@@ -41,6 +41,8 @@ MonoBehaviour:
   buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
+  belongsToSet: {fileID: 11400000, guid: e53c629f218f4d0408fe75614a23a0ab, type: 2}
+  isSetItem: 1
   stats:
     attackDamageBonus: 30
     magicDamageBonus: 30

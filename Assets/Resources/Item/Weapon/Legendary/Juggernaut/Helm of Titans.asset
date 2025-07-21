@@ -12,6 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: Helm of Titans
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
   itemId: Helm of Titans
   itemName: Helm of Titans
   itemIcon: {fileID: 21300000, guid: 26f5264360368854eae1764927bf8ce5, type: 3}
@@ -22,8 +29,11 @@ MonoBehaviour:
   buyPrice: 0
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
+  belongsToSet: {fileID: 11400000, guid: db8f034f7cd382045893879858a8ddcb, type: 2}
+  isSetItem: 1
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0

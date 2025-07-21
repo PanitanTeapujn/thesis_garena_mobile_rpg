@@ -114,6 +114,7 @@ public class Character : NetworkBehaviour
     protected CharacterVisualManager visualManager;
     protected LevelManager levelManager;
     protected Inventory inventory;
+    protected SetBonusManager setBonusManager;
     protected EquipmentSlotManager equipmentSlotManager; // 🆕 เพิ่มใหม่
     [Header("🆕 Equipment Slots")]
     [SerializeField] private List<ItemData> characterEquippedItems = new List<ItemData>(6); // 6 slots: Head, Armor, Weapon, Pants, Shoes, Rune
@@ -352,13 +353,17 @@ public class Character : NetworkBehaviour
             equipmentSlotManager = GetComponent<EquipmentSlotManager>();
             if (equipmentSlotManager == null)
                 equipmentSlotManager = gameObject.AddComponent<EquipmentSlotManager>();
+            setBonusManager = GetComponent<SetBonusManager>();
+            if (setBonusManager == null)
+                setBonusManager = gameObject.AddComponent<SetBonusManager>();
 
+            // 🆕 ✅ Auto-setup SetBonusManager
         }
         else
         {
         }
     }
-
+   
     private void InitializePhysics()
     {
         rb = GetComponent<Rigidbody>();
@@ -1717,6 +1722,7 @@ public class Character : NetworkBehaviour
             // Force update equipment slots ทันที
             ForceUpdateEquipmentSlotsNow();
             SaveTotalStatsDirectly();
+            UpdateSetBonusesAfterEquipmentChange();
 
             // 🆕 บันทึก inventory และ total stats
             SaveEquipmentImmediately();
@@ -1911,6 +1917,7 @@ public class Character : NetworkBehaviour
     {
         if (equipmentManager == null)
         {
+            Debug.LogWarning($"[Character] {CharacterName}: EquipmentManager is null");
             return;
         }
 
@@ -1933,6 +1940,9 @@ public class Character : NetworkBehaviour
 
         // ส่ง total stats ไปให้ EquipmentManager ครั้งเดียว
         equipmentManager.EquipItem(totalEquipmentData);
+
+        // 🆕 Update set bonuses after equipment stats applied
+        UpdateSetBonusesAfterEquipmentChange();
 
         // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม และ MaxHp/MaxMana ใหม่
         CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
@@ -2195,6 +2205,7 @@ public class Character : NetworkBehaviour
         // Force update equipment slots
         ForceUpdateEquipmentSlotsNow();
         SaveTotalStatsDirectly();
+        UpdateSetBonusesAfterEquipmentChange();
 
         // 🆕 บันทึก equipped items ทันที
         SaveEquipmentImmediately();
@@ -2592,6 +2603,7 @@ public class Character : NetworkBehaviour
 
         // ใส่ item ลง characterEquippedItems โดยตรง
         characterEquippedItems[slotIndex] = itemData;
+        UpdateSetBonusesAfterEquipmentChange();
 
         return true;
     }
@@ -2659,11 +2671,38 @@ public class Character : NetworkBehaviour
                 potionStackCounts[i] = 0;
             }
         }
+        ClearSetBonuses();
 
     }
 
+    [ContextMenu("Debug Set Bonuses")]
+    public void DebugSetBonuses()
+    {
+        Debug.Log("=== SET BONUSES DEBUG ===");
+        Debug.Log($"Character: {CharacterName}");
 
-   
+        if (setBonusManager == null)
+        {
+            Debug.Log("SetBonusManager is null");
+            return;
+        }
+
+        List<ActiveSetBonus> activeBonuses = GetActiveSetBonuses();
+        Debug.Log($"Active Set Bonuses: {activeBonuses.Count}");
+
+        foreach (var setBonus in activeBonuses)
+        {
+            Debug.Log($"Set: {setBonus.equipmentSet.setName}");
+            Debug.Log($"Pieces: {setBonus.equippedPieces}/{setBonus.equipmentSet.setItems.Count}");
+
+            EquipmentStats stats = setBonus.totalSetStats;
+            Debug.Log($"Stats: ATK+{stats.attackDamageBonus}, HP+{stats.maxHpBonus}, Lifesteal+{stats.lifeStealBonus}%");
+        }
+
+        Debug.Log("Set Bonus Info:");
+        Debug.Log(GetSetBonusInfo());
+    }
+
     public void ResetToBaseStats()
     {
         try
@@ -2717,7 +2756,72 @@ public class Character : NetworkBehaviour
 
     }
 
-    
+    private void UpdateSetBonusesAfterEquipmentChange()
+    {
+        if (setBonusManager == null)
+        {
+            Debug.LogWarning($"[Character] {CharacterName}: SetBonusManager is null");
+            return;
+        }
+
+        // รอ 1 frame เพื่อให้ equipment changes apply ก่อน
+        StartCoroutine(DelayedSetBonusUpdate());
+    }
+
+    private System.Collections.IEnumerator DelayedSetBonusUpdate()
+    {
+        yield return null; // รอ 1 frame
+
+        try
+        {
+            setBonusManager.UpdateSetBonuses();
+            Debug.Log($"[Character] {CharacterName}: Set bonuses updated");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Character] {CharacterName}: Error updating set bonuses: {e.Message}");
+        }
+    }
+
+    // 🆕 Method สำหรับดู set bonus info
+    public string GetSetBonusInfo()
+    {
+        if (setBonusManager == null)
+        {
+            return "Set Bonus Manager not available";
+        }
+
+        return setBonusManager.GetSetBonusInfoText();
+    }
+
+    // 🆕 Method สำหรับดู active set bonuses
+    public List<ActiveSetBonus> GetActiveSetBonuses()
+    {
+        if (setBonusManager == null)
+        {
+            return new List<ActiveSetBonus>();
+        }
+
+        return setBonusManager.GetCurrentSetBonuses();
+    }
+
+    // 🆕 Method สำหรับ force update set bonuses
+    public void ForceUpdateSetBonuses()
+    {
+        if (setBonusManager != null)
+        {
+            setBonusManager.ForceUpdateSetBonuses();
+        }
+    }
+
+    // 🆕 Method สำหรับ clear set bonuses
+    public void ClearSetBonuses()
+    {
+        if (setBonusManager != null)
+        {
+            setBonusManager.ClearAllSetBonuses();
+        }
+    }
 
     // 🆕 หา ItemData จาก ID
     private ItemData FindItemDataById(string itemId)
