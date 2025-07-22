@@ -46,11 +46,14 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 10
+    armorBonus: 5
     criticalChanceBonus: 0
     criticalDamageBonus: 0
+    magicArmorBonus: 5
+    manaRegenBonus: 0
+    healthRegenBonus: 0
     maxHpBonus: 150
-    maxManaBonus: 150
+    maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0

@@ -12,6 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: Mark Of Shadows
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
   itemId: Mark Of Shadows
   itemName: Mark Of Shadows
   itemIcon: {fileID: 21300000, guid: 3253ad9deab97584d9f92d6a2fad17b4, type: 3}
@@ -25,12 +32,17 @@ MonoBehaviour:
   buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
+  belongsToSet: {fileID: 11400000, guid: 2828dd78d6a1d294dbe797a6dbca07a8, type: 2}
+  isSetItem: 1
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 8
     criticalDamageBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0

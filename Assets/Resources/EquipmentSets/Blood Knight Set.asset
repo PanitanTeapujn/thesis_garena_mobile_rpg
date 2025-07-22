@@ -10,29 +10,29 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a25c8f1f6946dcd4a8cb137e6addc359, type: 3}
-  m_Name: SlimeSet
+  m_Name: Blood Knight Set
   m_EditorClassIdentifier: 
-  setName: SlimeSet
+  setName: Blood Knight Set
   setDescription: 
-  setIcon: {fileID: 21300000, guid: 0825dfa25de4551469e65496af7b3c71, type: 3}
+  setIcon: {fileID: 21300000, guid: bbe833a9207e7fa41bbd3ce71ad09605, type: 3}
   setColor: {r: 1, g: 1, b: 1, a: 1}
   setItems:
-  - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
-  - {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
-  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: b48d3e4819115de4b93f3d9292613ad1, type: 2}
+  - {fileID: 11400000, guid: a8cb289f65e01f24296c6d23beb24ebd, type: 2}
+  - {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
   - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
-  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
-  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - {fileID: 11400000, guid: e958d18474a707944a39dd806febaa21, type: 2}
+  - {fileID: 11400000, guid: eeda5bc38457dc845b4dc3c12dc7d741, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:
     - bonusType: 0
-      bonusValue: 30
+      bonusValue: 25
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 4
-      bonusValue: 15
+    - bonusType: 9
+      bonusValue: 10
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
@@ -40,14 +40,14 @@ MonoBehaviour:
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
   - requiredPieces: 4
     bonusEffects:
-    - bonusType: 5
-      bonusValue: 40
+    - bonusType: 9
+      bonusValue: 15
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 6
-      bonusValue: 20
-      isPercentage: 1
+    - bonusType: 13
+      bonusValue: 5
+      isPercentage: 0
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
@@ -59,16 +59,16 @@ MonoBehaviour:
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 6
-      bonusValue: 20
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
     - bonusType: 15
       bonusValue: 10
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    - bonusType: 5
+      bonusValue: 100
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
-  setTier: 4
+  setTier: 5

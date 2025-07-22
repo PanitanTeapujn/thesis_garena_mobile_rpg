@@ -347,7 +347,7 @@ public class SetBonusUI : MonoBehaviour
             {
                 // ✅ ยังไม่มี bonus - แสดงว่าต้องการอีกกี่ชิ้น
                 int needed = 2 - setInfo.equippedPieces;
-                setBonusStatsText.text = $"Need {needed} more piece{(needed > 1 ? "s" : "")} for bonus";
+                setBonusStatsText.text = $"No bonus";
                 setBonusStatsText.color = Color.gray;
             }
         }

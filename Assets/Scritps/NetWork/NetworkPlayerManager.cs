@@ -93,11 +93,5 @@ public class NetworkPlayerManager : NetworkBehaviour
         return PlayerSelectionData.GetSelectedCharacter();
     }
 
-    void OnGUI()
-    {
-        if (HasInputAuthority)
-        {
-            GUI.Label(new Rect(10, 190, 500, 20), $"[NPM] Selected: {(PlayerSelectionData.CharacterType)SelectedCharacterType}, Spawned: {HasSpawnedCharacter}");
-        }
-    }
+    
 }

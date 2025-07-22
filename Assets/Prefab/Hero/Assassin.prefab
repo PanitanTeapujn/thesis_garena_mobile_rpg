@@ -246,6 +246,8 @@ MonoBehaviour:
   isSpawnComplete: 0
   baseHealthRegenPerSecond: 0.5
   baseManaRegenPerSecond: 1
+  maxHealthRegenPerTick: 50
+  maxManaRegenPerTick: 100
   rb: {fileID: 0}
   characterEquippedItems: []
   potionSlots: []
@@ -459,9 +461,9 @@ MonoBehaviour:
   _NetworkedReductionCoolDown: 0
   _NetworkedCriticalMultiplierBonus: 0
   _NetworkedLifeStealBonus: 0
-  _NetworkedMagicArmorBonus: 0
-  _NetworkedManaRegenBonus: 0
-  _NetworkedHealthRegenBonus: 0
+  _NetworkedSetMagicArmorBonus: 0
+  _NetworkedSetHealthRegenBonus: 0
+  _NetworkedSetManaRegenBonus: 0
   currentSetBonusStats:
     attackDamageBonus: 0
     magicDamageBonus: 0
@@ -614,6 +616,51 @@ MonoBehaviour:
     quantity: 1
     note: 
   - itemData: {fileID: 11400000, guid: 064b3deaf929fbd45b7a541e5a59b5a0, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 0c7bcbfd303485b439782276171e27a4, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: d0660a08dab62d94bb08c9ca10de275b, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 71e5755254cedaa4bb8e4cce40c6a134, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 0252b258346d8774b9d9ba3d958af025, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: b48d3e4819115de4b93f3d9292613ad1, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: a8cb289f65e01f24296c6d23beb24ebd, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: e958d18474a707944a39dd806febaa21, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: eeda5bc38457dc845b4dc3c12dc7d741, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: cb53536a40b373a4686f7ef4c13009bb, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 466a04b6fbab2254a88a8a0c328e6012, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: dfefd4a870e90d84cae1abb4c90744f7, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 39fa8ead6717e0f4e8503ec0758bb937, type: 2}
     quantity: 1
     note: 
   useFallbackItems: 1

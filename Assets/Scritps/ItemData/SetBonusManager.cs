@@ -231,14 +231,13 @@ public class SetBonusManager : MonoBehaviour
             Debug.Log($"[SetBonusManager] Applied set bonuses: ATK+{finalBonuses.attackDamageBonus}, HP+{finalBonuses.maxHpBonus}");
         }
     }
-
     private EquipmentStats CalculateTotalSetStats()
     {
         EquipmentStats totalStats = new EquipmentStats();
 
         foreach (var setBonus in currentSetBonuses)
         {
-            // รวม stats จากแต่ละ set
+            // รวม stats จากแต่ละ set (รวม 3 stats ใหม่)
             totalStats.attackDamageBonus += setBonus.totalSetStats.attackDamageBonus;
             totalStats.magicDamageBonus += setBonus.totalSetStats.magicDamageBonus;
             totalStats.armorBonus += setBonus.totalSetStats.armorBonus;
@@ -248,25 +247,20 @@ public class SetBonusManager : MonoBehaviour
             totalStats.maxManaBonus += setBonus.totalSetStats.maxManaBonus;
             totalStats.moveSpeedBonus += setBonus.totalSetStats.moveSpeedBonus;
             totalStats.attackSpeedBonus += setBonus.totalSetStats.attackSpeedBonus;
-            totalStats.hitRateBonus += setBonus.totalSetStats.hitRateBonus;
-            totalStats.evasionRateBonus += setBonus.totalSetStats.evasionRateBonus;
             totalStats.lifeStealBonus += setBonus.totalSetStats.lifeStealBonus;
             totalStats.reductionCoolDownBonus += setBonus.totalSetStats.reductionCoolDownBonus;
             totalStats.physicalResistanceBonus += setBonus.totalSetStats.physicalResistanceBonus;
             totalStats.magicalResistanceBonus += setBonus.totalSetStats.magicalResistanceBonus;
-
-            // ✅ เพิ่ม 3 stats ใหม่
             totalStats.magicArmorBonus += setBonus.totalSetStats.magicArmorBonus;
             totalStats.healthRegenBonus += setBonus.totalSetStats.healthRegenBonus;
             totalStats.manaRegenBonus += setBonus.totalSetStats.manaRegenBonus;
+            // ✅ เพิ่ม 3 stats ที่ขาดหายไป
+            totalStats.hitRateBonus += setBonus.totalSetStats.hitRateBonus;
+            totalStats.evasionRateBonus += setBonus.totalSetStats.evasionRateBonus;
         }
 
         return totalStats;
     }
-
-    /// <summary>
-    /// 🔧 คำนวณ final bonuses จาก base stats (แปลง % เป็นค่าคงที่)
-    /// </summary>
     private EquipmentStats CalculateFinalBonusesFromBaseStats(EquipmentStats setBonuses)
     {
         EquipmentStats finalBonuses = new EquipmentStats();
@@ -282,50 +276,47 @@ public class SetBonusManager : MonoBehaviour
             return CalculateBonusFromCurrentStats(setBonuses);
         }
 
-        if (showDebugInfo)
-        {
-            Debug.Log($"[SetBonusManager] Using base stats: ATK={characterData.baseAttackDamage}, HP={characterData.baseMaxHp}");
-        }
-
-        // ✅ ปรับการคำนวณ - แยก flat bonus กับ percentage bonus
+        // ใช้ current base stats (รวม level bonuses + stat upgrades แล้ว)
         finalBonuses.attackDamageBonus = CalculateSmartBonus(characterData.baseAttackDamage, setBonuses.attackDamageBonus);
         finalBonuses.magicDamageBonus = CalculateSmartBonus(characterData.baseMagicDamage, setBonuses.magicDamageBonus);
         finalBonuses.maxHpBonus = CalculateSmartBonus(characterData.baseMaxHp, setBonuses.maxHpBonus);
         finalBonuses.maxManaBonus = CalculateSmartBonus(characterData.baseMaxMana, setBonuses.maxManaBonus);
-
-        // ✅ Armor และ Magic Armor - ตรวจสอบว่าควรเป็น flat หรือ percentage
         finalBonuses.armorBonus = CalculateArmorBonus(characterData.baseArmor, setBonuses.armorBonus);
         finalBonuses.magicArmorBonus = CalculateArmorBonus(characterData.baseMagicArmor, setBonuses.magicArmorBonus);
 
-        // Stats ที่เป็น % หรือค่าคงที่อยู่แล้ว - ไม่ต้องคำนวณ
+        // Stats ที่เป็น % อยู่แล้ว - ไม่ต้องคำนวณ
         finalBonuses.criticalChanceBonus = setBonuses.criticalChanceBonus;
         finalBonuses.criticalMultiplierBonus = setBonuses.criticalMultiplierBonus;
         finalBonuses.attackSpeedBonus = setBonuses.attackSpeedBonus;
         finalBonuses.moveSpeedBonus = setBonuses.moveSpeedBonus;
-        finalBonuses.hitRateBonus = setBonuses.hitRateBonus;
-        finalBonuses.evasionRateBonus = setBonuses.evasionRateBonus;
         finalBonuses.lifeStealBonus = setBonuses.lifeStealBonus;
         finalBonuses.reductionCoolDownBonus = setBonuses.reductionCoolDownBonus;
         finalBonuses.physicalResistanceBonus = setBonuses.physicalResistanceBonus;
         finalBonuses.magicalResistanceBonus = setBonuses.magicalResistanceBonus;
 
-        // ✅ Regen stats มักจะเป็นค่าคงที่ (flat bonus)
+        // ✅ เพิ่ม 3 stats ที่ขาดหายไป (เป็น % bonus)
+        finalBonuses.hitRateBonus = setBonuses.hitRateBonus;
+        finalBonuses.evasionRateBonus = setBonuses.evasionRateBonus;
+
+        // Regen stats มักจะเป็นค่าคงที่ (flat bonus)
         finalBonuses.healthRegenBonus = setBonuses.healthRegenBonus;
         finalBonuses.manaRegenBonus = setBonuses.manaRegenBonus;
 
         if (showDebugInfo)
         {
-            Debug.Log($"[SetBonusManager] Set bonus calculated:");
-            Debug.Log($"  ATK: {characterData.baseAttackDamage} × {setBonuses.attackDamageBonus}% = +{finalBonuses.attackDamageBonus}");
-            Debug.Log($"  HP: {characterData.baseMaxHp} × {setBonuses.maxHpBonus}% = +{finalBonuses.maxHpBonus}");
-            Debug.Log($"  Armor: {setBonuses.armorBonus} → +{finalBonuses.armorBonus} (Smart calculation)");
-            Debug.Log($"  Magic Armor: {setBonuses.magicArmorBonus} → +{finalBonuses.magicArmorBonus} (Smart calculation)");
-            Debug.Log($"  Health Regen: +{finalBonuses.healthRegenBonus}/s (Flat)");
-            Debug.Log($"  Mana Regen: +{finalBonuses.manaRegenBonus}/s (Flat)");
+            Debug.Log($"[SetBonusManager] Set bonus calculated with complete stats:");
+            Debug.Log($"  Hit Rate: +{finalBonuses.hitRateBonus}%");
+            Debug.Log($"  Evasion Rate: +{finalBonuses.evasionRateBonus}%");
+            Debug.Log($"  Cooldown Reduction: -{finalBonuses.reductionCoolDownBonus}%");
         }
 
         return finalBonuses;
     }
+
+    /// <summary>
+    /// 🔧 คำนวณ final bonuses จาก base stats (แปลง % เป็นค่าคงที่)
+    /// </summary>
+   
     private int CalculateSmartBonus(int baseStat, float bonusValue)
     {
         if (bonusValue == 0f) return 0;
