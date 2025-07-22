@@ -68,8 +68,12 @@ public class CombatUIManager : MonoBehaviour
     public Transform inventoryGridParent;           // Parent สำหรับ inventory grid
     public GameObject inventorySlotPrefab;          // Prefab สำหรับ inventory slot (optional)
     public ScrollRect inventoryScrollRect;          // Scroll Rect สำหรับ inventory (optional)
+    [Header("🔥 Set Bonus UI")]
+    public Button setBonusButton;              // ปุ่มในใน Inventory Panel สำหรับเปิด Set Bonus
+    public GameObject setBonusPanel;           // Panel แสดง Set Bonus
+    public SetBonusUI setBonusUI;             // Component SetBonusUI
 
-  
+
     [Header("Character Stats in Inventory")]
     public TextMeshProUGUI characterNameText;
     public TextMeshProUGUI characterLevelText;
@@ -706,7 +710,15 @@ public class CombatUIManager : MonoBehaviour
             Debug.Log("✅ Inventory close button event setup complete");
         }
         else Debug.LogWarning("❌ Inventory close button not assigned in Inspector!");
-
+        if (setBonusButton != null)
+        {
+            setBonusButton.onClick.RemoveAllListeners();
+            setBonusButton.onClick.AddListener(() => {
+                Debug.Log("Set Bonus button pressed");
+                ToggleSetBonusPanel();
+            });
+            Debug.Log("✅ Set Bonus button event setup complete");
+        }
         Debug.Log("=== UI Button Events Setup Complete ===");
 
       
@@ -1045,12 +1057,18 @@ public class CombatUIManager : MonoBehaviour
             HideItemDetail();
 
             // ✅ เพิ่มบรรทัดนี้ - ปิด delete mode เมื่อปิด inventory
-           
 
+            if (setBonusUI != null && setBonusUI.IsPanelOpen())
+            {
+                setBonusUI.CloseSetBonusPanel();
+            }
             Debug.Log("Inventory panel closed");
         }
     }
-
+    public bool IsSetBonusPanelOpen()
+    {
+        return setBonusUI != null && setBonusUI.IsPanelOpen();
+    }
     public void SetLocalHero(Hero hero)
     {
         localHero = hero;
@@ -1064,6 +1082,9 @@ public class CombatUIManager : MonoBehaviour
 
         // 🆕 เชื่อมต่อ ItemDeleteManager
         ConnectDeleteManagerToHero(hero);
+
+        // ✅ เพิ่มบรรทัดนี้ - เชื่อมต่อ Set Bonus UI
+        ConnectSetBonusUIToHero(hero);
 
         // ✅ เพิ่มการ force refresh references
         RefreshItemDeleteManagerReferences();
@@ -1189,7 +1210,61 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
+    private void ConnectSetBonusUIToHero(Hero hero)
+    {
+        if (setBonusUI != null)
+        {
+            setBonusUI.SetOwnerCharacter(hero);
+            Debug.Log($"[CombatUI] Connected SetBonusUI to {hero.CharacterName}");
+        }
+        else
+        {
+            Debug.LogWarning("[CombatUI] SetBonusUI not assigned in Inspector!");
 
+            // ลองหาอัตโนมัติ
+            setBonusUI = FindObjectOfType<SetBonusUI>();
+            if (setBonusUI != null)
+            {
+                setBonusUI.SetOwnerCharacter(hero);
+                Debug.Log($"[CombatUI] Auto-found and connected SetBonusUI to {hero.CharacterName}");
+            }
+            else
+            {
+                Debug.LogWarning("[CombatUI] SetBonusUI component not found!");
+            }
+        }
+    }
+
+    // ✅ เพิ่มฟังก์ชันใหม่นี้
+    public void ToggleSetBonusPanel()
+    {
+        if (setBonusUI != null)
+        {
+            setBonusUI.ToggleSetBonusPanel();
+        }
+        else
+        {
+            Debug.LogError("[CombatUI] SetBonusUI not assigned!");
+        }
+    }
+
+    // ✅ เพิ่มฟังก์ชันใหม่นี้
+    public void OpenSetBonusPanel()
+    {
+        if (setBonusUI != null)
+        {
+            setBonusUI.OpenSetBonusPanel();
+        }
+    }
+
+    // ✅ เพิ่มฟังก์ชันใหม่นี้
+    public void CloseSetBonusPanel()
+    {
+        if (setBonusUI != null)
+        {
+            setBonusUI.CloseSetBonusPanel();
+        }
+    }
     private void HandleEquipmentSlotClicked(EquipmentSlot slot)
     {
         if (slot == null || localHero == null) return;
