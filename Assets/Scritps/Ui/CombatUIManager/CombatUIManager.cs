@@ -1368,10 +1368,10 @@ public class CombatUIManager : MonoBehaviour
         }
         if (HealthRegen != null)
         {
-            HealthRegen.text = $"HRG: {localHero.HealthRegen}";
+            HealthRegen.text = $"Heal+: {localHero.HealthRegen}/s";
         } if (ManaRegen != null)
         {
-            ManaRegen.text = $"MRG: {localHero.ManaRegen}";
+            ManaRegen.text = $"Mana+:{localHero.ManaRegen}/s";
         }
         // Combat Stats
         if (attackDamageText != null)

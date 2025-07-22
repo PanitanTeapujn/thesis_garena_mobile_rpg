@@ -19,7 +19,7 @@ MonoBehaviour:
   attackDamage: 35
   magicDamage: 20
   arrmor: 3
-  attackCoolDown: 2
+  attackCoolDown: 1
   attackRange: 1
   criticalChance: 0
   criticalDamageBonus: 0
@@ -28,7 +28,7 @@ MonoBehaviour:
   attackSpeed: 1
   reductionCoolDown: 0
   lifeSteal: 0
-  magicArmor: 0
-  manaRegen: 0
-  healthRegen: 0
+  magicArmor: 2
+  manaRegen: 1
+  healthRegen: 1
   attackType: 0

@@ -429,15 +429,28 @@ public class EquipmentManager : NetworkBehaviour
         return currentEquipmentStats.magicArmorBonus + currentRuneStats.magicArmorBonus;
     }
 
-    public float GetManaRegenBonus()
-    {
-        return currentEquipmentStats.manaRegenBonus + currentRuneStats.manaRegenBonus;
-    }
-
     public float GetHealthRegenBonus()
     {
-        return currentEquipmentStats.healthRegenBonus + currentRuneStats.healthRegenBonus;
+        float equipmentRegen = currentEquipmentStats.healthRegenBonus;
+        float runeRegen = currentRuneStats.healthRegenBonus;
+        float setRegen = currentSetBonusStats.healthRegenBonus;
+        float total = equipmentRegen + runeRegen + setRegen;
+
+        Debug.Log($"[GetHealthRegenBonus] {character.CharacterName}: Equipment={equipmentRegen:F1}, Rune={runeRegen:F1}, Set={setRegen:F1}, Total={total:F1}");
+        return total;
     }
+
+    public float GetManaRegenBonus()
+    {
+        float equipmentRegen = currentEquipmentStats.manaRegenBonus;
+        float runeRegen = currentRuneStats.manaRegenBonus;
+        float setRegen = currentSetBonusStats.manaRegenBonus;
+        float total = equipmentRegen + runeRegen + setRegen;
+
+        Debug.Log($"[GetManaRegenBonus] {character.CharacterName}: Equipment={equipmentRegen:F1}, Rune={runeRegen:F1}, Set={setRegen:F1}, Total={total:F1}");
+        return total;
+    }
+
     public float GetTotalPhysicalResistance()
     {
         return baseResistance.GetTotalPhysicalResistance();

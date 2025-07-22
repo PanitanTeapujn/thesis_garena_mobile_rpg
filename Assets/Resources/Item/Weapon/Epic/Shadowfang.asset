@@ -41,8 +41,8 @@ MonoBehaviour:
     criticalChanceBonus: 8
     criticalDamageBonus: 35
     magicArmorBonus: 20
-    manaRegenBonus: 2
-    healthRegenBonus: 2
+    manaRegenBonus: 0
+    healthRegenBonus: 0
     maxHpBonus: 100
     maxManaBonus: 0
     moveSpeedBonus: 0

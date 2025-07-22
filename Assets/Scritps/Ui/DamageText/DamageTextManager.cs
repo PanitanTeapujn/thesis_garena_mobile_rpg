@@ -244,7 +244,7 @@ public class DamageTextManager : MonoBehaviour
         // Log performance info
         if (Application.isEditor)
         {
-            Debug.Log($"DamageTextManager: Active texts: {activeDamageTexts.Count}, Pool size: {damageTextPool.Count}");
+            //Debug.Log($"DamageTextManager: Active texts: {activeDamageTexts.Count}, Pool size: {damageTextPool.Count}");
         }
     }
 

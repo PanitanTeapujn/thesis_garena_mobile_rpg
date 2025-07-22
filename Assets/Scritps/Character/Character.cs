@@ -113,13 +113,19 @@ public class Character : NetworkBehaviour
 
     #endregion
 
+
+    // ใน Character.cs - แก้ไขส่วน Regeneration Settings
     #region Regeneration Settings การตั้งค่าการฟื้นฟู HP/Mana
     [Header("Regeneration Settings")]
-    [SerializeField] private float baseHealthRegenPerSecond = 0.5f;  // แยกจาก equipment bonus
-    [SerializeField] private float baseManaRegenPerSecond = 1f;      // แยกจาก equipment bonus
+    [SerializeField] private float baseHealthRegenPerSecond = 0.2f;
+    [SerializeField] private float baseManaRegenPerSecond = 0.5f;
     private float healthRegenTimer = 0f;
     private float manaRegenTimer = 0f;
-    private float regenTickInterval = 3f; // regen ทุก 3 วินาที
+    private float regenTickInterval = 1f; // ✅ เปลี่ยนจาก 5 วินาที เป็น 1 วินาที (เร็วขึ้น 5 เท่า)
+
+    [Header("Regen Caps")]
+    [SerializeField] private float maxHealthRegenPerTick = 50f; // ✅ เพิ่ม cap ที่ปรับได้
+    [SerializeField] private float maxManaRegenPerTick = 100f;  // ✅ เพิ่ม cap ที่ปรับได้
     #endregion
 
     #region Component References การอ้างอิงถึง managers และ components อื่นๆ
@@ -1405,23 +1411,29 @@ public class Character : NetworkBehaviour
     }
     private void RegenerateHealth()
     {
-        // รวม base regen + equipment bonus
+        // รวม base regen + equipment bonus + set bonus
         float totalHealthRegen = baseHealthRegenPerSecond + HealthRegen;
+
         if (equipmentManager != null)
         {
             totalHealthRegen += equipmentManager.GetHealthRegenBonus();
         }
 
-        int regenAmount = Mathf.RoundToInt(totalHealthRegen * regenTickInterval); // คูณด้วย interval
-        int oldHp = currentHp;
+        // ✅ ใช้ค่า cap ที่กำหนดเอง แทนที่จะคำนวณจาก %
+        int regenAmount = Mathf.RoundToInt(totalHealthRegen * regenTickInterval);
+        regenAmount = Mathf.Min(regenAmount, Mathf.RoundToInt(maxHealthRegenPerTick));
 
+        int oldHp = currentHp;
         currentHp = Mathf.Min(currentHp + regenAmount, maxHp);
 
         if (currentHp > oldHp)
         {
             NetworkedCurrentHp = currentHp;
 
-            Debug.Log($"[Health Regen] {CharacterName}: +{currentHp - oldHp} HP (Total regen: {totalHealthRegen:F1}/s)");
+            float equipmentBonus = equipmentManager != null ? equipmentManager.GetHealthRegenBonus() : 0f;
+            Debug.Log($"[Health Regen] {CharacterName}: +{currentHp - oldHp} HP (Cap: {maxHealthRegenPerTick})");
+            Debug.Log($"  Base: {baseHealthRegenPerSecond:F1}/s + Character: {HealthRegen:F1}/s + Equipment: {equipmentBonus:F1}/s = {totalHealthRegen:F1}/s");
+            Debug.Log($"  Calculated: {totalHealthRegen * regenTickInterval:F1}, Applied: {currentHp - oldHp}");
 
             if (HasStateAuthority)
             {
@@ -1432,23 +1444,29 @@ public class Character : NetworkBehaviour
 
     private void RegenerateMana()
     {
-        // รวม base regen + equipment bonus
+        // รวม base regen + equipment bonus + set bonus
         float totalManaRegen = baseManaRegenPerSecond + ManaRegen;
+
         if (equipmentManager != null)
         {
             totalManaRegen += equipmentManager.GetManaRegenBonus();
         }
 
-        int regenAmount = Mathf.RoundToInt(totalManaRegen * regenTickInterval); // คูณด้วย interval
-        int oldMana = currentMana;
+        // ✅ ใช้ค่า cap ที่กำหนดเอง
+        int regenAmount = Mathf.RoundToInt(totalManaRegen * regenTickInterval);
+        regenAmount = Mathf.Min(regenAmount, Mathf.RoundToInt(maxManaRegenPerTick));
 
+        int oldMana = currentMana;
         currentMana = Mathf.Min(currentMana + regenAmount, maxMana);
 
         if (currentMana > oldMana)
         {
             NetworkedCurrentMana = currentMana;
 
-            Debug.Log($"[Mana Regen] {CharacterName}: +{currentMana - oldMana} MP (Total regen: {totalManaRegen:F1}/s)");
+            float equipmentBonus = equipmentManager != null ? equipmentManager.GetManaRegenBonus() : 0f;
+            Debug.Log($"[Mana Regen] {CharacterName}: +{currentMana - oldMana} MP (Cap: {maxManaRegenPerTick})");
+            Debug.Log($"  Base: {baseManaRegenPerSecond:F1}/s + Character: {ManaRegen:F1}/s + Equipment: {equipmentBonus:F1}/s = {totalManaRegen:F1}/s");
+            Debug.Log($"  Calculated: {totalManaRegen * regenTickInterval:F1}, Applied: {currentMana - oldMana}");
 
             if (HasStateAuthority)
             {
@@ -1456,7 +1474,67 @@ public class Character : NetworkBehaviour
             }
         }
     }
+    public void SetHealthRegenCap(float newCap)
+    {
+        maxHealthRegenPerTick = newCap;
+        Debug.Log($"[Regen Cap] {CharacterName}: Health regen cap set to {newCap}/tick");
+    }
 
+    public void SetManaRegenCap(float newCap)
+    {
+        maxManaRegenPerTick = newCap;
+        Debug.Log($"[Regen Cap] {CharacterName}: Mana regen cap set to {newCap}/tick");
+    }
+
+    // ✅ เพิ่ม methods สำหรับปรับ regen interval
+    public void SetRegenInterval(float newInterval)
+    {
+        regenTickInterval = Mathf.Max(0.1f, newInterval); // อย่างน้อย 0.1 วินาที
+        Debug.Log($"[Regen Interval] {CharacterName}: Regen interval set to {regenTickInterval}s");
+    }
+
+    // ✅ เพิ่ม method สำหรับดูสถานะ regen
+    public void LogRegenStatus()
+    {
+        float totalHealthRegen = GetTotalHealthRegenRate();
+        float totalManaRegen = GetTotalManaRegenRate();
+
+        Debug.Log($"[Regen Status] {CharacterName}:");
+        Debug.Log($"  Health: {totalHealthRegen:F1}/s (Cap: {maxHealthRegenPerTick}/tick, Interval: {regenTickInterval}s)");
+        Debug.Log($"  Mana: {totalManaRegen:F1}/s (Cap: {maxManaRegenPerTick}/tick, Interval: {regenTickInterval}s)");
+        Debug.Log($"  Theoretical per tick - Health: {totalHealthRegen * regenTickInterval:F1}, Mana: {totalManaRegen * regenTickInterval:F1}");
+    }
+    public float GetTotalHealthRegenRate()
+    {
+        float total = baseHealthRegenPerSecond + HealthRegen;
+        if (equipmentManager != null)
+        {
+            total += equipmentManager.GetHealthRegenBonus();
+        }
+        return total;
+    }
+
+    public float GetTotalManaRegenRate()
+    {
+        float total = baseManaRegenPerSecond + ManaRegen;
+        if (equipmentManager != null)
+        {
+            total += equipmentManager.GetManaRegenBonus();
+        }
+        return total;
+    }
+
+    // ✅ เพิ่ม method ใน Character.cs สำหรับแจ้ง EquipmentManager ว่า stats เปลี่ยน
+   
+    public float GetCurrentHealthRegenRate()
+    {
+        return baseHealthRegenPerSecond + HealthRegen;
+    }
+
+    public float GetCurrentManaRegenRate()
+    {
+        return baseManaRegenPerSecond + ManaRegen;
+    }
     #endregion
 
     #region Effective Stats Methods การคำนวณ stats ที่รวม buffs/debuffs
