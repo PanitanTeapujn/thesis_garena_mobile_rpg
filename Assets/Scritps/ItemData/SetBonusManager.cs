@@ -266,20 +266,31 @@ public class SetBonusManager : MonoBehaviour
     {
         EquipmentStats finalBonuses = new EquipmentStats();
 
-        if (character?.characterStats == null)
+        // ✅ ดึง current base stats จาก PersistentPlayerData แทน ScriptableObject
+        var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
+
+        if (characterData == null || !characterData.HasValidBaseStats())
         {
-            // ถ้าไม่มี characterStats ให้ใช้ค่าคงที่
-            return setBonuses;
+            if (showDebugInfo)
+            {
+                Debug.LogWarning("[SetBonusManager] No valid base stats found, using current character stats as fallback");
+            }
+
+            // ✅ Fallback: ใช้ current stats ของ character (ไม่ลบ equipment bonus)
+            return CalculateBonusFromCurrentStats(setBonuses);
         }
 
-        var baseStats = character.characterStats;
+        if (showDebugInfo)
+        {
+            Debug.Log($"[SetBonusManager] Using base stats: ATK={characterData.baseAttackDamage}, HP={characterData.baseMaxHp}");
+        }
 
-        // ✅ คำนวณ percentage bonuses จาก base stats แล้วเก็บเป็นค่าคงที่
-        finalBonuses.attackDamageBonus = CalculateBonusValue(baseStats.attackDamage, setBonuses.attackDamageBonus);
-        finalBonuses.magicDamageBonus = CalculateBonusValue(baseStats.magicDamage, setBonuses.magicDamageBonus);
-        finalBonuses.maxHpBonus = CalculateBonusValue(baseStats.maxHp, setBonuses.maxHpBonus);
-        finalBonuses.maxManaBonus = CalculateBonusValue(baseStats.maxMana, setBonuses.maxManaBonus);
-        finalBonuses.armorBonus = CalculateBonusValue(baseStats.arrmor, setBonuses.armorBonus);
+        // ✅ ใช้ current base stats (รวม level bonuses + stat upgrades แล้ว)
+        finalBonuses.attackDamageBonus = CalculateBonusValue(characterData.baseAttackDamage, setBonuses.attackDamageBonus);
+        finalBonuses.magicDamageBonus = CalculateBonusValue(characterData.baseMagicDamage, setBonuses.magicDamageBonus);
+        finalBonuses.maxHpBonus = CalculateBonusValue(characterData.baseMaxHp, setBonuses.maxHpBonus);
+        finalBonuses.maxManaBonus = CalculateBonusValue(characterData.baseMaxMana, setBonuses.maxManaBonus);
+        finalBonuses.armorBonus = CalculateBonusValue(characterData.baseArmor, setBonuses.armorBonus);
 
         // Stats ที่เป็น % อยู่แล้ว - ไม่ต้องคำนวณ
         finalBonuses.criticalChanceBonus = setBonuses.criticalChanceBonus;
@@ -292,6 +303,58 @@ public class SetBonusManager : MonoBehaviour
         finalBonuses.reductionCoolDownBonus = setBonuses.reductionCoolDownBonus;
         finalBonuses.physicalResistanceBonus = setBonuses.physicalResistanceBonus;
         finalBonuses.magicalResistanceBonus = setBonuses.magicalResistanceBonus;
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"[SetBonusManager] Set bonus calculated:");
+            Debug.Log($"  Base ATK: {characterData.baseAttackDamage} × {setBonuses.attackDamageBonus}% = +{finalBonuses.attackDamageBonus}");
+            Debug.Log($"  Base HP: {characterData.baseMaxHp} × {setBonuses.maxHpBonus}% = +{finalBonuses.maxHpBonus}");
+        }
+
+        return finalBonuses;
+    }
+    private EquipmentStats CalculateBonusFromCurrentStats(EquipmentStats setBonuses)
+    {
+        EquipmentStats finalBonuses = new EquipmentStats();
+
+        if (character == null)
+        {
+            return setBonuses; // ใช้ค่าคงที่
+        }
+
+        // ✅ ใช้ current stats ของ character (แต่ต้องระวัง equipment bonus ที่อาจรวมอยู่)
+        // หัก equipment bonus ออกเพื่อได้ base stats ประมาณ
+        var equipmentStats = equipmentManager?.GetTotalStats() ?? new EquipmentStats();
+
+        int baseAttack = character.AttackDamage - equipmentStats.attackDamageBonus;
+        int baseMagic = character.MagicDamage - equipmentStats.magicDamageBonus;
+        int baseHp = character.MaxHp - equipmentStats.maxHpBonus;
+        int baseMana = character.MaxMana - equipmentStats.maxManaBonus;
+        int baseArmor = character.Armor - equipmentStats.armorBonus;
+
+        finalBonuses.attackDamageBonus = CalculateBonusValue(baseAttack, setBonuses.attackDamageBonus);
+        finalBonuses.magicDamageBonus = CalculateBonusValue(baseMagic, setBonuses.magicDamageBonus);
+        finalBonuses.maxHpBonus = CalculateBonusValue(baseHp, setBonuses.maxHpBonus);
+        finalBonuses.maxManaBonus = CalculateBonusValue(baseMana, setBonuses.maxManaBonus);
+        finalBonuses.armorBonus = CalculateBonusValue(baseArmor, setBonuses.armorBonus);
+
+        // Stats ที่เป็น % อยู่แล้ว
+        finalBonuses.criticalChanceBonus = setBonuses.criticalChanceBonus;
+        finalBonuses.criticalMultiplierBonus = setBonuses.criticalMultiplierBonus;
+        finalBonuses.attackSpeedBonus = setBonuses.attackSpeedBonus;
+        finalBonuses.moveSpeedBonus = setBonuses.moveSpeedBonus;
+        finalBonuses.hitRateBonus = setBonuses.hitRateBonus;
+        finalBonuses.evasionRateBonus = setBonuses.evasionRateBonus;
+        finalBonuses.lifeStealBonus = setBonuses.lifeStealBonus;
+        finalBonuses.reductionCoolDownBonus = setBonuses.reductionCoolDownBonus;
+        finalBonuses.physicalResistanceBonus = setBonuses.physicalResistanceBonus;
+        finalBonuses.magicalResistanceBonus = setBonuses.magicalResistanceBonus;
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"[SetBonusManager] Fallback calculation:");
+            Debug.Log($"  Estimated Base ATK: {baseAttack} × {setBonuses.attackDamageBonus}% = +{finalBonuses.attackDamageBonus}");
+        }
 
         return finalBonuses;
     }
