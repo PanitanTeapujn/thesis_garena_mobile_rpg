@@ -33,4 +33,22 @@ MonoBehaviour:
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 2
+    bonusEffects:
+    - bonusType: 9
+      bonusValue: 5
+      isPercentage: 0
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 4
+    bonusEffects:
+    - bonusType: 12
+      bonusValue: 5
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
   setTier: 5

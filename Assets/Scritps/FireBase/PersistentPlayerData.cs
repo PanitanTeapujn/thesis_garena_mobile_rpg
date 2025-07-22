@@ -196,65 +196,93 @@ public class PersistentPlayerData : MonoBehaviour
                         isDataLoaded = true;
                         loaded = true;
 
-                        // 🆕 เคลียร์ PlayerPrefs เก่าเมื่อโหลดข้อมูลใหม่จาก Firebase สำเร็จ
+                        // ✅ เคลียร์ PlayerPrefs เก่าเฉพาะเมื่อโหลดข้อมูลใหม่จาก Firebase สำเร็จ
                         ClearOldPlayerPrefsData();
 
                         SaveToPlayerPrefs();
+                        SaveCompleteBackupToPlayerPrefs();
 
                         Debug.Log($"✅ Loaded valid data: {multiCharacterData.playerName}");
                         Debug.Log($"  - Characters: {multiCharacterData.characters.Count}");
                         Debug.Log($"  - Active: {multiCharacterData.currentActiveCharacter}");
                         Debug.Log($"  - Gold: {multiCharacterData.sharedCurrency?.gold ?? 0}");
-
-                        SaveCompleteBackupToPlayerPrefs();
                     }
                     else
                     {
-                        Debug.LogWarning("[PersistentPlayerData] Invalid data structure, creating new data");
-                        // 🆕 สำหรับบัญชีใหม่ที่ data ไม่ valid - ไม่ใช้ backup เก่า
+                        Debug.LogWarning("[PersistentPlayerData] Invalid data structure from Firebase");
                         loaded = false;
                     }
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[PersistentPlayerData] Failed to parse data: {e.Message}");
-                    // 🆕 ถ้า parse ไม่ได้ แสดงว่าเป็นบัญชีใหม่ - ไม่ใช้ backup เก่า
+                    Debug.LogError($"[PersistentPlayerData] Failed to parse Firebase data: {e.Message}");
                     loaded = false;
                 }
             }
             else
             {
-                Debug.LogWarning($"[PersistentPlayerData] JSON too small ({json?.Length ?? 0} chars), this might be a new account");
+                Debug.LogWarning($"[PersistentPlayerData] JSON too small ({json?.Length ?? 0} chars) from Firebase");
                 loaded = false;
             }
 
+            // ✅ ถ้าโหลดจาก Firebase ไม่สำเร็จ ลองใช้ backup ก่อน
             if (!loaded)
             {
-                Debug.LogWarning("[PersistentPlayerData] Creating new data for new account");
-                // 🆕 เคลียร์ PlayerPrefs เก่าก่อนสร้างข้อมูลใหม่
-                ClearOldPlayerPrefsData();
-                CreateDefaultMultiCharacterData();
+                Debug.LogWarning("[PersistentPlayerData] Firebase load failed, trying PlayerPrefs backup...");
+
+                bool backupLoaded = LoadFromPlayerPrefsBackup();
+                if (backupLoaded)
+                {
+                    Debug.Log("✅ Successfully loaded from PlayerPrefs backup");
+                    loaded = true;
+                }
+                else
+                {
+                    Debug.LogWarning("[PersistentPlayerData] No backup available, creating new data for account");
+                    // ✅ เคลียร์ PlayerPrefs เก่าเฉพาะเมื่อแน่ใจว่าเป็นบัญชีใหม่
+                    ClearOldPlayerPrefsData();
+                    CreateDefaultMultiCharacterData();
+                }
             }
-            else
+
+            if (loaded)
             {
                 LoadCurrencyData();
             }
         }
         else if (elapsed >= timeout)
         {
-            Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Creating new data...");
+            Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Trying backup before creating new...");
 
-            // 🆕 หาก timeout ให้สร้างข้อมูลใหม่แทนการใช้ backup เก่า
-            ClearOldPlayerPrefsData();
-            CreateDefaultMultiCharacterData();
+            // ✅ ลอง backup ก่อนสร้างข้อมูลใหม่
+            bool backupLoaded = LoadFromPlayerPrefsBackup();
+            if (!backupLoaded)
+            {
+                Debug.LogError("[PersistentPlayerData] No backup available after timeout, creating new");
+                ClearOldPlayerPrefsData();
+                CreateDefaultMultiCharacterData();
+            }
+            else
+            {
+                Debug.Log("✅ Recovered from backup after timeout");
+            }
         }
         else
         {
-            Debug.Log("[PersistentPlayerData] No Firebase data found, creating new account data...");
+            Debug.Log("[PersistentPlayerData] No Firebase data found, checking backup...");
 
-            // 🆕 ไม่มีข้อมูลใน Firebase = บัญชีใหม่
-            ClearOldPlayerPrefsData();
-            CreateDefaultMultiCharacterData();
+            // ✅ ตรวจสอบ backup ก่อนสร้างข้อมูลใหม่
+            bool backupLoaded = LoadFromPlayerPrefsBackup();
+            if (!backupLoaded)
+            {
+                Debug.Log("[PersistentPlayerData] No backup found, creating new account data");
+                ClearOldPlayerPrefsData();
+                CreateDefaultMultiCharacterData();
+            }
+            else
+            {
+                Debug.Log("✅ Loaded existing data from backup");
+            }
         }
 
         RegisterPlayerInDirectory();
@@ -323,7 +351,9 @@ public class PersistentPlayerData : MonoBehaviour
         if (string.IsNullOrEmpty(backupJson))
         {
             Debug.LogWarning("[LoadFromPlayerPrefsBackup] No backup data found");
-            return false;
+
+            // ✅ ลองหาข้อมูลเก่าจาก PlayerPrefs แบบดั้งเดิม
+            return TryLoadLegacyPlayerPrefsData();
         }
 
         try
@@ -336,6 +366,8 @@ public class PersistentPlayerData : MonoBehaviour
 
                 Debug.Log($"✅ Loaded backup data: {multiCharacterData.playerName}");
                 Debug.Log($"  - Backup Date: {PlayerPrefs.GetString("PlayerDataBackupDate", "Unknown")}");
+                Debug.Log($"  - Characters: {multiCharacterData.characters.Count}");
+                Debug.Log($"  - Gold: {multiCharacterData.sharedCurrency?.gold ?? 0}");
 
                 return true;
             }
@@ -345,7 +377,75 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[LoadFromPlayerPrefsBackup] Failed to parse backup: {e.Message}");
         }
 
-        return false;
+        // ✅ ถ้า backup หลักไม่ได้ ลองข้อมูลเก่า
+        return TryLoadLegacyPlayerPrefsData();
+    }
+
+    // ✅ เพิ่ม method สำหรับโหลดข้อมูลเก่าแบบดั้งเดิม
+    private bool TryLoadLegacyPlayerPrefsData()
+    {
+        Debug.Log("[TryLoadLegacyPlayerPrefsData] Trying to load legacy PlayerPrefs data...");
+
+        string playerName = PlayerPrefs.GetString("PlayerName", "");
+        if (string.IsNullOrEmpty(playerName))
+        {
+            Debug.LogWarning("[TryLoadLegacyPlayerPrefsData] No legacy player name found");
+            return false;
+        }
+
+        try
+        {
+            // สร้าง MultiCharacterPlayerData จากข้อมูลเก่า
+            multiCharacterData = new MultiCharacterPlayerData();
+            multiCharacterData.playerName = playerName;
+            multiCharacterData.currentActiveCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
+
+            // โหลดข้อมูลเงิน
+            string goldStr = PlayerPrefs.GetString("PlayerGold", "5000");
+            if (long.TryParse(goldStr, out long gold))
+            {
+                multiCharacterData.sharedCurrency.gold = gold;
+            }
+            multiCharacterData.sharedCurrency.gems = PlayerPrefs.GetInt("PlayerGems", 50);
+
+            // สร้าง character data จากข้อมูลเก่า
+            var characterData = multiCharacterData.GetOrCreateCharacterData(multiCharacterData.currentActiveCharacter);
+            characterData.currentLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
+            characterData.currentExp = PlayerPrefs.GetInt("PlayerExp", 0);
+            characterData.expToNextLevel = PlayerPrefs.GetInt("PlayerExpToNext", 100);
+
+            // โหลด total stats จากข้อมูลเก่า
+            characterData.totalMaxHp = PlayerPrefs.GetInt("PlayerMaxHp", 100);
+            characterData.totalMaxMana = PlayerPrefs.GetInt("PlayerMaxMana", 50);
+            characterData.totalAttackDamage = PlayerPrefs.GetInt("PlayerAttackDamage", 25);
+            characterData.totalMagicDamage = PlayerPrefs.GetInt("PlayerMagicDamage", 20);
+            characterData.totalArmor = PlayerPrefs.GetInt("PlayerArmor", 10);
+            characterData.totalCriticalChance = PlayerPrefs.GetFloat("PlayerCritChance", 5f);
+            characterData.totalCriticalDamageBonus = PlayerPrefs.GetFloat("PlayerCriticalDamageBonus", 50f);
+            characterData.totalMoveSpeed = PlayerPrefs.GetFloat("PlayerMoveSpeed", 5f);
+            characterData.totalHitRate = PlayerPrefs.GetFloat("PlayerHitRate", 85f);
+            characterData.totalEvasionRate = PlayerPrefs.GetFloat("PlayerEvasionRate", 5f);
+            characterData.totalAttackSpeed = PlayerPrefs.GetFloat("PlayerAttackSpeed", 0f);
+            characterData.totalReductionCoolDown = PlayerPrefs.GetFloat("PlayerReductionCoolDown", 0f);
+            characterData.totalLifeSteal = PlayerPrefs.GetFloat("PlayerLifeSteal", 0f);
+
+            isDataLoaded = true;
+
+            Debug.Log($"✅ Loaded legacy data for: {playerName}");
+            Debug.Log($"  - Character: {multiCharacterData.currentActiveCharacter}");
+            Debug.Log($"  - Level: {characterData.currentLevel}");
+            Debug.Log($"  - Gold: {multiCharacterData.sharedCurrency.gold}");
+
+            // บันทึก backup ใหม่
+            SaveCompleteBackupToPlayerPrefs();
+
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[TryLoadLegacyPlayerPrefsData] Failed to load legacy data: {e.Message}");
+            return false;
+        }
     }
 
     // 🆕 เพิ่ม method สำหรับบันทึก backup
