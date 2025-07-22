@@ -92,6 +92,9 @@ public class CombatUIManager : MonoBehaviour
     public TextMeshProUGUI attackSpeedText;
     public TextMeshProUGUI reductionCoolDownText;
     public TextMeshProUGUI liftSteal;
+    public TextMeshProUGUI magicArmor;
+    public TextMeshProUGUI HealthRegen;
+    public TextMeshProUGUI ManaRegen;
     [Header("🆕 Item Detail Panel")]
     public GameObject itemDetailPanel;              // Panel สำหรับแสดงรายละเอียดไอเทม
     public ItemDetailPanel itemDetailManager;      // Manager สำหรับจัดการ panel
@@ -1363,12 +1366,19 @@ public class CombatUIManager : MonoBehaviour
         {
             inventoryManaText.text = $"{localHero.NetworkedCurrentMana}/{localHero.NetworkedMaxMana}";
         }
-
+        if (HealthRegen != null)
+        {
+            HealthRegen.text = $"HRG: {localHero.HealthRegen}";
+        } if (ManaRegen != null)
+        {
+            ManaRegen.text = $"MRG: {localHero.ManaRegen}";
+        }
         // Combat Stats
         if (attackDamageText != null)
         {
             attackDamageText.text = $"ATK: {localHero.AttackDamage}";
         }
+       
 
         if (magicDamageText != null)
         {
@@ -1378,6 +1388,10 @@ public class CombatUIManager : MonoBehaviour
         if (armorText != null)
         {
             armorText.text = $"ARM: {localHero.Armor}";
+        }
+        if (magicArmor != null)
+        {
+            magicArmor.text = $"MGA: {localHero.MagicArmor}";
         }
 
         if (moveSpeedText != null)

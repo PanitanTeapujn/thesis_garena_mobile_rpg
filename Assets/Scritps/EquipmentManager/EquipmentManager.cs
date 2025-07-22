@@ -269,31 +269,54 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicArmor -= currentEquipmentStats.magicArmorBonus;
         character.ManaRegen -= currentEquipmentStats.manaRegenBonus;
         character.HealthRegen -= currentEquipmentStats.healthRegenBonus;
-        // Ensure stats don't go negative
-        character.AttackDamage = Mathf.Max(1, character.AttackDamage);
-        character.MagicDamage = Mathf.Max(1, character.MagicDamage);
-        character.Armor = Mathf.Max(0, character.Armor);
-        character.MaxHp = Mathf.Max(1, character.MaxHp);
-        character.MaxMana = Mathf.Max(0, character.MaxMana);
-        character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
-        character.HitRate = Mathf.Max(5f, character.HitRate);
-        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
-        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
-        character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-        character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
-        character.MagicArmor = Mathf.Max(0, character.MagicArmor);
-        character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
-        character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
 
+        // ✅ แก้ไขการตรวจสอบค่าติดลบ - ใช้ base stats จาก CharacterStats
+        if (character.characterStats != null)
+        {
+            character.AttackDamage = Mathf.Max(character.characterStats.attackDamage, character.AttackDamage);
+            character.MagicDamage = Mathf.Max(character.characterStats.magicDamage, character.MagicDamage);
+            character.Armor = Mathf.Max(character.characterStats.arrmor, character.Armor);
+            character.MaxHp = Mathf.Max(character.characterStats.maxHp, character.MaxHp);
+            character.MaxMana = Mathf.Max(character.characterStats.maxMana, character.MaxMana);
+            character.MoveSpeed = Mathf.Max(character.characterStats.moveSpeed, character.MoveSpeed);
+            character.HitRate = Mathf.Max(character.characterStats.hitRate, character.HitRate);
+            character.EvasionRate = Mathf.Max(character.characterStats.evasionRate, character.EvasionRate);
+            character.AttackSpeed = Mathf.Max(character.characterStats.attackSpeed, character.AttackSpeed);
+            character.ReductionCoolDown = Mathf.Max(character.characterStats.reductionCoolDown, character.ReductionCoolDown);
+            character.CriticalDamageBonus = Mathf.Max(character.characterStats.criticalDamageBonus, character.CriticalDamageBonus);
 
-        // ✅ เพิ่มบรรทัดนี้ - ป้องกัน Lifesteal ติดลบ
-        character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+            // ✅ แก้ไขสำหรับ 3 stats ใหม่ - ใช้ค่าจาก CharacterStats
+            character.MagicArmor = Mathf.Max(character.characterStats.magicArmor, character.MagicArmor);
+            character.ManaRegen = Mathf.Max(character.characterStats.manaRegen, character.ManaRegen);
+            character.HealthRegen = Mathf.Max(character.characterStats.healthRegen, character.HealthRegen);
+            character.LifeSteal = Mathf.Max(character.characterStats.lifeSteal, character.LifeSteal);
+        }
+        else
+        {
+            // Fallback values ถ้าไม่มี characterStats
+            character.AttackDamage = Mathf.Max(1, character.AttackDamage);
+            character.MagicDamage = Mathf.Max(1, character.MagicDamage);
+            character.Armor = Mathf.Max(0, character.Armor);
+            character.MaxHp = Mathf.Max(1, character.MaxHp);
+            character.MaxMana = Mathf.Max(0, character.MaxMana);
+            character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
+            character.HitRate = Mathf.Max(5f, character.HitRate);
+            character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
+            character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+            character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+            character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+            character.MagicArmor = Mathf.Max(0, character.MagicArmor);
+            character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
+            character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
+            character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+        }
 
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
-        Debug.Log($"[Equipment Removed] Lifesteal: -{currentEquipmentStats.lifeStealBonus}% (Total: {character.GetEffectiveLifeSteal():F1}%)");
+        Debug.Log($"[Equipment Removed] Stats removed and clamped to base values");
+        Debug.Log($"  Final: ARM={character.Armor}, MAG_ARM={character.MagicArmor}, LST={character.LifeSteal:F1}%");
     }
     private void ApplyRuneStats()
     {
@@ -332,6 +355,7 @@ public class EquipmentManager : NetworkBehaviour
         character.MagicArmor -= currentRuneStats.magicArmorBonus;
         character.ManaRegen -= currentRuneStats.manaRegenBonus;
         character.HealthRegen -= currentRuneStats.healthRegenBonus;
+
         character.MaxHp -= currentRuneStats.maxHpBonus;
         character.MaxMana -= currentRuneStats.maxManaBonus;
         character.MoveSpeed -= currentRuneStats.moveSpeedBonus;
@@ -340,23 +364,44 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed -= currentRuneStats.attackSpeedBonus;
         character.ReductionCoolDown -= currentRuneStats.reductionCoolDownBonus;
 
-        // Ensure stats don't go negative
-        character.AttackDamage = Mathf.Max(1, character.AttackDamage);
-        character.MagicDamage = Mathf.Max(1, character.MagicDamage);
-        character.Armor = Mathf.Max(0, character.Armor);
-        character.MaxHp = Mathf.Max(1, character.MaxHp);
-        character.MaxMana = Mathf.Max(0, character.MaxMana);
-        character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
-        character.HitRate = Mathf.Max(5f, character.HitRate);
-        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
-        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
-        character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-        character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
-        character.MagicArmor = Mathf.Max(0, character.MagicArmor);
-        character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
-        character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
-        // ✅ เพิ่มบรรทัดนี้
-        character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+        // ✅ ใช้การตรวจสอบแบบเดียวกันกับ RemoveEquipmentStats
+        if (character.characterStats != null)
+        {
+            character.AttackDamage = Mathf.Max(character.characterStats.attackDamage, character.AttackDamage);
+            character.MagicDamage = Mathf.Max(character.characterStats.magicDamage, character.MagicDamage);
+            character.Armor = Mathf.Max(character.characterStats.arrmor, character.Armor);
+            character.MaxHp = Mathf.Max(character.characterStats.maxHp, character.MaxHp);
+            character.MaxMana = Mathf.Max(character.characterStats.maxMana, character.MaxMana);
+            character.MoveSpeed = Mathf.Max(character.characterStats.moveSpeed, character.MoveSpeed);
+            character.HitRate = Mathf.Max(character.characterStats.hitRate, character.HitRate);
+            character.EvasionRate = Mathf.Max(character.characterStats.evasionRate, character.EvasionRate);
+            character.AttackSpeed = Mathf.Max(character.characterStats.attackSpeed, character.AttackSpeed);
+            character.ReductionCoolDown = Mathf.Max(character.characterStats.reductionCoolDown, character.ReductionCoolDown);
+            character.CriticalDamageBonus = Mathf.Max(character.characterStats.criticalDamageBonus, character.CriticalDamageBonus);
+            character.MagicArmor = Mathf.Max(character.characterStats.magicArmor, character.MagicArmor);
+            character.ManaRegen = Mathf.Max(character.characterStats.manaRegen, character.ManaRegen);
+            character.HealthRegen = Mathf.Max(character.characterStats.healthRegen, character.HealthRegen);
+            character.LifeSteal = Mathf.Max(character.characterStats.lifeSteal, character.LifeSteal);
+        }
+        else
+        {
+            // Fallback values
+            character.AttackDamage = Mathf.Max(1, character.AttackDamage);
+            character.MagicDamage = Mathf.Max(1, character.MagicDamage);
+            character.Armor = Mathf.Max(0, character.Armor);
+            character.MaxHp = Mathf.Max(1, character.MaxHp);
+            character.MaxMana = Mathf.Max(0, character.MaxMana);
+            character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
+            character.HitRate = Mathf.Max(5f, character.HitRate);
+            character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
+            character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+            character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+            character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+            character.MagicArmor = Mathf.Max(0, character.MagicArmor);
+            character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
+            character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
+            character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+        }
     }
 
     private void UpdateAllStats()

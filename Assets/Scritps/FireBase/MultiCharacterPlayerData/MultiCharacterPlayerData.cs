@@ -843,6 +843,9 @@ public class MultiCharacterPlayerData
             defaultAssassin.baseAttackSpeed = assassinStats.attackSpeed;
             defaultAssassin.baseReductionCoolDown = assassinStats.reductionCoolDown;
             defaultAssassin.baseLifeSteal = assassinStats.lifeSteal;
+            defaultAssassin.baseMagicArmor = assassinStats.magicArmor;
+            defaultAssassin.baseHealthRegen = assassinStats.healthRegen;
+            defaultAssassin.baseManaRegen = assassinStats.manaRegen;
             defaultAssassin.attackType = assassinStats.attackType;
 
             // ✅ Update total stats
@@ -1164,7 +1167,7 @@ public class CharacterProgressData
     /// </summary>
     public void UpdateBaseStats(int hp, int mana, int atk, int magic, int armor,
      float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
-     float cdr, float lifesteal, int magicArmor, float manaRegen, float healthRegen) // เพิ่ม pa
+     float cdr, float lifesteal, int magicArmor, float healthRegen, float manaRegen) // ✅ เพิ่ม parameters
     {
         baseMaxHp = hp;
         baseMaxMana = mana;
@@ -1179,21 +1182,26 @@ public class CharacterProgressData
         baseAttackSpeed = atkSpeed;
         baseReductionCoolDown = cdr;
         baseLifeSteal = lifesteal;
+
+        // ✅ เพิ่มการบันทึก 3 stats ใหม่
         baseMagicArmor = magicArmor;
-        baseManaRegen = manaRegen;
         baseHealthRegen = healthRegen;
+        baseManaRegen = manaRegen;
+
         hasBaseStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        Debug.Log($"[{characterType}] 📊 Base stats updated: HP={hp}, ATK={atk}, ARM={armor}");
+        Debug.Log($"[{characterType}] 📊 Base stats updated:");
+        Debug.Log($"  HP={hp}, ATK={atk}, ARM={armor}");
+        Debug.Log($"  MAGIC_ARM={magicArmor}, HEALTH_REGEN={healthRegen:F1}, MANA_REGEN={manaRegen:F1}");
     }
 
     /// <summary>
     /// 🆕 อัปเดต total stats
     /// </summary>
     public void UpdateTotalStats(int hp, int mana, int atk, int magic, int armor,
-    float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
-    float cdr, float lifesteal, int magicArmor, float manaRegen, float healthRegen) // เพิ่ม parameters
+     float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
+     float cdr, float lifesteal, int magicArmor, float healthRegen, float manaRegen) // ✅ เพิ่ม parameters
     {
         totalMaxHp = hp;
         totalMaxMana = mana;
@@ -1208,13 +1216,18 @@ public class CharacterProgressData
         totalAttackSpeed = atkSpeed;
         totalReductionCoolDown = cdr;
         totalLifeSteal = lifesteal;
+
+        // ✅ เพิ่มการบันทึก 3 stats ใหม่
         totalMagicArmor = magicArmor;
-        totalManaRegen = manaRegen;
         totalHealthRegen = healthRegen;
+        totalManaRegen = manaRegen;
+
         hasTotalStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        Debug.Log($"[{characterType}] 📈 Total stats updated: HP={hp}, ATK={atk}, ARM={armor}");
+        Debug.Log($"[{characterType}] 📈 Total stats updated:");
+        Debug.Log($"  HP={hp}, ATK={atk}, ARM={armor}");
+        Debug.Log($"  MAGIC_ARM={magicArmor}, HEALTH_REGEN={healthRegen:F1}, MANA_REGEN={manaRegen:F1}");
     }
     public void UpdateTotalStats()
     {

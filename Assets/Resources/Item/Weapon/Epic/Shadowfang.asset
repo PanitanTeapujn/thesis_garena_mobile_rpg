@@ -12,6 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: Shadowfang
   m_EditorClassIdentifier: 
+  tradeRecipe:
+    isTradeableItem: 0
+    requiredGold: 0
+    requiredItems: []
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
   itemId: Shadowfang
   itemName: Shadowfang
   itemIcon: {fileID: 21300000, guid: d91ce643b75a45f47baee6493da5d705, type: 3}
@@ -22,17 +29,23 @@ MonoBehaviour:
   buyPrice: 0
   isSellable: 1
   isTradeable: 1
+  buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
+  belongsToSet: {fileID: 0}
+  isSetItem: 0
   stats:
     attackDamageBonus: 30
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 8
     criticalDamageBonus: 35
+    magicArmorBonus: 20
+    manaRegenBonus: 2
+    healthRegenBonus: 2
     maxHpBonus: 100
     maxManaBonus: 0
-    moveSpeedBonus: 0.05
+    moveSpeedBonus: 0
     attackSpeedBonus: 10
     hitRateBonus: 5
     evasionRateBonus: 0

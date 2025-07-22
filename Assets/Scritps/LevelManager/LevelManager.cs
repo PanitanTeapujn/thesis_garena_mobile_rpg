@@ -52,6 +52,9 @@ public class LevelManager : NetworkBehaviour
     private float baseAttackSpeed;
     private float baseReductionCoolDown;
     private float baseLifeSteal;
+    private int baseMagicArmor;
+    private float baseHealthRegen;
+    private float baseManaRegen;
     // ========== Network Properties ==========
     [Networked] public int CurrentLevel { get; set; } = 1;
     [Networked] public int CurrentExp { get; set; } = 0;
@@ -151,13 +154,20 @@ public class LevelManager : NetworkBehaviour
                     character.ReductionCoolDown = characterData.baseReductionCoolDown;
                     character.LifeSteal = characterData.baseLifeSteal;
 
+                    // ✅ เพิ่ม 3 stats ใหม่
+                    character.MagicArmor = characterData.baseMagicArmor;
+                    character.HealthRegen = characterData.baseHealthRegen;
+                    character.ManaRegen = characterData.baseManaRegen;
+
                     // ✅ ปรับ HP/Mana ตามเปอร์เซ็นต์ที่คำนวณ
                     character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
                     character.CurrentMana = Mathf.RoundToInt(character.MaxMana * manaPercentage);
                     character.CurrentHp = Mathf.Clamp(character.CurrentHp, 1, character.MaxHp);
                     character.CurrentMana = Mathf.Clamp(character.CurrentMana, 0, character.MaxMana);
 
-                    Debug.Log($"[LevelManager] ✅ Applied base stats from Firebase: HP={character.CurrentHp}/{character.MaxHp} ({hpPercentage:P0})");
+                    Debug.Log($"[LevelManager] ✅ Applied base stats from Firebase:");
+                    Debug.Log($"  HP={character.CurrentHp}/{character.MaxHp}, ARM={character.Armor}");
+                    Debug.Log($"  MAGIC_ARM={character.MagicArmor}, HEALTH_REGEN={character.HealthRegen:F1}, MANA_REGEN={character.ManaRegen:F1}");
                 }
                 else
                 {
@@ -177,6 +187,11 @@ public class LevelManager : NetworkBehaviour
                     character.AttackSpeed = characterData.totalAttackSpeed;
                     character.ReductionCoolDown = characterData.totalReductionCoolDown;
                     character.LifeSteal = characterData.totalLifeSteal;
+
+                    // ✅ เพิ่ม 3 stats ใหม่
+                    character.MagicArmor = characterData.totalMagicArmor;
+                    character.HealthRegen = characterData.totalHealthRegen;
+                    character.ManaRegen = characterData.totalManaRegen;
 
                     // ✅ ปรับ HP/Mana ตามเปอร์เซ็นต์ที่คำนวณ
                     character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
@@ -311,7 +326,10 @@ public class LevelManager : NetworkBehaviour
                 characterData.totalEvasionRate,
                 characterData.totalAttackSpeed,
                 characterData.totalReductionCoolDown,
-                characterData.totalLifeSteal // ✅ เพิ่ม LifeSteal
+                characterData.totalLifeSteal,
+               characterData.totalMagicArmor,
+            characterData.totalHealthRegen,
+            characterData.totalManaRegen// ✅ เพิ่ม LifeSteal
             );
 
             Debug.Log($"✅ Applied Firebase data for {activeCharacterType}: Level {characterData.currentLevel}, LifeSteal {characterData.totalLifeSteal:F1}%");
@@ -325,27 +343,27 @@ public class LevelManager : NetworkBehaviour
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_ApplyFirebaseStats(int level, int exp, int expToNext, int maxHp, int maxMana,
      int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus, float moveSpeed,
-     float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal) // ✅ เพิ่ม LifeSteal parameter
+     float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal,int magicArmor,float heathRegen, float manaRegen) // ✅ เพิ่ม LifeSteal parameter
     {
         // Apply base stats รวม LifeSteal
         ApplyBaseStatsOnly(level, exp, expToNext, maxHp, maxMana, attackDamage, magicDamage, armor,
-                           critChance, critDamageBonus, moveSpeed, hitRate, evasionRate, attackSpeed, reductionCoolDown, lifeSteal);
+                           critChance, critDamageBonus, moveSpeed, hitRate, evasionRate, attackSpeed, reductionCoolDown, lifeSteal,magicArmor, heathRegen, manaRegen);
 
         Debug.Log($"🔧 Applied Firebase base stats including LifeSteal: {lifeSteal:F1}%");
 
         // Broadcast to all clients
         RPC_BroadcastStats(level, exp, expToNext, maxHp, maxMana, attackDamage, magicDamage, armor, critChance, critDamageBonus, moveSpeed,
-            hitRate, evasionRate, attackSpeed, reductionCoolDown, lifeSteal);
+            hitRate, evasionRate, attackSpeed, reductionCoolDown, lifeSteal, magicArmor, heathRegen, manaRegen);
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_BroadcastStats(int level, int exp, int expToNext, int maxHp, int maxMana,
         int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus, float moveSpeed,
-        float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal) // ✅ เพิ่ม LifeSteal parameter
+        float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal,int magicArmor,float heathRegen, float manaRegen) // ✅ เพิ่ม LifeSteal parameter
     {
         // Apply base stats รวม LifeSteal
         ApplyBaseStatsOnly(level, exp, expToNext, maxHp, maxMana, attackDamage, magicDamage, armor,
-                           critChance, critDamageBonus, moveSpeed, hitRate, evasionRate, attackSpeed, reductionCoolDown, lifeSteal);
+                           critChance, critDamageBonus, moveSpeed, hitRate, evasionRate, attackSpeed, reductionCoolDown, lifeSteal,magicArmor, heathRegen, manaRegen);
 
         Debug.Log($"🔧 Broadcasted base stats including LifeSteal: {lifeSteal:F1}%");
     }
@@ -356,9 +374,11 @@ public class LevelManager : NetworkBehaviour
     /// 🆕 Apply เฉพาะ base stats (ไม่รวม equipment bonuses)
     /// </summary>
     // 🆕 แก้ไข ApplyBaseStatsOnly ให้คำนวณ base stats ก่อน
+    // ในไฟล์ LevelManager.cs - แก้ไข ApplyBaseStatsOnly method
     private void ApplyBaseStatsOnly(int level, int exp, int expToNext, int maxHp, int maxMana,
      int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
-     float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal)
+     float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown,
+     float lifeSteal, int magicArmor, float heathRegen, float manaRegen) // ✅ เพิ่ม parameters
     {
         CurrentLevel = level;
         CurrentExp = exp;
@@ -395,6 +415,11 @@ public class LevelManager : NetworkBehaviour
         character.ReductionCoolDown = baseReductionCoolDown;
         character.LifeSteal = baseLifeSteal;
 
+        // ✅ เพิ่ม 3 stats ใหม่
+        character.MagicArmor = baseMagicArmor;
+        character.HealthRegen = baseHealthRegen;
+        character.ManaRegen = baseManaRegen;
+
         // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์
         character.CurrentHp = Mathf.RoundToInt(character.MaxHp * hpPercentage);
         character.CurrentMana = Mathf.RoundToInt(character.MaxMana * manaPercentage);
@@ -404,7 +429,9 @@ public class LevelManager : NetworkBehaviour
         character.ForceUpdateNetworkState();
         IsInitialized = true;
 
-        Debug.Log($"[LevelManager] ✅ Applied base stats: HP={baseMaxHp}, Current HP={character.CurrentHp}/{character.MaxHp} ({hpPercentage:P0})");
+        Debug.Log($"[LevelManager] ✅ Applied base stats:");
+        Debug.Log($"  HP={baseMaxHp}, Current HP={character.CurrentHp}/{character.MaxHp} ({hpPercentage:P0})");
+        Debug.Log($"  MAGIC_ARM={baseMagicArmor}, HEALTH_REGEN={baseHealthRegen:F1}, MANA_REGEN={baseManaRegen:F1}");
     }
 
 
@@ -638,6 +665,10 @@ public class LevelManager : NetworkBehaviour
             character.EvasionRate = characterData.totalEvasionRate;
             character.AttackSpeed = characterData.totalAttackSpeed;
             character.ReductionCoolDown = characterData.totalReductionCoolDown;
+            character.LifeSteal = characterData.totalLifeSteal;
+            character.MagicArmor = characterData.totalMagicArmor;
+            character.HealthRegen = characterData.totalHealthRegen;
+            character.ManaRegen = characterData.totalManaRegen;
             
 
             IsInitialized = true;
@@ -672,7 +703,13 @@ public class LevelManager : NetworkBehaviour
         float baseCdr = character.characterStats.reductionCoolDown;
         float baseHit = character.characterStats.hitRate;
         float baseLifeSteals = character.characterStats.lifeSteal + (levelBonus * levelUpStats.lifeStealBonusPerLevel);
-        int baseMagicArmors = character.characterStats.arrmor + (levelBonus * levelUpStats.magicArmorBonusPerLevel);
+
+        // ✅ แก้ไข Magic Armor - ใช้ค่าจาก ScriptableObject โดยตรง
+        int baseMagicArmors = character.characterStats.magicArmor + (levelBonus * levelUpStats.magicArmorBonusPerLevel);
+        // ไม่ใช้ character.characterStats.arrmor สำหรับ Magic Armor
+
+        float baseHealthRegens = character.characterStats.healthRegen;
+        float baseManaRegens = character.characterStats.manaRegen;
 
         // ✅ เพิ่ม stat bonuses จาก upgrades
         try
@@ -727,10 +764,14 @@ public class LevelManager : NetworkBehaviour
         baseReductionCoolDown = baseCdr;
         baseHitRate = baseHit;
         baseLifeSteal = baseLifeSteals;
+        baseMagicArmor = baseMagicArmors; // ✅ ใช้ค่าที่คำนวณถูกต้อง
+        baseHealthRegen = baseHealthRegens;
+        baseManaRegen = baseManaRegens;
 
         Debug.Log($"[LevelManager] 📊 Final base stats (ScriptableObject + Level + Upgrades):");
-        Debug.Log($"  HP={baseHp}, ATK={baseAttack}, MAG={baseMagic}, ARM={baseArmor}");
-        Debug.Log($"  CRIT={baseCrit:F1}%, CRIT_DMG={baseCritDmg:F1}%, LifeSteal={baseLifeSteal:F1}%");
+        Debug.Log($"  HP={baseHp}, ATK={baseAttack}, MAG={baseMagic}, ARM={baseArmors}");
+        Debug.Log($"  MAGIC_ARM={baseMagicArmors}, HEALTH_REGEN={baseHealthRegens:F1}, MANA_REGEN={baseManaRegens:F1}");
+        Debug.Log($"  CRIT={baseCrit:F1}%, CRIT_DMG={baseCritDmg:F1}%, LifeSteal={baseLifeSteals:F1}%");
     }
     public void ResetToBaseStats()
     {

@@ -3214,9 +3214,11 @@ public class PersistentPlayerData : MonoBehaviour
         float baseAtkSpeed = character.characterStats.attackSpeed;
         float baseCdr = character.characterStats.reductionCoolDown;
         float baseLifeSteal = character.characterStats.lifeSteal + (levelBonus * levelManager.levelUpStats.lifeStealBonusPerLevel);
+
+        // ✅ เพิ่ม 3 stats ใหม่ จาก ScriptableObject
         int baseMagicArmor = character.characterStats.magicArmor + (levelBonus * levelManager.levelUpStats.magicArmorBonusPerLevel);
         float baseHealthRegen = character.characterStats.healthRegen;
-        float baseManahRegen = character.characterStats.manaRegen;
+        float baseManaRegen = character.characterStats.manaRegen;
 
         // ✅ เพิ่ม stat bonuses จาก upgrades
         characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
@@ -3238,33 +3240,38 @@ public class PersistentPlayerData : MonoBehaviour
         baseHit += hitBonus;
         baseLifeSteal += lifeStealBonus;
 
-        // ✅ บันทึก base stats ลง characterData
+        // ✅ บันทึก base stats ลง characterData (รวม 3 stats ใหม่)
         characterData.UpdateBaseStats(
             baseHp, baseMana, baseAttack, baseMagic, baseArmor,
             baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
-            baseAtkSpeed, baseCdr, baseLifeSteal, baseMagicArmor, baseHealthRegen, baseManahRegen
+            baseAtkSpeed, baseCdr, baseLifeSteal, baseMagicArmor, baseHealthRegen, baseManaRegen
         );
 
-        Debug.Log($"[PersistentPlayerData] 📊 Calculated PURE base stats (ScriptableObject + Level + Upgrades only):");
+        Debug.Log($"[PersistentPlayerData] 📊 Calculated PURE base stats (ScriptableObject + Level + Upgrades):");
         Debug.Log($"  ScriptableObject base: HP={character.characterStats.maxHp}, ATK={character.characterStats.attackDamage}");
-        Debug.Log($"  + Level {levelManager.CurrentLevel} bonuses: HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}, ATK+{levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel}");
+        Debug.Log($"  + Level {levelManager.CurrentLevel} bonuses: HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}");
         Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
         Debug.Log($"  = Final base stats: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
+        Debug.Log($"    MAGIC_ARM={baseMagicArmor}, HEALTH_REGEN={baseHealthRegen:F1}, MANA_REGEN={baseManaRegen:F1}");
     }
-
-    // ✅ เพิ่ม method สำหรับบันทึก total stats แยกต่างหาก
     private void SaveCurrentTotalStats(Character character, CharacterProgressData characterData)
     {
         // บันทึก total stats (base + equipment bonuses)
         characterData.UpdateTotalStats(
             character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
             character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
-            character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown, character.LifeSteal,character.MagicArmor,character.HealthRegen,character.ManaRegen
+            character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown,
+            character.LifeSteal, character.MagicArmor, character.HealthRegen, character.ManaRegen // ✅ เพิ่ม 3 stats ใหม่
         );
 
         Debug.Log($"[PersistentPlayerData] 📈 Saved total stats:");
         Debug.Log($"  Total: HP={character.MaxHp}, ATK={character.AttackDamage}, LifeSteal={character.LifeSteal:F1}%");
+        Debug.Log($"  MAGIC_ARM={character.MagicArmor}, HEALTH_REGEN={character.HealthRegen:F1}, MANA_REGEN={character.ManaRegen:F1}");
     }
+
+    // ✅ เพิ่ม method สำหรับบันทึก total stats แยกต่างหาก
+   
+    
   
     private System.Collections.IEnumerator DelayedApplyEquipmentBonuses(Character character)
     {

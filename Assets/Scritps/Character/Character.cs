@@ -409,7 +409,7 @@ public class Character : NetworkBehaviour
             currentMana = maxMana;
             attackDamage = characterStats.attackDamage;
             magicDamage = characterStats.magicDamage;
-            armor = characterStats.arrmor;
+            armor = characterStats.arrmor; // ✅ ใช้ arrmor (ตัวแปรเดิมใน ScriptableObject)
             moveSpeed = characterStats.moveSpeed;
             attackRange = characterStats.attackRange;
             attackCooldown = characterStats.attackCoolDown;
@@ -420,12 +420,18 @@ public class Character : NetworkBehaviour
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
             lifeSteal = characterStats.lifeSteal;
-            magicArmor = characterStats.magicArmor;
+
+            // ✅ แก้ไข Magic Armor - ใช้ค่าจาก ScriptableObject โดยตรง
+            magicArmor = characterStats.magicArmor; // ไม่ใช้ arrmor ซ้ำ
             manaRegen = characterStats.manaRegen;
             healthRegen = characterStats.healthRegen;
             attackType = characterStats.attackType;
+
             InitializeEquipmentSlots();
 
+            Debug.Log($"[Character.InitializeStats] {CharacterName} initialized:");
+            Debug.Log($"  Armor: {armor}, Magic Armor: {magicArmor}");
+            Debug.Log($"  Health Regen: {healthRegen}, Mana Regen: {manaRegen}");
         }
     }
     #endregion
@@ -701,6 +707,11 @@ public class Character : NetworkBehaviour
                 ReductionCoolDown = characterData.baseReductionCoolDown;
                 LifeSteal = characterData.baseLifeSteal;
 
+                // ✅ แก้ไข 3 stats ใหม่ - ใช้ค่าจาก characterData โดยตรง
+                MagicArmor = characterData.baseMagicArmor;
+                HealthRegen = characterData.baseHealthRegen;
+                ManaRegen = characterData.baseManaRegen;
+
                 // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์
                 CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
                 CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
@@ -709,7 +720,10 @@ public class Character : NetworkBehaviour
 
                 ForceUpdateNetworkState();
 
-                Debug.Log($"[Character] ✅ Applied base stats: HP={MaxHp}, ATK={AttackDamage}, Current HP={CurrentHp}/{MaxHp} ({hpPercentage:P0})");
+                Debug.Log($"[Character] ✅ Applied base stats:");
+                Debug.Log($"  HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
+                Debug.Log($"  MAGIC_ARM={MagicArmor}, HEALTH_REGEN={HealthRegen:F1}, MANA_REGEN={ManaRegen:F1}");
+                Debug.Log($"  Current HP={CurrentHp}/{MaxHp} ({hpPercentage:P0})");
             }
             else
             {
@@ -809,6 +823,9 @@ public class Character : NetworkBehaviour
             AttackSpeed += equipmentStats.attackSpeedBonus;
             ReductionCoolDown += equipmentStats.reductionCoolDownBonus;
             LifeSteal += equipmentStats.lifeStealBonus;
+            MagicArmor += equipmentStats.magicArmorBonus;
+            HealthRegen += equipmentStats.healthRegenBonus;
+            ManaRegen += equipmentStats.manaRegenBonus;
 
             Debug.Log($"[Character] 📊 After applying equipment bonuses:");
             Debug.Log($"  MaxHP={MaxHp}, MaxMana={MaxMana}");
@@ -1911,6 +1928,10 @@ public class Character : NetworkBehaviour
             AttackSpeed = characterData.baseAttackSpeed;
             ReductionCoolDown = characterData.baseReductionCoolDown;
             LifeSteal = characterData.baseLifeSteal;
+            MagicArmor = characterData.baseMagicArmor;
+            HealthRegen = characterData.baseHealthRegen;
+
+            ManaRegen = characterData.baseManaRegen;
 
             // ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
             CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
@@ -2739,33 +2760,7 @@ public class Character : NetworkBehaviour
 
     }
 
-    [ContextMenu("Debug Set Bonuses")]
-    public void DebugSetBonuses()
-    {
-        Debug.Log("=== SET BONUSES DEBUG ===");
-        Debug.Log($"Character: {CharacterName}");
-
-        if (setBonusManager == null)
-        {
-            Debug.Log("SetBonusManager is null");
-            return;
-        }
-
-        List<ActiveSetBonus> activeBonuses = GetActiveSetBonuses();
-        Debug.Log($"Active Set Bonuses: {activeBonuses.Count}");
-
-        foreach (var setBonus in activeBonuses)
-        {
-            Debug.Log($"Set: {setBonus.equipmentSet.setName}");
-            Debug.Log($"Pieces: {setBonus.equippedPieces}/{setBonus.equipmentSet.setItems.Count}");
-
-            EquipmentStats stats = setBonus.totalSetStats;
-            Debug.Log($"Stats: ATK+{stats.attackDamageBonus}, HP+{stats.maxHpBonus}, Lifesteal+{stats.lifeStealBonus}%");
-        }
-
-        Debug.Log("Set Bonus Info:");
-        Debug.Log(GetSetBonusInfo());
-    }
+   
 
     public void ResetToBaseStats()
     {
@@ -2795,6 +2790,9 @@ public class Character : NetworkBehaviour
             AttackSpeed = characterStats.attackSpeed;
             ReductionCoolDown = characterStats.reductionCoolDown;
             LifeSteal = characterStats.lifeSteal;
+            MagicArmor = characterStats.magicArmor;
+            HealthRegen = characterStats.healthRegen;
+            ManaRegen = characterStats.manaRegen;
             // คำนวณ HP/Mana ตาม percentage เดิม
             CurrentHp = Mathf.RoundToInt(MaxHp * hpPercentage);
             CurrentMana = Mathf.RoundToInt(MaxMana * manaPercentage);
