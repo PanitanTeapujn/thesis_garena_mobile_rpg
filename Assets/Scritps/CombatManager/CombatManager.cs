@@ -160,31 +160,44 @@ public class CombatManager : NetworkBehaviour
         if (attacker != null)
         {
             physicalDamage = ApplyAttackerStatusEffects(physicalDamage, attacker);
+            magicDamage = ApplyAttackerStatusEffects(magicDamage, attacker);
             isCritical = CalculateCriticalHit(attacker);
         }
 
-        // ✅ แก้ไข: ใช้ attacker สำหรับคำนวณ critical damage
+        // ✅ คำนวณดาเมจแยกตาม damage type
         int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal, attacker);
         int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic, attacker);
         int totalDamage = finalPhysicalDamage + finalMagicDamage;
+
+        Debug.Log($"[Damage Breakdown] {attacker?.CharacterName ?? "Unknown"} -> {character.CharacterName}:");
+        Debug.Log($"  Physical: {physicalDamage} -> {finalPhysicalDamage} (after Physical Armor: {GetCurrentArmor()})");
+        Debug.Log($"  Magic: {magicDamage} -> {finalMagicDamage} (after Magic Armor: {GetCurrentMagicArmor()})");
+        Debug.Log($"  Total: {totalDamage}, Critical: {isCritical}");
 
         // Apply damage
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
+
+        // Apply lifesteal
         if (attacker != null && totalDamage > 0)
         {
             ApplyLifesteal(attacker, totalDamage);
         }
 
-        // Apply damage
-
-
         // Sync network state
         SyncHealthUpdate();
 
         // ✅ แสดง Damage Text ผ่าน RPC
-       
+        if (HasStateAuthority)
+        {
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+
+            // เลือก damage type สำหรับแสดงผล
+            DamageType displayType = finalMagicDamage > finalPhysicalDamage ? DamageType.Magic : DamageType.Normal;
+
+            RPC_ShowDamageText(textPosition, totalDamage, displayType, isCritical, false, false);
+        }
 
         // 🆕 ✅ Fire damage event สำหรับ visual flash
         OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
@@ -196,11 +209,14 @@ public class CombatManager : NetworkBehaviour
         }
     }
 
+
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
+
         int finalDamage = CalculateFinalDamage(damage, isCritical, damageType, null);
 
+        Debug.Log($"[TakeDamage] {character.CharacterName}: {damage} -> {finalDamage} ({damageType})");
 
         int oldHp = character.CurrentHp;
         character.CurrentHp -= finalDamage;
@@ -210,7 +226,11 @@ public class CombatManager : NetworkBehaviour
         SyncHealthUpdate();
 
         // ✅ แสดง Damage Text ผ่าน RPC
-       
+        if (HasStateAuthority)
+        {
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+            RPC_ShowDamageText(textPosition, finalDamage, damageType, isCritical, false, false);
+        }
 
         // 🆕 ✅ Fire damage event สำหรับ visual flash
         OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
@@ -224,7 +244,11 @@ public class CombatManager : NetworkBehaviour
 
     public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
     {
+        // ✅ ปรับปรุงให้ส่ง physical และ magic damage แยก
         var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
+
+        Debug.Log($"[TakeDamageFromAttacker] {attacker.CharacterName}: Physical={physicalDamage}, Magic={magicDamage}, Type={damageType}");
+
         TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
     }
     #endregion
@@ -366,7 +390,6 @@ public class CombatManager : NetworkBehaviour
             return criticalDamage;
         }
 
-
         // Apply resistance based on damage type
         float resistance = 0f;
         if (equipmentManager != null)
@@ -400,12 +423,20 @@ public class CombatManager : NetworkBehaviour
             }
         }
 
-        // Apply armor (only for physical damage)
-        if (damageType != DamageType.Magic)
+        // ✅ Apply armor based on damage type
+        if (damageType == DamageType.Magic)
         {
+            // Magic damage ใช้ Magic Armor
+            int currentMagicArmor = GetCurrentMagicArmor();
+            finalDamage = finalDamage - currentMagicArmor;
+            Debug.Log($"[Magic Armor] Reduced by {currentMagicArmor}: {finalDamage}");
+        }
+        else
+        {
+            // Physical damage ใช้ Armor ปกติ
             int currentArmor = GetCurrentArmor();
             finalDamage = finalDamage - currentArmor;
-            Debug.Log($"[Armor] Reduced by {currentArmor}: {finalDamage}");
+            Debug.Log($"[Physical Armor] Reduced by {currentArmor}: {finalDamage}");
         }
 
         // Prevent negative damage
@@ -415,6 +446,7 @@ public class CombatManager : NetworkBehaviour
         return finalDamage;
     }
 
+    // ✅ เพิ่ม method สำหรับคำนวณ Magic Armor
     private int GetCurrentArmor()
     {
         int baseArmor = character.Armor;
@@ -433,7 +465,7 @@ public class CombatManager : NetworkBehaviour
 
             if (armorMultiplier > 1f)
             {
-                Debug.Log($"[Armor Aura] Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
+                Debug.Log($"[Physical Armor Aura] Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
             }
         }
 
@@ -442,11 +474,49 @@ public class CombatManager : NetworkBehaviour
         {
             float reduction = statusEffectManager.ArmorBreakAmount;
             baseArmor = Mathf.RoundToInt(baseArmor * (1f - reduction));
-            Debug.Log($"[Armor Break] Armor reduced by {reduction * 100}%: {baseArmor}");
+            Debug.Log($"[Physical Armor Break] Armor reduced by {reduction * 100}%: {baseArmor}");
         }
+
+        Debug.Log($"[GetCurrentArmor] {character.CharacterName}: Base={character.Armor}, Equipment={equipmentManager?.GetArmorBonus()}, Final={baseArmor}");
 
         return baseArmor;
     }
+
+    private int GetCurrentMagicArmor()
+    {
+        int baseMagicArmor = character.MagicArmor;
+
+        // Add magic armor from equipment
+        if (equipmentManager != null)
+        {
+            baseMagicArmor += equipmentManager.GetMagicArmorBonus();
+        }
+
+        // Apply Armor Aura (ใช้กับ Magic Armor ด้วย)
+        if (statusEffectManager != null)
+        {
+            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
+            baseMagicArmor = Mathf.RoundToInt(baseMagicArmor * armorMultiplier);
+
+            if (armorMultiplier > 1f)
+            {
+                Debug.Log($"[Magic Armor Aura] Magic Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
+            }
+        }
+
+        // Apply Armor Break effect (ใช้กับ Magic Armor ด้วย)
+        if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
+        {
+            float reduction = statusEffectManager.ArmorBreakAmount;
+            baseMagicArmor = Mathf.RoundToInt(baseMagicArmor * (1f - reduction));
+            Debug.Log($"[Magic Armor Break] Magic Armor reduced by {reduction * 100}%: {baseMagicArmor}");
+        }
+
+        Debug.Log($"[GetCurrentMagicArmor] {character.CharacterName}: Base={character.MagicArmor}, Equipment={equipmentManager?.GetMagicArmorBonus()}, Final={baseMagicArmor}");
+
+        return baseMagicArmor;
+    }
+
 
     private bool CalculateCriticalHit(Character attacker)
     {
