@@ -121,10 +121,9 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedCriticalMultiplierBonus { get; set; }
     [Networked] public float NetworkedLifeStealBonus { get; set; }
     // เพิ่ม Networked properties สำหรับ 3 stats ใหม่
-    [Networked] public int NetworkedMagicArmorBonus { get; set; }
-    [Networked] public float NetworkedManaRegenBonus { get; set; }
-    [Networked] public float NetworkedHealthRegenBonus { get; set; }
-
+    [Networked] public int NetworkedSetMagicArmorBonus { get; set; }
+    [Networked] public float NetworkedSetHealthRegenBonus { get; set; }
+    [Networked] public float NetworkedSetManaRegenBonus { get; set; }
     #endregion
 
     #region Unity Lifecycle & Initialization  Awake, Start, Spawned และการเริ่มต้นระบบ
@@ -485,9 +484,10 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedAttackSpeedBonus = totalStats.attackSpeedBonus;
             NetworkedReductionCoolDown = totalStats.reductionCoolDownBonus;
             NetworkedLifeStealBonus = totalStats.lifeStealBonus;
-            NetworkedMagicArmorBonus = totalStats.magicArmorBonus;
-            NetworkedManaRegenBonus = totalStats.manaRegenBonus;
-            NetworkedHealthRegenBonus = totalStats.healthRegenBonus;
+            NetworkedSetMagicArmorBonus = totalStats.magicArmorBonus;
+            NetworkedSetHealthRegenBonus = totalStats.manaRegenBonus;
+            NetworkedSetManaRegenBonus = totalStats.healthRegenBonus;
+
             // Set bonus specific stats
             NetworkedSetAttackDamageBonus = currentSetBonusStats.attackDamageBonus;
             NetworkedSetMagicDamageBonus = currentSetBonusStats.magicDamageBonus;
@@ -500,11 +500,22 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedSetAttackSpeedBonus = currentSetBonusStats.attackSpeedBonus;
             NetworkedSetLifeStealBonus = currentSetBonusStats.lifeStealBonus;
 
-            Debug.Log($"[Equipment Sync] {character.CharacterName}: Total Stats including Set Bonuses");
+            // ✅ เพิ่ม Network sync สำหรับ 3 stats ใหม่
+            NetworkedSetMagicArmorBonus = currentSetBonusStats.magicArmorBonus;
+            NetworkedSetHealthRegenBonus = currentSetBonusStats.healthRegenBonus;
+            NetworkedSetManaRegenBonus = currentSetBonusStats.manaRegenBonus;
+
+            Debug.Log($"[Equipment Sync] {character.CharacterName}: Total Stats including Set Bonuses with Regen & Magic Armor");
         }
     }
     #endregion
-
+    public void DebugSetBonusStats()
+    {
+        Debug.Log($"[SetBonus Debug] {character.CharacterName}:");
+        Debug.Log($"  Set Bonus Stats: ATK+{currentSetBonusStats.attackDamageBonus}, MagicArmor+{currentSetBonusStats.magicArmorBonus}");
+        Debug.Log($"  Set Bonus Regen: Health+{currentSetBonusStats.healthRegenBonus:F1}/s, Mana+{currentSetBonusStats.manaRegenBonus:F1}/s");
+        Debug.Log($"  Character Stats: MagicArmor={character.MagicArmor}, HealthRegen={character.HealthRegen:F1}, ManaRegen={character.ManaRegen:F1}");
+    }
     #region Public Query Methods  methods สำหรับดูข้อมูล stats ต่างๆ
     public float GetLifeStealBonus()
     {
@@ -585,6 +596,8 @@ public class EquipmentManager : NetworkBehaviour
         total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus + currentSetBonusStats.attackSpeedBonus;
         total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus + currentSetBonusStats.reductionCoolDownBonus;
         total.lifeStealBonus = currentEquipmentStats.lifeStealBonus + currentRuneStats.lifeStealBonus + currentSetBonusStats.lifeStealBonus;
+
+        // ✅ เพิ่ม 3 stats ใหม่ที่รวม Set Bonus
         total.magicArmorBonus = currentEquipmentStats.magicArmorBonus + currentRuneStats.magicArmorBonus + currentSetBonusStats.magicArmorBonus;
         total.manaRegenBonus = currentEquipmentStats.manaRegenBonus + currentRuneStats.manaRegenBonus + currentSetBonusStats.manaRegenBonus;
         total.healthRegenBonus = currentEquipmentStats.healthRegenBonus + currentRuneStats.healthRegenBonus + currentSetBonusStats.healthRegenBonus;
@@ -679,6 +692,11 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed += currentSetBonusStats.attackSpeedBonus;
         character.ReductionCoolDown += currentSetBonusStats.reductionCoolDownBonus;
 
+        // ✅ เพิ่ม 3 stats ใหม่ที่หายไป
+        character.MagicArmor += currentSetBonusStats.magicArmorBonus;
+        character.HealthRegen += currentSetBonusStats.healthRegenBonus;
+        character.ManaRegen += currentSetBonusStats.manaRegenBonus;
+
         // Ensure current HP/Mana don't exceed new max values
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
@@ -686,7 +704,10 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log($"[SetBonus Applied] {character.CharacterName} - " +
                   $"ATK+{currentSetBonusStats.attackDamageBonus}, " +
                   $"HP+{currentSetBonusStats.maxHpBonus}, " +
-                  $"Lifesteal+{currentSetBonusStats.lifeStealBonus}%");
+                  $"Lifesteal+{currentSetBonusStats.lifeStealBonus}%, " +
+                  $"MagicArmor+{currentSetBonusStats.magicArmorBonus}, " +
+                  $"HealthRegen+{currentSetBonusStats.healthRegenBonus:F1}/s, " +
+                  $"ManaRegen+{currentSetBonusStats.manaRegenBonus:F1}/s");
     }
 
     private void RemoveSetBonusStats()
@@ -705,19 +726,53 @@ public class EquipmentManager : NetworkBehaviour
         character.AttackSpeed -= currentSetBonusStats.attackSpeedBonus;
         character.ReductionCoolDown -= currentSetBonusStats.reductionCoolDownBonus;
 
-        // Ensure stats don't go negative
-        character.AttackDamage = Mathf.Max(1, character.AttackDamage);
-        character.MagicDamage = Mathf.Max(1, character.MagicDamage);
-        character.Armor = Mathf.Max(0, character.Armor);
-        character.MaxHp = Mathf.Max(1, character.MaxHp);
-        character.MaxMana = Mathf.Max(0, character.MaxMana);
-        character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
-        character.HitRate = Mathf.Max(5f, character.HitRate);
-        character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
-        character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
-        character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
-        character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
-        character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+        // ✅ เพิ่มการลบ 3 stats ใหม่
+        character.MagicArmor -= currentSetBonusStats.magicArmorBonus;
+        character.HealthRegen -= currentSetBonusStats.healthRegenBonus;
+        character.ManaRegen -= currentSetBonusStats.manaRegenBonus;
+
+        // ✅ ใช้ base stats จาก characterStats สำหรับป้องกันค่าติดลบ
+        if (character.characterStats != null)
+        {
+            character.AttackDamage = Mathf.Max(character.characterStats.attackDamage, character.AttackDamage);
+            character.MagicDamage = Mathf.Max(character.characterStats.magicDamage, character.MagicDamage);
+            character.Armor = Mathf.Max(character.characterStats.arrmor, character.Armor);
+            character.MaxHp = Mathf.Max(character.characterStats.maxHp, character.MaxHp);
+            character.MaxMana = Mathf.Max(character.characterStats.maxMana, character.MaxMana);
+            character.MoveSpeed = Mathf.Max(character.characterStats.moveSpeed, character.MoveSpeed);
+            character.HitRate = Mathf.Max(character.characterStats.hitRate, character.HitRate);
+            character.EvasionRate = Mathf.Max(character.characterStats.evasionRate, character.EvasionRate);
+            character.AttackSpeed = Mathf.Max(character.characterStats.attackSpeed, character.AttackSpeed);
+            character.ReductionCoolDown = Mathf.Max(character.characterStats.reductionCoolDown, character.ReductionCoolDown);
+            character.CriticalDamageBonus = Mathf.Max(character.characterStats.criticalDamageBonus, character.CriticalDamageBonus);
+            character.LifeSteal = Mathf.Max(character.characterStats.lifeSteal, character.LifeSteal);
+
+            // ✅ เพิ่มการตรวจสอบ 3 stats ใหม่
+            character.MagicArmor = Mathf.Max(character.characterStats.magicArmor, character.MagicArmor);
+            character.HealthRegen = Mathf.Max(character.characterStats.healthRegen, character.HealthRegen);
+            character.ManaRegen = Mathf.Max(character.characterStats.manaRegen, character.ManaRegen);
+        }
+        else
+        {
+            // Fallback values ถ้าไม่มี characterStats
+            character.AttackDamage = Mathf.Max(1, character.AttackDamage);
+            character.MagicDamage = Mathf.Max(1, character.MagicDamage);
+            character.Armor = Mathf.Max(0, character.Armor);
+            character.MaxHp = Mathf.Max(1, character.MaxHp);
+            character.MaxMana = Mathf.Max(0, character.MaxMana);
+            character.MoveSpeed = Mathf.Max(0.1f, character.MoveSpeed);
+            character.HitRate = Mathf.Max(5f, character.HitRate);
+            character.EvasionRate = Mathf.Max(0f, character.EvasionRate);
+            character.AttackSpeed = Mathf.Max(0.1f, character.AttackSpeed);
+            character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
+            character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
+            character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+
+            // ✅ เพิ่ม fallback สำหรับ 3 stats ใหม่
+            character.MagicArmor = Mathf.Max(0, character.MagicArmor);
+            character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
+            character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
+        }
 
         // Adjust current HP/Mana if needed
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
@@ -726,7 +781,10 @@ public class EquipmentManager : NetworkBehaviour
         Debug.Log($"[SetBonus Removed] {character.CharacterName} - " +
                   $"ATK-{currentSetBonusStats.attackDamageBonus}, " +
                   $"HP-{currentSetBonusStats.maxHpBonus}, " +
-                  $"Lifesteal-{currentSetBonusStats.lifeStealBonus}%");
+                  $"Lifesteal-{currentSetBonusStats.lifeStealBonus}%, " +
+                  $"MagicArmor-{currentSetBonusStats.magicArmorBonus}, " +
+                  $"HealthRegen-{currentSetBonusStats.healthRegenBonus:F1}/s, " +
+                  $"ManaRegen-{currentSetBonusStats.manaRegenBonus:F1}/s");
     }
     #endregion
 #if UNITY_EDITOR

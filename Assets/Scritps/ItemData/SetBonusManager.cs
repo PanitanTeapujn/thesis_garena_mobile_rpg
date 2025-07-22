@@ -254,6 +254,11 @@ public class SetBonusManager : MonoBehaviour
             totalStats.reductionCoolDownBonus += setBonus.totalSetStats.reductionCoolDownBonus;
             totalStats.physicalResistanceBonus += setBonus.totalSetStats.physicalResistanceBonus;
             totalStats.magicalResistanceBonus += setBonus.totalSetStats.magicalResistanceBonus;
+
+            // ✅ เพิ่ม 3 stats ใหม่
+            totalStats.magicArmorBonus += setBonus.totalSetStats.magicArmorBonus;
+            totalStats.healthRegenBonus += setBonus.totalSetStats.healthRegenBonus;
+            totalStats.manaRegenBonus += setBonus.totalSetStats.manaRegenBonus;
         }
 
         return totalStats;
@@ -266,7 +271,6 @@ public class SetBonusManager : MonoBehaviour
     {
         EquipmentStats finalBonuses = new EquipmentStats();
 
-        // ✅ ดึง current base stats จาก PersistentPlayerData แทน ScriptableObject
         var characterData = PersistentPlayerData.Instance?.GetCurrentCharacterData();
 
         if (characterData == null || !characterData.HasValidBaseStats())
@@ -275,8 +279,6 @@ public class SetBonusManager : MonoBehaviour
             {
                 Debug.LogWarning("[SetBonusManager] No valid base stats found, using current character stats as fallback");
             }
-
-            // ✅ Fallback: ใช้ current stats ของ character (ไม่ลบ equipment bonus)
             return CalculateBonusFromCurrentStats(setBonuses);
         }
 
@@ -285,14 +287,17 @@ public class SetBonusManager : MonoBehaviour
             Debug.Log($"[SetBonusManager] Using base stats: ATK={characterData.baseAttackDamage}, HP={characterData.baseMaxHp}");
         }
 
-        // ✅ ใช้ current base stats (รวม level bonuses + stat upgrades แล้ว)
-        finalBonuses.attackDamageBonus = CalculateBonusValue(characterData.baseAttackDamage, setBonuses.attackDamageBonus);
-        finalBonuses.magicDamageBonus = CalculateBonusValue(characterData.baseMagicDamage, setBonuses.magicDamageBonus);
-        finalBonuses.maxHpBonus = CalculateBonusValue(characterData.baseMaxHp, setBonuses.maxHpBonus);
-        finalBonuses.maxManaBonus = CalculateBonusValue(characterData.baseMaxMana, setBonuses.maxManaBonus);
-        finalBonuses.armorBonus = CalculateBonusValue(characterData.baseArmor, setBonuses.armorBonus);
+        // ✅ ปรับการคำนวณ - แยก flat bonus กับ percentage bonus
+        finalBonuses.attackDamageBonus = CalculateSmartBonus(characterData.baseAttackDamage, setBonuses.attackDamageBonus);
+        finalBonuses.magicDamageBonus = CalculateSmartBonus(characterData.baseMagicDamage, setBonuses.magicDamageBonus);
+        finalBonuses.maxHpBonus = CalculateSmartBonus(characterData.baseMaxHp, setBonuses.maxHpBonus);
+        finalBonuses.maxManaBonus = CalculateSmartBonus(characterData.baseMaxMana, setBonuses.maxManaBonus);
 
-        // Stats ที่เป็น % อยู่แล้ว - ไม่ต้องคำนวณ
+        // ✅ Armor และ Magic Armor - ตรวจสอบว่าควรเป็น flat หรือ percentage
+        finalBonuses.armorBonus = CalculateArmorBonus(characterData.baseArmor, setBonuses.armorBonus);
+        finalBonuses.magicArmorBonus = CalculateArmorBonus(characterData.baseMagicArmor, setBonuses.magicArmorBonus);
+
+        // Stats ที่เป็น % หรือค่าคงที่อยู่แล้ว - ไม่ต้องคำนวณ
         finalBonuses.criticalChanceBonus = setBonuses.criticalChanceBonus;
         finalBonuses.criticalMultiplierBonus = setBonuses.criticalMultiplierBonus;
         finalBonuses.attackSpeedBonus = setBonuses.attackSpeedBonus;
@@ -304,15 +309,59 @@ public class SetBonusManager : MonoBehaviour
         finalBonuses.physicalResistanceBonus = setBonuses.physicalResistanceBonus;
         finalBonuses.magicalResistanceBonus = setBonuses.magicalResistanceBonus;
 
+        // ✅ Regen stats มักจะเป็นค่าคงที่ (flat bonus)
+        finalBonuses.healthRegenBonus = setBonuses.healthRegenBonus;
+        finalBonuses.manaRegenBonus = setBonuses.manaRegenBonus;
+
         if (showDebugInfo)
         {
             Debug.Log($"[SetBonusManager] Set bonus calculated:");
-            Debug.Log($"  Base ATK: {characterData.baseAttackDamage} × {setBonuses.attackDamageBonus}% = +{finalBonuses.attackDamageBonus}");
-            Debug.Log($"  Base HP: {characterData.baseMaxHp} × {setBonuses.maxHpBonus}% = +{finalBonuses.maxHpBonus}");
+            Debug.Log($"  ATK: {characterData.baseAttackDamage} × {setBonuses.attackDamageBonus}% = +{finalBonuses.attackDamageBonus}");
+            Debug.Log($"  HP: {characterData.baseMaxHp} × {setBonuses.maxHpBonus}% = +{finalBonuses.maxHpBonus}");
+            Debug.Log($"  Armor: {setBonuses.armorBonus} → +{finalBonuses.armorBonus} (Smart calculation)");
+            Debug.Log($"  Magic Armor: {setBonuses.magicArmorBonus} → +{finalBonuses.magicArmorBonus} (Smart calculation)");
+            Debug.Log($"  Health Regen: +{finalBonuses.healthRegenBonus}/s (Flat)");
+            Debug.Log($"  Mana Regen: +{finalBonuses.manaRegenBonus}/s (Flat)");
         }
 
         return finalBonuses;
     }
+    private int CalculateSmartBonus(int baseStat, float bonusValue)
+    {
+        if (bonusValue == 0f) return 0;
+
+        // ถ้าค่า bonus มากกว่า 100 = เป็น flat bonus (เช่น 150 = +150 points)
+        if (bonusValue >= 100f)
+        {
+            return Mathf.RoundToInt(bonusValue);
+        }
+        // ถ้าค่า bonus น้อยกว่า 100 = เป็น percentage (เช่น 30 = +30%)
+        else
+        {
+            return Mathf.RoundToInt(baseStat * bonusValue / 100f);
+        }
+    }
+
+    // ✅ เพิ่ม method พิเศษสำหรับ Armor calculation
+    private int CalculateArmorBonus(int baseArmor, float bonusValue)
+    {
+        if (bonusValue == 0f) return 0;
+
+        // ✅ Armor มักจะเป็น flat bonus เสมอ ยกเว้นใน Set Bonus ที่เป็น %
+        // ถ้าค่า bonus มากกว่า 50 = เป็น flat bonus (เช่น 100 = +100 armor)
+        if (bonusValue >= 50f)
+        {
+            return Mathf.RoundToInt(bonusValue);
+        }
+        // ถ้าค่า bonus น้อยกว่า 50 = เป็น percentage (เช่น 25 = +25%)
+        else
+        {
+            int percentageBonus = Mathf.RoundToInt(baseArmor * bonusValue / 100f);
+            // ป้องกันไม่ให้ bonus น้อยเกินไป
+            return Mathf.Max(1, percentageBonus);
+        }
+    }
+
     private EquipmentStats CalculateBonusFromCurrentStats(EquipmentStats setBonuses)
     {
         EquipmentStats finalBonuses = new EquipmentStats();

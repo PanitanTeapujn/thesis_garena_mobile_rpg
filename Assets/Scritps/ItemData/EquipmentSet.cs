@@ -20,6 +20,9 @@ public enum SetBonusType
     LifeSteal,
     PhysicalResistance,
     MagicalResistance,
+    MagicArmor,        // Magic Armor
+    HealthRegen,       // Health Regeneration per second
+    ManaRegen,
     AllStats
 }
 
@@ -199,91 +202,121 @@ public class ActiveSetBonus
         switch (effect.bonusType)
         {
             case SetBonusType.AttackDamage:
-                if (effect.isPercentage)
-                    stats.attackDamageBonus += Mathf.RoundToInt(value); // ✅ เก็บเป็น % โดยตรง
-                else
-                    stats.attackDamageBonus += Mathf.RoundToInt(value);
+                // ATK สามารถเป็นทั้ง % และ flat ได้
+                stats.attackDamageBonus += Mathf.RoundToInt(value);
                 break;
 
             case SetBonusType.MagicDamage:
-                if (effect.isPercentage)
-                    stats.magicDamageBonus += Mathf.RoundToInt(value); // ✅ เก็บเป็น % โดยตรง
-                else
-                    stats.magicDamageBonus += Mathf.RoundToInt(value);
+                stats.magicDamageBonus += Mathf.RoundToInt(value);
                 break;
 
             case SetBonusType.MaxHp:
-                if (effect.isPercentage)
-                    stats.maxHpBonus += Mathf.RoundToInt(value); // ✅ เก็บเป็น % โดยตรง
-                else
-                    stats.maxHpBonus += Mathf.RoundToInt(value);
+                stats.maxHpBonus += Mathf.RoundToInt(value);
                 break;
 
             case SetBonusType.MaxMana:
-                if (effect.isPercentage)
-                    stats.maxManaBonus += Mathf.RoundToInt(value); // ✅ เก็บเป็น % โดยตรง
-                else
-                    stats.maxManaBonus += Mathf.RoundToInt(value);
-                break;
-
-            case SetBonusType.CriticalChance:
-                stats.criticalChanceBonus += value; // ✅ รับ % โดยตรง
-                break;
-
-            case SetBonusType.CriticalDamage:
-                stats.criticalMultiplierBonus += value; // ✅ รับ % โดยตรง
-                break;
-
-            case SetBonusType.AttackSpeed:
-                stats.attackSpeedBonus += value; // ✅ รับ % โดยตรง
-                break;
-
-            case SetBonusType.MoveSpeed:
-                stats.moveSpeedBonus += value; // ✅ รับค่าโดยตรง
+                stats.maxManaBonus += Mathf.RoundToInt(value);
                 break;
 
             case SetBonusType.Armor:
-                if (effect.isPercentage)
-                    stats.armorBonus += Mathf.RoundToInt(value); // ✅ เก็บเป็น % โดยตรง
-                else
-                    stats.armorBonus += Mathf.RoundToInt(value);
-                break;
-
-            case SetBonusType.LifeSteal:
-                stats.lifeStealBonus += value; // ✅ รับ % โดยตรง
-                break;
-
-            case SetBonusType.PhysicalResistance:
-                stats.physicalResistanceBonus += value; // ✅ รับ % โดยตรง
-                break;
-
-            case SetBonusType.MagicalResistance:
-                stats.magicalResistanceBonus += value; // ✅ รับ % โดยตรง
-                break;
-
-            case SetBonusType.AllStats:
-                // All Stats bonus - เพิ่มทุก stat ด้วยค่าเดียวกัน
+                // ✅ Armor - ระบุใน SetBonusEffect ว่าเป็น % หรือ flat
                 if (effect.isPercentage)
                 {
-                    stats.attackDamageBonus += Mathf.RoundToInt(value); // ✅ เก็บเป็น % โดยตรง
-                    stats.magicDamageBonus += Mathf.RoundToInt(value);
-                    stats.maxHpBonus += Mathf.RoundToInt(value);
-                    stats.maxManaBonus += Mathf.RoundToInt(value);
+                    // เก็บเป็นค่าเล็กเพื่อให้ CalculateArmorBonus รู้ว่าเป็น %
                     stats.armorBonus += Mathf.RoundToInt(value);
+                    Debug.Log($"[SetBonus] Armor percentage bonus: {value}% stored as {stats.armorBonus}");
                 }
                 else
                 {
+                    // เก็บเป็นค่าใหญ่เพื่อให้ CalculateArmorBonus รู้ว่าเป็น flat
+                    stats.armorBonus += Mathf.RoundToInt(value);
+                    Debug.Log($"[SetBonus] Armor flat bonus: {value} points");
+                }
+                break;
+
+            case SetBonusType.MagicArmor:
+                // ✅ Magic Armor - เหมือน Armor
+                if (effect.isPercentage)
+                {
+                    stats.magicArmorBonus += Mathf.RoundToInt(value);
+                    Debug.Log($"[SetBonus] Magic Armor percentage bonus: {value}% stored as {stats.magicArmorBonus}");
+                }
+                else
+                {
+                    stats.magicArmorBonus += Mathf.RoundToInt(value);
+                    Debug.Log($"[SetBonus] Magic Armor flat bonus: {value} points");
+                }
+                break;
+
+            case SetBonusType.CriticalChance:
+                stats.criticalChanceBonus += value;
+                break;
+
+            case SetBonusType.CriticalDamage:
+                stats.criticalMultiplierBonus += value;
+                break;
+
+            case SetBonusType.AttackSpeed:
+                stats.attackSpeedBonus += value;
+                break;
+
+            case SetBonusType.MoveSpeed:
+                stats.moveSpeedBonus += value;
+                break;
+
+            case SetBonusType.LifeSteal:
+                stats.lifeStealBonus += value;
+                break;
+
+            case SetBonusType.PhysicalResistance:
+                stats.physicalResistanceBonus += value;
+                break;
+
+            case SetBonusType.MagicalResistance:
+                stats.magicalResistanceBonus += value;
+                break;
+
+            case SetBonusType.HealthRegen:
+                // ✅ Health Regen มักจะเป็น flat bonus เสมอ
+                stats.healthRegenBonus += value;
+                Debug.Log($"[SetBonus] Health Regen flat bonus: +{value}/s");
+                break;
+
+            case SetBonusType.ManaRegen:
+                // ✅ Mana Regen มักจะเป็น flat bonus เสมอ
+                stats.manaRegenBonus += value;
+                Debug.Log($"[SetBonus] Mana Regen flat bonus: +{value}/s");
+                break;
+
+            case SetBonusType.AllStats:
+                // All Stats bonus
+                if (effect.isPercentage)
+                {
+                    // สำหรับ AllStats ถ้าเป็น % ให้ใช้ค่าเล็ก
                     stats.attackDamageBonus += Mathf.RoundToInt(value);
                     stats.magicDamageBonus += Mathf.RoundToInt(value);
                     stats.maxHpBonus += Mathf.RoundToInt(value);
                     stats.maxManaBonus += Mathf.RoundToInt(value);
-                    stats.armorBonus += Mathf.RoundToInt(value);
+                    stats.armorBonus += Mathf.RoundToInt(value); // เก็บเป็น % 
+                    stats.magicArmorBonus += Mathf.RoundToInt(value); // เก็บเป็น %
+                }
+                else
+                {
+                    // สำหรับ AllStats ถ้าเป็น flat ให้ใช้ค่าใหญ่
+                    stats.attackDamageBonus += Mathf.RoundToInt(value + 100f); // เพิ่ม 100 เพื่อบอกว่าเป็น flat
+                    stats.magicDamageBonus += Mathf.RoundToInt(value + 100f);
+                    stats.maxHpBonus += Mathf.RoundToInt(value + 100f);
+                    stats.maxManaBonus += Mathf.RoundToInt(value + 100f);
+                    stats.armorBonus += Mathf.RoundToInt(value + 100f); // เก็บเป็น flat
+                    stats.magicArmorBonus += Mathf.RoundToInt(value + 100f); // เก็บเป็น flat
                 }
                 stats.criticalChanceBonus += value;
                 stats.criticalMultiplierBonus += value;
                 stats.attackSpeedBonus += value;
                 stats.moveSpeedBonus += value;
                 stats.lifeStealBonus += value;
+                stats.healthRegenBonus += value; // Regen เป็น flat เสมอ
+                stats.manaRegenBonus += value; // Regen เป็น flat เสมอ
                 break;
         }
     }

@@ -372,15 +372,21 @@ public class SetBonusUI : MonoBehaviour
 
         // Attack/Magic Damage
         if (stats.attackDamageBonus > 0)
-            bonusTexts.Add($"+{stats.attackDamageBonus}% ATK");
+            bonusTexts.Add(FormatStatBonusForUI("ATK", stats.attackDamageBonus, true));
         if (stats.magicDamageBonus > 0)
-            bonusTexts.Add($"+{stats.magicDamageBonus}% MAG");
+            bonusTexts.Add(FormatStatBonusForUI("MAG", stats.magicDamageBonus, true));
 
         // HP/Mana
         if (stats.maxHpBonus > 0)
-            bonusTexts.Add($"+{stats.maxHpBonus}% HP");
+            bonusTexts.Add(FormatStatBonusForUI("HP", stats.maxHpBonus, true));
         if (stats.maxManaBonus > 0)
-            bonusTexts.Add($"+{stats.maxManaBonus}% Mana");
+            bonusTexts.Add(FormatStatBonusForUI("Mana", stats.maxManaBonus, true));
+
+        // ✅ Regeneration Stats (เป็น flat เสมอ)
+        if (stats.healthRegenBonus > 0)
+            bonusTexts.Add($"+{stats.healthRegenBonus:F1}/s HP Regen");
+        if (stats.manaRegenBonus > 0)
+            bonusTexts.Add($"+{stats.manaRegenBonus:F1}/s MP Regen");
 
         // Critical
         if (stats.criticalChanceBonus > 0)
@@ -394,9 +400,12 @@ public class SetBonusUI : MonoBehaviour
         if (stats.moveSpeedBonus > 0)
             bonusTexts.Add($"+{stats.moveSpeedBonus:F1} Move Speed");
 
-        // Defense
+        // ✅ Defense - ใช้ smart formatting
         if (stats.armorBonus > 0)
-            bonusTexts.Add($"+{stats.armorBonus}% Armor");
+            bonusTexts.Add(FormatArmorBonusForUI("Armor", stats.armorBonus));
+        if (stats.magicArmorBonus > 0)
+            bonusTexts.Add(FormatArmorBonusForUI("Magic Armor", stats.magicArmorBonus));
+
         if (stats.physicalResistanceBonus > 0)
             bonusTexts.Add($"+{stats.physicalResistanceBonus:F1}% Physical Res");
         if (stats.magicalResistanceBonus > 0)
@@ -414,7 +423,87 @@ public class SetBonusUI : MonoBehaviour
 
         return bonusTexts.Count > 0 ? string.Join("\n", bonusTexts) : "No active bonuses";
     }
+    private string FormatArmorBonusForUI(string armorType, int bonusValue)
+    {
+        // ถ้าค่า >= 50 = flat bonus (points)
+        if (bonusValue >= 50)
+        {
+            return $"+{bonusValue} {armorType}";
+        }
+        // ถ้าค่า < 50 = percentage bonus
+        else
+        {
+            return $"+{bonusValue}% {armorType}";
+        }
+    }
+    private string GetCompactBonusStats(EquipmentStats stats)
+    {
+        List<string> compactStats = new List<string>();
 
+        // เลือกเฉพาะ stats ที่สำคัญ
+        if (stats.attackDamageBonus > 0)
+        {
+            string atkText = stats.attackDamageBonus >= 100 ? $"ATK+{stats.attackDamageBonus}" : $"ATK+{stats.attackDamageBonus}%";
+            compactStats.Add($"<color=#FF6B6B>{atkText}</color>");
+        }
+        if (stats.magicDamageBonus > 0)
+        {
+            string magText = stats.magicDamageBonus >= 100 ? $"MAG+{stats.magicDamageBonus}" : $"MAG+{stats.magicDamageBonus}%";
+            compactStats.Add($"<color=#4ECDC4>{magText}</color>");
+        }
+        if (stats.maxHpBonus > 0)
+        {
+            string hpText = stats.maxHpBonus >= 100 ? $"HP+{stats.maxHpBonus}" : $"HP+{stats.maxHpBonus}%";
+            compactStats.Add($"<color=#FF4757>{hpText}</color>");
+        }
+        if (stats.healthRegenBonus > 0)
+            compactStats.Add($"<color=#FF8A80>HPReg+{stats.healthRegenBonus:F1}</color>");
+        if (stats.manaRegenBonus > 0)
+            compactStats.Add($"<color=#82B1FF>MPReg+{stats.manaRegenBonus:F1}</color>");
+        if (stats.magicArmorBonus > 0)
+        {
+            string maText = stats.magicArmorBonus >= 50 ? $"MArmor+{stats.magicArmorBonus}" : $"MArmor+{stats.magicArmorBonus}%";
+            compactStats.Add($"<color=#B19CD9>{maText}</color>");
+        }
+        if (stats.armorBonus > 0)
+        {
+            string armorText = stats.armorBonus >= 50 ? $"Armor+{stats.armorBonus}" : $"Armor+{stats.armorBonus}%";
+            compactStats.Add($"<color=#A4B0BE>{armorText}</color>");
+        }
+        if (stats.lifeStealBonus > 0)
+            compactStats.Add($"<color=#E74C3C>LS+{stats.lifeStealBonus:F1}%</color>");
+        if (stats.criticalChanceBonus > 0)
+            compactStats.Add($"<color=#FFA502>Crit+{stats.criticalChanceBonus:F1}%</color>");
+
+        // แสดงแค่ 4-6 stats แรก เพื่อไม่ให้ยาวเกิน
+        if (compactStats.Count > 6)
+        {
+            var displayStats = compactStats.Take(6).ToList();
+            displayStats.Add($"<color=#888>+{compactStats.Count - 6} more...</color>");
+            return string.Join(" ", displayStats);
+        }
+
+        return string.Join(" ", compactStats);
+    }
+    // ✅ เพิ่ม helper methods สำหรับ SetBonusUI
+    private string FormatStatBonusForUI(string statName, int bonusValue, bool canBePercentage)
+    {
+        if (!canBePercentage)
+        {
+            return $"+{bonusValue} {statName}";
+        }
+
+        // ถ้าค่ามากกว่า 100 = flat bonus
+        if (bonusValue >= 100)
+        {
+            return $"+{bonusValue} {statName}";
+        }
+        // ถ้าค่าน้อยกว่า 100 = percentage bonus
+        else
+        {
+            return $"+{bonusValue}% {statName}";
+        }
+    }
     /// <summary>
     /// ตรวจสอบว่า Panel เปิดอยู่หรือไม่
     /// </summary>

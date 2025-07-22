@@ -38,7 +38,6 @@ public class SetBonusItemUI : MonoBehaviour
         {
             setPiecesText.text = $"({setInfo.equippedPieces}/{setInfo.equipmentSet.setItems.Count} pieces)";
 
-            // ✅ เปลี่ยนสีตามสถานะ
             if (setInfo.activeBonus != null)
             {
                 setPiecesText.color = Color.green; // มี bonus
@@ -54,14 +53,16 @@ public class SetBonusItemUI : MonoBehaviour
         {
             if (setInfo.activeBonus != null)
             {
-                // ✅ มี bonus - แสดง active bonuses (เหมือนเดิม)
+                // ✅ ใช้ format ใหม่ที่รวม regen และ magic armor
                 setBonusStatsText.text = GetFormattedBonusStats(setInfo.activeBonus.totalSetStats);
                 setBonusStatsText.color = Color.green;
             }
             else
             {
-                // ✅ ยังไม่มี bonus - แสดงว่าต้องการอีกกี่ชิ้น
-               
+                // ยังไม่มี bonus - แสดงว่าต้องการอีกกี่ชิ้น
+                int needed = 2 - setInfo.equippedPieces;
+                setBonusStatsText.text = $"Need {needed} more piece{(needed > 1 ? "s" : "")} for bonus";
+                setBonusStatsText.color = Color.gray;
             }
         }
 
@@ -69,11 +70,11 @@ public class SetBonusItemUI : MonoBehaviour
         if (backgroundImage != null)
         {
             Color bgColor = setInfo.equipmentSet.setColor;
-            bgColor.a = setInfo.activeBonus != null ? 0.15f : 0.05f; // เข้มกว่าถ้ามี bonus
+            bgColor.a = setInfo.activeBonus != null ? 0.15f : 0.05f;
             backgroundImage.color = bgColor;
         }
 
-        // Set Icon (ถ้ามี)
+        // Set Icon
         if (setIconImage != null && setInfo.equipmentSet.setIcon != null)
         {
             setIconImage.sprite = setInfo.equipmentSet.setIcon;
@@ -90,15 +91,21 @@ public class SetBonusItemUI : MonoBehaviour
 
         // Combat Stats
         if (stats.attackDamageBonus > 0)
-            bonusLines.Add($"<color=#FF6B6B>+{stats.attackDamageBonus}% ATK</color>");
+            bonusLines.Add($"<color=#FF6B6B>{FormatStatBonus("ATK", stats.attackDamageBonus, true)}</color>");
         if (stats.magicDamageBonus > 0)
-            bonusLines.Add($"<color=#4ECDC4>+{stats.magicDamageBonus}% MAG</color>");
+            bonusLines.Add($"<color=#4ECDC4>{FormatStatBonus("MAG", stats.magicDamageBonus, true)}</color>");
 
         // HP/Mana
         if (stats.maxHpBonus > 0)
-            bonusLines.Add($"<color=#FF4757>+{stats.maxHpBonus}% HP</color>");
+            bonusLines.Add($"<color=#FF4757>{FormatStatBonus("HP", stats.maxHpBonus, true)}</color>");
         if (stats.maxManaBonus > 0)
-            bonusLines.Add($"<color=#3742FA>+{stats.maxManaBonus}% Mana</color>");
+            bonusLines.Add($"<color=#3742FA>{FormatStatBonus("Mana", stats.maxManaBonus, true)}</color>");
+
+        // ✅ Regeneration Stats (เป็น flat เสมอ)
+        if (stats.healthRegenBonus > 0)
+            bonusLines.Add($"<color=#FF8A80>+{stats.healthRegenBonus:F1}/s HP Regen</color>");
+        if (stats.manaRegenBonus > 0)
+            bonusLines.Add($"<color=#82B1FF>+{stats.manaRegenBonus:F1}/s MP Regen</color>");
 
         // Critical
         if (stats.criticalChanceBonus > 0)
@@ -112,9 +119,12 @@ public class SetBonusItemUI : MonoBehaviour
         if (stats.moveSpeedBonus > 0)
             bonusLines.Add($"<color=#1DD1A1>+{stats.moveSpeedBonus:F1} Move Speed</color>");
 
-        // Defense
+        // ✅ Defense - ใช้ smart formatting
         if (stats.armorBonus > 0)
-            bonusLines.Add($"<color=#A4B0BE>+{stats.armorBonus}% Armor</color>");
+            bonusLines.Add($"<color=#A4B0BE>{FormatArmorBonus("Armor", stats.armorBonus)}</color>");
+        if (stats.magicArmorBonus > 0)
+            bonusLines.Add($"<color=#B19CD9>{FormatArmorBonus("Magic Armor", stats.magicArmorBonus)}</color>");
+
         if (stats.physicalResistanceBonus > 0)
             bonusLines.Add($"<color=#747D8C>+{stats.physicalResistanceBonus:F1}% Physical Res</color>");
         if (stats.magicalResistanceBonus > 0)
@@ -132,6 +142,43 @@ public class SetBonusItemUI : MonoBehaviour
 
         return bonusLines.Count > 0 ? string.Join("\n", bonusLines) : "";
     }
+
+    // ✅ เพิ่ม method สำหรับ format stat bonus ให้ชาญฉลาด
+    private string FormatStatBonus(string statName, int bonusValue, bool canBePercentage)
+    {
+        if (!canBePercentage)
+        {
+            return $"+{bonusValue} {statName}";
+        }
+
+        // ถ้าค่ามากกว่า 100 = flat bonus
+        if (bonusValue >= 100)
+        {
+            return $"+{bonusValue} {statName}";
+        }
+        // ถ้าค่าน้อยกว่า 100 = percentage bonus
+        else
+        {
+            return $"+{bonusValue}% {statName}";
+        }
+    }
+
+    // ✅ เพิ่ม method พิเศษสำหรับ Armor
+    private string FormatArmorBonus(string armorType, int bonusValue)
+    {
+        // ✅ Logic เดียวกับ SetBonusManager.CalculateArmorBonus()
+        // ถ้าค่า >= 50 = flat bonus (points)
+        if (bonusValue >= 50)
+        {
+            return $"+{bonusValue} {armorType}";
+        }
+        // ถ้าค่า < 50 = percentage bonus
+        else
+        {
+            return $"+{bonusValue}% {armorType}";
+        }
+    }
+
 
     /// <summary>
     /// Setup UI สำหรับข้อความ "No Set Bonus"
