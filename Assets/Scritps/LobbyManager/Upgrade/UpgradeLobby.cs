@@ -509,6 +509,10 @@ public class UpgradeLobby : MonoBehaviour
             float baseCdr = localHero.characterStats.reductionCoolDown;
             float baseHit = localHero.characterStats.hitRate;
             float baseLifeSteal = localHero.characterStats.lifeSteal;
+            int basemagicArmor = localHero.characterStats.magicArmor;
+            float basehealthRegen = localHero.characterStats.healthRegen;
+            float basemanaRegen = localHero.characterStats.manaRegen;
+
 
             // ✅ เพิ่ม stat bonuses จาก upgrades
             characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
@@ -534,7 +538,7 @@ public class UpgradeLobby : MonoBehaviour
             characterData.UpdateBaseStats(
                 baseHp, baseMana, baseAttack, baseMagic, baseArmor,
                 baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
-                baseAtkSpeed, baseCdr, baseLifeSteal
+                baseAtkSpeed, baseCdr, baseLifeSteal,basemagicArmor,basehealthRegen,basemanaRegen
             );
 
             Debug.Log($"[UpgradeLobby] 🎯 Updated base stats with upgrades:");
@@ -584,7 +588,9 @@ public class UpgradeLobby : MonoBehaviour
             localHero.AttackSpeed = characterData.baseAttackSpeed;
             localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
             localHero.LifeSteal = characterData.baseLifeSteal;
-
+            localHero.MagicDamage = characterData.baseMagicArmor;
+            localHero.HealthRegen = characterData.baseHealthRegen;
+            localHero.ManaRegen = characterData.baseManaRegen;
             // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
             localHero.CurrentHp = Mathf.RoundToInt(localHero.MaxHp * hpPercentage);
             localHero.CurrentMana = Mathf.RoundToInt(localHero.MaxMana * manaPercentage);
@@ -614,7 +620,7 @@ public class UpgradeLobby : MonoBehaviour
             characterData.UpdateTotalStats(
                 localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
                 localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
-                localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal
+                localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal,localHero.MagicArmor,localHero.HealthRegen,localHero.ManaRegen
             );
 
             // บันทึกลง Firebase
@@ -666,7 +672,9 @@ public class UpgradeLobby : MonoBehaviour
             localHero.AttackSpeed = characterData.baseAttackSpeed;
             localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
             localHero.LifeSteal = characterData.baseLifeSteal;
-
+            localHero.MagicDamage = characterData.baseMagicArmor;
+            localHero.HealthRegen = characterData.baseHealthRegen;
+            localHero.ManaRegen = characterData.baseManaRegen;
             // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์ที่คำนวณ
             localHero.CurrentHp = Mathf.RoundToInt(localHero.MaxHp * hpPercentage);
             localHero.CurrentMana = Mathf.RoundToInt(localHero.MaxMana * manaPercentage);
@@ -709,7 +717,7 @@ public class UpgradeLobby : MonoBehaviour
                 characterData.UpdateTotalStats(
                     localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
                     localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
-                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal
+                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal, localHero.MagicArmor, localHero.HealthRegen, localHero.ManaRegen
                 );
 
                 // ✅ 3. บันทึกลง Firebase
@@ -761,7 +769,9 @@ public class UpgradeLobby : MonoBehaviour
             float baseCdr = localHero.characterStats.reductionCoolDown;
             float baseHit = localHero.characterStats.hitRate;
             float baseLifeSteal = localHero.characterStats.lifeSteal + (levelBonus * levelManager.levelUpStats.lifeStealBonusPerLevel);
-
+            int basemagicArmor = localHero.characterStats.magicArmor;
+            float basehealthRegen = localHero.characterStats.healthRegen;
+            float basemanaRegen = localHero.characterStats.manaRegen;
             // 🎯 เพิ่ม stat bonuses จาก upgrades
             characterData.GetStatBonuses(out int hpBonus, out int atkBonus, out float critDmgBonus,
                                        out float atkSpeedBonus, out float evaBonus, out float critChanceBonus,
@@ -786,7 +796,7 @@ public class UpgradeLobby : MonoBehaviour
             characterData.UpdateBaseStats(
                 baseHp, baseMana, baseAttack, baseMagic, baseArmor,
                 baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
-                baseAtkSpeed, baseCdr, baseLifeSteal
+                baseAtkSpeed, baseCdr, baseLifeSteal, basemagicArmor, basehealthRegen, basemanaRegen
             );
 
             Debug.Log($"[UpgradeLobby] 📊 Recalculated base stats with upgrades:");

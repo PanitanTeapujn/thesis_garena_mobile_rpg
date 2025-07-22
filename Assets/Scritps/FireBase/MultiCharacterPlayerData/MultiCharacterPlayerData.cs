@@ -1080,6 +1080,9 @@ public class CharacterProgressData
     public float baseLifeSteal = 0f;
     public float baseAttackCoolDown = 0f;
     public int baseAttackRange = 0;
+    public int baseMagicArmor = 0;
+    public float baseManaRegen = 1f;
+    public float baseHealthRegen = 0.5f;
     public AttackType attackType;
 
     #endregion
@@ -1101,6 +1104,9 @@ public class CharacterProgressData
     public float totalEvasionRate;
     public float totalReductionCoolDown;
     public float totalLifeSteal;
+    public int totalMagicArmor;
+    public float totalManaRegen;
+    public float totalHealthRegen;
     #endregion
 
     #region Character Equipment System
@@ -1152,12 +1158,13 @@ public class CharacterProgressData
 
         Debug.Log($"✅ Stats system initialized for {characterType}");
     }
-    
+
     /// <summary>
     /// 🆕 อัปเดต base stats
     /// </summary>
     public void UpdateBaseStats(int hp, int mana, int atk, int magic, int armor,
-        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr, float lifesteal)
+     float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
+     float cdr, float lifesteal, int magicArmor, float manaRegen, float healthRegen) // เพิ่ม pa
     {
         baseMaxHp = hp;
         baseMaxMana = mana;
@@ -1172,7 +1179,9 @@ public class CharacterProgressData
         baseAttackSpeed = atkSpeed;
         baseReductionCoolDown = cdr;
         baseLifeSteal = lifesteal;
-
+        baseMagicArmor = magicArmor;
+        baseManaRegen = manaRegen;
+        baseHealthRegen = healthRegen;
         hasBaseStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
@@ -1183,7 +1192,8 @@ public class CharacterProgressData
     /// 🆕 อัปเดต total stats
     /// </summary>
     public void UpdateTotalStats(int hp, int mana, int atk, int magic, int armor,
-        float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed, float cdr, float lifesteal)
+    float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
+    float cdr, float lifesteal, int magicArmor, float manaRegen, float healthRegen) // เพิ่ม parameters
     {
         totalMaxHp = hp;
         totalMaxMana = mana;
@@ -1198,7 +1208,9 @@ public class CharacterProgressData
         totalAttackSpeed = atkSpeed;
         totalReductionCoolDown = cdr;
         totalLifeSteal = lifesteal;
-
+        totalMagicArmor = magicArmor;
+        totalManaRegen = manaRegen;
+        totalHealthRegen = healthRegen;
         hasTotalStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
@@ -1219,7 +1231,9 @@ public class CharacterProgressData
         totalAttackSpeed = baseAttackSpeed;
         totalReductionCoolDown = baseReductionCoolDown;
         totalLifeSteal = baseLifeSteal;
-
+        totalMagicArmor = baseMagicArmor;
+        totalManaRegen = baseManaRegen;
+        totalHealthRegen = baseHealthRegen;
         hasTotalStats = true;
         statsLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 

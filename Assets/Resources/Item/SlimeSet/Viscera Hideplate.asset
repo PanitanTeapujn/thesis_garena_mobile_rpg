@@ -54,7 +54,7 @@ MonoBehaviour:
     criticalDamageBonus: 0
     maxHpBonus: 500
     maxManaBonus: 500
-    moveSpeedBonus: 0.2
+    moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 10

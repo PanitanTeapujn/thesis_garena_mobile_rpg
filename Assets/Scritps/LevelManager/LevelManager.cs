@@ -16,6 +16,7 @@ public class LevelUpStats
     public float criticalChanceBonusPerLevel = 0.5f;
     public float moveSpeedBonusPerLevel = 0f;
     public float lifeStealBonusPerLevel = 0f; // Optional: 0.1f = +0.1% ต่อ level
+    public int magicArmorBonusPerLevel = 1; // Optional: 0.1f = +0.1% ต่อ level
 
 }
 
@@ -444,6 +445,7 @@ public class LevelManager : NetworkBehaviour
         character.CriticalChance += levelUpStats.criticalChanceBonusPerLevel;
         character.MoveSpeed += levelUpStats.moveSpeedBonusPerLevel;
         character.LifeSteal += levelUpStats.lifeStealBonusPerLevel;
+        character.MagicArmor += levelUpStats.magicArmorBonusPerLevel;
 
         // ✅ Full restore on level up
         character.CurrentHp = character.MaxHp;
@@ -498,7 +500,7 @@ public class LevelManager : NetworkBehaviour
                 characterData.UpdateTotalStats(
                     character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
                     character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
-                    character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown, character.LifeSteal
+                    character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown, character.LifeSteal,character.MagicArmor,character.HealthRegen,character.ManaRegen
                 );
 
                 // บันทึกลง Firebase
@@ -599,7 +601,10 @@ public class LevelManager : NetworkBehaviour
                 character.EvasionRate,
                 character.AttackSpeed,
                 character.ReductionCoolDown,
-                character.LifeSteal
+                character.LifeSteal,
+                character.MagicArmor,
+                character.HealthRegen,
+                character.ManaRegen
             );
 
             Debug.Log($"💾 Quick saved {activeCharacterType} - Level {CurrentLevel} with total stats");
@@ -667,6 +672,7 @@ public class LevelManager : NetworkBehaviour
         float baseCdr = character.characterStats.reductionCoolDown;
         float baseHit = character.characterStats.hitRate;
         float baseLifeSteals = character.characterStats.lifeSteal + (levelBonus * levelUpStats.lifeStealBonusPerLevel);
+        int baseMagicArmors = character.characterStats.arrmor + (levelBonus * levelUpStats.magicArmorBonusPerLevel);
 
         // ✅ เพิ่ม stat bonuses จาก upgrades
         try

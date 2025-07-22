@@ -74,6 +74,24 @@ public class Character : NetworkBehaviour
     public float ReductionCoolDown { get { return reductionCoolDown; } set { reductionCoolDown = value; } }
     [SerializeField] private float lifeSteal;
     public float LifeSteal { get { return lifeSteal; } set { lifeSteal = value; } }
+    #region สถานะพื้นฐานทั้งหมด - เพิ่ม 3 stats ใหม่
+    // เพิ่มในส่วน stats declarations หลัง lifeSteal
+    [SerializeField] private int magicArmor;
+    public int MagicArmor { get { return magicArmor; } set { magicArmor = value; } }
+
+    [SerializeField] private float manaRegen;
+    public float ManaRegen { get { return manaRegen; } set { manaRegen = value; } }
+
+    [SerializeField] private float healthRegen;
+    public float HealthRegen { get { return healthRegen; } set { healthRegen = value; } }
+    #endregion
+
+    #region Network Properties - เพิ่ม Networked properties
+    [Networked] public int NetworkedMagicArmor { get; set; }
+    [Networked] public float NetworkedManaRegen { get; set; }
+    [Networked] public float NetworkedHealthRegen { get; set; }
+    #endregion
+
     [Header("Attack Settings")]
     [SerializeField] private AttackType attackType = AttackType.Physical; // Default เป็น Physical
     public AttackType AttackType { get { return attackType; } set { attackType = value; } }
@@ -97,8 +115,8 @@ public class Character : NetworkBehaviour
 
     #region Regeneration Settings การตั้งค่าการฟื้นฟู HP/Mana
     [Header("Regeneration Settings")]
-    [SerializeField] private float healthRegenPerSecond = 0.5f;
-    [SerializeField] private float manaRegenPerSecond = 1f;
+    [SerializeField] private float baseHealthRegenPerSecond = 0.5f;  // แยกจาก equipment bonus
+    [SerializeField] private float baseManaRegenPerSecond = 1f;      // แยกจาก equipment bonus
     private float healthRegenTimer = 0f;
     private float manaRegenTimer = 0f;
     private float regenTickInterval = 3f; // regen ทุก 3 วินาที
@@ -187,11 +205,11 @@ public class Character : NetworkBehaviour
         Debug.Log($"[Character] {CharacterName}: Loading player data...");
 
         // โหลด stats ผ่าน LevelManager (แบบเดิม)
-        var levelManager = GetComponent<LevelManager>();
+       /* var levelManager = GetComponent<LevelManager>();
         if (levelManager != null)
         {
             PersistentPlayerData.Instance.LoadStatsForCharacter(this, levelManager);
-        }
+        }*/
 
         // โหลด inventory และ equipment (แบบเดิม)
         if (PersistentPlayerData.Instance.ShouldLoadFromFirebase())
@@ -402,7 +420,9 @@ public class Character : NetworkBehaviour
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
             lifeSteal = characterStats.lifeSteal;
-
+            magicArmor = characterStats.magicArmor;
+            manaRegen = characterStats.manaRegen;
+            healthRegen = characterStats.healthRegen;
             attackType = characterStats.attackType;
             InitializeEquipmentSlots();
 
@@ -1065,6 +1085,8 @@ public class Character : NetworkBehaviour
             NetworkedMaxMana = maxMana;
             NetworkedCurrentMana = currentMana;
             NetworkedLifeSteal = lifeSteal;
+            NetworkedManaRegen = manaRegen;
+            NetworkedHealthRegen = healthRegen;
 
             IsNetworkStateReady = true;
         }
@@ -1364,10 +1386,16 @@ public class Character : NetworkBehaviour
             }
         }
     }
-
     private void RegenerateHealth()
     {
-        int regenAmount = Mathf.RoundToInt(healthRegenPerSecond);
+        // รวม base regen + equipment bonus
+        float totalHealthRegen = baseHealthRegenPerSecond + HealthRegen;
+        if (equipmentManager != null)
+        {
+            totalHealthRegen += equipmentManager.GetHealthRegenBonus();
+        }
+
+        int regenAmount = Mathf.RoundToInt(totalHealthRegen * regenTickInterval); // คูณด้วย interval
         int oldHp = currentHp;
 
         currentHp = Mathf.Min(currentHp + regenAmount, maxHp);
@@ -1376,7 +1404,8 @@ public class Character : NetworkBehaviour
         {
             NetworkedCurrentHp = currentHp;
 
-            // ✅ Sync to all clients if this is StateAuthority
+            Debug.Log($"[Health Regen] {CharacterName}: +{currentHp - oldHp} HP (Total regen: {totalHealthRegen:F1}/s)");
+
             if (HasStateAuthority)
             {
                 RPC_SyncHealthRegen(currentHp);
@@ -1386,7 +1415,14 @@ public class Character : NetworkBehaviour
 
     private void RegenerateMana()
     {
-        int regenAmount = 1;
+        // รวม base regen + equipment bonus
+        float totalManaRegen = baseManaRegenPerSecond + ManaRegen;
+        if (equipmentManager != null)
+        {
+            totalManaRegen += equipmentManager.GetManaRegenBonus();
+        }
+
+        int regenAmount = Mathf.RoundToInt(totalManaRegen * regenTickInterval); // คูณด้วย interval
         int oldMana = currentMana;
 
         currentMana = Mathf.Min(currentMana + regenAmount, maxMana);
@@ -1395,13 +1431,15 @@ public class Character : NetworkBehaviour
         {
             NetworkedCurrentMana = currentMana;
 
-            // ✅ Sync to all clients if this is StateAuthority
+            Debug.Log($"[Mana Regen] {CharacterName}: +{currentMana - oldMana} MP (Total regen: {totalManaRegen:F1}/s)");
+
             if (HasStateAuthority)
             {
                 RPC_SyncManaRegen(currentMana);
             }
         }
     }
+
     #endregion
 
     #region Effective Stats Methods การคำนวณ stats ที่รวม buffs/debuffs
@@ -1579,7 +1617,25 @@ public class Character : NetworkBehaviour
         OnStatsChanged?.Invoke();
     }
     #endregion
+    public float GetEffectiveHealthRegen()
+    {
+        float total = baseHealthRegenPerSecond + HealthRegen;
+        if (equipmentManager != null)
+        {
+            total += equipmentManager.GetHealthRegenBonus();
+        }
+        return total;
+    }
 
+    public float GetEffectiveManaRegen()
+    {
+        float total = baseManaRegenPerSecond + ManaRegen;
+        if (equipmentManager != null)
+        {
+            total += equipmentManager.GetManaRegenBonus();
+        }
+        return total;
+    }
     #region Level and Experience Methods ระบบเลเวลและประสบการณ์
     public int GetCurrentLevel()
     {
@@ -1981,6 +2037,9 @@ public class Character : NetworkBehaviour
                 totalStats.reductionCoolDownBonus += itemStats.reductionCoolDownBonus;
                 totalStats.physicalResistanceBonus += itemStats.physicalResistanceBonus;
                 totalStats.magicalResistanceBonus += itemStats.magicalResistanceBonus;
+                totalStats.magicArmorBonus += itemStats.magicArmorBonus;
+                totalStats.manaRegenBonus += itemStats.manaRegenBonus;
+                totalStats.healthRegenBonus += itemStats.healthRegenBonus;
 
             }
         }
@@ -2015,7 +2074,12 @@ public class Character : NetworkBehaviour
             totalStatsList.Add($"CDR+{totalStats.reductionCoolDownBonus:F1}%");
         if (totalStats.lifeStealBonus != 0f)
             totalStatsList.Add($"LST+{totalStats.lifeStealBonus:F1}%");
-
+        if (totalStats.magicArmorBonus != 0)
+            totalStatsList.Add($"MAG_ARM+{totalStats.magicArmorBonus}");
+        if (totalStats.manaRegenBonus != 0f)
+            totalStatsList.Add($"MP_REGEN+{totalStats.manaRegenBonus:F1}");
+        if (totalStats.healthRegenBonus != 0f)
+            totalStatsList.Add($"HP_REGEN+{totalStats.healthRegenBonus:F1}");
         if (totalStats.physicalResistanceBonus != 0f)
             totalStatsList.Add($"PHYS_RES+{totalStats.physicalResistanceBonus:F1}%");
         if (totalStats.magicalResistanceBonus != 0f)
@@ -2438,7 +2502,7 @@ public class Character : NetworkBehaviour
                 characterData.UpdateTotalStats(
                     MaxHp, MaxMana, AttackDamage, MagicDamage, Armor,
                     CriticalChance, CriticalDamageBonus, MoveSpeed,
-                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown,LifeSteal
+                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown,LifeSteal, MagicArmor,HealthRegen, ManaRegen
                 );
 
                 // บันทึกลง Firebase

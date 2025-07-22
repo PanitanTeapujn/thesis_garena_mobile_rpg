@@ -228,6 +228,12 @@ MonoBehaviour:
   attackSpeed: 0
   reductionCoolDown: 0
   lifeSteal: 0
+  magicArmor: 0
+  manaRegen: 0
+  healthRegen: 0
+  _NetworkedMagicArmor: 0
+  _NetworkedManaRegen: 0
+  _NetworkedHealthRegen: 0
   attackType: 0
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
@@ -238,8 +244,8 @@ MonoBehaviour:
   _NetworkedLifeSteal: 0
   isStatsLoaded: 0
   isSpawnComplete: 0
-  healthRegenPerSecond: 1
-  manaRegenPerSecond: 1
+  baseHealthRegenPerSecond: 0.5
+  baseManaRegenPerSecond: 1
   rb: {fileID: 0}
   characterEquippedItems: []
   potionSlots: []
@@ -270,10 +276,10 @@ MonoBehaviour:
   skill2Cooldown: 1
   skill3Cooldown: 1
   skill4Cooldown: 1
-  skill1ManaCost: 8
-  skill2ManaCost: 12
-  skill3ManaCost: 15
-  skill4ManaCost: 20
+  skill1ManaCost: 30
+  skill2ManaCost: 50
+  skill3ManaCost: 70
+  skill4ManaCost: 100
   dashDistance: 8
   dashSpeed: 20
   toxicBombPrefab: {fileID: 0}
@@ -416,6 +422,9 @@ MonoBehaviour:
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
   currentRuneStats:
     attackDamageBonus: 0
     magicDamageBonus: 0
@@ -432,6 +441,9 @@ MonoBehaviour:
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
   _NetworkedAttackDamageBonus: 0
   _NetworkedMagicDamageBonus: 0
   _NetworkedArmorBonus: 0
@@ -447,6 +459,9 @@ MonoBehaviour:
   _NetworkedReductionCoolDown: 0
   _NetworkedCriticalMultiplierBonus: 0
   _NetworkedLifeStealBonus: 0
+  _NetworkedMagicArmorBonus: 0
+  _NetworkedManaRegenBonus: 0
+  _NetworkedHealthRegenBonus: 0
   currentSetBonusStats:
     attackDamageBonus: 0
     magicDamageBonus: 0
@@ -463,6 +478,9 @@ MonoBehaviour:
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
   _NetworkedSetAttackDamageBonus: 0
   _NetworkedSetMagicDamageBonus: 0
   _NetworkedSetArmorBonus: 0
@@ -527,6 +545,7 @@ MonoBehaviour:
     criticalChanceBonusPerLevel: 0
     moveSpeedBonusPerLevel: 0
     lifeStealBonusPerLevel: 0
+    magicArmorBonusPerLevel: 1
   expSettings:
     baseExpToNextLevel: 120
     expGrowthRate: 1.5

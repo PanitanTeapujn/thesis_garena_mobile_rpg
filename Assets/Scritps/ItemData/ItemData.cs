@@ -41,7 +41,10 @@ public class ItemStats
     public int magicDamageBonus = 0;
     public int armorBonus = 0;
     public float criticalChanceBonus = 0f;      // % (0.1f = 10%)
-    public float criticalDamageBonus = 0f;      // multiplier (0.5f = +50%)
+    public float criticalDamageBonus = 0f;
+    public int magicArmorBonus = 0;
+    public float manaRegenBonus = 0f;
+    public float healthRegenBonus = 0f;// multiplier (0.5f = +50%)
     #endregion
 
     #region Survival Stats
@@ -92,7 +95,9 @@ public class ItemStats
         equipStats.physicalResistanceBonus = physicalResistanceBonus;
         equipStats.magicalResistanceBonus = magicalResistanceBonus;
         equipStats.lifeStealBonus = lifeStealBonus;
-
+        equipStats.magicArmorBonus = magicArmorBonus;
+        equipStats.manaRegenBonus = manaRegenBonus;
+        equipStats.healthRegenBonus = healthRegenBonus;
         return equipStats;
     }
 
@@ -102,7 +107,10 @@ public class ItemStats
                criticalChanceBonus != 0f || criticalDamageBonus != 0f ||
                maxHpBonus != 0 || maxManaBonus != 0 || moveSpeedBonus != 0f ||
                attackSpeedBonus != 0f || hitRateBonus != 0f || evasionRateBonus != 0f ||
-               reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f || magicalResistanceBonus != 0f || lifeStealBonus != 0f ;
+               reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f ||
+               magicalResistanceBonus != 0f || lifeStealBonus != 0f ||
+               // เพิ่ม 3 stats ใหม่
+               magicArmorBonus != 0 || manaRegenBonus != 0f || healthRegenBonus != 0f;
     }
 
     // แทนที่ GetStatsDescription() method เดิมด้วยโค้ดนี้
@@ -153,7 +161,12 @@ public class ItemStats
             statsList.Add($"🔴 Heal: +{healAmount} HP");
         if (manaAmount > 0)
             statsList.Add($"🔵 Mana: +{manaAmount} MP");
-
+        if (magicArmorBonus != 0)
+            statsList.Add($"Magic Armor: +{magicArmorBonus}");
+        if (manaRegenBonus != 0f)
+            statsList.Add($"Mana Regen: +{manaRegenBonus:F1}/s");
+        if (healthRegenBonus != 0f)
+            statsList.Add($"Health Regen: +{healthRegenBonus:F1}/s");
         // 🔧 แสดงเป็น % โดยไม่ให้ :P1 คูณ 100 อีก
         if (healPercentage > 0f)
             statsList.Add($"🔴 Heal: +{healPercentage:F1}% Max HP");
@@ -582,7 +595,9 @@ public class ItemData : ScriptableObject
         firebaseData.manaAmount = stats.manaAmount;
         firebaseData.healPercentage = stats.healPercentage;
         firebaseData.manaPercentage = stats.manaPercentage;
-
+        firebaseData.magicArmorBonus = stats.magicArmorBonus;
+        firebaseData.manaRegenBonus = stats.manaRegenBonus;
+        firebaseData.healthRegenBonus = stats.healthRegenBonus;
         return firebaseData;
     }
 
@@ -629,7 +644,9 @@ public class ItemData : ScriptableObject
         item.stats.manaAmount = firebaseData.manaAmount;
         item.stats.healPercentage = firebaseData.healPercentage;
         item.stats.manaPercentage = firebaseData.manaPercentage;
-
+        item.stats.magicArmorBonus = firebaseData.magicArmorBonus;
+        item.stats.manaRegenBonus = firebaseData.manaRegenBonus;
+        item.stats.healthRegenBonus = firebaseData.healthRegenBonus;
         return item;
     }
     private static EquipmentSet FindEquipmentSetByName(string setName)
@@ -807,8 +824,11 @@ public class FirebaseItemData
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
     public float lifeStealBonus = 0f;
+    public int magicArmorBonus = 0;
+    public float manaRegenBonus = 0f;
+    public float healthRegenBonus = 0f;
     #endregion
-    
+
     #region Potion Stats (เพิ่มใหม่)
     public int healAmount = 0;
     public int manaAmount = 0;
@@ -848,6 +868,9 @@ public class FirebaseItemData
         stats.physicalResistanceBonus = physicalResistanceBonus;
         stats.magicalResistanceBonus = magicalResistanceBonus;
         stats.lifeStealBonus = lifeStealBonus;
+        stats.magicArmorBonus = magicArmorBonus;
+        stats.manaRegenBonus = manaRegenBonus;
+        stats.healthRegenBonus = healthRegenBonus;
         stats.healAmount = healAmount;
         stats.manaAmount = manaAmount;
         stats.healPercentage = healPercentage;

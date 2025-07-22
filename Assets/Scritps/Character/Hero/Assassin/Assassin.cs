@@ -44,10 +44,10 @@ public class Assassin : Hero
         base.Start();
         AttackType = AttackType.Physical;
         // ปรับ cooldown สำหรับ Assassin
-        skill1Cooldown = 8f;
-        skill2Cooldown = 12f;
-        skill3Cooldown = 15f;
-        skill4Cooldown = 20f;
+        skill1Cooldown = 13f;
+        skill2Cooldown = 18f;
+        skill3Cooldown = 22f;
+        skill4Cooldown = 32f;
 
         // สร้าง range indicator สำหรับ ultimate
         CreateRangeIndicator();

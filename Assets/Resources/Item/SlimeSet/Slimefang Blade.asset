@@ -53,7 +53,7 @@ MonoBehaviour:
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 10
-    hitRateBonus: 10
+    hitRateBonus: 5
     evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
