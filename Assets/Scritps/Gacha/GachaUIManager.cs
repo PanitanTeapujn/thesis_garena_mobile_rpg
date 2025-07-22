@@ -3,24 +3,23 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Collections;
 using TMPro;
-using Fusion;
 
 /// <summary>
-/// จัดการ UI ของระบบกาชา - ปรับปรุงให้สอดคล้องกับ LobbyManager และ CurrencyManager
+/// จัดการ UI ของระบบกาชา - Single Player Version
 /// </summary>
-public class GachaUIManager : NetworkBehaviour
+public class GachaUIManager : MonoBehaviour
 {
-    #region UI Panels - ใช้ pattern เดียวกับ LobbyManager
+    #region UI Panels
     [Header("🎰 Main UI Panels")]
     public GameObject gachaMainPanel;
     public GameObject gachaResultPanel;
     public GameObject machineSelectionPanel;
-    public GameObject gachaHistoryPanel; // ✅ เพิ่ม history panel
+    public GameObject gachaHistoryPanel;
 
     [Header("🎛️ Machine Selection")]
     public Transform machineButtonContainer;
     public Button machineButtonPrefab;
-    public Button backToLobbyButton; // ✅ เพิ่มปุ่มกลับ lobby
+    public Button backToLobbyButton;
 
     [Header("🎯 Current Machine UI")]
     public TextMeshProUGUI machineNameText;
@@ -30,9 +29,9 @@ public class GachaUIManager : NetworkBehaviour
     public TextMeshProUGUI costTenText;
     public Button rollSingleButton;
     public Button rollTenButton;
-    public Button viewHistoryButton; // ✅ เพิ่มปุ่มดู history
+    public Button viewHistoryButton;
 
-    [Header("💰 Currency Display - เชื่อมต่อกับ CurrencyManager")]
+    [Header("💰 Currency Display")]
     public TextMeshProUGUI currentGoldText;
     public TextMeshProUGUI currentGemsText;
     public GameObject insufficientCurrencyWarning;
@@ -41,7 +40,7 @@ public class GachaUIManager : NetworkBehaviour
     public Transform resultItemContainer;
     public GameObject resultItemPrefab;
     public Button closeResultsButton;
-    public Button addToInventoryButton; // ✅ เพิ่มปุ่มเพิ่มเข้า inventory
+    public Button addToInventoryButton;
 
     [Header("📊 History Panel")]
     public Transform historyItemContainer;
@@ -55,7 +54,7 @@ public class GachaUIManager : NetworkBehaviour
     public AudioClip buttonClickSound;
     public AudioClip gachaOpenSound;
     public AudioClip rareItemSound;
-    public AudioClip insufficientFundsSound; // ✅ เพิ่มเสียง error
+    public AudioClip insufficientFundsSound;
 
     [Header("⚠️ Error Display")]
     public GameObject errorPanel;
@@ -63,23 +62,23 @@ public class GachaUIManager : NetworkBehaviour
     public Button closeErrorButton;
 
     [Header("🔗 System References")]
-    public LobbyManager lobbyManager; // ✅ เชื่อมต่อกับ LobbyManager
+    public LobbyManager lobbyManager;
     #endregion
 
     #region Private Variables
     private GachaMachine currentMachine;
     private List<Button> machineButtons = new List<Button>();
     private CurrencyManager currencyManager;
-    private List<GachaReward> pendingRewards = new List<GachaReward>(); // ✅ rewards ที่รอเพิ่มเข้า inventory
-    private List<GachaHistoryEntry> gachaHistory = new List<GachaHistoryEntry>(); // ✅ ประวัติ gacha
+    private List<GachaReward> pendingRewards = new List<GachaReward>();
+    private List<GachaHistoryEntry> gachaHistory = new List<GachaHistoryEntry>();
     private Character playerCharacter;
     private Inventory playerInventory;
 
-    // Network state
-    [Networked] public bool IsGachaInProgress { get; set; } = false;
+    // Single player state
+    public bool IsGachaInProgress { get; private set; } = false;
     #endregion
 
-    #region Initialization - ใช้ pattern เดียวกับ LobbyManager
+    #region Initialization
     void Start()
     {
         InitializeUI();
@@ -95,6 +94,9 @@ public class GachaUIManager : NetworkBehaviour
         GachaSystem.OnGachaCompleted += OnGachaCompleted;
         GachaSystem.OnRewardsAddedToInventory += OnRewardsAddedToInventory;
         GachaSystem.OnInventoryFull += OnInventoryFull;
+
+        // Single player setup
+        SetupForLocalPlayer();
     }
 
     void OnDestroy()
@@ -107,22 +109,9 @@ public class GachaUIManager : NetworkBehaviour
         GachaSystem.OnInventoryFull -= OnInventoryFull;
     }
 
-    public override void Spawned()
-    {
-        base.Spawned();
-
-        // Network initialization
-        if (HasInputAuthority)
-        {
-            SetupForLocalPlayer();
-        }
-    }
-
     private void InitializeUI()
     {
-        // ซ่อน panels ทั้งหมดเหมือน LobbyManager
         HideAllPanels();
-
         Debug.Log("🎨 [GachaUIManager] UI initialized");
     }
 
@@ -189,15 +178,15 @@ public class GachaUIManager : NetworkBehaviour
 
     private void SetupForLocalPlayer()
     {
-        // Load gacha history from Firebase
-        LoadGachaHistoryFromFirebase();
+        // Load gacha history
+        LoadGachaHistoryFromPlayerPrefs();
 
         // Update currency display
         UpdateCurrencyDisplay();
     }
     #endregion
 
-    #region Panel Management - ใช้ pattern เดียวกับ LobbyManager
+    #region Panel Management
     private void HideAllPanels()
     {
         if (gachaMainPanel != null) gachaMainPanel.SetActive(false);
@@ -259,13 +248,11 @@ public class GachaUIManager : NetworkBehaviour
             lobbyManager.gachaPanel.SetActive(false);
         }
 
-
         PlayButtonSound();
     }
-
     #endregion
 
-    #region Currency Integration - เชื่อมต่อกับ CurrencyManager
+    #region Currency Integration
     private void UpdateCurrencyDisplay()
     {
         if (currencyManager == null) return;
@@ -450,7 +437,7 @@ public class GachaUIManager : NetworkBehaviour
     }
     #endregion
 
-    #region Gacha Operations - เชื่อมต่อกับระบบ Currency และ Network
+    #region Gacha Operations - Single Player Version
     private void RequestGachaRoll(int rollCount)
     {
         if (currentMachine == null)
@@ -471,51 +458,26 @@ public class GachaUIManager : NetworkBehaviour
             return;
         }
 
-        // ✅ Network RPC สำหรับ multiplayer
-        if (HasInputAuthority)
-        {
-            RPC_RequestGachaRoll(currentMachine.machineId, rollCount);
-        }
-
+        // เริ่ม gacha roll ทันที (single player)
+        StartGachaRoll(currentMachine.machineId, rollCount);
         PlayButtonSound();
     }
 
-    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-    private void RPC_RequestGachaRoll(string machineId, int rollCount)
-    {
-        // ตรวจสอบอีกครั้งใน server
-        GachaMachine machine = GachaSystem.Instance.GetMachine(machineId);
-        if (machine == null)
-        {
-            RPC_ShowError("Machine not found!");
-            return;
-        }
-
-        if (IsGachaInProgress)
-        {
-            RPC_ShowError("Gacha already in progress!");
-            return;
-        }
-
-        // เริ่ม gacha process
-        RPC_StartGachaRoll(machineId, rollCount);
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_StartGachaRoll(string machineId, int rollCount)
+    private void StartGachaRoll(string machineId, int rollCount)
     {
         IsGachaInProgress = true;
-
-        if (HasInputAuthority)
-        {
-            StartCoroutine(PerformGachaRoll(machineId, rollCount));
-        }
+        StartCoroutine(PerformGachaRoll(machineId, rollCount));
     }
 
     private IEnumerator PerformGachaRoll(string machineId, int rollCount)
     {
         GachaMachine machine = GachaSystem.Instance.GetMachine(machineId);
-        if (machine == null) yield break;
+        if (machine == null)
+        {
+            IsGachaInProgress = false;
+            ShowErrorMessage("Machine not found!");
+            yield break;
+        }
 
         // ใช้จ่าย currency
         bool paymentSuccess = SpendCurrency(rollCount);
@@ -708,7 +670,7 @@ public class GachaUIManager : NetworkBehaviour
 
     public void ShowRareItemEffect(GachaReward reward)
     {
-        // TODO: แสดง special effect สำหรับ rare item
+        // แสดง special effect สำหรับ rare item
         Debug.Log($"⭐ [GachaUIManager] RARE ITEM EFFECT: {reward.GetRewardText()}");
 
         // เล่น particle effect พิเศษ
@@ -723,7 +685,7 @@ public class GachaUIManager : NetworkBehaviour
     }
     #endregion
 
-    #region Inventory Integration - เชื่อมต่อกับ Inventory system
+    #region Inventory Integration
     private void AddPendingRewardsToInventory()
     {
         if (pendingRewards.Count == 0)
@@ -789,18 +751,8 @@ public class GachaUIManager : NetworkBehaviour
 
     private Character FindPlayerCharacter()
     {
-        // หา player character ที่มี authority
+        // หา player character
         Character[] characters = FindObjectsOfType<Character>();
-
-        foreach (Character character in characters)
-        {
-            if (character.HasInputAuthority || character.HasStateAuthority)
-            {
-                return character;
-            }
-        }
-
-        // fallback: เอาตัวแรกที่เจอ
         return characters.Length > 0 ? characters[0] : null;
     }
 
@@ -823,7 +775,7 @@ public class GachaUIManager : NetworkBehaviour
     }
     #endregion
 
-    #region History System - บันทึกประวัติ gacha ผ่าน Firebase
+    #region History System - บันทึกประวัติ gacha ใน PlayerPrefs
     private void SaveGachaToHistory(GachaMachine machine, List<GachaReward> rewards)
     {
         var historyEntry = new GachaHistoryEntry
@@ -837,8 +789,8 @@ public class GachaUIManager : NetworkBehaviour
 
         gachaHistory.Add(historyEntry);
 
-        // บันทึกลง Firebase
-        SaveGachaHistoryToFirebase();
+        // บันทึกลง PlayerPrefs
+        SaveGachaHistoryToPlayerPrefs();
 
         Debug.Log($"📊 [GachaUIManager] Saved gacha history: {machine.machineName} x{rewards.Count}");
     }
@@ -924,18 +876,38 @@ public class GachaUIManager : NetworkBehaviour
         }
     }
 
-    private void LoadGachaHistoryFromFirebase()
+    private void LoadGachaHistoryFromPlayerPrefs()
     {
-        // TODO: Load จาก Firebase
-        // ปัจจุบันยังไม่ implement Firebase integration
-        Debug.Log("🔄 [GachaUIManager] Loading gacha history from Firebase...");
+        // Load จาก PlayerPrefs (แทนที่ Firebase)
+        string historyJson = PlayerPrefs.GetString("GachaHistory", "");
+
+        if (!string.IsNullOrEmpty(historyJson))
+        {
+            try
+            {
+                // TODO: Implement JSON deserialization for history
+                Debug.Log("🔄 [GachaUIManager] Loading gacha history from PlayerPrefs...");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"❌ [GachaUIManager] Failed to load history: {e.Message}");
+            }
+        }
     }
 
-    private void SaveGachaHistoryToFirebase()
+    private void SaveGachaHistoryToPlayerPrefs()
     {
-        // TODO: Save ไป Firebase
-        // ปัจจุบันยังไม่ implement Firebase integration  
-        Debug.Log("💾 [GachaUIManager] Saving gacha history to Firebase...");
+        // Save ไป PlayerPrefs (แทนที่ Firebase)
+        try
+        {
+            // TODO: Implement JSON serialization for history
+            // PlayerPrefs.SetString("GachaHistory", jsonString);
+            Debug.Log("💾 [GachaUIManager] Saving gacha history to PlayerPrefs...");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ [GachaUIManager] Failed to save history: {e.Message}");
+        }
     }
     #endregion
 
@@ -955,14 +927,8 @@ public class GachaUIManager : NetworkBehaviour
 
     private void ShowSuccessMessage(string message)
     {
-        // TODO: แสดง success popup
+        // แสดง success message
         Debug.Log($"✅ [GachaUIManager] Success: {message}");
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.InputAuthority)]
-    private void RPC_ShowError(string message)
-    {
-        ShowErrorMessage(message);
     }
 
     private void CloseError()
@@ -984,7 +950,7 @@ public class GachaUIManager : NetworkBehaviour
     }
     #endregion
 
-    #region Public Interface - ใช้งานจากระบบอื่น
+    #region Public Interface
     public void OpenGachaUI()
     {
         ShowMachineSelection();
