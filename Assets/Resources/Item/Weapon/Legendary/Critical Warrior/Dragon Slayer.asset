@@ -30,7 +30,7 @@ MonoBehaviour:
     tradeCategory: 4
   itemId: Dragon Slayer
   itemName: Dragon Slayer
-  itemIcon: {fileID: 21300000, guid: 23e3487bd159e544bbce0a44b6faadc4, type: 3}
+  itemIcon: {fileID: 21300000, guid: 4b5c3887b0bad8548a4414947f05a7ba, type: 3}
   itemType: 0
   tier: 5
   description: 
@@ -41,13 +41,18 @@ MonoBehaviour:
   buyCurrencyType: 1
   maxStackSize: 1
   isStackable: 0
+  belongsToSet: {fileID: 11400000, guid: b69f2e38c1c60bd419dd16c09dc4eddd, type: 2}
+  isSetItem: 1
   stats:
     attackDamageBonus: 50
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 12
     criticalDamageBonus: 50
-    maxHpBonus: 200
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
+    maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0.1
     attackSpeedBonus: 20

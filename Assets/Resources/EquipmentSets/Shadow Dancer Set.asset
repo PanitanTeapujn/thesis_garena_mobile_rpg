@@ -10,43 +10,43 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a25c8f1f6946dcd4a8cb137e6addc359, type: 3}
-  m_Name: SlimeSet
+  m_Name: Shadow Dancer Set
   m_EditorClassIdentifier: 
-  setName: SlimeSet
+  setName: ' Shadow Dancer Set'
   setDescription: 
-  setIcon: {fileID: 21300000, guid: 0825dfa25de4551469e65496af7b3c71, type: 3}
+  setIcon: {fileID: 21300000, guid: 125bb49b217257347be09ede099b888d, type: 3}
   setColor: {r: 1, g: 1, b: 1, a: 1}
   setItems:
-  - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
-  - {fileID: 11400000, guid: e17d0f7772a51134fb27c33c72f368de, type: 2}
-  - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
+  - {fileID: 11400000, guid: cb53536a40b373a4686f7ef4c13009bb, type: 2}
+  - {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
+  - {fileID: 11400000, guid: 466a04b6fbab2254a88a8a0c328e6012, type: 2}
   - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
-  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
-  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - {fileID: 11400000, guid: dfefd4a870e90d84cae1abb4c90744f7, type: 2}
+  - {fileID: 11400000, guid: 39fa8ead6717e0f4e8503ec0758bb937, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:
-    - bonusType: 0
-      bonusValue: 30
+    - bonusType: 16
+      bonusValue: 25
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 4
-      bonusValue: 15
-      isPercentage: 1
+    - bonusType: 7
+      bonusValue: 1
+      isPercentage: 0
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
   - requiredPieces: 4
     bonusEffects:
-    - bonusType: 5
-      bonusValue: 40
+    - bonusType: 4
+      bonusValue: 30
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 6
-      bonusValue: 20
+    - bonusType: 5
+      bonusValue: 35
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
@@ -55,7 +55,7 @@ MonoBehaviour:
   - requiredPieces: 5
     bonusEffects:
     - bonusType: 0
-      bonusValue: 50
+      bonusValue: 30
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
@@ -64,11 +64,6 @@ MonoBehaviour:
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 15
-      bonusValue: 10
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
-  setTier: 4
+  setTier: 5

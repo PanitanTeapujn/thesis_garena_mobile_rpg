@@ -17,7 +17,7 @@ MonoBehaviour:
   maxHp: 50
   maxMana: 0
   attackDamage: 20
-  magicDamage: 100
+  magicDamage: 0
   arrmor: 15
   attackCoolDown: 1
   attackRange: 1

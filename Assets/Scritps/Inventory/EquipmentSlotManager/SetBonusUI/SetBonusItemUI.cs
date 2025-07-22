@@ -61,7 +61,7 @@ public class SetBonusItemUI : MonoBehaviour
             {
                 // ยังไม่มี bonus - แสดงว่าต้องการอีกกี่ชิ้น
                 int needed = 2 - setInfo.equippedPieces;
-                setBonusStatsText.text = $"Need {needed} more piece{(needed > 1 ? "s" : "")} for bonus";
+                setBonusStatsText.text = $"No Bonus";
                 setBonusStatsText.color = Color.gray;
             }
         }
@@ -101,7 +101,7 @@ public class SetBonusItemUI : MonoBehaviour
         if (stats.maxManaBonus > 0)
             bonusLines.Add($"<color=#3742FA>{FormatStatBonus("Mana", stats.maxManaBonus, true)}</color>");
 
-        // ✅ Regeneration Stats (เป็น flat เสมอ)
+        // Regeneration Stats
         if (stats.healthRegenBonus > 0)
             bonusLines.Add($"<color=#FF8A80>+{stats.healthRegenBonus:F1}/s HP Regen</color>");
         if (stats.manaRegenBonus > 0)
@@ -119,26 +119,27 @@ public class SetBonusItemUI : MonoBehaviour
         if (stats.moveSpeedBonus > 0)
             bonusLines.Add($"<color=#1DD1A1>+{stats.moveSpeedBonus:F1} Move Speed</color>");
 
-        // ✅ Defense - ใช้ smart formatting
+        // Defense
         if (stats.armorBonus > 0)
             bonusLines.Add($"<color=#A4B0BE>{FormatArmorBonus("Armor", stats.armorBonus)}</color>");
         if (stats.magicArmorBonus > 0)
             bonusLines.Add($"<color=#B19CD9>{FormatArmorBonus("Magic Armor", stats.magicArmorBonus)}</color>");
-
         if (stats.physicalResistanceBonus > 0)
             bonusLines.Add($"<color=#747D8C>+{stats.physicalResistanceBonus:F1}% Physical Res</color>");
         if (stats.magicalResistanceBonus > 0)
             bonusLines.Add($"<color=#5F27CD>+{stats.magicalResistanceBonus:F1}% Magical Res</color>");
 
-        // Special
-        if (stats.lifeStealBonus > 0)
-            bonusLines.Add($"<color=#E74C3C>+{stats.lifeStealBonus:F1}% Life Steal</color>");
-        if (stats.reductionCoolDownBonus > 0)
-            bonusLines.Add($"<color=#00D2D3>-{stats.reductionCoolDownBonus:F1}% Cooldown</color>");
+        // ✅ เพิ่ม 3 stats ที่ขาดหายไป
         if (stats.hitRateBonus > 0)
             bonusLines.Add($"<color=#F39C12>+{stats.hitRateBonus:F1}% Hit Rate</color>");
         if (stats.evasionRateBonus > 0)
             bonusLines.Add($"<color=#9B59B6>+{stats.evasionRateBonus:F1}% Evasion</color>");
+        if (stats.reductionCoolDownBonus > 0)
+            bonusLines.Add($"<color=#00D2D3>-{stats.reductionCoolDownBonus:F1}% Cooldown</color>");
+
+        // Special
+        if (stats.lifeStealBonus > 0)
+            bonusLines.Add($"<color=#E74C3C>+{stats.lifeStealBonus:F1}% Life Steal</color>");
 
         return bonusLines.Count > 0 ? string.Join("\n", bonusLines) : "";
     }

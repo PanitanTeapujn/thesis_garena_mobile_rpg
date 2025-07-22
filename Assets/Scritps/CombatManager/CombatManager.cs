@@ -208,8 +208,6 @@ public class CombatManager : NetworkBehaviour
             HandleDeath();
         }
     }
-
-
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
@@ -233,7 +231,7 @@ public class CombatManager : NetworkBehaviour
         }
 
         // 🆕 ✅ Fire damage event สำหรับ visual flash
-        OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
+       // OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)
@@ -241,7 +239,6 @@ public class CombatManager : NetworkBehaviour
             HandleDeath();
         }
     }
-
     public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
     {
         // ✅ ปรับปรุงให้ส่ง physical และ magic damage แยก
@@ -335,7 +332,7 @@ public class CombatManager : NetworkBehaviour
     }
 
     // เพิ่ม RPC สำหรับ Lifesteal text
-   
+
 
     // เพิ่ม method สำหรับ sync attacker health
     private void SyncAttackerHealth(Character attacker)
@@ -445,43 +442,6 @@ public class CombatManager : NetworkBehaviour
         Debug.Log($"[Final Damage] {baseDamage} -> {finalDamage} (type: {damageType}, critical: {isCritical})");
         return finalDamage;
     }
-
-    // ✅ เพิ่ม method สำหรับคำนวณ Magic Armor
-    private int GetCurrentArmor()
-    {
-        int baseArmor = character.Armor;
-
-        // Add armor from equipment
-        if (equipmentManager != null)
-        {
-            baseArmor += equipmentManager.GetArmorBonus();
-        }
-
-        // Apply Armor Aura
-        if (statusEffectManager != null)
-        {
-            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
-            baseArmor = Mathf.RoundToInt(baseArmor * armorMultiplier);
-
-            if (armorMultiplier > 1f)
-            {
-                Debug.Log($"[Physical Armor Aura] Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
-            }
-        }
-
-        // Apply Armor Break effect
-        if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
-        {
-            float reduction = statusEffectManager.ArmorBreakAmount;
-            baseArmor = Mathf.RoundToInt(baseArmor * (1f - reduction));
-            Debug.Log($"[Physical Armor Break] Armor reduced by {reduction * 100}%: {baseArmor}");
-        }
-
-        Debug.Log($"[GetCurrentArmor] {character.CharacterName}: Base={character.Armor}, Equipment={equipmentManager?.GetArmorBonus()}, Final={baseArmor}");
-
-        return baseArmor;
-    }
-
     private int GetCurrentMagicArmor()
     {
         int baseMagicArmor = character.MagicArmor;
@@ -517,6 +477,40 @@ public class CombatManager : NetworkBehaviour
         return baseMagicArmor;
     }
 
+    private int GetCurrentArmor()
+    {
+        int baseArmor = character.Armor;
+
+        // Add armor from equipment
+        if (equipmentManager != null)
+        {
+            baseArmor += equipmentManager.GetArmorBonus();
+        }
+
+        // Apply Armor Aura
+        if (statusEffectManager != null)
+        {
+            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
+            baseArmor = Mathf.RoundToInt(baseArmor * armorMultiplier);
+
+            if (armorMultiplier > 1f)
+            {
+                Debug.Log($"[Physical Armor Aura] Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
+            }
+        }
+
+        // Apply Armor Break effect
+        if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
+        {
+            float reduction = statusEffectManager.ArmorBreakAmount;
+            baseArmor = Mathf.RoundToInt(baseArmor * (1f - reduction));
+            Debug.Log($"[Physical Armor Break] Armor reduced by {reduction * 100}%: {baseArmor}");
+        }
+
+        Debug.Log($"[GetCurrentArmor] {character.CharacterName}: Base={character.Armor}, Equipment={equipmentManager?.GetArmorBonus()}, Final={baseArmor}");
+
+        return baseArmor;
+    }
 
     private bool CalculateCriticalHit(Character attacker)
     {
@@ -557,7 +551,7 @@ public class CombatManager : NetworkBehaviour
         bool isCritical = critRoll < attackerCritChance;
 
         // ✅ เพิ่ม debug
-      //  Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
+        //  Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
 
         return isCritical;
     }
@@ -684,6 +678,6 @@ public class CombatManager : NetworkBehaviour
     #endregion
 
     #region Debug Methods - Methods สำหรับ Debug และทดสอบระบบ Combat
-   
+
     #endregion
 }

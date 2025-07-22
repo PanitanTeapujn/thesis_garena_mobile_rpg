@@ -50,13 +50,16 @@ MonoBehaviour:
   belongsToSet: {fileID: 11400000, guid: e53c629f218f4d0408fe75614a23a0ab, type: 2}
   isSetItem: 1
   stats:
-    attackDamageBonus: 100
-    magicDamageBonus: 100
+    attackDamageBonus: 80
+    magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 20
     criticalDamageBonus: 50
-    maxHpBonus: 250
-    maxManaBonus: 250
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 15
     hitRateBonus: 10

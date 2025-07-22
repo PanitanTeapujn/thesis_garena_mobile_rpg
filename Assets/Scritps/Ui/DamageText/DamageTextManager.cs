@@ -147,7 +147,7 @@ public class DamageTextManager : MonoBehaviour
     private void HandleDamageTaken(Character target, int damage, DamageType damageType, bool isCritical)
     {
         // แสดง damage text เฉพาะใน local client เท่านั้น
-        ShowDamageText(target.transform.position, damage, damageType, isCritical, false);
+        //ShowDamageText(target.transform.position, damage, damageType, isCritical, false);
     }
 
     public void ShowDamageText(Vector3 position, int damage, DamageType damageType, bool isCritical = false, bool isHeal = false)

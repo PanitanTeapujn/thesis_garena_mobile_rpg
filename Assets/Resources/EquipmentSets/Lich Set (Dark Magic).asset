@@ -10,62 +10,57 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a25c8f1f6946dcd4a8cb137e6addc359, type: 3}
-  m_Name: WarriorSet
+  m_Name: Lich Set (Dark Magic)
   m_EditorClassIdentifier: 
-  setName: WarriorSet
+  setName: Lich Set (Dark Magic)
   setDescription: 
-  setIcon: {fileID: 21300000, guid: 61dab0b6e506c6a43b12d9fde15b2393, type: 3}
+  setIcon: {fileID: 21300000, guid: eed44235dcbd621438f7c0c4f05e2356, type: 3}
   setColor: {r: 1, g: 1, b: 1, a: 1}
   setItems:
-  - {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
-  - {fileID: 11400000, guid: e745e079c25a47c499afb6f4b129506d, type: 2}
-  - {fileID: 11400000, guid: 6618b40d61c48f64caabc0dd8351c64e, type: 2}
-  - {fileID: 11400000, guid: bf9fee0df52857f4588010e1e1dffef6, type: 2}
-  - {fileID: 11400000, guid: 92b4c5e0144b248479337dee64bf07b0, type: 2}
-  - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
+  - {fileID: 11400000, guid: 0c7bcbfd303485b439782276171e27a4, type: 2}
+  - {fileID: 11400000, guid: d0660a08dab62d94bb08c9ca10de275b, type: 2}
+  - {fileID: 11400000, guid: 71e5755254cedaa4bb8e4cce40c6a134, type: 2}
+  - {fileID: 11400000, guid: 0252b258346d8774b9d9ba3d958af025, type: 2}
+  - {fileID: 11400000, guid: 0252b258346d8774b9d9ba3d958af025, type: 2}
+  - {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
   setBonuses:
-  - requiredPieces: 5
+  - requiredPieces: 2
     bonusEffects:
-    - bonusType: 0
-      bonusValue: 50
+    - bonusType: 1
+      bonusValue: 35
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 13
-      bonusValue: 20
-      isPercentage: 0
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 14
-      bonusValue: 20
-      isPercentage: 0
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    requirementDescription: 
-    requirementColor: {r: 0, g: 0, b: 0, a: 0}
-  - requiredPieces: 2
-    bonusEffects:
-    - bonusType: 9
-      bonusValue: 5
-      isPercentage: 0
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 12
-      bonusValue: 100
-      isPercentage: 0
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 8
-      bonusValue: 100
-      isPercentage: 0
+    - bonusType: 3
+      bonusValue: 25
+      isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
   - requiredPieces: 4
     bonusEffects:
-    - bonusType: 6
-      bonusValue: 5
+    - bonusType: 14
+      bonusValue: 6
+      isPercentage: 0
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    - bonusType: 12
+      bonusValue: 15
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 5
+    bonusEffects:
+    - bonusType: 17
+      bonusValue: 30
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    - bonusType: 1
+      bonusValue: 20
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
