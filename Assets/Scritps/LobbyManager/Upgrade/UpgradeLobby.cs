@@ -9,10 +9,14 @@ using Fusion;
 
 public class UpgradeLobby : MonoBehaviour
 {
+    [Header("Panel")]
+    public GameObject enchancePanel;
+    [Header("References")]
+    public EnchanceLobby enchanceLobby;
 
     [Header("Button")]
     public Button closeUpgradeLobby;
-
+    public Button openEnchanceLobby;
     [Header("Panel")]
     public GameObject upgradeLobbyPanel;
     [Header("Character Stats in Lobby")]
@@ -69,6 +73,8 @@ public class UpgradeLobby : MonoBehaviour
     void Start()
     {
         closeUpgradeLobby.onClick.AddListener(CloseUpgradeLobby);
+        openEnchanceLobby.onClick.AddListener(ShowEnchencePanel);
+
         if (upgradeSTRButton != null)
             upgradeSTRButton.onClick.AddListener(() => UpgradeStat(StatType.STR));
 
@@ -88,6 +94,12 @@ public class UpgradeLobby : MonoBehaviour
     void Update()
     {
         
+    }
+    void ShowEnchencePanel()
+    {
+        enchancePanel.SetActive(true);
+        CloseUpgradeLobby();
+
     }
     void CloseUpgradeLobby()
     {

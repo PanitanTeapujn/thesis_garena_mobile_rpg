@@ -15928,6 +15928,7 @@ RectTransform:
   - {fileID: 398893062}
   - {fileID: 2033617953}
   - {fileID: 1748778048}
+  - {fileID: 1312094820}
   - {fileID: 1668496815}
   - {fileID: 1686804624}
   - {fileID: 1748101384}
@@ -32394,6 +32395,7 @@ GameObject:
   - component: {fileID: 1312094820}
   - component: {fileID: 1312094822}
   - component: {fileID: 1312094821}
+  - component: {fileID: 1312094823}
   m_Layer: 5
   m_Name: Enchance Panel
   m_TagString: Untagged
@@ -32408,7 +32410,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1312094819}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -32421,7 +32423,7 @@ RectTransform:
   - {fileID: 1032965774}
   - {fileID: 2099850404}
   - {fileID: 97014176}
-  m_Father: {fileID: 1748778048}
+  m_Father: {fileID: 670518262}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -32466,6 +32468,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1312094819}
   m_CullTransparentMesh: 1
+--- !u!114 &1312094823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1312094819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b2330223679c2a4ea52b00d4b73dc22, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  closeEnchanceLobby: {fileID: 375950851}
+  upgradeStatButton: {fileID: 1526493256}
+  enchancePanel: {fileID: 1312094819}
+  upgradeStatPanel: {fileID: 1748778047}
 --- !u!1 &1312341613
 GameObject:
   m_ObjectHideFlags: 0
@@ -43529,7 +43547,6 @@ RectTransform:
   - {fileID: 1315728417}
   - {fileID: 1080261507}
   - {fileID: 1372517984}
-  - {fileID: 1312094820}
   m_Father: {fileID: 670518262}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -43587,7 +43604,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea84bfd07636fec4781059cce70037a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enchancePanel: {fileID: 1312094819}
+  enchanceLobby: {fileID: 1312094823}
   closeUpgradeLobby: {fileID: 1314309777}
+  openEnchanceLobby: {fileID: 1372517985}
   upgradeLobbyPanel: {fileID: 1748778047}
   characterNameText: {fileID: 1683009029}
   characterLevelText: {fileID: 728366436}
