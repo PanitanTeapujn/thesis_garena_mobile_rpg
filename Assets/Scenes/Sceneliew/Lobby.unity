@@ -32484,6 +32484,8 @@ MonoBehaviour:
   upgradeStatButton: {fileID: 1526493256}
   enchancePanel: {fileID: 1312094819}
   upgradeStatPanel: {fileID: 1748778047}
+  currentGoldText: {fileID: 1086920273}
+  currentGemsText: {fileID: 2030974826}
 --- !u!1 &1312341613
 GameObject:
   m_ObjectHideFlags: 0

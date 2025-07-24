@@ -98,6 +98,7 @@ public class UpgradeLobby : MonoBehaviour
     void ShowEnchencePanel()
     {
         enchancePanel.SetActive(true);
+        enchanceLobby.UpdateCurrencyDisplay();
         CloseUpgradeLobby();
 
     }
@@ -600,7 +601,7 @@ public class UpgradeLobby : MonoBehaviour
             localHero.AttackSpeed = characterData.baseAttackSpeed;
             localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
             localHero.LifeSteal = characterData.baseLifeSteal;
-            localHero.MagicDamage = characterData.baseMagicArmor;
+            localHero.MagicArmor = characterData.baseMagicArmor;
             localHero.HealthRegen = characterData.baseHealthRegen;
             localHero.ManaRegen = characterData.baseManaRegen;
             // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์เดิม
@@ -684,7 +685,7 @@ public class UpgradeLobby : MonoBehaviour
             localHero.AttackSpeed = characterData.baseAttackSpeed;
             localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
             localHero.LifeSteal = characterData.baseLifeSteal;
-            localHero.MagicDamage = characterData.baseMagicArmor;
+            localHero.MagicArmor = characterData.baseMagicArmor;
             localHero.HealthRegen = characterData.baseHealthRegen;
             localHero.ManaRegen = characterData.baseManaRegen;
             // ✅ ปรับ currentHp และ currentMana ตามเปอร์เซ็นต์ที่คำนวณ
