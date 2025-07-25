@@ -203,6 +203,11 @@ public class ItemStats
 [CreateAssetMenu(fileName = "New Item", menuName = "Inventory System/Item Data")]
 public class ItemData : ScriptableObject
 {
+    [Header("🔨 Enchantment System")]
+    [SerializeField] private EnchantmentSettings enchantmentSettings = new EnchantmentSettings();
+
+    public EnchantmentSettings EnchantmentSettings => enchantmentSettings;
+    public bool CanBeEnchanted => enchantmentSettings.canBeEnchanted && IsEquippableItem();
     [Header("🔄 Trade Recipe")]
     [SerializeField] private TradeRecipeData tradeRecipe = new TradeRecipeData();
     #region Basic Info
@@ -779,6 +784,177 @@ public class ItemData : ScriptableObject
         return string.Join("\n", statusLines);
     }
     #endregion
+    public EnchantmentMaterialType GetMaterialType(ItemData materialItem)
+    {
+        if (materialItem == null) return EnchantmentMaterialType.LowerTierNoEnchant;
+
+        bool isSameItem = this.ItemId == materialItem.ItemId || this.ItemName == materialItem.ItemName;
+        bool materialHasEnchant = materialItem.GetCurrentEnchantLevel() > 0;
+
+        if (isSameItem)
+        {
+            return materialHasEnchant ? EnchantmentMaterialType.SameItemWithEnchant : EnchantmentMaterialType.SameItemNoEnchant;
+        }
+
+        // เปรียบเทียบ Tier
+        if (this.Tier == materialItem.Tier)
+        {
+            return materialHasEnchant ? EnchantmentMaterialType.SameTierWithEnchant : EnchantmentMaterialType.SameTierNoEnchant;
+        }
+        else if (materialItem.Tier > this.Tier)
+        {
+            return materialHasEnchant ? EnchantmentMaterialType.HigherTierWithEnchant : EnchantmentMaterialType.HigherTierNoEnchant;
+        }
+        else
+        {
+            return materialHasEnchant ? EnchantmentMaterialType.LowerTierWithEnchant : EnchantmentMaterialType.LowerTierNoEnchant;
+        }
+    }
+
+    public float GetEnchantSuccessRate(List<ItemData> materials)
+    {
+        if (materials == null || materials.Count == 0) return 0f;
+
+        float totalRate = 0f;
+        foreach (var material in materials)
+        {
+            if (material != null)
+            {
+                EnchantmentMaterialType materialType = GetMaterialType(material);
+                totalRate += enchantmentSettings.successRates.GetSuccessRate(materialType);
+            }
+        }
+
+        // จำกัดไม่ให้เกิน 95%
+        return Mathf.Min(95f, totalRate);
+    }
+
+    public long GetEnchantCostWithMaterials(int targetLevel, List<ItemData> materials)
+    {
+        long baseCost = enchantmentSettings.GetEnchantCost(GetCurrentEnchantLevel(), targetLevel);
+
+        // วัสดุลดราคาได้นิดหน่อย (5% ต่อชิ้น, สูงสุด 50%)
+        float discount = Mathf.Min(0.5f, materials.Count * 0.05f);
+        return (long)(baseCost * (1f - discount));
+    }
+
+    // Virtual methods สำหรับ Enchantment (สำหรับ override ใน subclass หรือ instance)
+    public virtual int GetCurrentEnchantLevel() { return 0; }
+    public virtual int GetMaxReachedEnchantLevel() { return 0; }
+    public virtual bool IsEnchantmentDamaged() { return false; }
+
+    public virtual ItemStats GetTotalStatsWithEnchantment()
+    {
+        ItemStats totalStats = new ItemStats();
+
+        // Copy base stats
+        var baseStats = this.Stats;
+        totalStats.attackDamageBonus = baseStats.attackDamageBonus;
+        totalStats.magicDamageBonus = baseStats.magicDamageBonus;
+        totalStats.armorBonus = baseStats.armorBonus;
+        totalStats.criticalChanceBonus = baseStats.criticalChanceBonus;
+        totalStats.criticalDamageBonus = baseStats.criticalDamageBonus;
+        totalStats.maxHpBonus = baseStats.maxHpBonus;
+        totalStats.maxManaBonus = baseStats.maxManaBonus;
+        totalStats.moveSpeedBonus = baseStats.moveSpeedBonus;
+        totalStats.attackSpeedBonus = baseStats.attackSpeedBonus;
+        totalStats.hitRateBonus = baseStats.hitRateBonus;
+        totalStats.evasionRateBonus = baseStats.evasionRateBonus;
+        totalStats.reductionCoolDownBonus = baseStats.reductionCoolDownBonus;
+        totalStats.physicalResistanceBonus = baseStats.physicalResistanceBonus;
+        totalStats.magicalResistanceBonus = baseStats.magicalResistanceBonus;
+        totalStats.lifeStealBonus = baseStats.lifeStealBonus;
+        totalStats.magicArmorBonus = baseStats.magicArmorBonus;
+        totalStats.manaRegenBonus = baseStats.manaRegenBonus;
+        totalStats.healthRegenBonus = baseStats.healthRegenBonus;
+
+        // Add enchantment bonuses
+        int currentLevel = GetCurrentEnchantLevel();
+        for (int i = 1; i <= currentLevel; i++)
+        {
+            var bonus = enchantmentSettings.GetBonusDataForLevel(i);
+            if (bonus != null)
+            {
+                // Fixed bonuses
+                totalStats.attackDamageBonus += bonus.attackDamageBonus;
+                totalStats.magicDamageBonus += bonus.magicDamageBonus;
+                totalStats.armorBonus += bonus.armorBonus;
+                totalStats.magicArmorBonus += bonus.magicArmorBonus;
+                totalStats.maxHpBonus += bonus.maxHpBonus;
+                totalStats.maxManaBonus += bonus.maxManaBonus;
+                totalStats.moveSpeedBonus += bonus.moveSpeedBonus;
+                totalStats.manaRegenBonus += bonus.manaRegenBonus;
+                totalStats.healthRegenBonus += bonus.healthRegenBonus;
+
+                // Percentage bonuses (apply to base stats)
+                if (bonus.attackDamageBonusPercent != 0f)
+                    totalStats.attackDamageBonus += (int)(baseStats.attackDamageBonus * bonus.attackDamageBonusPercent / 100f);
+                if (bonus.magicDamageBonusPercent != 0f)
+                    totalStats.magicDamageBonus += (int)(baseStats.magicDamageBonus * bonus.magicDamageBonusPercent / 100f);
+                if (bonus.armorBonusPercent != 0f)
+                    totalStats.armorBonus += (int)(baseStats.armorBonus * bonus.armorBonusPercent / 100f);
+                if (bonus.magicArmorBonusPercent != 0f)
+                    totalStats.magicArmorBonus += (int)(baseStats.magicArmorBonus * bonus.magicArmorBonusPercent / 100f);
+                if (bonus.maxHpBonusPercent != 0f)
+                    totalStats.maxHpBonus += (int)(baseStats.maxHpBonus * bonus.maxHpBonusPercent / 100f);
+                if (bonus.maxManaBonusPercent != 0f)
+                    totalStats.maxManaBonus += (int)(baseStats.maxManaBonus * bonus.maxManaBonusPercent / 100f);
+                if (bonus.moveSpeedBonusPercent != 0f)
+                    totalStats.moveSpeedBonus += baseStats.moveSpeedBonus * bonus.moveSpeedBonusPercent / 100f;
+                if (bonus.manaRegenBonusPercent != 0f)
+                    totalStats.manaRegenBonus += baseStats.manaRegenBonus * bonus.manaRegenBonusPercent / 100f;
+                if (bonus.healthRegenBonusPercent != 0f)
+                    totalStats.healthRegenBonus += baseStats.healthRegenBonus * bonus.healthRegenBonusPercent / 100f;
+
+                // Always percentage stats (add directly)
+                totalStats.criticalChanceBonus += bonus.criticalChanceBonus;
+                totalStats.criticalDamageBonus += bonus.criticalDamageBonus;
+                totalStats.attackSpeedBonus += bonus.attackSpeedBonus;
+                totalStats.hitRateBonus += bonus.hitRateBonus;
+                totalStats.evasionRateBonus += bonus.evasionRateBonus;
+                totalStats.reductionCoolDownBonus += bonus.reductionCoolDownBonus;
+                totalStats.physicalResistanceBonus += bonus.physicalResistanceBonus;
+                totalStats.magicalResistanceBonus += bonus.magicalResistanceBonus;
+                totalStats.lifeStealBonus += bonus.lifeStealBonus;
+            }
+        }
+
+        return totalStats;
+    }
+
+    public string GetEnchantDisplayName()
+    {
+        int level = GetCurrentEnchantLevel();
+        if (level <= 0) return ItemName;
+
+        string enchantText = $"+{level}";
+        if (IsEnchantmentDamaged())
+        {
+            enchantText += " [Damaged]";
+        }
+
+        return $"{ItemName} {enchantText}";
+    }
+
+    public long GetEnchantedSellPrice()
+    {
+        long basePrice = SellPrice;
+        int enchantLevel = GetCurrentEnchantLevel();
+
+        if (enchantLevel <= 0) return basePrice;
+
+        float totalMultiplier = 1f;
+        for (int i = 1; i <= enchantLevel; i++)
+        {
+            var bonus = enchantmentSettings.GetBonusDataForLevel(i);
+            if (bonus != null)
+            {
+                totalMultiplier *= bonus.priceMultiplier;
+            }
+        }
+
+        return (long)(basePrice * totalMultiplier);
+    }
     #region Debug
 
     #endregion
@@ -967,3 +1143,276 @@ public enum TradeCategory
     Legendary,     // ของตำนาน
     Special        // พิเศษ
 }
+#region Enchantment System Enums & Classes
+[System.Serializable]
+public enum EnchantmentMaterialType
+{
+    SameItemWithEnchant = 0,    // ไอเทมชื่อเดียวกัน + มี Enchant Level - โอกาสสูงสุด
+    SameItemNoEnchant = 1,      // ไอเทมชื่อเดียวกัน + ไม่มี Enchant Level - โอกาสสูง
+    SameTierWithEnchant = 2,    // ไอเทม Tier เดียวกัน + มี Enchant Level - โอกาสปานกลาง
+    SameTierNoEnchant = 3,      // ไอเทม Tier เดียวกัน + ไม่มี Enchant Level - โอกาสปานกลาง-ต่ำ
+    HigherTierWithEnchant = 4,  // ไอเทม Tier สูงกว่า + มี Enchant Level - โอกาสปานกลาง
+    HigherTierNoEnchant = 5,    // ไอเทม Tier สูงกว่า + ไม่มี Enchant Level - โอกาสต่ำ
+    LowerTierWithEnchant = 6,   // ไอเทม Tier ต่ำกว่า + มี Enchant Level - โอกาสต่ำ
+    LowerTierNoEnchant = 7      // ไอเทม Tier ต่ำกว่า + ไม่มี Enchant Level - โอกาสต่ำสุด
+}
+
+[System.Serializable]
+public class EnchantmentBonusData
+{
+    [Header("🔥 Enchantment Level")]
+    [Range(1, 15)]
+    public int enchantLevel = 1;
+
+    [Header("⚔️ Combat Stats Bonus (Fixed Values)")]
+    public int attackDamageBonus = 0;
+    public int magicDamageBonus = 0;
+    public int armorBonus = 0;
+    public int magicArmorBonus = 0;
+
+    [Header("⚔️ Combat Stats Bonus (Percentage %)")]
+    public float attackDamageBonusPercent = 0f;     // % (5.0f = +5% of base attack)
+    public float magicDamageBonusPercent = 0f;      // % (5.0f = +5% of base magic)
+    public float armorBonusPercent = 0f;            // % (10.0f = +10% of base armor)
+    public float magicArmorBonusPercent = 0f;       // % (10.0f = +10% of base magic armor)
+
+    [Header("🎯 Critical Stats (Always Percentage)")]
+    public float criticalChanceBonus = 0f;          // % (5.0f = +5%)
+    public float criticalDamageBonus = 0f;          // % (10.0f = +10%)
+
+    [Header("🛡️ Survival Stats Bonus (Fixed Values)")]
+    public int maxHpBonus = 0;
+    public int maxManaBonus = 0;
+
+    [Header("🛡️ Survival Stats Bonus (Percentage %)")]
+    public float maxHpBonusPercent = 0f;            // % (5.0f = +5% of base HP)
+    public float maxManaBonusPercent = 0f;          // % (5.0f = +5% of base Mana)
+    public float moveSpeedBonus = 0f;               // Fixed value
+    public float moveSpeedBonusPercent = 0f;        // % (10.0f = +10% of base speed)
+    public float attackSpeedBonus = 0f;             // % (20.0f = +20%)
+    public float hitRateBonus = 0f;                 // % (5.0f = +5%)
+    public float evasionRateBonus = 0f;             // % (3.0f = +3%)
+
+    [Header("🔮 Special Stats Bonus (Always Percentage)")]
+    public float reductionCoolDownBonus = 0f;       // % (10.0f = -10% cooldown)
+    public float physicalResistanceBonus = 0f;      // % (15.0f = +15% resistance)
+    public float magicalResistanceBonus = 0f;       // % (15.0f = +15% resistance)
+    public float lifeStealBonus = 0f;               // % (1.5f = +1.5% lifesteal)
+
+    [Header("♻️ Regeneration Stats")]
+    public float manaRegenBonus = 0f;               // Fixed value per second
+    public float manaRegenBonusPercent = 0f;        // % (10.0f = +10% of base mana regen)
+    public float healthRegenBonus = 0f;             // Fixed value per second
+    public float healthRegenBonusPercent = 0f;      // % (10.0f = +10% of base health regen)
+
+    [Header("💰 Economic Impact")]
+    [Range(1.0f, 10.0f)]
+    public float priceMultiplier = 1.5f;            // ค่าคูณราคาของไอเทม
+
+    public bool HasAnyBonus()
+    {
+        return attackDamageBonus != 0 || magicDamageBonus != 0 || armorBonus != 0 || magicArmorBonus != 0 ||
+               attackDamageBonusPercent != 0f || magicDamageBonusPercent != 0f ||
+               armorBonusPercent != 0f || magicArmorBonusPercent != 0f ||
+               criticalChanceBonus != 0f || criticalDamageBonus != 0f ||
+               maxHpBonus != 0 || maxManaBonus != 0 ||
+               maxHpBonusPercent != 0f || maxManaBonusPercent != 0f ||
+               moveSpeedBonus != 0f || moveSpeedBonusPercent != 0f ||
+               attackSpeedBonus != 0f || hitRateBonus != 0f || evasionRateBonus != 0f ||
+               reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f ||
+               magicalResistanceBonus != 0f || lifeStealBonus != 0f ||
+               manaRegenBonus != 0f || manaRegenBonusPercent != 0f ||
+               healthRegenBonus != 0f || healthRegenBonusPercent != 0f;
+    }
+    public string GetBonusDescription()
+    {
+        List<string> bonusList = new List<string>();
+
+        // Fixed values
+        if (attackDamageBonus != 0) bonusList.Add($"Attack: +{attackDamageBonus}");
+        if (magicDamageBonus != 0) bonusList.Add($"Magic: +{magicDamageBonus}");
+        if (armorBonus != 0) bonusList.Add($"Armor: +{armorBonus}");
+        if (magicArmorBonus != 0) bonusList.Add($"Magic Armor: +{magicArmorBonus}");
+        if (maxHpBonus != 0) bonusList.Add($"HP: +{maxHpBonus}");
+        if (maxManaBonus != 0) bonusList.Add($"Mana: +{maxManaBonus}");
+        if (moveSpeedBonus != 0f) bonusList.Add($"Move Speed: +{moveSpeedBonus:F1}");
+        if (manaRegenBonus != 0f) bonusList.Add($"Mana Regen: +{manaRegenBonus:F1}/s");
+        if (healthRegenBonus != 0f) bonusList.Add($"Health Regen: +{healthRegenBonus:F1}/s");
+
+        // Percentage values
+        if (attackDamageBonusPercent != 0f) bonusList.Add($"Attack: +{attackDamageBonusPercent:F1}%");
+        if (magicDamageBonusPercent != 0f) bonusList.Add($"Magic: +{magicDamageBonusPercent:F1}%");
+        if (armorBonusPercent != 0f) bonusList.Add($"Armor: +{armorBonusPercent:F1}%");
+        if (magicArmorBonusPercent != 0f) bonusList.Add($"Magic Armor: +{magicArmorBonusPercent:F1}%");
+        if (maxHpBonusPercent != 0f) bonusList.Add($"HP: +{maxHpBonusPercent:F1}%");
+        if (maxManaBonusPercent != 0f) bonusList.Add($"Mana: +{maxManaBonusPercent:F1}%");
+        if (moveSpeedBonusPercent != 0f) bonusList.Add($"Move Speed: +{moveSpeedBonusPercent:F1}%");
+        if (manaRegenBonusPercent != 0f) bonusList.Add($"Mana Regen: +{manaRegenBonusPercent:F1}%");
+        if (healthRegenBonusPercent != 0f) bonusList.Add($"Health Regen: +{healthRegenBonusPercent:F1}%");
+
+        // Always percentage stats
+        if (criticalChanceBonus != 0f) bonusList.Add($"Crit Chance: +{criticalChanceBonus:F1}%");
+        if (criticalDamageBonus != 0f) bonusList.Add($"Crit Damage: +{criticalDamageBonus:F1}%");
+        if (attackSpeedBonus != 0f) bonusList.Add($"Attack Speed: +{attackSpeedBonus:F1}%");
+        if (hitRateBonus != 0f) bonusList.Add($"Hit Rate: +{hitRateBonus:F1}%");
+        if (evasionRateBonus != 0f) bonusList.Add($"Evasion: +{evasionRateBonus:F1}%");
+        if (reductionCoolDownBonus != 0f) bonusList.Add($"Cooldown: -{reductionCoolDownBonus:F1}%");
+        if (physicalResistanceBonus != 0f) bonusList.Add($"Physical Res: +{physicalResistanceBonus:F1}%");
+        if (magicalResistanceBonus != 0f) bonusList.Add($"Magical Res: +{magicalResistanceBonus:F1}%");
+        if (lifeStealBonus != 0f) bonusList.Add($"Lifesteal: +{lifeStealBonus:F1}%");
+
+        return bonusList.Count > 0 ? string.Join("\n", bonusList) : "No bonus stats";
+    }
+}
+
+[System.Serializable]
+public class EnchantmentSuccessRates
+{
+    [Header("🎯 Success Rate by Material Type (%)")]
+    [Range(0f, 100f)]
+    public float sameItemWithEnchant = 90f;     // ชื่อเดียวกัน + มี Enchant
+    [Range(0f, 100f)]
+    public float sameItemNoEnchant = 75f;       // ชื่อเดียวกัน + ไม่มี Enchant
+    [Range(0f, 100f)]
+    public float sameTierWithEnchant = 60f;     // Tier เดียวกัน + มี Enchant
+    [Range(0f, 100f)]
+    public float sameTierNoEnchant = 45f;       // Tier เดียวกัน + ไม่มี Enchant
+    [Range(0f, 100f)]
+    public float higherTierWithEnchant = 50f;   // Tier สูงกว่า + มี Enchant
+    [Range(0f, 100f)]
+    public float higherTierNoEnchant = 35f;     // Tier สูงกว่า + ไม่มี Enchant
+    [Range(0f, 100f)]
+    public float lowerTierWithEnchant = 25f;    // Tier ต่ำกว่า + มี Enchant
+    [Range(0f, 100f)]
+    public float lowerTierNoEnchant = 15f;      // Tier ต่ำกว่า + ไม่มี Enchant
+
+    public float GetSuccessRate(EnchantmentMaterialType materialType)
+    {
+        return materialType switch
+        {
+            EnchantmentMaterialType.SameItemWithEnchant => sameItemWithEnchant,
+            EnchantmentMaterialType.SameItemNoEnchant => sameItemNoEnchant,
+            EnchantmentMaterialType.SameTierWithEnchant => sameTierWithEnchant,
+            EnchantmentMaterialType.SameTierNoEnchant => sameTierNoEnchant,
+            EnchantmentMaterialType.HigherTierWithEnchant => higherTierWithEnchant,
+            EnchantmentMaterialType.HigherTierNoEnchant => higherTierNoEnchant,
+            EnchantmentMaterialType.LowerTierWithEnchant => lowerTierWithEnchant,
+            EnchantmentMaterialType.LowerTierNoEnchant => lowerTierNoEnchant,
+            _ => 0f
+        };
+    }
+}
+
+[System.Serializable]
+public class EnchantmentSettings
+{
+    [Header("🔨 Enchantment Configuration")]
+    [SerializeField] public bool canBeEnchanted = false;        // สามารถ Enchant ได้หรือไม่
+    [SerializeField] public int maxEnchantLevel = 15;           // ระดับ Enchant สูงสุด
+    [SerializeField] public long baseGoldCost = 1000;           // ราคาทองพื้นฐานในการ Enchant
+
+    [Header("📊 Success Rates Configuration")]
+    [SerializeField] public EnchantmentSuccessRates successRates = new EnchantmentSuccessRates();
+
+    [Header("⚡ Enchantment Bonuses per Level")]
+    [SerializeField] public List<EnchantmentBonusData> enchantmentBonuses = new List<EnchantmentBonusData>();
+
+    [Header("💥 Failure Settings")]
+    [Range(0f, 100f)]
+    public float degradeChanceOnFail = 50f;     // โอกาสที่จะลดระดับเมื่อล้มเหลว (%)
+    [Range(1, 5)]
+    public int maxDegradeLevel = 2;             // จำนวนระดับสูงสุดที่จะลดลงเมื่อล้มเหลว
+    [Range(0.1f, 1f)]
+    public float repairCostMultiplier = 0.7f;   // ค่าซ่อมเป็นกี่เท่าของราคา Enchant
+
+    public bool CanEnchantToLevel(int targetLevel)
+    {
+        return canBeEnchanted && targetLevel > 0 && targetLevel <= maxEnchantLevel;
+    }
+
+    public EnchantmentBonusData GetBonusDataForLevel(int level)
+    {
+        foreach (var bonus in enchantmentBonuses)
+        {
+            if (bonus.enchantLevel == level)
+                return bonus;
+        }
+        return null;
+    }
+
+    public long GetEnchantCost(int currentLevel, int targetLevel)
+    {
+        if (targetLevel <= currentLevel) return 0;
+
+        // ราคาเพิ่มขึ้นแบบ exponential
+        long cost = baseGoldCost;
+        for (int i = currentLevel + 1; i <= targetLevel; i++)
+        {
+            cost += (long)(baseGoldCost * Mathf.Pow(1.5f, i - 1));
+        }
+        return cost;
+    }
+
+    public long GetRepairCost(int targetLevel)
+    {
+        if (targetLevel <= 0) return 0;
+
+        long enchantCost = GetEnchantCost(0, targetLevel);
+        return (long)(enchantCost * repairCostMultiplier);
+    }
+}
+
+[System.Serializable]
+public class ItemEnchantmentData
+{
+    [Header("🔥 Current Enchantment Status")]
+    public int currentEnchantLevel = 0;         // ระดับ Enchant ปัจจุบัน
+    public int maxReachedLevel = 0;             // ระดับสูงสุดที่เคยไปถึง (สำหรับ Repair)
+    public bool isDamaged = false;              // ไอเทมเสียหายจากการ Enchant ล้มเหลวหรือไม่
+
+    public ItemEnchantmentData()
+    {
+        currentEnchantLevel = 0;
+        maxReachedLevel = 0;
+        isDamaged = false;
+    }
+
+    public ItemEnchantmentData(int enchantLevel)
+    {
+        currentEnchantLevel = enchantLevel;
+        maxReachedLevel = enchantLevel;
+        isDamaged = false;
+    }
+
+    public bool CanBeRepaired()
+    {
+        return isDamaged && currentEnchantLevel < maxReachedLevel;
+    }
+
+    public void OnEnchantSuccess(int newLevel)
+    {
+        currentEnchantLevel = newLevel;
+        maxReachedLevel = Mathf.Max(maxReachedLevel, newLevel);
+        isDamaged = false;
+    }
+
+    public void OnEnchantFail(int degradeLevel)
+    {
+        int newLevel = Mathf.Max(0, currentEnchantLevel - degradeLevel);
+        if (newLevel < currentEnchantLevel)
+        {
+            currentEnchantLevel = newLevel;
+            isDamaged = true;
+        }
+    }
+
+    public void OnRepair()
+    {
+        if (CanBeRepaired())
+        {
+            currentEnchantLevel = maxReachedLevel;
+            isDamaged = false;
+        }
+    }
+}
+#endregion
