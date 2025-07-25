@@ -24,11 +24,11 @@ public class GachaSystem : MonoBehaviour
     [Header("UI References")]
     public GachaUIManager uiManager;
 
-    [Header(" Currency Integration")]
+   /* [Header(" Currency Integration")]
     public bool ensureCurrencyManager = true;
     public long defaultGold = 5000;
     public int defaultGems = 500;
-
+   */
     // Cache สำหรับ player character
     private Character cachedPlayerCharacter;
     private Inventory cachedInventory;

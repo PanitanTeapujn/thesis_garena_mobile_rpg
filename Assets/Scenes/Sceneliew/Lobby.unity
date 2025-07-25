@@ -42220,12 +42220,12 @@ PrefabInstance:
     - target: {fileID: 3855704820483183805, guid: 0db829b073101ec41a97247550ca6a11,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8381524591647837415, guid: 0db829b073101ec41a97247550ca6a11,
         type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -49113,9 +49113,6 @@ MonoBehaviour:
   gachaMachines:
   - {fileID: 1761049498}
   uiManager: {fileID: 1748101387}
-  ensureCurrencyManager: 1
-  defaultGold: 5000
-  defaultGems: 5000
 --- !u!4 &1969244585
 Transform:
   m_ObjectHideFlags: 0
