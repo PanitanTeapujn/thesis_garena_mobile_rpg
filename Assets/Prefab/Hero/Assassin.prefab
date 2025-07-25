@@ -705,7 +705,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _NetworkedGold: 1000
-  _NetworkedGems: 50
+  _NetworkedGems: 80
   _IsInitialized: 0
 --- !u!114 &18057414987109292
 MonoBehaviour:

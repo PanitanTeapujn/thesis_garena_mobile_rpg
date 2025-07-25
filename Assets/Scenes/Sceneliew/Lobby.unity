@@ -37158,63 +37158,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1452536450}
   m_CullTransparentMesh: 1
---- !u!1 &1454828381
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1454828382}
-  - component: {fileID: 1454828383}
-  m_Layer: 0
-  m_Name: GachaSystemSetup
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1454828382
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1454828381}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 2041408494}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1454828383
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1454828381}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c756942a5a13564fbe3aef7d4012b8c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gachaSystem: {fileID: 1969244584}
-  gachaUIManager: {fileID: 1748101387}
-  lobbyManager: {fileID: 2124026315}
-  gachaMachines:
-  - {fileID: 1761049498}
-  ensureCurrencyManager: 1
-  defaultGold: 5000
-  defaultGems: 500
-  ensureInventorySystem: 1
-  autoAddGachaRewardsToInventory: 1
-  autoSetupOnStart: 1
-  validateSetupOnStart: 1
-  createMissingComponents: 1
 --- !u!1 &1454969657
 GameObject:
   m_ObjectHideFlags: 0
@@ -42277,12 +42220,12 @@ PrefabInstance:
     - target: {fileID: 3855704820483183805, guid: 0db829b073101ec41a97247550ca6a11,
         type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8381524591647837415, guid: 0db829b073101ec41a97247550ca6a11,
         type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -49162,9 +49105,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enableDebugLog: 1
   autoAddRewardsToInventory: 1
+  playerSearchRetryDelay: 0.5
+  maxPlayerSearchRetries: 10
+  playerTag: Player
+  playerName: Player
+  manualPlayerReference: {fileID: 0}
   gachaMachines:
   - {fileID: 1761049498}
   uiManager: {fileID: 1748101387}
+  ensureCurrencyManager: 1
+  defaultGold: 5000
+  defaultGems: 5000
 --- !u!4 &1969244585
 Transform:
   m_ObjectHideFlags: 0
@@ -50516,7 +50467,6 @@ Transform:
   m_Children:
   - {fileID: 1761049499}
   - {fileID: 1969244585}
-  - {fileID: 1454828382}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2046568840

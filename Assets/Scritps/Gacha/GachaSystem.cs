@@ -3,18 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Collections;
+using System.Reflection;
 
 public class GachaSystem : MonoBehaviour
 {
     [Header("System Settings")]
     public bool enableDebugLog = true;
     public bool autoAddRewardsToInventory = true;
+    public float playerSearchRetryDelay = 0.5f;
+    public int maxPlayerSearchRetries = 10;
+
+    [Header("Player Detection")]
+    [SerializeField] private string playerTag = "Player";
+    [SerializeField] private string playerName = "Player";
+    [SerializeField] private Character manualPlayerReference;
 
     [Header("Gacha Machines")]
     [SerializeField] private List<GachaMachine> gachaMachines = new List<GachaMachine>();
 
     [Header("UI References")]
     public GachaUIManager uiManager;
+
+    [Header(" Currency Integration")]
+    public bool ensureCurrencyManager = true;
+    public long defaultGold = 5000;
+    public int defaultGems = 500;
+
+    // Cache สำหรับ player character
+    private Character cachedPlayerCharacter;
+    private Inventory cachedInventory;
+    private bool isSearchingForPlayer = false;
 
     #region Singleton
     private static GachaSystem _instance;
@@ -40,11 +58,15 @@ public class GachaSystem : MonoBehaviour
     public static event Action<List<GachaReward>> OnRewardsAddedToInventory;
     public static event Action<GachaReward> OnInventoryFull;
     public static event Action<GachaMachine, List<GachaReward>> OnGachaCompleted;
+    public static event Action<Character> OnPlayerCharacterFound;
+    public static event Action OnPlayerCharacterLost;
     #endregion
 
     #region Properties
     public List<GachaMachine> AllMachines => gachaMachines;
     public int MachineCount => gachaMachines.Count;
+    public Character PlayerCharacter => cachedPlayerCharacter;
+    public bool HasValidPlayer => cachedPlayerCharacter != null && cachedInventory != null;
     #endregion
 
     #region Initialization
@@ -74,6 +96,9 @@ public class GachaSystem : MonoBehaviour
         GachaMachine.OnRareItemObtained += HandleRareItemObtained;
         GachaMachine.OnGachaError += HandleGachaError;
 
+        // เริ่มค้นหา player character
+        StartCoroutine(FindPlayerWithRetry());
+
         Debug.Log($" GachaSystem initialized with {gachaMachines.Count} machines");
     }
 
@@ -82,6 +107,324 @@ public class GachaSystem : MonoBehaviour
         GachaMachine.OnGachaRolled -= HandleGachaRolled;
         GachaMachine.OnRareItemObtained -= HandleRareItemObtained;
         GachaMachine.OnGachaError -= HandleGachaError;
+    }
+
+    void Start()
+    {
+        // หาก player ยังไม่เจอใน Awake ให้ลองอีกครั้งใน Start
+        if (!HasValidPlayer)
+        {
+            StartCoroutine(FindPlayerWithRetry());
+        }
+    }
+    #endregion
+
+    #region Player Character Management
+    /// <summary>
+    /// ค้นหา player character และ inventory ด้วยหลายวิธี
+    /// </summary>
+    private IEnumerator FindPlayerWithRetry()
+    {
+        if (isSearchingForPlayer) yield break;
+        isSearchingForPlayer = true;
+
+        int retryCount = 0;
+
+        while (retryCount < maxPlayerSearchRetries && !HasValidPlayer)
+        {
+            Character foundPlayer = FindPlayerCharacter();
+
+            if (foundPlayer != null)
+            {
+                SetPlayerCharacter(foundPlayer);
+                break;
+            }
+
+            retryCount++;
+
+            if (enableDebugLog)
+            {
+                Debug.Log($" Searching for player character... Attempt {retryCount}/{maxPlayerSearchRetries}");
+            }
+
+            yield return new WaitForSeconds(playerSearchRetryDelay);
+        }
+
+        if (!HasValidPlayer)
+        {
+            Debug.LogWarning(" Could not find player character after all retries. Gacha rewards will be queued.");
+        }
+
+        isSearchingForPlayer = false;
+    }
+
+    private Character FindPlayerCharacter()
+    {
+        // วิธีที่ 1: ใช้ manual reference ถ้ามี
+        if (manualPlayerReference != null)
+        {
+            if (enableDebugLog) Debug.Log(" Found player via manual reference");
+            return manualPlayerReference;
+        }
+
+        // วิธีที่ 2: หาจาก PlayerManager หรือ GameManager (ถ้ามี)
+        Character playerFromManager = FindPlayerFromManager();
+        if (playerFromManager != null)
+        {
+            if (enableDebugLog) Debug.Log(" Found player via manager");
+            return playerFromManager;
+        }
+
+        // วิธีที่ 3: หาจาก Tag
+        GameObject playerByTag = GameObject.FindGameObjectWithTag(playerTag);
+        if (playerByTag != null)
+        {
+            Character character = playerByTag.GetComponent<Character>();
+            if (character != null)
+            {
+                if (enableDebugLog) Debug.Log(" Found player via tag");
+                return character;
+            }
+        }
+
+        // วิธีที่ 4: หาจาก Name
+        GameObject playerByName = GameObject.Find(playerName);
+        if (playerByName != null)
+        {
+            Character character = playerByName.GetComponent<Character>();
+            if (character != null)
+            {
+                if (enableDebugLog) Debug.Log(" Found player via name");
+                return character;
+            }
+        }
+
+        // วิธีที่ 5: หาจาก Network Authority (สำหรับ multiplayer)
+        Character[] characters = FindObjectsOfType<Character>();
+        foreach (Character character in characters)
+        {
+            if (character.HasStateAuthority)
+            {
+                if (enableDebugLog) Debug.Log(" Found player via network authority");
+                return character;
+            }
+        }
+
+        // วิธีที่ 6: หาจาก Local Player flag (ถ้ามี)
+        foreach (Character character in characters)
+        {
+            // สมมติว่ามี property IsLocalPlayer
+            if (HasLocalPlayerFlag(character))
+            {
+                if (enableDebugLog) Debug.Log(" Found player via local player flag");
+                return character;
+            }
+        }
+
+        // วิธีที่ 7: Fallback - เอาตัวแรกที่มี Inventory
+        foreach (Character character in characters)
+        {
+            if (character.GetComponent<Inventory>() != null)
+            {
+                if (enableDebugLog) Debug.Log(" Found player via inventory fallback");
+                return character;
+            }
+        }
+
+        return null;
+    }
+
+    private Character FindPlayerFromManager()
+    {
+        // ลองหาจาก PlayerManager, GameManager, หรือ NetworkManager ด้วย reflection
+
+        // หา PlayerManager
+        MonoBehaviour[] allComponents = FindObjectsOfType<MonoBehaviour>();
+
+        foreach (var component in allComponents)
+        {
+            var type = component.GetType();
+
+            // ตรวจสอบ PlayerManager
+            if (type.Name == "PlayerManager")
+            {
+                Character player = GetPlayerFromComponent(component, new string[] { "LocalPlayer", "Player", "CurrentPlayer" });
+                if (player != null) return player;
+            }
+
+            // ตรวจสอบ GameManager
+            if (type.Name == "GameManager")
+            {
+                Character player = GetPlayerFromComponent(component, new string[] { "Player", "LocalPlayer", "MainPlayer" });
+                if (player != null) return player;
+            }
+
+            // ตรวจสอบ NetworkManager
+            if (type.Name == "NetworkManager" || type.Name.Contains("Network"))
+            {
+                Character player = GetPlayerFromComponent(component, new string[] { "LocalPlayer", "Player" });
+                if (player != null) return player;
+            }
+        }
+
+        return null;
+    }
+
+    private Character GetPlayerFromComponent(MonoBehaviour component, string[] propertyNames)
+    {
+        var type = component.GetType();
+
+        foreach (string propertyName in propertyNames)
+        {
+            try
+            {
+                // ลอง property ก่อน
+                var property = type.GetProperty(propertyName);
+                if (property != null)
+                {
+                    var value = property.GetValue(component);
+                    if (value is Character character)
+                        return character;
+                    if (value is GameObject go && go != null)
+                    {
+                        var charComponent = go.GetComponent<Character>();
+                        if (charComponent != null) return charComponent;
+                    }
+                }
+
+                // ลอง field
+                var field = type.GetField(propertyName);
+                if (field != null)
+                {
+                    var value = field.GetValue(component);
+                    if (value is Character character)
+                        return character;
+                    if (value is GameObject go && go != null)
+                    {
+                        var charComponent = go.GetComponent<Character>();
+                        if (charComponent != null) return charComponent;
+                    }
+                }
+            }
+            catch
+            {
+                // Continue to next property/field
+            }
+        }
+
+        return null;
+    }
+
+    private bool HasLocalPlayerFlag(Character character)
+    {
+        // ตรวจสอบว่ามี property หรือ field ที่บอกว่าเป็น local player
+        var type = character.GetType();
+
+        try
+        {
+            // ตรวจสอบ field
+            var isLocalField = type.GetField("isLocalPlayer");
+            if (isLocalField != null && isLocalField.FieldType == typeof(bool))
+            {
+                return (bool)isLocalField.GetValue(character);
+            }
+
+            // ตรวจสอบ property
+            var isLocalProperty = type.GetProperty("IsLocalPlayer");
+            if (isLocalProperty != null && isLocalProperty.PropertyType == typeof(bool))
+            {
+                return (bool)isLocalProperty.GetValue(character);
+            }
+
+            // ตรวจสอบ property อื่นๆ ที่อาจจะมี
+            string[] possibleNames = { "isLocal", "IsLocal", "isPlayer", "IsPlayer", "isOwner", "IsOwner" };
+
+            foreach (string name in possibleNames)
+            {
+                var field = type.GetField(name);
+                if (field != null && field.FieldType == typeof(bool))
+                {
+                    return (bool)field.GetValue(character);
+                }
+
+                var property = type.GetProperty(name);
+                if (property != null && property.PropertyType == typeof(bool))
+                {
+                    return (bool)property.GetValue(character);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (enableDebugLog)
+            {
+                Debug.LogWarning($" Error checking local player flag: {ex.Message}");
+            }
+        }
+
+        return false;
+    }
+
+    private void SetPlayerCharacter(Character player)
+    {
+        cachedPlayerCharacter = player;
+        cachedInventory = player.GetComponent<Inventory>();
+
+        if (cachedInventory == null)
+        {
+            Debug.LogError($" Player character '{player.name}' does not have an Inventory component!");
+            cachedPlayerCharacter = null;
+            return;
+        }
+
+        if (enableDebugLog)
+        {
+            Debug.Log($" Player character set: {player.name}");
+        }
+
+        OnPlayerCharacterFound?.Invoke(player);
+    }
+
+    /// <summary>
+    /// Manual method สำหรับ set player character จากภายนอก
+    /// </summary>
+    public void SetPlayerCharacterManually(Character player)
+    {
+        if (player == null)
+        {
+            Debug.LogError(" Cannot set null player character");
+            return;
+        }
+
+        SetPlayerCharacter(player);
+    }
+
+    /// <summary>
+    /// เรียกเมื่อ player character หายไป (เช่น scene change)
+    /// </summary>
+    public void ClearPlayerCharacter()
+    {
+        if (cachedPlayerCharacter != null)
+        {
+            OnPlayerCharacterLost?.Invoke();
+        }
+
+        cachedPlayerCharacter = null;
+        cachedInventory = null;
+
+        if (enableDebugLog)
+        {
+            Debug.Log(" Player character cleared");
+        }
+    }
+
+    /// <summary>
+    /// Refresh การหา player character
+    /// </summary>
+    public void RefreshPlayerCharacter()
+    {
+        ClearPlayerCharacter();
+        StartCoroutine(FindPlayerWithRetry());
     }
     #endregion
 
@@ -186,22 +529,76 @@ public class GachaSystem : MonoBehaviour
     #endregion
 
     #region Inventory Integration
+    private Queue<List<GachaReward>> pendingRewards = new Queue<List<GachaReward>>();
+
     private IEnumerator AddRewardsToInventory(List<GachaReward> rewards)
     {
-        // หา player character และ inventory
-        Character playerCharacter = FindPlayerCharacter();
-        if (playerCharacter == null)
+        // ถ้ายังไม่มี player ให้เก็บไว้ใน queue
+        if (!HasValidPlayer)
         {
-            Debug.LogError(" Cannot find player character for inventory");
+            pendingRewards.Enqueue(rewards);
+
+            if (enableDebugLog)
+            {
+                Debug.Log($" Queued {rewards.Count} rewards (no player found yet)");
+            }
+
+            // ลองหา player อีกครั้ง
+            if (!isSearchingForPlayer)
+            {
+                StartCoroutine(FindPlayerWithRetry());
+            }
+
+            // รอให้หา player เจอ หรือ timeout
+            yield return StartCoroutine(WaitForPlayerWithTimeout(5f));
+        }
+
+        // ถ้ายังไม่เจอ player ให้เก็บไว้ใน queue และ return
+        if (!HasValidPlayer)
+        {
+            if (!pendingRewards.Contains(rewards))
+            {
+                pendingRewards.Enqueue(rewards);
+            }
+
+            Debug.LogWarning(" Cannot add rewards to inventory: Player not found. Rewards queued.");
             yield break;
         }
 
-        Inventory inventory = playerCharacter.GetComponent<Inventory>();
-        if (inventory == null)
+        // Process pending rewards ก่อน
+        ProcessPendingRewards();
+
+        // Process current rewards
+        yield return ProcessRewardList(rewards);
+    }
+
+    private IEnumerator WaitForPlayerWithTimeout(float timeout)
+    {
+        float timer = 0f;
+        while (timer < timeout && !HasValidPlayer)
         {
-            Debug.LogError(" Player character has no inventory component");
-            yield break;
+            timer += Time.deltaTime;
+            yield return null;
         }
+    }
+
+    private void ProcessPendingRewards()
+    {
+        while (pendingRewards.Count > 0 && HasValidPlayer)
+        {
+            var rewards = pendingRewards.Dequeue();
+            StartCoroutine(ProcessRewardList(rewards));
+
+            if (enableDebugLog)
+            {
+                Debug.Log($" Processing queued rewards: {rewards.Count} items");
+            }
+        }
+    }
+
+    private IEnumerator ProcessRewardList(List<GachaReward> rewards)
+    {
+        if (!HasValidPlayer) yield break;
 
         List<GachaReward> addedRewards = new List<GachaReward>();
         List<GachaReward> failedRewards = new List<GachaReward>();
@@ -210,8 +607,16 @@ public class GachaSystem : MonoBehaviour
         {
             if (reward == null || !reward.IsValid()) continue;
 
+            // ตรวจสอบว่า inventory ยังใช้ได้
+            if (cachedInventory == null)
+            {
+                Debug.LogError(" Inventory reference lost during processing");
+                RefreshPlayerCharacter();
+                yield break;
+            }
+
             // ลองเพิ่มเข้า inventory
-            bool success = inventory.AddItem(reward.itemData, reward.quantity);
+            bool success = cachedInventory.AddItem(reward.itemData, reward.quantity);
 
             if (success)
             {
@@ -242,23 +647,38 @@ public class GachaSystem : MonoBehaviour
             Debug.LogWarning($" {failedRewards.Count} items could not be added to inventory");
         }
     }
+    #endregion
 
-    private Character FindPlayerCharacter()
+    #region Scene Management
+    void OnEnable()
     {
-        // วิธีหาตัว player character - อาจจะต้องปรับตาม project
-        Character[] characters = FindObjectsOfType<Character>();
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
 
-        // ลองหา character ที่เป็น local player หรือมี authority
-        foreach (Character character in characters)
+    void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        if (enableDebugLog)
         {
-            if (character.HasStateAuthority) // Fusion Network
-            {
-                return character;
-            }
+            Debug.Log($" Scene loaded: {scene.name}");
         }
 
-        // fallback: เอาตัวแรกที่เจอ
-        return characters.Length > 0 ? characters[0] : null;
+        // Clear cache และหา player ใหม่
+        ClearPlayerCharacter();
+        RefreshMachineList();
+
+        // รอ 1 frame แล้วค้นหา player
+        StartCoroutine(DelayedPlayerSearch());
+    }
+
+    private IEnumerator DelayedPlayerSearch()
+    {
+        yield return null; // รอ 1 frame
+        yield return StartCoroutine(FindPlayerWithRetry());
     }
     #endregion
 
@@ -273,6 +693,11 @@ public class GachaSystem : MonoBehaviour
     {
         // TODO: implement recent rewards tracking
         return new List<GachaReward>();
+    }
+
+    public int GetPendingRewardsCount()
+    {
+        return pendingRewards.Sum(rewards => rewards.Count);
     }
     #endregion
 
@@ -290,15 +715,36 @@ public class GachaSystem : MonoBehaviour
     [ContextMenu("Debug System Info")]
     public void DebugSystemInfo()
     {
-        Debug.Log(" === GACHA SYSTEM INFO === ");
+        Debug.Log(" === GACHA SYSTEM INFO ===");
         Debug.Log($"Machines: {gachaMachines.Count}");
         Debug.Log($"Auto-add to inventory: {autoAddRewardsToInventory}");
         Debug.Log($"Debug logging: {enableDebugLog}");
+        Debug.Log($"Has valid player: {HasValidPlayer}");
+        Debug.Log($"Pending rewards: {GetPendingRewardsCount()}");
+
+        if (HasValidPlayer)
+        {
+            Debug.Log($"Player: {cachedPlayerCharacter.name}");
+        }
 
         foreach (var machine in gachaMachines)
         {
             Debug.Log($"  Machine: {machine.machineName} - Pool: {machine.Pool?.poolName ?? "None"}");
         }
+    }
+
+    [ContextMenu("Force Find Player")]
+    public void ForceRefreshPlayer()
+    {
+        RefreshPlayerCharacter();
+    }
+
+    [ContextMenu("Clear Pending Rewards")]
+    public void ClearPendingRewards()
+    {
+        int count = GetPendingRewardsCount();
+        pendingRewards.Clear();
+        Debug.Log($" Cleared {count} pending rewards");
     }
     #endregion
 }
