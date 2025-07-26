@@ -17,13 +17,18 @@ public enum StatType
 public class SavedInventoryItem
 {
     [Header("Basic Item Info")]
-    public string itemId = "";           // ID ของไอเทม (เช่น "weapon_iron_sword_1234")
-    public int slotIndex = -1;           // ตำแหน่งใน inventory grid (0-47)
-    public int stackCount = 1;           // จำนวนที่ stack กัน
+    public string itemId = "";           // ID ของไอเทม
+    public int slotIndex = -1;           // ตำแหน่งใน inventory (0-based)
+    public int stackCount = 1;           // จำนวนไอเทม
+
+    [Header("🔥 Enchantment Data")]
+    public int enchantLevel = 0;         // ระดับ Enchant ปัจจุบัน (0 = ไม่มี Enchant)
+    public int maxReachedEnchantLevel = 0; // ระดับ Enchant สูงสุดที่เคยไปถึง (สำหรับ Repair)
+    public bool isEnchantmentDamaged = false; // ไอเทมเสียหายจากการ Enchant ล้มเหลวหรือไม่
 
     [Header("Debug Info")]
-    public string itemName = "";         // ชื่อไอเทม (สำหรับ debug เท่านั้น)
-    public string itemType = "";         // ประเภทไอเทม (สำหรับ debug เท่านั้น)
+    public string itemName = "";         // ชื่อไอเทม (สำหรับ debug)
+    public string itemType = "";         // ประเภทไอเทม (สำหรับ debug)
 
     // Constructor
     public SavedInventoryItem()
@@ -31,6 +36,9 @@ public class SavedInventoryItem
         itemId = "";
         slotIndex = -1;
         stackCount = 1;
+        enchantLevel = 0;
+        maxReachedEnchantLevel = 0;
+        isEnchantmentDamaged = false;
         itemName = "";
         itemType = "";
     }
@@ -40,16 +48,77 @@ public class SavedInventoryItem
         itemId = id;
         slotIndex = slot;
         stackCount = count;
-        itemName = name;       // สำหรับ debug
-        itemType = type;       // สำหรับ debug
+        itemName = name;
+        itemType = type;
+        enchantLevel = 0;
+        maxReachedEnchantLevel = 0;
+        isEnchantmentDamaged = false;
     }
 
-    // ตรวจสอบว่าข้อมูลถูกต้อง
+    // ✅ เพิ่ม Constructor สำหรับ Enchanted items
+    public SavedInventoryItem(string id, int slot, int count, int enchantLv, int maxEnchantLv, bool isDamaged, string name = "", string type = "")
+    {
+        itemId = id;
+        slotIndex = slot;
+        stackCount = count;
+        enchantLevel = enchantLv;
+        maxReachedEnchantLevel = maxEnchantLv;
+        isEnchantmentDamaged = isDamaged;
+        itemName = name;
+        itemType = type;
+    }
+
+    // ✅ ตรวจสอบว่าข้อมูลถูกต้อง
     public bool IsValid()
     {
-        return !string.IsNullOrEmpty(itemId) &&
-               slotIndex >= 0 &&
-               stackCount > 0;
+        return !string.IsNullOrEmpty(itemId) && slotIndex >= 0 && stackCount > 0;
+    }
+
+    // ✅ ตรวจสอบว่าเป็น Enchanted item หรือไม่
+    public bool IsEnchantedItem()
+    {
+        return enchantLevel > 0 || maxReachedEnchantLevel > 0;
+    }
+
+    // ✅ ตรวจสอบว่าสามารถ Repair ได้หรือไม่
+    public bool CanBeRepaired()
+    {
+        return isEnchantmentDamaged && enchantLevel < maxReachedEnchantLevel;
+    }
+
+    // ✅ สร้าง display name ที่แสดง enchant level
+    public string GetDisplayName()
+    {
+        if (enchantLevel <= 0) return itemName;
+
+        string enchantText = $"+{enchantLevel}";
+        if (isEnchantmentDamaged)
+        {
+            enchantText += " [Damaged]";
+        }
+
+        return $"{itemName} {enchantText}";
+    }
+
+    // ✅ ส่งคืนข้อมูล enchantment ในรูปแบบ ItemEnchantmentData
+    public ItemEnchantmentData ToEnchantmentData()
+    {
+        var enchantData = new ItemEnchantmentData();
+        enchantData.currentEnchantLevel = enchantLevel;
+        enchantData.maxReachedLevel = maxReachedEnchantLevel;
+        enchantData.isDamaged = isEnchantmentDamaged;
+        return enchantData;
+    }
+
+    // ✅ อัปเดตข้อมูล enchantment จาก ItemEnchantmentData
+    public void UpdateFromEnchantmentData(ItemEnchantmentData enchantData)
+    {
+        if (enchantData != null)
+        {
+            enchantLevel = enchantData.currentEnchantLevel;
+            maxReachedEnchantLevel = enchantData.maxReachedLevel;
+            isEnchantmentDamaged = enchantData.isDamaged;
+        }
     }
 }
 

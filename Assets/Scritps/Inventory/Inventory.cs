@@ -40,6 +40,7 @@ public class InventoryItem
     public ItemData itemData;
     public int stackCount;
     public int slotIndex; // ตำแหน่งใน inventory
+    public ItemEnchantmentData enchantmentData;
 
     public InventoryItem(ItemData item = null, int count = 0, int slot = -1)
     {
