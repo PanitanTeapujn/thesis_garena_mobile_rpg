@@ -62,6 +62,11 @@ public class EnchanceLobby : MonoBehaviour
     public GameObject materialSlotPrefab;           // Prefab สำหรับช่องวัตถุดิบ
     public int maxMaterialSlots = 10;               // จำนวนช่องวัตถุดิบสูงสุด
 
+    [Header("📊 Success Rate Display")]
+    public Slider successRateSlider;                // Slider แสดงเปอร์เซ็นต์
+    public TextMeshProUGUI successRateText;         // Text แสดงเปอร์เซ็นต์ตัวเลข
+    public TextMeshProUGUI materialCountText;       // Text แสดงจำนวนวัตถุดิบ
+
     // 🧪 เพิ่มใน Private variables
     // Material system variables
     private bool isMaterialMode = false;              // โหมดเลือกวัตถุดิบ
@@ -870,6 +875,9 @@ public class EnchanceLobby : MonoBehaviour
         }
 
         Debug.Log($"[EnchanceLobby] Material mode: {(enableMaterialMode ? "ON" : "OFF")}");
+
+        // 📊 อัพเดท success rate เมื่อเปลี่ยนโหมด
+        UpdateSuccessRateDisplay();
     }
 
     /// <summary>
@@ -909,6 +917,9 @@ public class EnchanceLobby : MonoBehaviour
                 // อัพเดท UI
                 UpdateMaterialSlotDisplay(emptySlot);
                 RefreshEnchanceableItems();
+
+                // 📊 อัพเดท success rate
+                UpdateSuccessRateDisplay();
             }
             else
             {
@@ -961,6 +972,9 @@ public class EnchanceLobby : MonoBehaviour
 
                 // 🔄 Refresh inventory list เหมือนตอนเปิดหน้าหรือใส่ item
                 RefreshEnchanceableItems();
+
+                // 📊 อัพเดท success rate
+                UpdateSuccessRateDisplay();
 
                 Debug.Log("[EnchanceLobby] Refreshed inventory after removing material");
             }
@@ -1040,7 +1054,121 @@ public class EnchanceLobby : MonoBehaviour
             Debug.Log("[EnchanceLobby] Refreshed inventory after clearing all materials");
         }
 
+        // 📊 อัพเดท success rate
+        UpdateSuccessRateDisplay();
+
         Debug.Log("[EnchanceLobby] Cleared all material slots");
+    }
+
+    /// <summary>
+    /// 📊 อัพเดท Success Rate Display
+    /// </summary>
+    private void UpdateSuccessRateDisplay()
+    {
+        // ถ้าไม่มีไอเทมใน enhance slot หรือไม่ได้อยู่ในโหมดวัตถุดิบ
+        if (currentEnhanceItem == null || !isMaterialMode)
+        {
+            // ซ่อน/ล้าง success rate UI
+            if (successRateSlider != null)
+            {
+                successRateSlider.value = 0f;
+                successRateSlider.gameObject.SetActive(false);
+            }
+            if (successRateText != null)
+            {
+                successRateText.text = "";
+            }
+            if (materialCountText != null)
+            {
+                materialCountText.text = "";
+            }
+            return;
+        }
+
+        // แสดง success rate UI
+        if (successRateSlider != null)
+        {
+            successRateSlider.gameObject.SetActive(true);
+        }
+
+        // นับจำนวนวัตถุดิบ
+        int materialCount = GetMaterialCount();
+
+        // คำนวณ success rate
+        float successRate = CalculateSuccessRate();
+
+        // อัพเดท Slider (0-100)
+        if (successRateSlider != null)
+        {
+            successRateSlider.minValue = 0f;
+            successRateSlider.maxValue = 100f;
+            successRateSlider.value = successRate;
+        }
+
+        // อัพเดท Text เปอร์เซ็นต์
+        if (successRateText != null)
+        {
+            successRateText.text = $"{successRate:F1}%";
+
+            // เปลี่ยนสีตามเปอร์เซ็นต์
+            if (successRate >= 75f)
+                successRateText.color = Color.green;
+            else if (successRate >= 50f)
+                successRateText.color = Color.yellow;
+            else if (successRate >= 25f)
+                successRateText.color = Color.cyan;
+            else
+                successRateText.color = Color.red;
+        }
+
+        // อัพเดท Text จำนวนวัตถุดิบ
+        if (materialCountText != null)
+        {
+            materialCountText.text = $"Materials: {materialCount}/{maxMaterialSlots}";
+            materialCountText.color = materialCount > 0 ? Color.white : Color.gray;
+        }
+
+        Debug.Log($"[EnchanceLobby] Success rate updated: {successRate:F1}% with {materialCount} materials");
+    }
+
+    /// <summary>
+    /// 📊 นับจำนวนวัตถุดิบที่มี
+    /// </summary>
+    private int GetMaterialCount()
+    {
+        int count = 0;
+        foreach (var material in materialSlots)
+        {
+            if (material != null && !material.IsEmpty)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// 📊 คำนวณ Success Rate จากวัตถุดิบ
+    /// </summary>
+    private float CalculateSuccessRate()
+    {
+        if (currentEnhanceItem?.itemData == null)
+            return 0f;
+
+        // รวบรวมวัตถุดิบที่ไม่ว่าง
+        List<ItemData> materials = new List<ItemData>();
+        foreach (var materialSlot in materialSlots)
+        {
+            if (materialSlot != null && !materialSlot.IsEmpty && materialSlot.itemData != null)
+            {
+                materials.Add(materialSlot.itemData);
+            }
+        }
+
+        // ใช้ method ที่มีอยู่แล้วใน ItemData
+        float totalRate = currentEnhanceItem.itemData.GetEnchantSuccessRate(materials);
+
+        return totalRate;
     }
 
     #endregion
