@@ -585,7 +585,10 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: e745e079c25a47c499afb6f4b129506d, type: 2}
     quantity: 10
     note: 
-  - itemData: {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - itemData: {fileID: 11400000, guid: b7a69c06dd07df042b128949acad2c91, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
     quantity: 1
     note: 
   useFallbackItems: 1

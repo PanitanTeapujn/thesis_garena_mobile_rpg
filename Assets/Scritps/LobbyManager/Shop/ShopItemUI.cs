@@ -72,7 +72,7 @@ public class ShopItemUI : MonoBehaviour
             itemButton.onClick.AddListener(OnItemClicked);
         }
 
-        Debug.Log($"[ShopItemUI] Setup complete: {itemData.ItemName} - {(IsTradeMode() ? "TRADE" : data.price + " gold")}");
+       // Debug.Log($"[ShopItemUI] Setup complete: {itemData.ItemName} - {(IsTradeMode() ? "TRADE" : data.price + " gold")}");
     }
 
     // ✅ เพิ่ม method ตรวจสอบ Trade mode

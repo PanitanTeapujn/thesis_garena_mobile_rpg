@@ -77,7 +77,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
   - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
   - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
-  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - {fileID: 11400000, guid: b7a69c06dd07df042b128949acad2c91, type: 2}
   - {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
   weapons:
   - {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
@@ -97,7 +97,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 92b4c5e0144b248479337dee64bf07b0, type: 2}
   - {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
   - {fileID: 11400000, guid: 5559f79bf291d994dae0527d1b0f9b75, type: 2}
-  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - {fileID: 11400000, guid: b7a69c06dd07df042b128949acad2c91, type: 2}
   headItems:
   - {fileID: 11400000, guid: cd9fdbefd0bc97a4194c8dbf864f9a74, type: 2}
   - {fileID: 11400000, guid: 4303658d61923eb449483d2736fd5f67, type: 2}
@@ -120,6 +120,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 39fa8ead6717e0f4e8503ec0758bb937, type: 2}
   - {fileID: 11400000, guid: 0252b258346d8774b9d9ba3d958af025, type: 2}
   - {fileID: 11400000, guid: e958d18474a707944a39dd806febaa21, type: 2}
+  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
   pantsItems:
   - {fileID: 11400000, guid: 7b8bce0400d59894f99ad76ba9744d20, type: 2}
   - {fileID: 11400000, guid: ee330238873d879499ddbacff6d768cd, type: 2}
@@ -129,7 +130,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: eeda5bc38457dc845b4dc3c12dc7d741, type: 2}
   - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
   - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
-  - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
   shoesItems:
   - {fileID: 11400000, guid: c7cdfb88a68d0824ea12b9aaeae49bc2, type: 2}
   - {fileID: 11400000, guid: 5ece6d75590e9ab499ec1b106a3c5bda, type: 2}

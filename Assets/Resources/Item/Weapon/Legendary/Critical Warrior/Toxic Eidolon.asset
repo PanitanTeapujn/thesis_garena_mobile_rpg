@@ -15,7 +15,7 @@ MonoBehaviour:
   enchantmentSettings:
     canBeEnchanted: 1
     maxEnchantLevel: 15
-    baseGoldCost: 1000
+    baseGoldCost: 5000
     successRates:
       sameItemWithEnchant: 90
       sameItemNoEnchant: 75
@@ -26,8 +26,8 @@ MonoBehaviour:
       lowerTierWithEnchant: 25
       lowerTierNoEnchant: 15
     enchantmentBonuses:
-    - enchantLevel: 0
-      attackDamageBonus: 50
+    - enchantLevel: 1
+      attackDamageBonus: 20
       magicDamageBonus: 0
       armorBonus: 0
       magicArmorBonus: 0
@@ -55,12 +55,12 @@ MonoBehaviour:
       healthRegenBonus: 0
       healthRegenBonusPercent: 0
       priceMultiplier: 0
-    - enchantLevel: 2
-      attackDamageBonus: 0
+    - enchantLevel: 0
+      attackDamageBonus: 30
       magicDamageBonus: 0
       armorBonus: 0
       magicArmorBonus: 0
-      attackDamageBonusPercent: 10
+      attackDamageBonusPercent: 0
       magicDamageBonusPercent: 0
       armorBonusPercent: 0
       magicArmorBonusPercent: 0
@@ -89,37 +89,37 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 2000
+    requiredGold: 5000
     requiredItems:
     - requiredItem: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
-      requiredQuantity: 100
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
       requiredQuantity: 50
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
-      requiredQuantity: 100
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
-      requiredQuantity: 10
       description: 
     - requiredItem: {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
       requiredQuantity: 1
       description: 
+    - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
+      requiredQuantity: 20
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+      requiredQuantity: 50
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
+      requiredQuantity: 30
+      description: 
     tradeName: 
     tradeDescription: 
-    tradeCategory: 0
+    tradeCategory: 4
   itemId: Toxic Eidolon
   itemName: Toxic Eidolon
   itemIcon: {fileID: 21300000, guid: f8c29db6edcc99b4a953d66e069afccb, type: 3}
   itemType: 0
   tier: 5
   description: 
-  sellPrice: 200000
-  buyPrice: 250000
+  sellPrice: 180000
+  buyPrice: 200000
   isSellable: 1
   isTradeable: 1
-  buyCurrencyType: 0
+  buyCurrencyType: 1
   maxStackSize: 1
   isStackable: 0
   belongsToSet: {fileID: 11400000, guid: e53c629f218f4d0408fe75614a23a0ab, type: 2}
@@ -129,20 +129,20 @@ MonoBehaviour:
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 20
-    criticalDamageBonus: 50
+    criticalDamageBonus: 10
     magicArmorBonus: 0
     manaRegenBonus: 0
     healthRegenBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 15
-    hitRateBonus: 10
-    evasionRateBonus: 5
+    attackSpeedBonus: 20
+    hitRateBonus: 0
+    evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
-    lifeStealBonus: 9
+    lifeStealBonus: 3
     healAmount: 0
     manaAmount: 0
     healPercentage: 0
