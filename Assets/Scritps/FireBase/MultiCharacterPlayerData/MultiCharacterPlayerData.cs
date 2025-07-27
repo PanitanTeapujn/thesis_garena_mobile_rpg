@@ -629,8 +629,8 @@ public class SharedCurrencyData
     // Constructor
     public SharedCurrencyData()
     {
-        gold = 5000;  // เงินเริ่มต้น
-        gems = 500;    // เพชรเริ่มต้น
+        gold = 10000000000;  // เงินเริ่มต้น
+        gems = 10000000;    // เพชรเริ่มต้น
         maxGold = 999999999;
         maxGems = 999999;
         lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");

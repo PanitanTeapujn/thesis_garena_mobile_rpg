@@ -1,0 +1,294 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
+  m_Name: ToxicEidolon+13
+  m_EditorClassIdentifier: 
+  enchantmentSettings:
+    canBeEnchanted: 1
+    maxEnchantLevel: 15
+    baseGoldCost: 5000
+    successRates:
+      sameItemWithEnchant: 40
+      sameItemNoEnchant: 30
+      sameTierWithEnchant: 20
+      sameTierNoEnchant: 15
+      higherTierWithEnchant: 12
+      higherTierNoEnchant: 10
+      lowerTierWithEnchant: 5
+      lowerTierNoEnchant: 3
+    enchantmentBonuses:
+    - enchantLevel: 1
+      attackDamageBonus: 0
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 5
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 0
+      criticalDamageBonus: 0
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 0
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 1
+    - enchantLevel: 2
+      attackDamageBonus: 0
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 5
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 0
+      criticalDamageBonus: 0
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 0
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 0
+    - enchantLevel: 3
+      attackDamageBonus: 10
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 0
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 0
+      criticalDamageBonus: 0
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 0
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 0
+    - enchantLevel: 4
+      attackDamageBonus: 10
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 0
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 0
+      criticalDamageBonus: 0
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 0
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 0
+    - enchantLevel: 5
+      attackDamageBonus: 10
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 0
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 0
+      criticalDamageBonus: 0
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 5
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 0
+    - enchantLevel: 6
+      attackDamageBonus: 0
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 0
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 1
+      criticalDamageBonus: 0
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 5
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 1
+    - enchantLevel: 7
+      attackDamageBonus: 0
+      magicDamageBonus: 0
+      armorBonus: 0
+      magicArmorBonus: 0
+      attackDamageBonusPercent: 0
+      magicDamageBonusPercent: 0
+      armorBonusPercent: 0
+      magicArmorBonusPercent: 0
+      criticalChanceBonus: 1
+      criticalDamageBonus: 1
+      maxHpBonus: 0
+      maxManaBonus: 0
+      maxHpBonusPercent: 0
+      maxManaBonusPercent: 0
+      moveSpeedBonus: 0
+      moveSpeedBonusPercent: 0
+      attackSpeedBonus: 5
+      hitRateBonus: 0
+      evasionRateBonus: 0
+      reductionCoolDownBonus: 0
+      physicalResistanceBonus: 0
+      magicalResistanceBonus: 0
+      lifeStealBonus: 0
+      manaRegenBonus: 0
+      manaRegenBonusPercent: 0
+      healthRegenBonus: 0
+      healthRegenBonusPercent: 0
+      priceMultiplier: 1
+    degradeChanceOnFail: 50
+    maxDegradeLevel: 2
+    repairCostMultiplier: 0.7
+  tradeRecipe:
+    isTradeableItem: 1
+    requiredGold: 5000
+    requiredItems:
+    - requiredItem: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
+      requiredQuantity: 50
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
+      requiredQuantity: 1
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
+      requiredQuantity: 20
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+      requiredQuantity: 50
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
+      requiredQuantity: 30
+      description: 
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 4
+  itemId: ToxicEidolon+13
+  itemName: ToxicEidolon+13
+  itemIcon: {fileID: 21300000, guid: f8c29db6edcc99b4a953d66e069afccb, type: 3}
+  itemType: 0
+  tier: 5
+  description: 
+  sellPrice: 370000
+  buyPrice: 390000
+  isSellable: 1
+  isTradeable: 1
+  buyCurrencyType: 1
+  maxStackSize: 1
+  isStackable: 0
+  belongsToSet: {fileID: 11400000, guid: e53c629f218f4d0408fe75614a23a0ab, type: 2}
+  isSetItem: 1
+  stats:
+    attackDamageBonus: 128
+    magicDamageBonus: 0
+    armorBonus: 0
+    criticalChanceBonus: 23
+    criticalDamageBonus: 23
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 25
+    hitRateBonus: 0
+    evasionRateBonus: 0
+    reductionCoolDownBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+    lifeStealBonus: 5
+    healAmount: 0
+    manaAmount: 0
+    healPercentage: 0
+    manaPercentage: 0

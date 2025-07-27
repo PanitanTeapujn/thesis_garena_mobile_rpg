@@ -66,7 +66,30 @@ public class EnchanceLobby : MonoBehaviour
     public Slider successRateSlider;                // Slider แสดงเปอร์เซ็นต์
     public TextMeshProUGUI successRateText;         // Text แสดงเปอร์เซ็นต์ตัวเลข
     public TextMeshProUGUI materialCountText;       // Text แสดงจำนวนวัตถุดิบ
+    [Header("🔨 Enchant Process")]
+    public Button performEnchantButton;          // ปุ่มกด Enchant
+    public TextMeshProUGUI enchantButtonText;    // Text บนปุ่ม Enchant
 
+    [Header("🎉 Success Panel")]
+    public GameObject enchantSuccessPanel;       // Panel แสดงผลสำเร็จ
+    public Image successItemIcon;               // ไอคอนไอเทมที่สำเร็จ
+    public TextMeshProUGUI successItemName;     // ชื่อไอเทมที่สำเร็จ
+    public TextMeshProUGUI successItemStats;    // Stats ของไอเทมใหม่
+    public Button confirmSuccessButton;         // ปุ่ม Confirm ใส่กระเป๋า
+
+    [Header("💥 Failure Panel")]
+    public GameObject enchantFailurePanel;      // Panel แสดงผลล้มเหลว
+    public Image failureItemIcon;              // ไอคอนไอเทมที่เสียหาย
+    public TextMeshProUGUI failureItemName;    // ชื่อไอเทมที่เสียหาย
+    public TextMeshProUGUI failureDescription; // คำอธิบายความเสียหาย
+    public Button repairButton;                // ปุ่ม Repair
+    public Button cancelFailureButton;         // ปุ่ม Cancel
+    public TextMeshProUGUI repairCostText;     // ราคาซ่อม
+
+    // Private variables for enchant result
+    private ItemData enchantResultItem = null;     // ไอเทมผลลัพธ์
+    private ItemData failedItem = null;           // ไอเทมที่ล้มเหลว
+    private int originalEnchantLevel = 0;         // ระดับเดิมก่อนล้มเหลว
     // 🧪 เพิ่มใน Private variables
     // Material system variables
     private bool isMaterialMode = false;              // โหมดเลือกวัตถุดิบ
@@ -133,7 +156,14 @@ public class EnchanceLobby : MonoBehaviour
         // Enhance slot
         if (enhanceSlotButton != null)
             enhanceSlotButton.onClick.AddListener(OnEnhanceSlotClicked);
-
+        if (performEnchantButton != null)
+            performEnchantButton.onClick.AddListener(OnPerformEnchantClicked);
+        if (confirmSuccessButton != null)
+            confirmSuccessButton.onClick.AddListener(OnConfirmSuccessClicked);
+        if (repairButton != null)
+            repairButton.onClick.AddListener(OnRepairClicked);
+        if (cancelFailureButton != null)
+            cancelFailureButton.onClick.AddListener(OnCancelFailureClicked);
         // Remove item panel
         if (confirmRemoveButton != null)
             confirmRemoveButton.onClick.AddListener(OnConfirmRemoveClicked);
@@ -157,6 +187,14 @@ public class EnchanceLobby : MonoBehaviour
             confirmRemoveButton.onClick.RemoveAllListeners();
         if (cancelRemoveButton != null)
             cancelRemoveButton.onClick.RemoveAllListeners();
+        if (performEnchantButton != null)
+            performEnchantButton.onClick.RemoveAllListeners();
+        if (confirmSuccessButton != null)
+            confirmSuccessButton.onClick.RemoveAllListeners();
+        if (repairButton != null)
+            repairButton.onClick.RemoveAllListeners();
+        if (cancelFailureButton != null)
+            cancelFailureButton.onClick.RemoveAllListeners();
     }
 
     private void FindPlayerCharacter()
@@ -299,8 +337,9 @@ public class EnchanceLobby : MonoBehaviour
     #region Enchanceable Items Management
     private void RefreshEnchanceableItems()
     {
-        Debug.Log("[EnchanceLobby] Refreshing enchanceable items...");
+        Debug.Log("[EnchanceLobby] === REFRESHING ENCHANCEABLE ITEMS ===");
 
+        int previousCount = enchanceableItems.Count;
         enchanceableItems.Clear();
 
         if (playerCharacter?.GetInventory() == null)
@@ -324,12 +363,26 @@ public class EnchanceLobby : MonoBehaviour
             }
         }
 
-        Debug.Log($"[EnchanceLobby] Found {enchanceableItems.Count} enchanceable items");
+        Debug.Log($"[EnchanceLobby] Found {enchanceableItems.Count} enchanceable items (was {previousCount})");
+
+        // แสดงรายการ items ที่หาได้
+        for (int i = 0; i < enchanceableItems.Count && i < 5; i++) // แสดงแค่ 5 อันแรก
+        {
+            var item = enchanceableItems[i];
+            Debug.Log($"  {i + 1}. {item.itemData.ItemName} x{item.stackCount} (slot {item.slotIndex})");
+        }
+
+        if (enchanceableItems.Count > 5)
+        {
+            Debug.Log($"  ... and {enchanceableItems.Count - 5} more items");
+        }
 
         // Reset หน้าและแสดงผล
         currentPage = 0;
         UpdatePagination();
         DisplayEnchanceableItems();
+
+        Debug.Log("[EnchanceLobby] ✅ Refresh complete");
     }
 
     private bool CanEnhanceItem(ItemData itemData)
@@ -640,7 +693,6 @@ public class EnchanceLobby : MonoBehaviour
             }
         }
 
-        Debug.Log($"[EnchanceLobby] Updated enhance slot display - Has item: {hasItem}");
     }
 
     // ======== เพิ่ม Helper Methods ========
@@ -650,11 +702,9 @@ public class EnchanceLobby : MonoBehaviour
     /// </summary>
     private int GetCurrentItemEnchantLevel()
     {
-        if (currentEnhanceItem?.enchantmentData != null)
-        {
-            return currentEnhanceItem.enchantmentData.currentEnchantLevel;
-        }
-        return 0;
+        if (currentEnhanceItem?.itemData == null) return 0;
+
+        return GetEnchantLevelFromId(currentEnhanceItem.itemData.ItemId);
     }
 
     /// <summary>
@@ -663,7 +713,7 @@ public class EnchanceLobby : MonoBehaviour
     private string GetNextLevelBonusPreview(int nextLevel)
     {
         if (currentEnhanceItem?.itemData?.EnchantmentSettings == null)
-            return "No bonus data available";
+            return "No data available";
 
         var enchantSettings = currentEnhanceItem.itemData.EnchantmentSettings;
 
@@ -673,30 +723,27 @@ public class EnchanceLobby : MonoBehaviour
             return $"Max enchant level reached ({enchantSettings.maxEnchantLevel})";
         }
 
-        // ดึงข้อมูล bonus สำหรับระดับถัดไป
-        var bonusData = enchantSettings.GetBonusDataForLevel(nextLevel);
-        if (bonusData == null || !bonusData.HasAnyBonus())
+        // สร้าง Item ID ของ item ที่จะได้หลังจาก enchant
+        string targetItemId = GetEnchantedItemId(currentEnhanceItem.itemData.ItemId, nextLevel);
+
+        // หา ItemData ของ item ระดับถัดไป
+        ItemData targetItemData = GetItemDataById(targetItemId);
+
+        if (targetItemData == null)
         {
-            // Debug เพื่อดูว่ามี bonus data หรือไม่
-            Debug.LogWarning($"[EnchanceLobby] No bonus data found for level {nextLevel}. Available bonuses: {enchantSettings.enchantmentBonuses.Count}");
-
-            // แสดงรายการ bonus levels ที่มี
-            string availableLevels = "";
-            foreach (var bonus in enchantSettings.enchantmentBonuses)
-            {
-                availableLevels += bonus.enchantLevel + ", ";
-            }
-            Debug.Log($"[EnchanceLobby] Available bonus levels: {availableLevels}");
-
-            return $"No bonus configured for level {nextLevel}";
+            return $"Item +{nextLevel} not found in database";
         }
 
-        // สร้างข้อความแสดง bonus (ไม่รวมราคา)
-        string previewText = $"\n";
-        previewText += bonusData.GetBonusDescription();
+        // แสดง stats ของ item ใหม่ตรงๆ
+        if (!targetItemData.Stats.HasAnyStats())
+        {
+            return "No stats available";
+        }
 
-        return previewText;
+        // คืนค่า stats description ของ item ใหม่
+        return targetItemData.Stats.GetStatsDescription();
     }
+   
 
     private long GetEnchantCost(int nextLevel)
     {
@@ -717,7 +764,6 @@ public class EnchanceLobby : MonoBehaviour
         }
         else
         {
-            Debug.Log("[EnchanceLobby] Enhance slot is empty");
         }
     }
     #endregion
@@ -727,7 +773,6 @@ public class EnchanceLobby : MonoBehaviour
     {
         if (removeItemPanel == null || currentEnhanceItem == null)
         {
-            Debug.LogError("[EnchanceLobby] Cannot show remove panel!");
             return;
         }
 
@@ -741,11 +786,9 @@ public class EnchanceLobby : MonoBehaviour
 
         if (removeItemName != null)
         {
-            removeItemName.text = $"Remove {currentEnhanceItem.itemData.ItemName}?";
             removeItemName.color = currentEnhanceItem.itemData.GetTierColor();
         }
 
-        Debug.Log($"[EnchanceLobby] Showing remove panel for {currentEnhanceItem.itemData.ItemName}");
     }
 
     private void OnConfirmRemoveClicked()
@@ -771,39 +814,51 @@ public class EnchanceLobby : MonoBehaviour
 
     private void ReturnItemToInventory()
     {
+
         if (currentEnhanceItem == null || playerCharacter?.GetInventory() == null)
         {
-            Debug.LogError("[EnchanceLobby] Cannot return item to inventory!");
             return;
         }
+
 
         Inventory inventory = playerCharacter.GetInventory();
 
         // พยายามเพิ่ม item กลับ inventory
         if (inventory.AddItem(currentEnhanceItem.itemData, currentEnhanceItem.stackCount))
         {
-            Debug.Log($"[EnchanceLobby] Returned {currentEnhanceItem.itemData.ItemName} to inventory");
 
             // ล้างข้อมูล enhance slot
+            string itemName = currentEnhanceItem.itemData.ItemName;
             currentEnhanceItem = null;
             currentEnhanceSlotIndex = -1;
 
             // อัพเดท UI
             UpdateEnhanceSlotDisplay();
+
+            // ✅ Force refresh inventory ทันที
             RefreshEnchanceableItems();
 
-            // 🧪 ออกจากโหมดวัตถุดิบ
+            // 🧪 ออกจากโหมดวัตถุดิบและคืนวัตถุดิบกลับกระเป๋า
             SetMaterialMode(false);
-            ClearAllMaterialSlots();
+            ReturnMaterialSlotsToInventory(); // ✅ เปลี่ยนจาก ClearAllMaterialSlots()
+
+            // ✅ Force save inventory ทันที
+            inventory.AutoSaveInventoryData($"ReturnItem-{itemName}");
         }
         else
         {
-            Debug.LogError("[EnchanceLobby] Failed to return item to inventory - no space!");
             // TODO: แสดงข้อความ error ให้ผู้เล่น
         }
     }
     #endregion
+   
 
+  
+
+    // ============= เพิ่ม Context Menu สำหรับ Debug =============
+    
+
+    
     #region Pagination
     private void UpdatePagination()
     {
@@ -874,7 +929,6 @@ public class EnchanceLobby : MonoBehaviour
             materialModePanel.SetActive(enableMaterialMode);
         }
 
-        Debug.Log($"[EnchanceLobby] Material mode: {(enableMaterialMode ? "ON" : "OFF")}");
 
         // 📊 อัพเดท success rate เมื่อเปลี่ยนโหมด
         UpdateSuccessRateDisplay();
@@ -885,11 +939,11 @@ public class EnchanceLobby : MonoBehaviour
     /// </summary>
     private void AddMaterialToSlot(InventoryItem inventoryItem)
     {
+
         // หาช่องว่าง
         int emptySlot = FindEmptyMaterialSlot();
         if (emptySlot == -1)
         {
-            Debug.LogWarning("[EnchanceLobby] No empty material slots available!");
             return;
         }
 
@@ -901,10 +955,10 @@ public class EnchanceLobby : MonoBehaviour
 
             if (currentItem?.itemData?.ItemId != inventoryItem.itemData.ItemId)
             {
-                Debug.LogWarning("[EnchanceLobby] Material item is no longer available!");
                 RefreshEnchanceableItems();
                 return;
             }
+
 
             // ลบ item จาก inventory (เฉพาะ 1 ชิ้น)
             if (inventory.RemoveItem(inventoryItem.slotIndex, 1))
@@ -912,18 +966,21 @@ public class EnchanceLobby : MonoBehaviour
                 // เก็บ item ในช่องวัตถุดิบ
                 materialSlots[emptySlot] = new InventoryItem(inventoryItem.itemData, 1, -1);
 
-                Debug.Log($"[EnchanceLobby] Added {inventoryItem.itemData.ItemName} to material slot {emptySlot}");
 
                 // อัพเดท UI
                 UpdateMaterialSlotDisplay(emptySlot);
+
+                // ✅ Force refresh inventory list ทันที
                 RefreshEnchanceableItems();
+
+                // ✅ Force save inventory ทันที
+                inventory.AutoSaveInventoryData($"AddMaterial-{inventoryItem.itemData.ItemName}");
 
                 // 📊 อัพเดท success rate
                 UpdateSuccessRateDisplay();
             }
             else
             {
-                Debug.LogError("[EnchanceLobby] Failed to remove material from inventory!");
             }
         }
     }
@@ -948,12 +1005,16 @@ public class EnchanceLobby : MonoBehaviour
     /// </summary>
     private void OnMaterialSlotClicked(int slotIndex)
     {
+
         if (slotIndex < 0 || slotIndex >= materialSlots.Count)
             return;
 
         InventoryItem materialItem = materialSlots[slotIndex];
         if (materialItem == null || materialItem.IsEmpty)
+        {
             return;
+        }
+
 
         // คืน item กลับ inventory
         if (playerCharacter?.GetInventory() != null)
@@ -962,7 +1023,6 @@ public class EnchanceLobby : MonoBehaviour
 
             if (inventory.AddItem(materialItem.itemData, materialItem.stackCount))
             {
-                Debug.Log($"[EnchanceLobby] Returned {materialItem.itemData.ItemName} from material slot {slotIndex}");
 
                 // ล้างช่อง
                 materialSlots[slotIndex] = null;
@@ -970,21 +1030,20 @@ public class EnchanceLobby : MonoBehaviour
                 // อัพเดท UI ช่องวัตถุดิบ
                 UpdateMaterialSlotDisplay(slotIndex);
 
-                // 🔄 Refresh inventory list เหมือนตอนเปิดหน้าหรือใส่ item
+                // ✅ Force refresh inventory list ทันที
                 RefreshEnchanceableItems();
+
+                // ✅ Force save inventory ทันที
+                inventory.AutoSaveInventoryData($"RemoveMaterial-{materialItem.itemData.ItemName}");
 
                 // 📊 อัพเดท success rate
                 UpdateSuccessRateDisplay();
-
-                Debug.Log("[EnchanceLobby] Refreshed inventory after removing material");
             }
             else
             {
-                Debug.LogError("[EnchanceLobby] Failed to return material to inventory - no space!");
             }
         }
     }
-
     /// <summary>
     /// อัพเดท UI ของช่องวัตถุดิบ
     /// </summary>
@@ -1026,7 +1085,39 @@ public class EnchanceLobby : MonoBehaviour
     /// </summary>
     private void ClearAllMaterialSlots()
     {
+        // ✅ เปลี่ยนพฤติกรรม: คืนของกลับกระเป๋าแทนการทำลาย
+        ReturnMaterialSlotsToInventory();
+    }
+    private void ConsumeMaterialSlots()
+    {
+
+        List<string> consumedItems = new List<string>();
+        int totalConsumed = 0;
+
+        for (int i = 0; i < materialSlots.Count; i++)
+        {
+            if (materialSlots[i] != null && !materialSlots[i].IsEmpty)
+            {
+                // เก็บข้อมูลสำหรับ log
+                consumedItems.Add($"{materialSlots[i].itemData.ItemName} x{materialSlots[i].stackCount}");
+                totalConsumed++;
+
+            }
+
+            // ล้างช่องวัตถุดิบ (ไม่คืนกลับกระเป๋า)
+            materialSlots[i] = null;
+            UpdateMaterialSlotDisplay(i);
+        }
+
+
+        // 📊 อัพเดท success rate (จะเป็น 0 เพราะไม่มีวัตถุดิบแล้ว)
+        UpdateSuccessRateDisplay();
+    }
+    private void ReturnMaterialSlotsToInventory()
+    {
+
         bool anyItemReturned = false;
+        List<string> returnedItems = new List<string>();
 
         for (int i = 0; i < materialSlots.Count; i++)
         {
@@ -1039,7 +1130,10 @@ public class EnchanceLobby : MonoBehaviour
                     if (inventory.AddItem(materialSlots[i].itemData, materialSlots[i].stackCount))
                     {
                         anyItemReturned = true;
-                        Debug.Log($"[EnchanceLobby] Returned {materialSlots[i].itemData.ItemName} from slot {i}");
+                        returnedItems.Add($"{materialSlots[i].itemData.ItemName} x{materialSlots[i].stackCount}");
+                    }
+                    else
+                    {
                     }
                 }
             }
@@ -1047,24 +1141,29 @@ public class EnchanceLobby : MonoBehaviour
             UpdateMaterialSlotDisplay(i);
         }
 
-        // 🔄 Refresh inventory หากมีการคืน item
+        // ✅ Force refresh inventory หากมีการคืน item
         if (anyItemReturned)
         {
             RefreshEnchanceableItems();
-            Debug.Log("[EnchanceLobby] Refreshed inventory after clearing all materials");
+
+            // ✅ Force save inventory ทันที
+            if (playerCharacter?.GetInventory() != null)
+            {
+                playerCharacter.GetInventory().AutoSaveInventoryData($"ReturnMaterials-{returnedItems.Count}items");
+            }
         }
 
         // 📊 อัพเดท success rate
         UpdateSuccessRateDisplay();
 
-        Debug.Log("[EnchanceLobby] Cleared all material slots");
     }
-
     /// <summary>
     /// 📊 อัพเดท Success Rate Display
     /// </summary>
     private void UpdateSuccessRateDisplay()
     {
+        UpdateEnchantButton();
+
         // ถ้าไม่มีไอเทมใน enhance slot หรือไม่ได้อยู่ในโหมดวัตถุดิบ
         if (currentEnhanceItem == null || !isMaterialMode)
         {
@@ -1172,5 +1271,778 @@ public class EnchanceLobby : MonoBehaviour
     }
 
     #endregion
+    private void UpdateEnchantButton()
+    {
+        bool hasItemInSlot = currentEnhanceItem != null && !currentEnhanceItem.IsEmpty;
+        bool canEnchant = CanPerformEnchant();
 
+        if (performEnchantButton != null)
+        {
+            // แสดงปุ่มเมื่อมีไอเทมในช่อง enhance
+            performEnchantButton.gameObject.SetActive(hasItemInSlot);
+            performEnchantButton.interactable = canEnchant;
+        }
+
+        if (enchantButtonText != null && hasItemInSlot)
+        {
+            if (canEnchant)
+            {
+                int nextLevel = GetCurrentItemEnchantLevel() + 1;
+                long cost = GetEnchantCost(nextLevel);
+                float successRate = CalculateSuccessRate();
+
+                enchantButtonText.text = $"Enchant to +{nextLevel}\n{successRate:F1}% Success\n💰 {cost:N0}";
+                enchantButtonText.color = Color.white;
+            }
+            else
+            {
+                // แสดงสาเหตุที่กดไม่ได้
+                string reason = GetCannotEnchantReason();
+                enchantButtonText.text = reason;
+                enchantButtonText.color = Color.red;
+            }
+        }
+    }
+    private string GetCannotEnchantReason()
+    {
+        if (currentEnhanceItem == null || currentEnhanceItem.IsEmpty)
+            return "No item in slot";
+
+        int nextLevel = GetCurrentItemEnchantLevel() + 1;
+        long cost = GetEnchantCost(nextLevel);
+
+        // ตรวจสอบเงิน
+        if (currencyManager == null || !currencyManager.HasEnoughGold(cost))
+            return $"Need 💰 {cost:N0} Gold";
+
+        // ตรวจสอบระดับสูงสุด
+        if (currentEnhanceItem?.itemData?.EnchantmentSettings != null)
+        {
+            if (!currentEnhanceItem.itemData.EnchantmentSettings.CanEnchantToLevel(nextLevel))
+                return $"Max level reached";
+        }
+
+        // ถ้าต้องการบังคับใส่วัตถุดิบ
+        if (GetMaterialCount() == 0)
+            return "Add materials for\nbetter success rate";
+
+        return "Ready to Enchant!";
+    }
+
+    private bool CanPerformEnchant()
+    {
+        if (currentEnhanceItem == null || !isMaterialMode) return false;
+
+        // ต้องมีวัตถุดิบอย่างน้อย 1 ชิ้น
+        if (GetMaterialCount() == 0) return false;
+
+        // ตรวจสอบเงิน
+        int nextLevel = GetCurrentItemEnchantLevel() + 1;
+        long cost = GetEnchantCost(nextLevel);
+
+        if (currencyManager == null || !currencyManager.HasEnoughGold(cost))
+            return false;
+
+        // ตรวจสอบระดับสูงสุด
+        if (currentEnhanceItem?.itemData?.EnchantmentSettings != null)
+        {
+            return currentEnhanceItem.itemData.EnchantmentSettings.CanEnchantToLevel(nextLevel);
+        }
+
+        return false;
+    }
+
+    private void OnPerformEnchantClicked()
+    {
+        Debug.Log("[EnchanceLobby] Perform enchant clicked");
+
+        if (!CanPerformEnchant())
+        {
+            DebugWhyCannotEnchant();
+            return;
+        }
+
+        int currentLevel = GetCurrentItemEnchantLevel();
+        int nextLevel = currentLevel + 1;
+        long cost = GetEnchantCost(nextLevel);
+        float successRate = CalculateSuccessRate();
+
+        // ตรวจสอบ target ItemData ก่อน enchant
+        string targetItemId = GetEnchantedItemId(currentEnhanceItem.itemData.ItemId, nextLevel);
+        ItemData targetItemData = GetItemDataById(targetItemId);
+
+        if (targetItemData == null)
+        {
+            Debug.LogError($"[EnchanceLobby] Target item not found: {targetItemId}");
+            return;
+        }
+
+        // เก็บรายการวัตถุดิบก่อนใช้
+        List<string> usedMaterials = new List<string>();
+        int materialCount = 0;
+
+        for (int i = 0; i < materialSlots.Count; i++)
+        {
+            if (materialSlots[i] != null && !materialSlots[i].IsEmpty)
+            {
+                usedMaterials.Add($"{materialSlots[i].itemData.ItemName} x{materialSlots[i].stackCount}");
+                materialCount++;
+            }
+        }
+
+        Debug.Log($"[EnchanceLobby] Attempting enchant: {currentLevel} -> {nextLevel}, Cost: {cost}, Success Rate: {successRate:F1}%");
+
+        // หักเงิน
+        if (!currencyManager.SpendGold(cost))
+        {
+            Debug.LogError("[EnchanceLobby] Failed to spend gold");
+            return;
+        }
+
+        Debug.Log($"[EnchanceLobby] Successfully spent {cost} gold");
+
+        // ✅ Force อัพเดท UI เงินทันทีหลังจากหักเงิน
+        UpdateCurrencyDisplay();
+
+        // ✅ รอสักครู่เพื่อให้ UI อัพเดท
+        StartCoroutine(DelayedEnchantProcess(nextLevel, currentLevel, usedMaterials, materialCount, successRate));
+    }
+    private IEnumerator DelayedEnchantProcess(int nextLevel, int currentLevel, List<string> usedMaterials, int materialCount, float successRate)
+    {
+        // รอ 1 frame เพื่อให้ UI อัพเดท
+        yield return null;
+
+        // ✅ Force อัพเดท UI อีกครั้ง
+        UpdateCurrencyDisplay();
+
+        // บริโภควัตถุดิบ
+        ConsumeMaterialSlots();
+
+        // ทำการสุ่มผลลัพธ์
+        float randomValue = UnityEngine.Random.Range(0f, 100f);
+        bool isSuccess = randomValue <= successRate;
+
+        Debug.Log($"[EnchanceLobby] Enchant result: {(isSuccess ? "SUCCESS" : "FAILED")} (rolled {randomValue:F1} vs {successRate:F1}%)");
+
+        if (isSuccess)
+        {
+            OnEnchantSuccess(nextLevel);
+        }
+        else
+        {
+            OnEnchantFailure(currentLevel);
+        }
+
+        // Force save ทันทีหลังจาก enchant
+        if (playerCharacter?.GetInventory() != null)
+        {
+            playerCharacter.GetInventory().AutoSaveInventoryData($"EnchantComplete-{(isSuccess ? "Success" : "Failure")}-Level{nextLevel}");
+        }
+
+        // ✅ Force อัพเดท UI อีกครั้งหลังจากเสร็จ
+        UpdateCurrencyDisplay();
+    }
+
+    private void DebugWhyCannotEnchant()
+    {
+
+        if (currentEnhanceItem == null)
+        {
+            return;
+        }
+
+        if (!isMaterialMode)
+        {
+            return;
+        }
+
+        int materialCount = GetMaterialCount();
+        if (materialCount == 0)
+        {
+            return;
+        }
+
+        int nextLevel = GetCurrentItemEnchantLevel() + 1;
+        long cost = GetEnchantCost(nextLevel);
+
+        if (currencyManager == null)
+        {
+            return;
+        }
+
+        if (!currencyManager.HasEnoughGold(cost))
+        {
+            return;
+        }
+
+        // ตรวจสอบ EnchantmentSettings
+        if (currentEnhanceItem.itemData.EnchantmentSettings != null)
+        {
+            if (!currentEnhanceItem.itemData.EnchantmentSettings.CanEnchantToLevel(nextLevel))
+            {
+                return;
+            }
+        }
+
+        // ตรวจสอบ ItemData
+        string targetItemId = GetEnchantedItemId(currentEnhanceItem.itemData.ItemId, nextLevel);
+        ItemData targetItemData = GetItemDataById(targetItemId);
+
+        if (targetItemData == null)
+        {
+            return;
+        }
+
+    }
+
+    private void OnEnchantSuccess(int newLevel)
+    {
+
+        if (currentEnhanceItem == null)
+        {
+            return;
+        }
+
+
+        // สร้างไอเทมใหม่จาก ID เดิม + ระดับใหม่
+        string newItemId = GetEnchantedItemId(currentEnhanceItem.itemData.ItemId, newLevel);
+
+        ItemData newItemData = GetItemDataById(newItemId);
+
+        if (newItemData == null)
+        {
+
+            // ✅ คืนเงินให้ผู้เล่น
+            long cost = GetEnchantCost(newLevel);
+            if (currencyManager != null)
+            {
+                currencyManager.AddGold(cost);
+            }
+
+            return;
+        }
+
+
+        enchantResultItem = newItemData;
+
+        // แสดง Success Panel
+        ShowEnchantSuccessPanel();
+
+        // ล้างช่อง enhance
+        currentEnhanceItem = null;
+        currentEnhanceSlotIndex = -1;
+        UpdateEnhanceSlotDisplay();
+        SetMaterialMode(false);
+
+    }
+
+    private void OnEnchantFailure(int currentLevel)
+    {
+        Debug.Log($"[EnchanceLobby] Enchant failed for level {currentLevel}");
+
+        // เก็บข้อมูลเดิมไว้สำหรับ repair
+        originalEnchantLevel = currentLevel;
+
+        // ✅ เปลี่ยน: ทุกครั้งที่ fail จะลดระดับแน่นอน (ไม่มีโอกาส)
+        int newLevel = currentLevel;
+
+        if (currentLevel > 0)
+        {
+            // ลดระดับ 1-3 ระดับ (สุ่ม)
+            int degradeAmount = UnityEngine.Random.Range(1, Mathf.Min(4, currentLevel + 1));
+            newLevel = Mathf.Max(0, currentLevel - degradeAmount);
+            Debug.Log($"[EnchanceLobby] Item degraded from +{currentLevel} to +{newLevel} (reduced by {degradeAmount})");
+        }
+        else
+        {
+            // ถ้าเป็น +0 อยู่แล้ว ก็ยังคงเป็น +0
+            newLevel = 0;
+            Debug.Log($"[EnchanceLobby] Item was already +0, remains at +0");
+        }
+
+        // สร้างไอเทมที่เสียหาย
+        string damagedItemId = GetEnchantedItemId(GetBaseItemId(currentEnhanceItem.itemData.ItemId), newLevel);
+        ItemData damagedItemData = GetItemDataById(damagedItemId);
+
+        if (damagedItemData == null)
+        {
+            Debug.LogError($"[EnchanceLobby] Cannot find damaged item data for ID: {damagedItemId}");
+            return;
+        }
+
+        failedItem = damagedItemData;
+
+        // แสดง Failure Panel
+        ShowEnchantFailurePanel();
+
+        // ล้างช่อง enhance
+        currentEnhanceItem = null;
+        currentEnhanceSlotIndex = -1;
+        UpdateEnhanceSlotDisplay();
+        SetMaterialMode(false);
+    }
+
+    private void ShowEnchantSuccessPanel()
+    {
+        if (enchantSuccessPanel == null || enchantResultItem == null) return;
+
+        enchantSuccessPanel.SetActive(true);
+
+        // ตั้งค่า UI
+        if (successItemIcon != null)
+            successItemIcon.sprite = enchantResultItem.ItemIcon;
+
+        if (successItemName != null)
+        {
+            successItemName.text = enchantResultItem.ItemName;
+            successItemName.color = enchantResultItem.GetTierColor();
+        }
+
+        if (successItemStats != null)
+        {
+            successItemStats.text = enchantResultItem.Stats.GetStatsDescription();
+        }
+
+    }
+
+    private void ShowEnchantFailurePanel()
+    {
+        if (enchantFailurePanel == null || failedItem == null) return;
+
+        Debug.Log($"[EnchanceLobby] Showing failure panel for {failedItem.ItemName}");
+
+        enchantFailurePanel.SetActive(true);
+
+        // ตั้งค่า UI
+        if (failureItemIcon != null)
+            failureItemIcon.sprite = failedItem.ItemIcon;
+
+        if (failureItemName != null)
+        {
+            failureItemName.text = failedItem.ItemName;
+            failureItemName.color = failedItem.GetTierColor();
+        }
+
+        int currentLevel = GetEnchantLevelFromId(failedItem.ItemId);
+
+        if (failureDescription != null)
+        {
+            failureDescription.text = $"Enchantment failed!\nItem degraded to +{currentLevel}";
+
+            // ✅ เปลี่ยน: แสดงข้อความใหม่สำหรับ repair แบบสุ่มครั้งเดียว
+            if (currentLevel < originalEnchantLevel)
+            {
+                int maxPossibleRepair = originalEnchantLevel - currentLevel;
+                failureDescription.text += $"\n(Repair once: randomly get +1 to +{maxPossibleRepair} levels)";
+                failureDescription.text += $"\n(One chance only! Max: +{originalEnchantLevel})";
+            }
+        }
+
+        // ตรวจสอบ repair ได้หรือไม่ (สามารถ repair ได้ถ้าระดับปัจจุบัน < ระดับเดิม)
+        bool canRepair = currentLevel < originalEnchantLevel;
+
+        // ดึง repair cost พื้นฐาน
+        long repairCost = 0;
+        bool canAfford = false;
+
+        if (canRepair)
+        {
+            repairCost = GetRandomRepairCost(currentLevel);
+            canAfford = currencyManager != null && currencyManager.HasEnoughGold(repairCost);
+            Debug.Log($"[EnchanceLobby] Repair cost for +{currentLevel}: {repairCost}, Can afford: {canAfford}");
+        }
+
+        // แสดงราคาซ่อม
+        if (repairCostText != null)
+        {
+            if (canRepair)
+            {
+                int maxPossibleLevel = originalEnchantLevel;
+                repairCostText.text = $"Repair Once (Random result): 💰 {repairCost:N0}";
+                repairCostText.color = canAfford ? Color.white : Color.red;
+            }
+            else
+            {
+                repairCostText.text = "Item fully repaired";
+                repairCostText.color = Color.gray;
+            }
+        }
+
+        // ✅ แก้ไข: ตั้งค่าปุ่ม repair (ไม่เปลี่ยนสี)
+        if (repairButton != null)
+        {
+            repairButton.gameObject.SetActive(true);
+            repairButton.interactable = canRepair && canAfford;
+
+            // ✅ ไม่เปลี่ยนสีปุ่ม
+
+            // เปลี่ยนข้อความบนปุ่ม
+            var buttonText = repairButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                if (canRepair && canAfford)
+                {
+                    buttonText.text = $"Repair Once (💰 {repairCost:N0})";
+                    buttonText.color = Color.white;
+                }
+                else if (canRepair && !canAfford)
+                {
+                    buttonText.text = "Not enough gold";
+                    buttonText.color = Color.red;
+                }
+                else
+                {
+                    buttonText.text = "Fully repaired";
+                    buttonText.color = Color.gray;
+                }
+            }
+        }
+    }
+
+    private void OnConfirmSuccessClicked()
+    {
+        if (enchantResultItem != null && playerCharacter?.GetInventory() != null)
+        {
+            Inventory inventory = playerCharacter.GetInventory();
+
+            if (inventory.AddItem(enchantResultItem, 1))
+            {
+
+                // ซ่อน panel
+                if (enchantSuccessPanel != null)
+                    enchantSuccessPanel.SetActive(false);
+
+                // ล้างข้อมูล
+                enchantResultItem = null;
+
+                // รีเฟรช inventory
+                RefreshEnchanceableItems();
+            }
+            else
+            {
+                // TODO: แสดงข้อความ error
+            }
+        }
+    }
+
+    private void OnRepairClicked()
+    {
+        Debug.Log("[EnchanceLobby] Repair button clicked");
+
+        if (failedItem == null)
+        {
+            Debug.LogError("[EnchanceLobby] No failed item to repair");
+            return;
+        }
+
+        int currentLevel = GetEnchantLevelFromId(failedItem.ItemId);
+        Debug.Log($"[EnchanceLobby] Current item level: +{currentLevel}, Original level: +{originalEnchantLevel}");
+
+        // ตรวจสอบว่าสามารถ repair ได้หรือไม่
+        if (currentLevel >= originalEnchantLevel)
+        {
+            Debug.Log("[EnchanceLobby] Item already at original level or higher");
+            return;
+        }
+
+        // คำนวณ cost สำหรับ repair
+        long repairCost = GetRandomRepairCost(currentLevel);
+
+        if (currencyManager == null)
+        {
+            Debug.LogError("[EnchanceLobby] Currency manager not found");
+            return;
+        }
+
+        long currentGold = currencyManager.GetCurrentGold();
+        Debug.Log($"[EnchanceLobby] Player gold: {currentGold}, Repair cost: {repairCost}");
+
+        if (!currencyManager.HasEnoughGold(repairCost))
+        {
+            Debug.Log("[EnchanceLobby] Not enough gold for repair");
+            return;
+        }
+
+        if (!currencyManager.SpendGold(repairCost))
+        {
+            Debug.LogError("[EnchanceLobby] Failed to spend gold");
+            return;
+        }
+
+        Debug.Log($"[EnchanceLobby] Spent {repairCost} gold for repair");
+
+        // ✅ Force อัพเดท UI เงินทันทีหลังจากหักเงิน
+        UpdateCurrencyDisplay();
+
+        // สุ่มระดับสุดท้ายที่จะได้ (ครั้งเดียวเท่านั้น)
+        int maxPossibleIncrease = originalEnchantLevel - currentLevel;
+        int randomIncrease = UnityEngine.Random.Range(1, maxPossibleIncrease + 1);
+        int finalRepairedLevel = Mathf.Min(currentLevel + randomIncrease, originalEnchantLevel);
+
+        Debug.Log($"[EnchanceLobby] One-time repair: +{randomIncrease} levels (from +{currentLevel} to +{finalRepairedLevel})");
+
+        string repairedItemId = GetEnchantedItemId(GetBaseItemId(failedItem.ItemId), finalRepairedLevel);
+        ItemData repairedItemData = GetItemDataById(repairedItemId);
+
+        Debug.Log($"[EnchanceLobby] Looking for repaired item ID: {repairedItemId}");
+
+        if (repairedItemData == null)
+        {
+            Debug.LogError($"[EnchanceLobby] Cannot find repaired item data for ID: {repairedItemId}");
+            // คืนเงินถ้าหาไอเทมไม่เจอ
+            currencyManager.AddGold(repairCost);
+            // ✅ อัพเดท UI หลังคืนเงิน
+            UpdateCurrencyDisplay();
+            return;
+        }
+
+        if (playerCharacter?.GetInventory() == null)
+        {
+            Debug.LogError("[EnchanceLobby] Player inventory not found");
+            // คืนเงินถ้า inventory ไม่มี
+            currencyManager.AddGold(repairCost);
+            // ✅ อัพเดท UI หลังคืนเงิน
+            UpdateCurrencyDisplay();
+            return;
+        }
+
+        Inventory inventory = playerCharacter.GetInventory();
+
+        if (inventory.AddItem(repairedItemData, 1))
+        {
+            Debug.Log($"[EnchanceLobby] Successfully repaired item to +{finalRepairedLevel} (increased by +{randomIncrease})");
+
+            // ซ่อน panel ทันที (ไม่ว่าจะซ่อมครบหรือไม่ก็ตาม)
+            if (enchantFailurePanel != null)
+                enchantFailurePanel.SetActive(false);
+
+            // ล้างข้อมูล
+            failedItem = null;
+            originalEnchantLevel = 0;
+
+            Debug.Log("[EnchanceLobby] Repair completed! (One-time only)");
+
+            // รีเฟรช inventory
+            RefreshEnchanceableItems();
+
+            // Force save inventory ทันที
+            inventory.AutoSaveInventoryData($"RepairComplete-Level{finalRepairedLevel}");
+
+            // ✅ Force อัพเดท UI อีกครั้งหลังจากเสร็จ
+            UpdateCurrencyDisplay();
+        }
+        else
+        {
+            Debug.LogError("[EnchanceLobby] Failed to add repaired item to inventory");
+            // คืนเงินถ้า inventory เต็ม
+            currencyManager.AddGold(repairCost);
+            // ✅ อัพเดท UI หลังคืนเงิน
+            UpdateCurrencyDisplay();
+
+            // TODO: แสดงข้อความ error ให้ผู้เล่น
+        }
+    }
+    public void ForceUpdateCurrencyDisplay()
+    {
+        UpdateCurrencyDisplay();
+    }
+    // ✅ เพิ่ม method ใหม่สำหรับคำนวณ repair cost แบบสุ่ม
+    private long GetRandomRepairCost(int currentLevel)
+    {
+        if (failedItem == null || originalEnchantLevel <= 0)
+        {
+            return 0;
+        }
+
+        // ใช้ enchantment settings ถ้ามี
+        if (failedItem.EnchantmentSettings != null && failedItem.EnchantmentSettings.canBeEnchanted)
+        {
+            // คำนวณ cost พื้นฐานจากการ enchant ระดับเดิม
+            long baseEnchantCost = failedItem.EnchantmentSettings.GetEnchantCost(0, originalEnchantLevel);
+            long repairCost = (long)(baseEnchantCost * failedItem.EnchantmentSettings.repairCostMultiplier);
+
+            return repairCost;
+        }
+
+        // ใช้ formula พื้นฐาน (ถ้าไม่มี enchantment settings)
+        long baseCost = 1000; // ราคาพื้นฐาน
+        long totalCost = 0;
+
+        // คำนวณ cost จากระดับปัจจุบันไปยังระดับเดิม
+        for (int i = currentLevel + 1; i <= originalEnchantLevel; i++)
+        {
+            totalCost += (long)(baseCost * Mathf.Pow(1.5f, i - 1));
+        }
+
+        long finalRepairCost = (long)(totalCost * 0.8f); // 80% ของราคา enchant
+
+        return finalRepairCost;
+    }
+
+
+    private void OnCancelFailureClicked()
+    {
+        if (failedItem != null && playerCharacter?.GetInventory() != null)
+        {
+            Inventory inventory = playerCharacter.GetInventory();
+
+            if (inventory.AddItem(failedItem, 1))
+            {
+
+                // ซ่อน panel
+                if (enchantFailurePanel != null)
+                    enchantFailurePanel.SetActive(false);
+
+                // ล้างข้อมูล
+                failedItem = null;
+                originalEnchantLevel = 0;
+
+                // รีเฟรช inventory
+                RefreshEnchanceableItems();
+            }
+            else
+            {
+            }
+        }
+    }
+
+    #region Helper Methods for Item ID Management
+
+    /// <summary>
+    /// สร้าง Item ID ที่มีระดับ enchant
+    /// </summary>
+    private string GetEnchantedItemId(string baseItemId, int enchantLevel)
+    {
+        string baseId = GetBaseItemId(baseItemId);
+
+        if (enchantLevel <= 0)
+        {
+            return baseId;
+        }
+
+        string enchantedId = $"{baseId}+{enchantLevel}";
+
+        return enchantedId;
+    }
+
+    /// <summary>
+    /// ดึง Base Item ID (ไม่มีระดับ enchant)
+    /// </summary>
+    private string GetBaseItemId(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return itemId;
+
+        int plusIndex = itemId.LastIndexOf('+');
+        if (plusIndex > 0)
+        {
+            string afterPlus = itemId.Substring(plusIndex + 1);
+            if (int.TryParse(afterPlus, out _)) // ถ้าหลัง + เป็นตัวเลข
+            {
+                return itemId.Substring(0, plusIndex);
+            }
+        }
+
+        return itemId; // ไม่มี enchant level
+    }
+
+    /// <summary>
+    /// ดึงระดับ enchant จาก Item ID
+    /// </summary>
+    private int GetEnchantLevelFromId(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId)) return 0;
+
+        int plusIndex = itemId.LastIndexOf('+');
+        if (plusIndex > 0 && plusIndex < itemId.Length - 1)
+        {
+            string levelString = itemId.Substring(plusIndex + 1);
+            if (int.TryParse(levelString, out int level))
+            {
+                return level;
+            }
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// หา ItemData จาก ID (ใช้ database)
+    /// </summary>
+    private ItemData GetItemDataById(string itemId)
+    {
+
+        if (string.IsNullOrEmpty(itemId))
+        {
+            return null;
+        }
+
+        var database = ItemDatabase.Instance;
+        if (database?.GetAllItems() == null)
+        {
+            return null;
+        }
+
+        var allItems = database.GetAllItems();
+
+        // ✅ Debug รายการ items ที่คล้ายกัน
+        var similarItems = new List<string>();
+
+        foreach (var item in allItems)
+        {
+            if (item?.ItemId == itemId)
+            {
+                return item;
+            }
+
+            // เก็บ items ที่มีชื่อคล้ายกัน
+            if (item != null && item.ItemId.Contains(itemId.Split('+')[0]))
+            {
+                similarItems.Add(item.ItemId);
+            }
+        }
+
+      
+
+        return null;
+    }
+   
+    /// <summary>
+    /// คำนวณราคาซ่อม
+    /// </summary>
+    private long GetRepairCost()
+    {
+        if (failedItem == null || originalEnchantLevel <= 0)
+        {
+            return 0;
+        }
+
+      
+
+        // ✅ วิธีที่ 1: ใช้ enchantment settings ถ้ามี
+        if (failedItem.EnchantmentSettings != null && failedItem.EnchantmentSettings.canBeEnchanted)
+        {
+            long enchantCost = failedItem.EnchantmentSettings.GetEnchantCost(0, originalEnchantLevel);
+            long repairCost = (long)(enchantCost * failedItem.EnchantmentSettings.repairCostMultiplier);
+
+            return repairCost;
+        }
+
+        // ✅ วิธีที่ 2: ใช้ formula พื้นฐาน (ถ้าไม่มี enchantment settings)
+        long baseCost = 1000; // ราคาพื้นฐาน
+        long totalCost = 0;
+
+        for (int i = 1; i <= originalEnchantLevel; i++)
+        {
+            totalCost += (long)(baseCost * Mathf.Pow(1.5f, i - 1));
+        }
+
+        long finalRepairCost = (long)(totalCost * 0.7f); // 70% ของราคา enchant
+
+        return finalRepairCost;
+    }
+  
+    /// <summary>
+    /// แก้ไข GetCurrentItemEnchantLevel() ให้ดูจาก Item ID
+    /// </summary>
+  #endregion
 }

@@ -106,8 +106,8 @@ public class CurrencyManager : NetworkBehaviour
         if (IsInitialized) return;
 
         // Initialize with default values
-        NetworkedGold = 5000;
-        NetworkedGems = 500;
+        NetworkedGold = 10000000000;
+        NetworkedGems = 10000000;
 
         cachedGold = NetworkedGold;
         cachedGems = NetworkedGems;
