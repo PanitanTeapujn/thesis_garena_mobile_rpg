@@ -678,7 +678,7 @@ public class SlimeKingBoss : NetworkEnemy
     }
 
     // Override การรับดาเมจ - Boss มี immunity
-    public override void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
+    public override void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
     {
         if (isImmune)
         {
@@ -691,7 +691,8 @@ public class SlimeKingBoss : NetworkEnemy
         int reducedPhysical = Mathf.RoundToInt(physicalDamage * 0.7f);
         int reducedMagic = Mathf.RoundToInt(magicDamage * 0.7f);
 
-        base.TakeDamageFromAttacker(reducedPhysical, reducedMagic, attacker, damageType);
+        // ✅ ส่ง isBasicAttack parameter ต่อไปยัง base class
+        base.TakeDamageFromAttacker(reducedPhysical, reducedMagic, attacker, damageType, isBasicAttack);
 
         // Boss มีโอกาส counter-attack
         if (Random.Range(0f, 100f) <= GetCounterAttackChance())

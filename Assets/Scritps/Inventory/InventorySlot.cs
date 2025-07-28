@@ -224,7 +224,7 @@ public class InventorySlot : MonoBehaviour
             itemIcon.sprite = itemSprite;
             itemIcon.color = Color.white;
             itemIcon.gameObject.SetActive(true);
-            Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon activated");
+            //Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon activated");
         }
         else
         {
@@ -238,7 +238,7 @@ public class InventorySlot : MonoBehaviour
             {
                 stackText.text = stackCount.ToString();
                 stackText.gameObject.SetActive(true);
-                Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text = {stackCount}");
+               // Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text = {stackCount}");
             }
             else
             {
@@ -250,7 +250,7 @@ public class InventorySlot : MonoBehaviour
         // ✅ เพิ่มบรรทัดนี้ - Force sync หลัง set state
         ForceRefreshThisSlot();
 
-        Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} filled state complete");
+       // Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} filled state complete");
     }
     private void ForceRefreshThisSlot()
     {

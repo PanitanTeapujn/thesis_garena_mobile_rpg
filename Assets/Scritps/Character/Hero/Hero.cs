@@ -667,30 +667,29 @@
             NetworkedCurrentMana = newMana;
             Debug.Log($"Health/Mana synced via RPC: HP={newHp}, Mana={newMana} for {CharacterName}");
         }
-        protected virtual void TryUseSkill1()
-        {
-            Debug.Log($"=== SKILL 1 EXECUTED at {Time.time:F2} ===");
-         Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, LayerMask.GetMask("Enemy"));
+    protected virtual void TryUseSkill1()
+    {
+        Debug.Log($"=== SKILL 1 EXECUTED at {Time.time:F2} ===");
+        Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, LayerMask.GetMask("Enemy"));
 
-          foreach (Collider enemyCollider in enemies)
+        foreach (Collider enemyCollider in enemies)
         {
             Character enemy = enemyCollider.GetComponent<Character>();
             if (enemy != null)
             {
                 UseMana(10);
-                // ทำดาเมจปกติก่อน
-                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+                // ✅ FIX: ใช้ TakeDamageFromAttacker แบบใหม่ที่รองรับ isBasicAttack
+                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal, false); // skill ไม่มี life steal
 
                 // แล้วใส่พิษ
                 enemy.ApplyStatusEffect(StatusEffectType.Poison, 3, 8f); // 3 damage ต่อวินาที เป็นเวลา 8 วินาที
 
                 Debug.Log($"Applied poison to {enemy.CharacterName}!");
             }
-           }
-        // ตัวอย่างการใช้ mana
         }
+    }
 
-        protected virtual void TryUseSkill2()
+    protected virtual void TryUseSkill2()
         {
          
         }
@@ -778,32 +777,34 @@
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
-        private void RPC_PerformAttack(NetworkObject enemyObject)
+    private void RPC_PerformAttack(NetworkObject enemyObject)
+    {
+        if (enemyObject != null)
         {
-            if (enemyObject != null)
+            // ลองใช้ Character base class ก่อน
+            Character enemy = enemyObject.GetComponent<Character>();
+            if (enemy != null)
             {
-                // ลองใช้ Character base class ก่อน
-                Character enemy = enemyObject.GetComponent<Character>();
-                if (enemy != null)
-                {
-                // ใช้ TakeDamage ใหม่จาก Character base class
-                enemy.TakeDamageFromAttacker(AttackDamage, MagicDamage, this, DamageType.Normal);
+                // ✅ ระบุว่าเป็นการโจมตีธรรมดา (basic attack) เพื่อให้ life steal ทำงาน
+                enemy.TakeDamageFromAttacker(AttackDamage, MagicDamage, this, DamageType.Normal, true);
                 RPC_OnAttackHit(enemyObject);
-                }
-                else
+                Debug.Log($"[Basic Attack] {CharacterName} performed basic attack with Life Steal enabled");
+            }
+            else
+            {
+                // fallback สำหรับ NetworkEnemy เก่า
+                NetworkEnemy networkEnemy = enemyObject.GetComponent<NetworkEnemy>();
+                if (networkEnemy != null && !networkEnemy.IsDead)
                 {
-                    // fallback สำหรับ NetworkEnemy เก่า
-                    NetworkEnemy networkEnemy = enemyObject.GetComponent<NetworkEnemy>();
-                    if (networkEnemy != null && !networkEnemy.IsDead)
-                    {
+                    // ✅ สำหรับ NetworkEnemy เก่า - ใช้ระบบเดิม (อาจไม่มี life steal)
                     networkEnemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
                     RPC_OnAttackHit(enemyObject);
-                    }
                 }
             }
         }
+    }
 
-        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
         protected virtual void RPC_OnAttackHit(NetworkObject enemyObject)
         {
             Debug.Log($"{CharacterName} hit enemy!");

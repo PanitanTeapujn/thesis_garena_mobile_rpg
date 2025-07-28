@@ -1193,8 +1193,10 @@ public class Character : NetworkBehaviour
 
         var (physicalDamage, magicDamage) = GetSkillDamages(skillType, physicalRatio, magicRatio);
 
+        Debug.Log($"[UseSkillOnTarget] {CharacterName} uses skill on {target.CharacterName} (no life steal)");
 
-        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
+        // ✅ ระบุว่าเป็น skill attack - ไม่มี life steal
+        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType, false);
     }
 
     public virtual void UseSkillOnTarget(Character target, AttackType skillType, int flatPhysical, int flatMagic, DamageType damageType = DamageType.Normal)
@@ -1203,21 +1205,25 @@ public class Character : NetworkBehaviour
 
         var (physicalDamage, magicDamage) = GetSkillDamages(skillType, flatPhysical, flatMagic);
 
+        Debug.Log($"[UseSkillOnTarget] {CharacterName} uses skill with flat damage on {target.CharacterName} (no life steal)");
 
-        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
+        // ✅ ระบุว่าเป็น skill attack - ไม่มี life steal
+        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType, false);
     }
 
     public virtual void UseAdvancedSkillOnTarget(Character target,
-        float physicalRatio = 0f, float magicRatio = 0f,
-        int flatPhysical = 0, int flatMagic = 0,
-        DamageType damageType = DamageType.Normal)
+     float physicalRatio = 0f, float magicRatio = 0f,
+     int flatPhysical = 0, int flatMagic = 0,
+     DamageType damageType = DamageType.Normal)
     {
         if (combatManager == null) return;
 
         var (physicalDamage, magicDamage) = GetAdvancedSkillDamages(physicalRatio, magicRatio, flatPhysical, flatMagic);
 
+        Debug.Log($"[UseAdvancedSkillOnTarget] {CharacterName} uses advanced skill on {target.CharacterName} (no life steal)");
 
-        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType);
+        // ✅ ระบุว่าเป็น skill attack - ไม่มี life steal
+        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, damageType, false);
     }
 
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
@@ -1226,16 +1232,16 @@ public class Character : NetworkBehaviour
         combatManager.TakeDamage(damage, damageType, isCritical);
     }
 
-    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
     {
         if (combatManager == null) return;
-        combatManager.TakeDamageFromAttacker(damage, attacker, damageType);
+        combatManager.TakeDamageFromAttacker(damage, attacker, damageType, isBasicAttack);
     }
 
-    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
+    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
     {
         if (combatManager == null) return;
-        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
+        combatManager.TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType, isBasicAttack);
     }
 
     public void Heal(int amount)
@@ -1572,47 +1578,7 @@ public class Character : NetworkBehaviour
 
         return finalReduction;
     }
-    [ContextMenu("Debug CDR Sources")]
-    public void DebugCDRSources()
-    {
-        Debug.Log("=== CDR SOURCES DEBUG ===");
-
-        // 1. Base character CDR
-        float baseCDR = this.ReductionCoolDown;
-        Debug.Log($"1. Character Base CDR: {baseCDR}%");
-
-        // 2. Equipment CDR
-        if (equipmentManager != null)
-        {
-            float equipmentCDR = equipmentManager.GetReductionCoolDownBonus();
-            Debug.Log($"2. Equipment CDR: {equipmentCDR}%");
-
-            // 2a. Equipment only
-            float equipOnlyCDR = equipmentManager.currentEquipmentStats.reductionCoolDownBonus;
-            Debug.Log($"  2a. Equipment Only: {equipOnlyCDR}%");
-
-            // 2b. Rune only
-            float runeOnlyCDR = equipmentManager.currentRuneStats.reductionCoolDownBonus;
-            Debug.Log($"  2b. Rune Only: {runeOnlyCDR}%");
-
-            // 2c. Set bonus only
-            float setBonusCDR = equipmentManager.currentSetBonusStats.reductionCoolDownBonus;
-            Debug.Log($"  2c. Set Bonus Only: {setBonusCDR}%");
-        }
-
-        // 3. CharacterStats ScriptableObject
-        if (characterStats != null)
-        {
-            float scriptableCDR = characterStats.reductionCoolDown;
-            Debug.Log($"3. ScriptableObject Base CDR: {scriptableCDR}%");
-        }
-
-        // 4. Total effective
-        float effectiveCDR = GetEffectiveReductionCoolDown();
-        Debug.Log($"4. Final Effective CDR: {effectiveCDR}%");
-
-        Debug.Log("========================");
-    }
+   
     public virtual float GetEffectiveAttackSpeed()
     {
         // รวม attack speed bonus เป็น %

@@ -139,7 +139,7 @@ public class CombatManager : NetworkBehaviour
     #endregion
 
     #region Main Damage System - ระบบรับดาเมจหลักที่รองรับทั้ง Physical และ Magic Damage
-    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal)
+    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
 
@@ -172,17 +172,22 @@ public class CombatManager : NetworkBehaviour
         Debug.Log($"[Damage Breakdown] {attacker?.CharacterName ?? "Unknown"} -> {character.CharacterName}:");
         Debug.Log($"  Physical: {physicalDamage} -> {finalPhysicalDamage} (after Physical Armor: {GetCurrentArmor()})");
         Debug.Log($"  Magic: {magicDamage} -> {finalMagicDamage} (after Magic Armor: {GetCurrentMagicArmor()})");
-        Debug.Log($"  Total: {totalDamage}, Critical: {isCritical}");
+        Debug.Log($"  Total: {totalDamage}, Critical: {isCritical}, IsBasicAttack: {isBasicAttack}");
 
         // Apply damage
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
 
-        // Apply lifesteal
-        if (attacker != null && totalDamage > 0)
+        // ✅ Apply lifesteal เฉพาะการโจมตีธรรมดา
+        if (attacker != null && totalDamage > 0 && isBasicAttack)
         {
             ApplyLifesteal(attacker, totalDamage);
+            Debug.Log($"[Life Steal] Applied for basic attack: {totalDamage} damage");
+        }
+        else if (attacker != null && totalDamage > 0 && !isBasicAttack)
+        {
+            Debug.Log($"[Life Steal] Skipped for skill attack (not basic attack)");
         }
 
         // Sync network state
@@ -239,14 +244,14 @@ public class CombatManager : NetworkBehaviour
             HandleDeath();
         }
     }
-    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal)
+    public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
     {
         // ✅ ปรับปรุงให้ส่ง physical และ magic damage แยก
         var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
 
-        Debug.Log($"[TakeDamageFromAttacker] {attacker.CharacterName}: Physical={physicalDamage}, Magic={magicDamage}, Type={damageType}");
+        Debug.Log($"[TakeDamageFromAttacker] {attacker.CharacterName}: Physical={physicalDamage}, Magic={magicDamage}, Type={damageType}, IsBasicAttack={isBasicAttack}");
 
-        TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType);
+        TakeDamageFromAttacker(physicalDamage, magicDamage, attacker, damageType, isBasicAttack);
     }
     #endregion
 

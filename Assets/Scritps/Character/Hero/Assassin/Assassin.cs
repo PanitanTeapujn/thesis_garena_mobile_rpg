@@ -247,13 +247,13 @@ public class Assassin : Hero
     private void ApplyToxicDashEffects(Character enemy)
     {
         // ✅ คำนวณ damage ใหม่
-        int directDamage = GetScaledSkillDamage(0.6f); // 60% ของ base formula
-        int poisonDamage = GetScaledPoisonDamage(0.3f); // 30% ของ base formula
+        int directDamage = GetScaledSkillDamage(0.6f);
+        int poisonDamage = GetScaledPoisonDamage(0.3f);
 
-        // ทำ direct magic damage ก่อน
-        enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic);
+        // ✅ ทำ direct magic damage - ไม่เป็น basic attack
+        enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
 
-        // ✅ ใส่ status effects
+        // ใส่ status effects (ไม่เกี่ยวกับ life steal)
         enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
         enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 6f, 0.3f);
         enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 4f, 0.6f);
@@ -264,8 +264,9 @@ public class Assassin : Hero
             SpreadPoisonToNearby(enemy, 4f);
         }
 
-        Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName}! Direct: {directDamage}, Poison: {poisonDamage}/s");
+        Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName} (no life steal)! Direct: {directDamage}, Poison: {poisonDamage}/s");
     }
+
 
     // ========== 💣 Skill 3: Shadow Assassination - FIXED ==========
     protected override void TryUseSkill3()
@@ -406,16 +407,16 @@ public class Assassin : Hero
             Debug.Log($"🩸 [Execution] Target HP < 30%! Damage increased by 50%!");
         }
 
-        // ✅ เปลี่ยนจาก UseAdvancedSkillOnTarget เป็น TakeDamageFromAttacker โดยตรง
+        // ✅ Shadow Assassination เป็น skill attack - ไม่มี life steal
         int physicalDamage = Mathf.RoundToInt(baseDamage * 0.3f);
         int magicDamage = Mathf.RoundToInt(baseDamage * 0.7f);
 
-        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, DamageType.Critical);
+        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, DamageType.Critical, false);
 
         // เพิ่ม effect ตาม build
         if (MagicDamage > AttackDamage) // Magic Build
         {
-            int poisonDamage = GetScaledPoisonDamage(0.6f); // ✅ เพิ่ม f suffix
+            int poisonDamage = GetScaledPoisonDamage(0.6f);
             target.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 10f);
 
             // Venom Mastery: spread poison
@@ -435,7 +436,7 @@ public class Assassin : Hero
             Debug.Log($"⚔️ [Physical Build] Applied bleeding + armor break to {target.CharacterName}!");
         }
 
-        Debug.Log($"🗡️ Shadow Assassination dealt {baseDamage} damage to {target.CharacterName} (Execution: {isExecutionRange})");
+        Debug.Log($"🗡️ Shadow Assassination dealt {baseDamage} damage (no life steal) to {target.CharacterName} (Execution: {isExecutionRange})");
     }
 
     // ========== ☠️ Skill 4: Plague Outbreak (Ultimate) ==========
@@ -542,9 +543,9 @@ public class Assassin : Hero
                         enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 8f, 0.5f);
                         enemy.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.6f);
 
-                        // Direct magic damage
+                        // ✅ FIX: Direct magic damage - skill damage ไม่มี life steal
                         int directDamage = GetScaledSkillDamage(0.3f);
-                        enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic);
+                        enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
 
                         // สร้าง hit effect
                         CreatePoisonHitEffect(enemy.transform.position);
@@ -563,7 +564,6 @@ public class Assassin : Hero
 
             yield return null;
         }
-
         IsInPlagueCloud = false;
         RPC_HideRangeIndicatorAll();
 
@@ -714,24 +714,30 @@ public class Assassin : Hero
             Character enemy = enemyObject.GetComponent<Character>();
             if (enemy != null)
             {
-                // ✅ ทำ damage ปกติ (ใช้ระบบเดิม)
-                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
+                // ✅ FIX: การโจมตีปกติของ Assassin ยังคงเป็น basic attack เสมอ
+                // ไม่ว่าจะมี poison หรือไม่ ตราบใดที่ไม่ใช่ skill เพิ่มเติม
+                bool isBasicAttack = true; // การโจมตีปกติของ Assassin เป็น basic attack เสมอ
+
+                Debug.Log($"🐍 [Assassin Attack] shouldPoison: {shouldPoison}, forceCritical: {forceCritical}, isBasicAttack: {isBasicAttack}");
+
+                // ✅ FIX: ใช้ TakeDamageFromAttacker ที่มี isBasicAttack parameter
+                enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal, isBasicAttack);
 
                 // ✅ ใส่ poison ถ้ามี Poison Infusion - ใช้สูตรใหม่
                 if (shouldPoison)
                 {
-                    int poisonDamage = GetScaledPoisonDamage(0.4f); // 40% ของ base formula
+                    int poisonDamage = GetScaledPoisonDamage(0.4f);
                     enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
 
-                    // ✅ Venom Mastery: bonus damage ใช้สูตรใหม่
+                    // ✅ Venom Mastery: bonus damage - นี่เป็น skill damage ไม่มี life steal
                     if (hasVenomMastery)
                     {
-                        int bonusDamage = GetScaledSkillDamage(0.2f); // 20% ของ base formula
-                        enemy.TakeDamageFromAttacker(0, bonusDamage, this, DamageType.Magic);
-                        Debug.Log($"🐍 [Venom Mastery] poison bonus: {bonusDamage}");
+                        int bonusDamage = GetScaledSkillDamage(0.2f);
+                        enemy.TakeDamageFromAttacker(0, bonusDamage, this, DamageType.Magic, false);
+                        Debug.Log($"🐍 [Venom Mastery] poison bonus (no life steal): {bonusDamage}");
                     }
 
-                    // ✅ Passive: spread poison ใช้สูตรใหม่
+                    // ✅ Passive: spread poison
                     if (hasVenomMastery && Random.Range(0f, 100f) < 30f)
                     {
                         SpreadPoisonToNearby(enemy, 4f);
@@ -740,18 +746,19 @@ public class Assassin : Hero
                     Debug.Log($"🐍 Applied poison: {poisonDamage} damage/s for 8s");
                 }
 
-                // ✅ Force critical ใช้สูตรใหม่
+                // ✅ Force critical - นี่เป็น skill damage ไม่มี life steal
                 if (forceCritical)
                 {
-                    int critDamage = GetScaledSkillDamage(0.8f); // 80% ของ base formula
-                    enemy.TakeDamageFromAttacker(0, critDamage, this, DamageType.Critical);
-                    Debug.Log($"🐍 [Poison Infusion] Final strike - Guaranteed Critical! ({critDamage} damage)");
+                    int critDamage = GetScaledSkillDamage(0.8f);
+                    enemy.TakeDamageFromAttacker(0, critDamage, this, DamageType.Critical, false);
+                    Debug.Log($"🐍 [Poison Infusion] Final strike (no life steal): {critDamage} damage");
                 }
 
                 RPC_OnAttackHit(enemyObject);
             }
         }
     }
+
 
     // ========== 🎨 Visual Range Indicator System ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
