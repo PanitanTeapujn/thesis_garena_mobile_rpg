@@ -7,8 +7,8 @@ public class FireSlime : NetworkEnemy
 {
     [Header("🔥 Fire Slime Settings")]
     [SerializeField] private float burnRadius = 3f;           // รัศมีการเผาไหม้
-    [SerializeField] private float burnTickInterval = 2f;      // ช่วงเวลาการเผาไหม้
-    [SerializeField] private int burnDamage = 8;              // ดาเมจการเผาไหม้
+    [SerializeField] private float burnTickInterval = 1f;      // ช่วงเวลาการเผาไหม้
+    [SerializeField] private int burnDamage = 30;              // ดาเมจการเผาไหม้
     [SerializeField] private float fireTrailDuration = 5f;    // ระยะเวลาร่องไฟ
     [SerializeField] private float explodeRadius = 4f;        // รัศมีการระเบิดเมื่อตาย
     [SerializeField] private int explodeDamage = 25;          // ดาเมจการระเบิด

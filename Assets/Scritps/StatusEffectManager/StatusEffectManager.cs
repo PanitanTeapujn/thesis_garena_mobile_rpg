@@ -168,20 +168,20 @@ public class StatusEffectManager : NetworkBehaviour
 
         }
     }
- #region DeBuff
+    #region DeBuff
     // ========== 🧪 Poison System ==========
     public virtual void ApplyPoison(int damagePerTick, float duration)
     {
         if (!HasStateAuthority) return;
 
-        // 🧪 คำนวณ resistance from equipment
-        float totalResistance = GetMagicalResistance();
+        // 🧪 ใช้ Magic Armor แทน magicalResistance
+        float totalResistance = GetMagicalResistance(); // ใช้ Magic Armor
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Poison Resisted] {character.CharacterName} resisted poison! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Poison Resisted] {character.CharacterName} resisted poison with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -205,12 +205,11 @@ public class StatusEffectManager : NetworkBehaviour
             PoisonNextTickTime = currentTime + 0.1f;
         }
 
-        Debug.Log($"[ApplyPoison] {character.CharacterName} is poisoned! {PoisonDamagePerTick} damage per {poisonTickInterval}s for {PoisonDuration:F1}s");
+        Debug.Log($"[ApplyPoison] {character.CharacterName} poisoned! Magic Armor: {character.MagicArmor} reduced damage to {PoisonDamagePerTick} per tick for {PoisonDuration:F1}s");
 
         // แจ้ง visual manager
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Poison, true);
     }
-
     private void ProcessPoisonEffect()
     {
         if (!IsPoisoned) return;
@@ -269,14 +268,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // คำนวณ resistance from equipment
-        float totalResistance = GetPhysicalResistance();
+        // ⚡ ใช้ Physical Armor แทน physicalResistance
+        float totalResistance = GetPhysicalResistance(); // ใช้ Physical Armor
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Stun Resisted] {character.CharacterName} resisted stun! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Stun Resisted] {character.CharacterName} resisted stun with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -293,7 +292,7 @@ public class StatusEffectManager : NetworkBehaviour
             character.rb.velocity = Vector3.zero;
         }
 
-        Debug.Log($"[ApplyStun] {character.CharacterName} is stunned for {StunDuration:F1}s!");
+        Debug.Log($"[ApplyStun] {character.CharacterName} stunned! Armor: {character.Armor} reduced duration to {StunDuration:F1}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Stun, true);
     }
 
@@ -327,14 +326,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // คำนวณ resistance from equipment
+        // ❄️ ใช้ Magic Armor แทน magicalResistance
         float totalResistance = GetMagicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Freeze Resisted] {character.CharacterName} resisted freeze! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Freeze Resisted] {character.CharacterName} resisted freeze with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -351,19 +350,16 @@ public class StatusEffectManager : NetworkBehaviour
             // ✅ เก็บ original speed เพื่อ restore (แต่ไม่แก้ไข character.MoveSpeed)
             OriginalMoveSpeed = character.MoveSpeed;
 
-            // ❌ ลบบรรทัดนี้ออก
-            // character.MoveSpeed *= 0.3f;
-
             // ✅ หยุด movement แทน
             if (character.rb != null)
             {
                 character.rb.velocity = Vector3.zero;
             }
 
-            Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen! Original Speed: {OriginalMoveSpeed:F1}, Effective Speed: {character.GetEffectiveMoveSpeed():F1}");
+            Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen! Magic Armor: {character.MagicArmor}, Original Speed: {OriginalMoveSpeed:F1}, Effective Speed: {character.GetEffectiveMoveSpeed():F1}");
         }
 
-        Debug.Log($"[ApplyFreeze] {character.CharacterName} is frozen for {FreezeDuration:F1}s!");
+        Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen for {FreezeDuration:F1}s (reduced by Magic Armor)!");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Freeze, true);
     }
 
@@ -403,14 +399,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 🔥 คำนวณ resistance (Magical)
+        // 🔥 ใช้ Magic Armor แทน magicalResistance
         float totalResistance = GetMagicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Burn Resisted] {character.CharacterName} resisted burn! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Burn Resisted] {character.CharacterName} resisted burn with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -433,7 +429,7 @@ public class StatusEffectManager : NetworkBehaviour
             BurnNextTickTime = currentTime + 0.1f;
         }
 
-        Debug.Log($"[ApplyBurn] {character.CharacterName} is burning! {BurnDamagePerTick} damage per {burnTickInterval}s for {BurnDuration:F1}s");
+        Debug.Log($"[ApplyBurn] {character.CharacterName} burning! Magic Armor: {character.MagicArmor} reduced damage to {BurnDamagePerTick} per tick for {BurnDuration:F1}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Burn, true);
     }
 
@@ -493,14 +489,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 🩸 คำนวณ resistance (Magical)
+        // 🩸 ใช้ Magic Armor แทน magicalResistance
         float totalResistance = GetMagicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Bleed Resisted] {character.CharacterName} resisted bleed! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Bleed Resisted] {character.CharacterName} resisted bleed with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -523,7 +519,7 @@ public class StatusEffectManager : NetworkBehaviour
             BleedNextTickTime = currentTime + 0.1f;
         }
 
-        Debug.Log($"[ApplyBleed] {character.CharacterName} is bleeding! {BleedDamagePerTick} damage per {bleedTickInterval}s for {BleedDuration:F1}s");
+        Debug.Log($"[ApplyBleed] {character.CharacterName} bleeding! Magic Armor: {character.MagicArmor} reduced damage to {BleedDamagePerTick} per tick for {BleedDuration:F1}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Bleed, true);
     }
 
@@ -585,14 +581,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 🛡️ คำนวณ resistance (Physical)
+        // 🛡️ ใช้ Physical Armor แทน physicalResistance
         float totalResistance = GetPhysicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Armor Break Resisted] {character.CharacterName} resisted armor break! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Armor Break Resisted] {character.CharacterName} resisted armor break with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -604,7 +600,7 @@ public class StatusEffectManager : NetworkBehaviour
         ArmorBreakDuration = Mathf.Max(0.5f, duration);
         ArmorBreakAmount = reduction;
 
-        Debug.Log($"[ApplyArmorBreak] {character.CharacterName} armor broken! Reduction: {reduction * 100}% for {ArmorBreakDuration:F1}s");
+        Debug.Log($"[ApplyArmorBreak] {character.CharacterName} armor broken! Armor: {character.Armor} reduced duration to {ArmorBreakDuration:F1}s with {reduction * 100}% reduction");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.ArmorBreak, true);
     }
 
@@ -639,14 +635,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 👁️ คำนวณ resistance (Physical)
+        // 👁️ ใช้ Physical Armor แทน physicalResistance
         float totalResistance = GetPhysicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Blind Resisted] {character.CharacterName} resisted blind! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Blind Resisted] {character.CharacterName} resisted blind with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -658,9 +654,10 @@ public class StatusEffectManager : NetworkBehaviour
         BlindDuration = Mathf.Max(0.5f, duration);
         BlindAmount = reduction;
 
-        Debug.Log($"[ApplyBlind] {character.CharacterName} is blinded! Critical reduction: {reduction * 100}% for {BlindDuration:F1}s");
+        Debug.Log($"[ApplyBlind] {character.CharacterName} blinded! Armor: {character.Armor} reduced duration to {BlindDuration:F1}s with {reduction * 100}% hit/crit reduction");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Blind, true);
     }
+
 
     private void ProcessBlindEffect()
     {
@@ -693,14 +690,14 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 💪 คำนวณ resistance (Physical)
+        // 💪 ใช้ Physical Armor แทน physicalResistance
         float totalResistance = GetPhysicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Weakness Resisted] {character.CharacterName} resisted weakness! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Weakness Resisted] {character.CharacterName} resisted weakness with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
             return;
         }
 
@@ -712,9 +709,10 @@ public class StatusEffectManager : NetworkBehaviour
         WeaknessDuration = Mathf.Max(0.5f, duration);
         WeaknessAmount = reduction;
 
-        Debug.Log($"[ApplyWeakness] {character.CharacterName} is weakened! Attack reduction: {reduction * 100}% for {WeaknessDuration:F1}s");
+        Debug.Log($"[ApplyWeakness] {character.CharacterName} weakened! Armor: {character.Armor} reduced duration to {WeaknessDuration:F1}s with {reduction * 100}% attack reduction");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Weakness, true);
     }
+
 
     private void ProcessWeaknessEffect()
     {
@@ -1099,21 +1097,87 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== Helper Methods ==========
     private float GetMagicalResistance()
     {
+        // ✅ ใช้ Magic Armor จาก Character และ Equipment
+        int totalMagicArmor = character.MagicArmor;
+
+        // เพิ่ม Magic Armor bonus จาก equipment
         if (equipmentManager != null)
         {
-            return equipmentManager.GetTotalMagicalResistance();
+            totalMagicArmor += equipmentManager.GetMagicArmorBonus();
         }
-        return 5f; // default base resistance
+
+        // ✅ สูตรใหม่: Linear กับ soft cap
+        float resistancePercent;
+
+        if (totalMagicArmor <= 100)
+        {
+            // 0-100 Magic Armor = 0-50% resistance (Linear)
+            resistancePercent = totalMagicArmor * 0.5f;
+        }
+        else if (totalMagicArmor <= 500)
+        {
+            // 101-500 Magic Armor = 50-75% resistance (Slower growth)
+            float excess = totalMagicArmor - 100f;
+            resistancePercent = 50f + (excess * 0.0625f); // +25% over 400 points = 0.0625% per point
+        }
+        else
+        {
+            // 501+ Magic Armor = 75-90% resistance (Very slow growth)
+            float excess = totalMagicArmor - 500f;
+            resistancePercent = 75f + (excess * 0.01f); // +15% over 1500 points = 0.01% per point
+            resistancePercent = Mathf.Min(resistancePercent, 90f); // Cap at 90%
+        }
+
+        Debug.Log($"[Magical Resistance] {character.CharacterName}: Magic Armor {totalMagicArmor} = {resistancePercent:F1}% resistance");
+
+        return resistancePercent;
     }
 
     private float GetPhysicalResistance()
     {
+        // ✅ ใช้ Physical Armor จาก Character และ Equipment
+        int totalArmor = character.Armor;
+
+        // เพิ่ม Armor bonus จาก equipment
         if (equipmentManager != null)
         {
-            return equipmentManager.GetTotalPhysicalResistance();
+            totalArmor += equipmentManager.GetArmorBonus();
         }
-        return 5f; // default base resistance
+
+        // ✅ รวม Armor Aura ด้วย
+        if (this != null)
+        {
+            float armorMultiplier = GetTotalArmorMultiplier();
+            totalArmor = Mathf.RoundToInt(totalArmor * armorMultiplier);
+        }
+
+        // ✅ สูตรเดียวกันกับ Magic Armor
+        float resistancePercent;
+
+        if (totalArmor <= 100)
+        {
+            // 0-100 Armor = 0-50% resistance (Linear)
+            resistancePercent = totalArmor * 0.5f;
+        }
+        else if (totalArmor <= 500)
+        {
+            // 101-500 Armor = 50-75% resistance (Slower growth)
+            float excess = totalArmor - 100f;
+            resistancePercent = 50f + (excess * 0.0625f);
+        }
+        else
+        {
+            // 501+ Armor = 75-90% resistance (Very slow growth)
+            float excess = totalArmor - 500f;
+            resistancePercent = 75f + (excess * 0.01f);
+            resistancePercent = Mathf.Min(resistancePercent, 90f); // Cap at 90%
+        }
+
+        Debug.Log($"[Physical Resistance] {character.CharacterName}: Armor {totalArmor} = {resistancePercent:F1}% resistance");
+
+        return resistancePercent;
     }
+
 
     // ========== Public Query Methods ==========
     public bool HasAnyStatusEffect()
@@ -1159,6 +1223,155 @@ public class StatusEffectManager : NetworkBehaviour
     {
         return IsPoisoned || IsBurning || IsBleeding;
     }
+    public bool IsMagicalStatusEffect(StatusEffectType effectType)
+    {
+        return effectType == StatusEffectType.Poison ||
+               effectType == StatusEffectType.Burn ||
+               effectType == StatusEffectType.Bleed ||
+               effectType == StatusEffectType.Freeze;
+    }
 
-   
+    /// <summary>
+    /// Physical Status Effects ที่ใช้ Physical Armor ป้องกัน
+    /// </summary>
+    public bool IsPhysicalStatusEffect(StatusEffectType effectType)
+    {
+        return effectType == StatusEffectType.Stun ||
+               effectType == StatusEffectType.ArmorBreak ||
+               effectType == StatusEffectType.Blind ||
+               effectType == StatusEffectType.Weakness;
+    }
+
+    // ========== Debug Methods ==========
+    public float GetStatusResistanceChance(StatusEffectType effectType)
+    {
+        float resistance;
+
+        if (IsMagicalStatusEffect(effectType))
+        {
+            resistance = GetMagicalResistance();
+        }
+        else if (IsPhysicalStatusEffect(effectType))
+        {
+            resistance = GetPhysicalResistance();
+        }
+        else
+        {
+            return 0f; // Aura effects ไม่มี resistance
+        }
+
+        return resistance * 0.6f; // 60% ของ resistance เป็นโอกาสป้องกัน
+    }
+
+    /// <summary>
+    /// คำนวณ duration reduction สำหรับ Status Effect
+    /// </summary>
+    /// <param name="effectType">ประเภท Status Effect</param>
+    /// <param name="originalDuration">ระยะเวลาเดิม</param>
+    /// <returns>ระยะเวลาหลังลด</returns>
+    public float GetReducedDuration(StatusEffectType effectType, float originalDuration)
+    {
+        float resistance;
+
+        if (IsMagicalStatusEffect(effectType))
+        {
+            resistance = GetMagicalResistance();
+        }
+        else if (IsPhysicalStatusEffect(effectType))
+        {
+            resistance = GetPhysicalResistance();
+        }
+        else
+        {
+            return originalDuration; // Aura effects ไม่มี resistance
+        }
+
+        float durationReduction = resistance / 100f;
+        float reducedDuration = originalDuration * (1f - durationReduction);
+
+        return Mathf.Max(0.5f, reducedDuration); // อย่างน้อย 0.5 วินาที
+    }
+
+    /// <summary>
+    /// แสดงข้อมูล Status Effect Resistance แบบสั้น
+    /// </summary>
+    public string GetStatusResistanceInfo()
+    {
+        float physicalRes = GetPhysicalResistance();
+        float magicalRes = GetMagicalResistance();
+
+        return $"Physical Resistance: {physicalRes:F1}% (Armor: {character.Armor})\n" +
+               $"Magical Resistance: {magicalRes:F1}% (Magic Armor: {character.MagicArmor})";
+    }
+    /// <summary>
+    /// แสดงข้อมูล resistance ทั้งหมด
+    /// </summary>
+    [ContextMenu("Debug Status Resistance")]
+    public void DebugStatusResistance()
+    {
+        Debug.Log("=== STATUS RESISTANCE DEBUG ===");
+
+        // Physical Resistance (จาก Armor)
+        int baseArmor = character.Armor;
+        int equipmentArmor = equipmentManager?.GetArmorBonus() ?? 0;
+        float armorMultiplier = GetTotalArmorMultiplier();
+        int totalArmor = Mathf.RoundToInt((baseArmor + equipmentArmor) * armorMultiplier);
+        float physicalRes = GetPhysicalResistance();
+
+        Debug.Log($"Physical Resistance:");
+        Debug.Log($"  Base Armor: {baseArmor}");
+        Debug.Log($"  Equipment Armor: +{equipmentArmor}");
+        Debug.Log($"  Armor Aura: x{armorMultiplier:F2}");
+        Debug.Log($"  Total Armor: {totalArmor}");
+        Debug.Log($"  Physical Resistance: {physicalRes:F1}%");
+        Debug.Log($"  Protects against: Stun, Armor Break, Blind, Weakness");
+
+        // Magical Resistance (จาก Magic Armor)
+        int baseMagicArmor = character.MagicArmor;
+        int equipmentMagicArmor = equipmentManager?.GetMagicArmorBonus() ?? 0;
+        int totalMagicArmor = baseMagicArmor + equipmentMagicArmor;
+        float magicalRes = GetMagicalResistance();
+
+        Debug.Log($"\nMagical Resistance:");
+        Debug.Log($"  Base Magic Armor: {baseMagicArmor}");
+        Debug.Log($"  Equipment Magic Armor: +{equipmentMagicArmor}");
+        Debug.Log($"  Total Magic Armor: {totalMagicArmor}");
+        Debug.Log($"  Magical Resistance: {magicalRes:F1}%");
+        Debug.Log($"  Protects against: Poison, Burn, Bleed, Freeze");
+
+        Debug.Log("==============================");
+    }
+
+    /// <summary>
+    /// ทดสอบการป้องกัน status effects
+    /// </summary>
+    [ContextMenu("Test Status Resistance")]
+    public void TestStatusResistance()
+    {
+        Debug.Log("=== TESTING STATUS RESISTANCE ===");
+
+        // ทดสอบ Physical Effects
+        Debug.Log("Testing Physical Effects (protected by Armor):");
+        ApplyStun(5f);
+        ApplyArmorBreak(8f, 0.5f);
+        ApplyBlind(6f, 0.8f);
+        ApplyWeakness(10f, 0.4f);
+
+        // รอ 1 วินาทีแล้วทดสอบ Magical Effects
+        StartCoroutine(TestMagicalEffectsDelayed());
+    }
+
+    private System.Collections.IEnumerator TestMagicalEffectsDelayed()
+    {
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log("\nTesting Magical Effects (protected by Magic Armor):");
+        ApplyPoison(20, 8f);
+        ApplyBurn(15, 6f);
+        ApplyBleed(12, 10f);
+        ApplyFreeze(4f);
+
+        Debug.Log("=== TEST COMPLETE ===");
+    }
+
 }
