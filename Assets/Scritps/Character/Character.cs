@@ -1558,17 +1558,61 @@ public class Character : NetworkBehaviour
         return baseMoveSpeed;
     }
 
+
+
+    // ✅ โค้ดปัจจุบันถูกต้องแล้ว
     public float GetEffectiveReductionCoolDown()
     {
-        float baseReductionCoolDown = reductionCoolDown;
+        // ใช้ this.ReductionCoolDown ที่รวม equipment bonus แล้ว (เหมือน LifeSteal)
+        float totalCDR = this.ReductionCoolDown; // ค่านี้รวม equipment bonus แล้วจาก EquipmentManager
+
+        Debug.Log($"Total CDR (including equipment): {totalCDR}%");
+
+        float finalReduction = Mathf.Clamp(totalCDR, 0f, 75f);
+
+        return finalReduction;
+    }
+    [ContextMenu("Debug CDR Sources")]
+    public void DebugCDRSources()
+    {
+        Debug.Log("=== CDR SOURCES DEBUG ===");
+
+        // 1. Base character CDR
+        float baseCDR = this.ReductionCoolDown;
+        Debug.Log($"1. Character Base CDR: {baseCDR}%");
+
+        // 2. Equipment CDR
         if (equipmentManager != null)
         {
-            baseReductionCoolDown += equipmentManager.GetReductionCoolDownBonus();
+            float equipmentCDR = equipmentManager.GetReductionCoolDownBonus();
+            Debug.Log($"2. Equipment CDR: {equipmentCDR}%");
+
+            // 2a. Equipment only
+            float equipOnlyCDR = equipmentManager.currentEquipmentStats.reductionCoolDownBonus;
+            Debug.Log($"  2a. Equipment Only: {equipOnlyCDR}%");
+
+            // 2b. Rune only
+            float runeOnlyCDR = equipmentManager.currentRuneStats.reductionCoolDownBonus;
+            Debug.Log($"  2b. Rune Only: {runeOnlyCDR}%");
+
+            // 2c. Set bonus only
+            float setBonusCDR = equipmentManager.currentSetBonusStats.reductionCoolDownBonus;
+            Debug.Log($"  2c. Set Bonus Only: {setBonusCDR}%");
         }
 
-        return baseReductionCoolDown;
-    }
+        // 3. CharacterStats ScriptableObject
+        if (characterStats != null)
+        {
+            float scriptableCDR = characterStats.reductionCoolDown;
+            Debug.Log($"3. ScriptableObject Base CDR: {scriptableCDR}%");
+        }
 
+        // 4. Total effective
+        float effectiveCDR = GetEffectiveReductionCoolDown();
+        Debug.Log($"4. Final Effective CDR: {effectiveCDR}%");
+
+        Debug.Log("========================");
+    }
     public virtual float GetEffectiveAttackSpeed()
     {
         // รวม attack speed bonus เป็น %
@@ -1687,15 +1731,7 @@ public class Character : NetworkBehaviour
         return Mathf.Clamp(totalLifeSteal, 0f, 100f);
     }
 
-    [ContextMenu("Debug Lifesteal Problem")]
-    public void DebugLifestealProblem()
-    {
-        Debug.Log($"=== LIFESTEAL DEBUG ===");
-        Debug.Log($"CharacterStats.lifeSteal: {characterStats?.lifeSteal ?? 0:F1}%");
-        Debug.Log($"Character.LifeSteal field: {LifeSteal:F1}%");
-        Debug.Log($"Equipment bonus: {equipmentManager?.GetLifeStealBonus() ?? 0:F1}%");
-        Debug.Log($"GetEffectiveLifeSteal(): {GetEffectiveLifeSteal():F1}%");
-    }
+   
     public void UpdateCriticalDamageBonus(float newValue, bool forceNetworkSync = false)
     {
         float oldValue = criticalDamageBonus;

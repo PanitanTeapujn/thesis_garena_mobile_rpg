@@ -584,10 +584,10 @@
         {
             if (GetInput(out networkInputData))
             {
-                // คำนวณ cooldown reduction
-                float effectiveReduction = GetEffectiveReductionCoolDown();
-                float reductionMultiplier = 1f - (effectiveReduction / 100f);
-                reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+                // ✅ ลบส่วนนี้ออก - ไม่ต้องคำนวณ reduction ตรงนี้
+                // float effectiveReduction = GetEffectiveReductionCoolDown();
+                // float reductionMultiplier = 1f - (effectiveReduction / 100f);
+                // reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
 
                 // Reset consumed flags เมื่อ input เป็น false
                 if (!networkInputData.skill1) skill1Consumed = false;
@@ -601,12 +601,11 @@
                     TryAttack();
                 }
 
-                // ✅ แก้ไข Skills - เอา cooldown ออกจากตรงนี้
+                // ✅ Skills - ใช้การเช็ค cooldown แบบเดิม
                 if (networkInputData.skill1 && !skill1Consumed)
                 {
                     if (Time.time >= nextSkill1Time)
                     {
-                        // ✅ ไม่ตั้ง cooldown ตรงนี้แล้ว
                         TryUseSkill1();
                         skill1Consumed = true;
                     }

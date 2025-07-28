@@ -591,6 +591,21 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: e2c991382e4c8b442bc5519c8f44965c, type: 2}
     quantity: 1
     note: 
+  - itemData: {fileID: 11400000, guid: 0c7bcbfd303485b439782276171e27a4, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: d0660a08dab62d94bb08c9ca10de275b, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 71e5755254cedaa4bb8e4cce40c6a134, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 0252b258346d8774b9d9ba3d958af025, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
+    quantity: 1
+    note: 
   useFallbackItems: 1
   fallbackToTestItems: 1
   testSword: {fileID: 0}

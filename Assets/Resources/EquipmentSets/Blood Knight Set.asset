@@ -20,7 +20,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b48d3e4819115de4b93f3d9292613ad1, type: 2}
   - {fileID: 11400000, guid: a8cb289f65e01f24296c6d23beb24ebd, type: 2}
   - {fileID: 11400000, guid: 86f321afd042a3049a343ebf72d5038b, type: 2}
-  - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
   - {fileID: 11400000, guid: e958d18474a707944a39dd806febaa21, type: 2}
   - {fileID: 11400000, guid: eeda5bc38457dc845b4dc3c12dc7d741, type: 2}
   setBonuses:

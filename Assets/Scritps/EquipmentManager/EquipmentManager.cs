@@ -573,7 +573,16 @@ public class EquipmentManager : NetworkBehaviour
 
     public float GetReductionCoolDownBonus()
     {
-        return currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus;
+        // ✅ รวมทั้ง Equipment, Rune, และ Set Bonus
+        float equipmentBonus = currentEquipmentStats.reductionCoolDownBonus;
+        float runeBonus = currentRuneStats.reductionCoolDownBonus;
+        float setBonusBonus = currentSetBonusStats.reductionCoolDownBonus;
+
+        float total = equipmentBonus + runeBonus + setBonusBonus;
+
+        Debug.Log($"[GetReductionCoolDownBonus] Equipment={equipmentBonus}%, Rune={runeBonus}%, SetBonus={setBonusBonus}%, Total={total}%");
+
+        return total;
     }
 
     public new EquipmentStats GetTotalStats()

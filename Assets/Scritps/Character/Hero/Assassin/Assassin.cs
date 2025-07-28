@@ -60,12 +60,13 @@ public class Assassin : Hero
     {
         if (!CanUseSkill(skill1ManaCost)) return;
 
-        // ✅ ตั้ง cooldown เฉพาะเมื่อใช้สกิลสำเร็จแล้ว
-        float effectiveReduction = GetEffectiveReductionCoolDown();
-        float reductionMultiplier = 1f - (effectiveReduction / 100f);
-        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+        // ✅ คำนวณ cooldown reduction ที่ถูกต้อง
+        float effectiveReduction = GetEffectiveReductionCoolDown(); // ได้ 60
+        float reductionMultiplier = 1f - (effectiveReduction / 100f); // 1 - 0.6 = 0.4
+        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f); // 0.4
 
-        nextSkill1Time = Time.time + (skill1Cooldown * reductionMultiplier);
+        float finalCooldown = skill1Cooldown * reductionMultiplier; // 13 * 0.4 = 5.2
+        nextSkill1Time = Time.time + finalCooldown;
 
         UseMana(skill1ManaCost);
 
@@ -88,12 +89,13 @@ public class Assassin : Hero
         if (!CanUseSkill(skill2ManaCost)) return;
         if (HasStatusEffect(StatusEffectType.Stun)) return;
 
-        // ✅ ตั้ง cooldown เฉพาะเมื่อใช้สกิลสำเร็จแล้ว
+        // ✅ คำนวณ cooldown reduction ที่ถูกต้อง
         float effectiveReduction = GetEffectiveReductionCoolDown();
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
 
-        nextSkill2Time = Time.time + (skill2Cooldown * reductionMultiplier);
+        float finalCooldown = skill2Cooldown * reductionMultiplier;
+        nextSkill2Time = Time.time + finalCooldown;
 
         UseMana(skill2ManaCost);
 
@@ -270,6 +272,7 @@ public class Assassin : Hero
     {
         if (!CanUseSkill(skill3ManaCost)) return;
 
+        // ตรวจสอบเป้าหมายก่อน
         Collider[] enemies = Physics.OverlapSphere(transform.position, 8f, LayerMask.GetMask("Enemy"));
         Character targetEnemy = null;
         float nearestDistance = float.MaxValue;
@@ -299,7 +302,8 @@ public class Assassin : Hero
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
 
-        nextSkill3Time = Time.time + (skill3Cooldown * reductionMultiplier);
+        float finalCooldown = skill3Cooldown * reductionMultiplier;
+        nextSkill3Time = Time.time + finalCooldown;
 
         UseMana(skill3ManaCost);
 
@@ -439,17 +443,20 @@ public class Assassin : Hero
     {
         if (!CanUseSkill(skill4ManaCost)) return;
 
-        // ✅ ตั้ง cooldown เฉพาะเมื่อใช้สกิลสำเร็จแล้ว
         float effectiveReduction = GetEffectiveReductionCoolDown();
+
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
-        reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
 
-        nextSkill4Time = Time.time + (skill4Cooldown * reductionMultiplier);
+        float finalCooldown = skill4Cooldown * reductionMultiplier;
 
+        nextSkill4Time = Time.time + finalCooldown;
         UseMana(skill4ManaCost);
 
         Vector3 cloudPosition = transform.position;
         RPC_CreatePlagueOutbreak(cloudPosition);
+        Debug.Log($"☠️ [Skill 4] Cooldown: {skill4Cooldown}s → {finalCooldown:F1}s (Reduction: {effectiveReduction}%)");
+       
+
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
