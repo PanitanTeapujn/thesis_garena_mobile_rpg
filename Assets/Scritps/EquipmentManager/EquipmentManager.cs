@@ -576,6 +576,10 @@ public class EquipmentManager : NetworkBehaviour
     public float GetAttackSpeedBonus()
     {
         return currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus;
+    } 
+    public float GetAmpDamageBonus()
+    {
+        return currentEquipmentStats.ampDamageBonus + currentRuneStats.ampDamageBonus;
     }
 
     public float GetReductionCoolDownBonus()

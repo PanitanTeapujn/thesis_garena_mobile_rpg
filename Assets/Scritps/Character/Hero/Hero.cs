@@ -781,14 +781,13 @@
     {
         if (enemyObject != null)
         {
-            // ลองใช้ Character base class ก่อน
             Character enemy = enemyObject.GetComponent<Character>();
             if (enemy != null)
             {
-                // ✅ ระบุว่าเป็นการโจมตีธรรมดา (basic attack) เพื่อให้ life steal ทำงาน
+                // ✅ FIXED: Basic attack ไม่ใช้ Amp Damage - ระบุ isBasicAttack = true
                 enemy.TakeDamageFromAttacker(AttackDamage, MagicDamage, this, DamageType.Normal, true);
                 RPC_OnAttackHit(enemyObject);
-                Debug.Log($"[Basic Attack] {CharacterName} performed basic attack with Life Steal enabled");
+                Debug.Log($"[Basic Attack] {CharacterName} performed basic attack (no Amp Damage)");
             }
             else
             {
@@ -796,7 +795,6 @@
                 NetworkEnemy networkEnemy = enemyObject.GetComponent<NetworkEnemy>();
                 if (networkEnemy != null && !networkEnemy.IsDead)
                 {
-                    // ✅ สำหรับ NetworkEnemy เก่า - ใช้ระบบเดิม (อาจไม่มี life steal)
                     networkEnemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal);
                     RPC_OnAttackHit(enemyObject);
                 }

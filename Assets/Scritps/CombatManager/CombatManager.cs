@@ -164,6 +164,27 @@ public class CombatManager : NetworkBehaviour
             isCritical = CalculateCriticalHit(attacker);
         }
 
+        // ✅ FIXED: Apply Amp Damage เฉพาะ skill attacks เท่านั้น
+        if (!isBasicAttack && attacker != null)
+        {
+            // Apply Amp Damage ให้กับ skill damage
+            int originalTotal = physicalDamage + magicDamage;
+
+            // คำนวณ Amp Damage
+            int ampedPhysical = attacker.ApplyAmpDamageToSkill(physicalDamage);
+            int ampedMagic = attacker.ApplyAmpDamageToSkill(magicDamage);
+
+            physicalDamage = ampedPhysical;
+            magicDamage = ampedMagic;
+
+            int newTotal = physicalDamage + magicDamage;
+            Debug.Log($"[Skill Amp Damage] {attacker.CharacterName}: {originalTotal} → {newTotal} (+{newTotal - originalTotal})");
+        }
+        else if (isBasicAttack)
+        {
+            Debug.Log($"[Basic Attack] {attacker?.CharacterName}: No Amp Damage applied (basic attack)");
+        }
+
         // ✅ คำนวณดาเมจแยกตาม damage type
         int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal, attacker);
         int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic, attacker);
@@ -197,14 +218,11 @@ public class CombatManager : NetworkBehaviour
         if (HasStateAuthority)
         {
             Vector3 textPosition = character.transform.position + Vector3.up * 2f;
-
-            // เลือก damage type สำหรับแสดงผล
             DamageType displayType = finalMagicDamage > finalPhysicalDamage ? DamageType.Magic : DamageType.Normal;
-
             RPC_ShowDamageText(textPosition, totalDamage, displayType, isCritical, false, false);
         }
 
-        // 🆕 ✅ Fire damage event สำหรับ visual flash
+        // Fire damage event สำหรับ visual flash
         OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
 
         // Check death
@@ -213,6 +231,7 @@ public class CombatManager : NetworkBehaviour
             HandleDeath();
         }
     }
+
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;

@@ -1549,7 +1549,47 @@ public class Character : NetworkBehaviour
         return baseMoveSpeed;
     }
 
+    public virtual int ApplyAmpDamageToSkill(int baseDamage)
+    {
+        if (baseDamage <= 0) return baseDamage;
 
+        // รวม Amp Damage จากทุกแหล่ง
+        float totalAmpDamage = GetEffectiveAmpDamage();
+
+        if (totalAmpDamage <= 0f) return baseDamage;
+
+        // คำนวณ damage หลัง apply Amp Damage
+        float multiplier = 1f + (totalAmpDamage / 100f);
+        int finalDamage = Mathf.RoundToInt(baseDamage * multiplier);
+
+        Debug.Log($"[Amp Damage] {CharacterName}: Base={baseDamage} × {multiplier:F2} = {finalDamage} (Amp: {totalAmpDamage:F1}%)");
+
+        return finalDamage;
+    }
+
+    // เพิ่ม method สำหรับดึง effective Amp Damage
+    public virtual float GetEffectiveAmpDamage()
+    {
+        // Base Amp Damage จาก character stats
+        float totalAmpDamage = this.AmpDamage;
+
+        // เพิ่ม Amp Damage จาก equipment
+        if (equipmentManager != null)
+        {
+            totalAmpDamage += equipmentManager.GetAmpDamageBonus();
+        }
+
+        // เพิ่ม Amp Damage จาก status effects (ถ้ามี)
+        if (statusEffectManager != null)
+        {
+            // สามารถเพิ่ม method GetAmpDamageBonus() ใน StatusEffectManager ได้ในอนาคต
+            // totalAmpDamage += statusEffectManager.GetAmpDamageBonus();
+        }
+
+        Debug.Log($"[GetEffectiveAmpDamage] {CharacterName}: Character={this.AmpDamage}, Equipment={equipmentManager?.GetAmpDamageBonus() ?? 0f}, Total={totalAmpDamage:F1}%");
+
+        return totalAmpDamage;
+    }
 
     // ✅ โค้ดปัจจุบันถูกต้องแล้ว
     public float GetEffectiveReductionCoolDown()
