@@ -200,7 +200,7 @@
                     ProcessCharacterFacing();
 
                     // ส่ง RPC ไปให้ Host อัพเดท position
-                    RPC_UpdatePosition(transform.position, rb.velocity, transform.localScale, transform.eulerAngles.y);
+                    RPC_UpdatePosition(transform.position, rb.linearVelocity, transform.localScale, transform.eulerAngles.y);
                 }
             }
             // Host หรือ Server ที่มี StateAuthority
@@ -214,7 +214,7 @@
 
                 if (rb != null)
                 {
-                    NetworkedVelocity = rb.velocity;
+                    NetworkedVelocity = rb.linearVelocity;
                 }
 
                 // Process input ถ้าเป็น local player
@@ -246,7 +246,7 @@
         public void RPC_UpdatePosition(Vector3 position, Vector3 velocity, Vector3 scale, float yRotation)
         {
             transform.position = position;
-            if (rb != null) rb.velocity = velocity;
+            if (rb != null) rb.linearVelocity = velocity;
             transform.localScale = scale;
             transform.eulerAngles = new Vector3(0, yRotation, 0);
         }
@@ -260,7 +260,7 @@
             {
                 if (rb != null)
                 {
-                    rb.velocity = NetworkedVelocity;
+                    rb.linearVelocity = NetworkedVelocity;
                 }
 
                 float lerpRate = positionDistance > 2f ? 50f : 20f;
@@ -318,7 +318,7 @@
         {
             if (rb != null)
             {
-                rb.velocity = new Vector3(0, rb.velocity.y, 0); // หยุด movement แต่คง gravity
+                rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0); // หยุด movement แต่คง gravity
             }
             return; // ออกจากฟังก์ชันทันที
         }
@@ -354,32 +354,32 @@
 
                 Vector3 targetVelocity = new Vector3(
                     moveDirection.x * currentMoveSpeed,
-                    rb.velocity.y,
+                    rb.linearVelocity.y,
                     moveDirection.z * currentMoveSpeed
                 );
 
                 // ใช้ Lerp แทน SmoothDamp เพื่อความง่าย
                 Vector3 newVelocity = Vector3.Lerp(
-                    rb.velocity,
+                    rb.linearVelocity,
                     targetVelocity,
                     Time.fixedDeltaTime * 15f // ปรับความเร็วการ lerp
                 );
 
                 // เซ็ต velocity เสมอเมื่อมีการเคลื่อนไหว
-                rb.velocity = newVelocity;
+                rb.linearVelocity = newVelocity;
                 FlipCharacterNetwork(currentInput.x);
             }
             else
             {
                 // Smooth stop
-                Vector3 currentVel = rb.velocity;
+                Vector3 currentVel = rb.linearVelocity;
                 Vector3 stoppedVelocity = new Vector3(
                     Mathf.Lerp(currentVel.x, 0, Time.fixedDeltaTime * 10f),
                     currentVel.y,
                     Mathf.Lerp(currentVel.z, 0, Time.fixedDeltaTime * 10f)
                 );
 
-                rb.velocity = stoppedVelocity;
+                rb.linearVelocity = stoppedVelocity;
             }
         }
 
@@ -503,7 +503,7 @@
             camForward.Normalize();
             camRight.Normalize();
             Vector3 adjustedMoveDirection = camForward * moveInputZ + camRight * moveInputX;
-            rb.velocity = new Vector3(adjustedMoveDirection.x * MoveSpeed, rb.velocity.y, adjustedMoveDirection.z * MoveSpeed);
+            rb.linearVelocity = new Vector3(adjustedMoveDirection.x * MoveSpeed, rb.linearVelocity.y, adjustedMoveDirection.z * MoveSpeed);
         }
 
         protected virtual void FlipCharacter()

@@ -248,6 +248,7 @@ public class SetBonusManager : MonoBehaviour
             totalStats.moveSpeedBonus += setBonus.totalSetStats.moveSpeedBonus;
             totalStats.attackSpeedBonus += setBonus.totalSetStats.attackSpeedBonus;
             totalStats.lifeStealBonus += setBonus.totalSetStats.lifeStealBonus;
+            totalStats.ampDamageBonus += setBonus.totalSetStats.ampDamageBonus;
             totalStats.reductionCoolDownBonus += setBonus.totalSetStats.reductionCoolDownBonus;
             totalStats.physicalResistanceBonus += setBonus.totalSetStats.physicalResistanceBonus;
             totalStats.magicalResistanceBonus += setBonus.totalSetStats.magicalResistanceBonus;
@@ -290,6 +291,7 @@ public class SetBonusManager : MonoBehaviour
         finalBonuses.attackSpeedBonus = setBonuses.attackSpeedBonus;
         finalBonuses.moveSpeedBonus = setBonuses.moveSpeedBonus;
         finalBonuses.lifeStealBonus = setBonuses.lifeStealBonus;
+        finalBonuses.ampDamageBonus = setBonuses.ampDamageBonus;
         finalBonuses.reductionCoolDownBonus = setBonuses.reductionCoolDownBonus;
         finalBonuses.physicalResistanceBonus = setBonuses.physicalResistanceBonus;
         finalBonuses.magicalResistanceBonus = setBonuses.magicalResistanceBonus;
@@ -386,6 +388,7 @@ public class SetBonusManager : MonoBehaviour
         finalBonuses.hitRateBonus = setBonuses.hitRateBonus;
         finalBonuses.evasionRateBonus = setBonuses.evasionRateBonus;
         finalBonuses.lifeStealBonus = setBonuses.lifeStealBonus;
+        finalBonuses.ampDamageBonus = setBonuses.ampDamageBonus;
         finalBonuses.reductionCoolDownBonus = setBonuses.reductionCoolDownBonus;
         finalBonuses.physicalResistanceBonus = setBonuses.physicalResistanceBonus;
         finalBonuses.magicalResistanceBonus = setBonuses.magicalResistanceBonus;

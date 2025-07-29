@@ -58,11 +58,11 @@ public class FastScoutEnemy : NetworkEnemy
         Vector3 dashDirection = (targetTransform.position - transform.position).normalized;
 
         // Quick dash
-        rb.velocity = dashDirection * dashSpeed;
+        rb.linearVelocity = dashDirection * dashSpeed;
         yield return new WaitForSeconds(0.3f);
 
         // Return to normal
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
 
         Debug.Log($"{CharacterName}: Performed dash attack!");
     }

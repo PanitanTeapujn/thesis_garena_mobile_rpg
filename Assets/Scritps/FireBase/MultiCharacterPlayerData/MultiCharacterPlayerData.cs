@@ -829,10 +829,107 @@ public class MultiCharacterPlayerData
         stageProgress = new StageProgressData();
         InitializeInventorySystem();
         InitializeCurrencySystem();
-        InitializeDefaultCharacter();
+
+        // ✅ เปลี่ยนจาก InitializeDefaultCharacter() เป็น CreateEmptyDefaultCharacter()
+        CreateEmptyDefaultCharacter();
         InitializeStageProgressSystem();
     }
+    private void CreateEmptyDefaultCharacter()
+    {
+        // สร้าง default character โดยไม่โหลด Resources
+        CharacterProgressData defaultAssassin = new CharacterProgressData("Assassin");
+        defaultAssassin.currentLevel = 1;
+        defaultAssassin.currentExp = 0;
+        defaultAssassin.expToNextLevel = 100;
+        defaultAssassin.AddStatPoints(1);
 
+        // ✅ ไม่โหลด Resources ใน constructor - จะโหลดภายหลังใน PersistentPlayerData
+        characters.Add(defaultAssassin);
+
+        Debug.Log("✅ Created empty default character (stats will be loaded later)");
+    }
+    public void LoadCharacterStatsFromResources()
+    {
+        if (characters == null || characters.Count == 0) return;
+
+        var assassinCharacter = characters.Find(c => c.characterType == "Assassin");
+        if (assassinCharacter == null) return;
+
+        try
+        {
+            // ✅ ตอนนี้โหลด Resources ได้แล้วเพราะไม่ได้อยู่ใน constructor
+            CharacterStats assassinStatsTemplate = Resources.Load<CharacterStats>("Characters/AssassinStats");
+
+            if (assassinStatsTemplate == null)
+            {
+                Debug.LogError("ไม่พบ AssassinStats!");
+                SetDefaultAssassinStats(assassinCharacter);
+                return;
+            }
+
+            CharacterStats assassinStats = ScriptableObject.Instantiate(assassinStatsTemplate);
+            Debug.Log("โหลด AssassinStats เรียบร้อย! MoveSpeed = " + assassinStats.moveSpeed);
+
+            // ✅ Copy ค่า base stat
+            assassinCharacter.baseMoveSpeed = assassinStats.moveSpeed;
+            assassinCharacter.baseMaxHp = assassinStats.maxHp;
+            assassinCharacter.baseMaxMana = assassinStats.maxMana;
+            assassinCharacter.baseAttackDamage = assassinStats.attackDamage;
+            assassinCharacter.baseMagicDamage = assassinStats.magicDamage;
+            assassinCharacter.baseArmor = assassinStats.arrmor;
+            assassinCharacter.baseAttackCoolDown = assassinStats.attackCoolDown;
+            assassinCharacter.baseAttackRange = assassinStats.attackRange;
+            assassinCharacter.baseCriticalChance = assassinStats.criticalChance;
+            assassinCharacter.baseCriticalDamageBonus = assassinStats.criticalDamageBonus;
+            assassinCharacter.baseHitRate = assassinStats.hitRate;
+            assassinCharacter.baseEvasionRate = assassinStats.evasionRate;
+            assassinCharacter.baseAttackSpeed = assassinStats.attackSpeed;
+            assassinCharacter.baseReductionCoolDown = assassinStats.reductionCoolDown;
+            assassinCharacter.baseLifeSteal = assassinStats.lifeSteal;
+            assassinCharacter.baseAmpDamage = assassinStats.ampdamage;
+            assassinCharacter.baseMagicArmor = assassinStats.magicArmor;
+            assassinCharacter.baseHealthRegen = assassinStats.healthRegen;
+            assassinCharacter.baseManaRegen = assassinStats.manaRegen;
+            assassinCharacter.attackType = assassinStats.attackType;
+
+            // ✅ Update total stats
+            assassinCharacter.UpdateTotalStats();
+
+            Debug.Log("✅ Character stats loaded from Resources successfully");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error loading character stats: {e.Message}");
+            SetDefaultAssassinStats(assassinCharacter);
+        }
+    }
+
+    // ✅ Fallback method สำหรับกรณีที่โหลด Resources ไม่ได้
+    private void SetDefaultAssassinStats(CharacterProgressData character)
+    {
+        // ตั้งค่า default stats หากโหลด ScriptableObject ไม่ได้
+        character.baseMaxHp = 100;
+        character.baseMaxMana = 50;
+        character.baseAttackDamage = 15;
+        character.baseMagicDamage = 10;
+        character.baseArmor = 5;
+        character.baseMoveSpeed = 3.5f;
+        character.baseCriticalChance = 5f;
+        character.baseCriticalDamageBonus = 150f;
+        character.baseHitRate = 85f;
+        character.baseEvasionRate = 10f;
+        character.baseAttackSpeed = 1f;
+        character.baseReductionCoolDown = 0f;
+        character.baseLifeSteal = 0f;
+        character.baseMagicArmor = 0;
+        character.baseHealthRegen = 0.5f;
+        character.baseManaRegen = 1f;
+        character.attackType = AttackType.Physical;
+
+        character.UpdateTotalStats();
+
+        Debug.Log("⚠️ Used default Assassin stats (couldn't load from Resources)");
+    }
     private void InitializeStageProgressSystem()
     {
         hasStageProgressData = false;
@@ -912,6 +1009,7 @@ public class MultiCharacterPlayerData
             defaultAssassin.baseAttackSpeed = assassinStats.attackSpeed;
             defaultAssassin.baseReductionCoolDown = assassinStats.reductionCoolDown;
             defaultAssassin.baseLifeSteal = assassinStats.lifeSteal;
+            defaultAssassin.baseAmpDamage = assassinStats.ampdamage;
             defaultAssassin.baseMagicArmor = assassinStats.magicArmor;
             defaultAssassin.baseHealthRegen = assassinStats.healthRegen;
             defaultAssassin.baseManaRegen = assassinStats.manaRegen;
@@ -1150,6 +1248,7 @@ public class CharacterProgressData
     public float baseAttackSpeed = 0f;
     public float baseReductionCoolDown = 0f;
     public float baseLifeSteal = 0f;
+    public float baseAmpDamage = 0f;
     public float baseAttackCoolDown = 0f;
     public int baseAttackRange = 0;
     public int baseMagicArmor = 0;
@@ -1176,6 +1275,7 @@ public class CharacterProgressData
     public float totalEvasionRate;
     public float totalReductionCoolDown;
     public float totalLifeSteal;
+    public float totalAmpdamage;
     public int totalMagicArmor;
     public float totalManaRegen;
     public float totalHealthRegen;
@@ -1236,7 +1336,7 @@ public class CharacterProgressData
     /// </summary>
     public void UpdateBaseStats(int hp, int mana, int atk, int magic, int armor,
      float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
-     float cdr, float lifesteal, int magicArmor, float healthRegen, float manaRegen) // ✅ เพิ่ม parameters
+     float cdr, float lifesteal, int magicArmor, float healthRegen, float manaRegen,float amp) // ✅ เพิ่ม parameters
     {
         baseMaxHp = hp;
         baseMaxMana = mana;
@@ -1251,6 +1351,7 @@ public class CharacterProgressData
         baseAttackSpeed = atkSpeed;
         baseReductionCoolDown = cdr;
         baseLifeSteal = lifesteal;
+        baseAmpDamage = amp;
 
         // ✅ เพิ่มการบันทึก 3 stats ใหม่
         baseMagicArmor = magicArmor;
@@ -1270,7 +1371,7 @@ public class CharacterProgressData
     /// </summary>
     public void UpdateTotalStats(int hp, int mana, int atk, int magic, int armor,
      float crit, float critDmg, float speed, float hit, float evasion, float atkSpeed,
-     float cdr, float lifesteal, int magicArmor, float healthRegen, float manaRegen) // ✅ เพิ่ม parameters
+     float cdr, float lifesteal, int magicArmor, float healthRegen, float manaRegen,float amp) // ✅ เพิ่ม parameters
     {
         totalMaxHp = hp;
         totalMaxMana = mana;
@@ -1285,7 +1386,7 @@ public class CharacterProgressData
         totalAttackSpeed = atkSpeed;
         totalReductionCoolDown = cdr;
         totalLifeSteal = lifesteal;
-
+        totalAmpdamage = amp;
         // ✅ เพิ่มการบันทึก 3 stats ใหม่
         totalMagicArmor = magicArmor;
         totalHealthRegen = healthRegen;
@@ -1313,6 +1414,7 @@ public class CharacterProgressData
         totalAttackSpeed = baseAttackSpeed;
         totalReductionCoolDown = baseReductionCoolDown;
         totalLifeSteal = baseLifeSteal;
+        totalAmpdamage = baseAmpDamage;
         totalMagicArmor = baseMagicArmor;
         totalManaRegen = baseManaRegen;
         totalHealthRegen = baseHealthRegen;

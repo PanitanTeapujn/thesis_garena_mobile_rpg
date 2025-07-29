@@ -18,6 +18,7 @@ public enum SetBonusType
     MoveSpeed,
     Armor,
     LifeSteal,
+    AmpDamage,
     PhysicalResistance,
     MagicalResistance,
     MagicArmor,        // Magic Armor
@@ -265,6 +266,9 @@ public class ActiveSetBonus
 
             case SetBonusType.LifeSteal:
                 stats.lifeStealBonus += value;
+                break; 
+            case SetBonusType.AmpDamage:
+                stats.ampDamageBonus += value;
                 break;
 
             case SetBonusType.PhysicalResistance:
@@ -326,6 +330,7 @@ public class ActiveSetBonus
                 stats.attackSpeedBonus += value;
                 stats.moveSpeedBonus += value;
                 stats.lifeStealBonus += value;
+                stats.ampDamageBonus += value;
                 stats.healthRegenBonus += value;
                 stats.manaRegenBonus += value;
                 // ✅ เพิ่ม 3 stats ใหม่ใน AllStats

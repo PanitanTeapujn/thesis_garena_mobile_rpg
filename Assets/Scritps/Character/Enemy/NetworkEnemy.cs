@@ -168,7 +168,7 @@ public class NetworkEnemy : Character
         {
             rb.freezeRotation = true; // ห้ามหมุนทุกแกน - ใช้แค่ flip
             rb.useGravity = true;
-            rb.drag = 2.0f; // เพิ่ม drag เพื่อให้หยุดได้เร็วขึ้น
+            rb.linearDamping = 2.0f; // เพิ่ม drag เพื่อให้หยุดได้เร็วขึ้น
             rb.mass = 5f;   // ลด mass เพื่อให้เคลื่อนที่ได้ง่ายขึ้น
         }
 
@@ -295,7 +295,7 @@ public class NetworkEnemy : Character
             NetworkedScale = transform.localScale; // sync scale สำหรับ flip
             if (rb != null)
             {
-                NetworkedVelocity = rb.velocity;
+                NetworkedVelocity = rb.linearVelocity;
             }
         }
         // Remote clients - apply network state
@@ -608,7 +608,7 @@ public class NetworkEnemy : Character
         else
         {
             // หยุดการเคลื่อนที่
-            rb.velocity = new Vector3(0, rb.velocity.y, 0);
+            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
         }
     }
 
@@ -679,7 +679,7 @@ public class NetworkEnemy : Character
         {
             if (rb != null)
             {
-                rb.velocity = NetworkedVelocity;
+                rb.linearVelocity = NetworkedVelocity;
             }
 
             float lerpRate = positionDistance > 2f ? 50f : 20f;

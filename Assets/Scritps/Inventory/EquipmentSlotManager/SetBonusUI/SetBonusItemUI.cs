@@ -140,6 +140,8 @@ public class SetBonusItemUI : MonoBehaviour
         // Special
         if (stats.lifeStealBonus > 0)
             bonusLines.Add($"<color=#E74C3C>+{stats.lifeStealBonus:F1}% Life Steal</color>");
+        if (stats.ampDamageBonus > 0)
+            bonusLines.Add($"<color=#E74C3C>+{stats.ampDamageBonus:F1}% Amp Damage</color>");
 
         return bonusLines.Count > 0 ? string.Join("\n", bonusLines) : "";
     }

@@ -12,6 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
   m_Name: World Tree Staff
   m_EditorClassIdentifier: 
+  enchantmentSettings:
+    canBeEnchanted: 0
+    maxEnchantLevel: 15
+    baseGoldCost: 1000
+    successRates:
+      sameItemWithEnchant: 90
+      sameItemNoEnchant: 75
+      sameTierWithEnchant: 60
+      sameTierNoEnchant: 45
+      higherTierWithEnchant: 50
+      higherTierNoEnchant: 35
+      lowerTierWithEnchant: 25
+      lowerTierNoEnchant: 15
+    enchantmentBonuses: []
+    degradeChanceOnFail: 50
+    maxDegradeLevel: 2
+    repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 0
     requiredGold: 0
@@ -53,6 +70,7 @@ MonoBehaviour:
     physicalResistanceBonus: 0
     magicalResistanceBonus: 15
     lifeStealBonus: 10
+    ampDamageBonus: 10
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

@@ -289,7 +289,7 @@ public class StatusEffectManager : NetworkBehaviour
         // หยุดการเคลื่อนไหวทั้งหมด
         if (character.rb != null)
         {
-            character.rb.velocity = Vector3.zero;
+            character.rb.linearVelocity = Vector3.zero;
         }
 
         Debug.Log($"[ApplyStun] {character.CharacterName} stunned! Armor: {character.Armor} reduced duration to {StunDuration:F1}s");
@@ -353,7 +353,7 @@ public class StatusEffectManager : NetworkBehaviour
             // ✅ หยุด movement แทน
             if (character.rb != null)
             {
-                character.rb.velocity = Vector3.zero;
+                character.rb.linearVelocity = Vector3.zero;
             }
 
             Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen! Magic Armor: {character.MagicArmor}, Original Speed: {OriginalMoveSpeed:F1}, Effective Speed: {character.GetEffectiveMoveSpeed():F1}");

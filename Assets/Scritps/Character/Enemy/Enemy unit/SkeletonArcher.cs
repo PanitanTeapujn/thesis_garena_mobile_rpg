@@ -80,7 +80,7 @@ public class SkeletonArcher : NetworkEnemy
         }
         else
         {
-            rb.velocity = new Vector3(0, rb.velocity.y, 0);
+            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
         }
     }
 

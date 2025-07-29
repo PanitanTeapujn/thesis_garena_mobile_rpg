@@ -413,7 +413,9 @@ public class SetBonusUI : MonoBehaviour
 
         // Special
         if (stats.lifeStealBonus > 0)
-            bonusTexts.Add($"+{stats.lifeStealBonus:F1}% Life Steal");
+            bonusTexts.Add($"+{stats.lifeStealBonus:F1}% Life Steal"); 
+        if (stats.ampDamageBonus > 0)
+            bonusTexts.Add($"+{stats.ampDamageBonus:F1}% Amp Damage");
         if (stats.reductionCoolDownBonus > 0)
             bonusTexts.Add($"-{stats.reductionCoolDownBonus:F1}% Cooldown");
         if (stats.hitRateBonus > 0)
@@ -472,6 +474,8 @@ public class SetBonusUI : MonoBehaviour
         }
         if (stats.lifeStealBonus > 0)
             compactStats.Add($"<color=#E74C3C>LS+{stats.lifeStealBonus:F1}%</color>");
+        if (stats.ampDamageBonus > 0)
+            compactStats.Add($"<color=#E74C3C>LS+{stats.ampDamageBonus:F1}%</color>");
         if (stats.criticalChanceBonus > 0)
             compactStats.Add($"<color=#FFA502>Crit+{stats.criticalChanceBonus:F1}%</color>");
 

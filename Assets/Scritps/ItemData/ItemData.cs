@@ -63,6 +63,7 @@ public class ItemStats
     public float physicalResistanceBonus = 0f;  // % (0.15f = +15% resistance)
     public float magicalResistanceBonus = 0f;
     public float lifeStealBonus = 0f;           // % (1.5f = +1.5% lifesteal)
+    public float ampDamageBonus = 0f;           // % (1.5f = +1.5% lifesteal)
                                                 // % (0.15f = +15% resistance)
     private bool isStackable;
     #endregion
@@ -95,6 +96,7 @@ public class ItemStats
         equipStats.physicalResistanceBonus = physicalResistanceBonus;
         equipStats.magicalResistanceBonus = magicalResistanceBonus;
         equipStats.lifeStealBonus = lifeStealBonus;
+        equipStats.ampDamageBonus = ampDamageBonus;
         equipStats.magicArmorBonus = magicArmorBonus;
         equipStats.manaRegenBonus = manaRegenBonus;
         equipStats.healthRegenBonus = healthRegenBonus;
@@ -110,7 +112,7 @@ public class ItemStats
                reductionCoolDownBonus != 0f || physicalResistanceBonus != 0f ||
                magicalResistanceBonus != 0f || lifeStealBonus != 0f ||
                // เพิ่ม 3 stats ใหม่
-               magicArmorBonus != 0 || manaRegenBonus != 0f || healthRegenBonus != 0f;
+               magicArmorBonus != 0 || manaRegenBonus != 0f || healthRegenBonus != 0f|| ampDamageBonus != 0f;
     }
 
     // แทนที่ GetStatsDescription() method เดิมด้วยโค้ดนี้
@@ -155,6 +157,8 @@ public class ItemStats
             statsList.Add($"Magical Res: +{magicalResistanceBonus:F1}%");
         if (lifeStealBonus != 0f)
             statsList.Add($"Lifesteal: +{lifeStealBonus:F1}%");
+        if (ampDamageBonus != 0f)
+            statsList.Add($"AmpDamage: +{ampDamageBonus:F1}%");
 
         // Potion Effects
         if (healAmount > 0)
@@ -596,6 +600,7 @@ public class ItemData : ScriptableObject
         firebaseData.physicalResistanceBonus = stats.physicalResistanceBonus;
         firebaseData.magicalResistanceBonus = stats.magicalResistanceBonus;
         firebaseData.lifeStealBonus = stats.lifeStealBonus;
+        firebaseData.ampDamageBonus = stats.ampDamageBonus;
         firebaseData.healAmount = stats.healAmount;
         firebaseData.manaAmount = stats.manaAmount;
         firebaseData.healPercentage = stats.healPercentage;
@@ -645,6 +650,7 @@ public class ItemData : ScriptableObject
         item.stats.physicalResistanceBonus = firebaseData.physicalResistanceBonus;
         item.stats.magicalResistanceBonus = firebaseData.magicalResistanceBonus;
         item.stats.lifeStealBonus = firebaseData.lifeStealBonus;
+        item.stats.ampDamageBonus = firebaseData.ampDamageBonus;
         item.stats.healAmount = firebaseData.healAmount;
         item.stats.manaAmount = firebaseData.manaAmount;
         item.stats.healPercentage = firebaseData.healPercentage;
@@ -843,7 +849,7 @@ public class ItemData : ScriptableObject
     public virtual int GetMaxReachedEnchantLevel() { return 0; }
     public virtual bool IsEnchantmentDamaged() { return false; }
 
-    public virtual ItemStats GetTotalStatsWithEnchantment()
+   /* public virtual ItemStats GetTotalStatsWithEnchantment()
     {
         ItemStats totalStats = new ItemStats();
 
@@ -920,7 +926,7 @@ public class ItemData : ScriptableObject
         }
 
         return totalStats;
-    }
+    }*/
 
     public string GetEnchantDisplayName()
     {
@@ -1000,6 +1006,7 @@ public class FirebaseItemData
     public float physicalResistanceBonus = 0f;
     public float magicalResistanceBonus = 0f;
     public float lifeStealBonus = 0f;
+    public float ampDamageBonus = 0f;
     public int magicArmorBonus = 0;
     public float manaRegenBonus = 0f;
     public float healthRegenBonus = 0f;

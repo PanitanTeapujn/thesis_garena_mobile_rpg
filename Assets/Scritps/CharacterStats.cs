@@ -21,6 +21,7 @@ public class CharacterStats : ScriptableObject
     public float attackSpeed;
     public float reductionCoolDown;
     public float lifeSteal;
+    public float ampdamage;
     public int magicArmor ;
     public float manaRegen ;        // Mana regen per second
     public float healthRegen;    // Health regen per second

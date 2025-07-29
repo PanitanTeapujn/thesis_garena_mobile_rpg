@@ -156,7 +156,6 @@ public class PersistentPlayerData : MonoBehaviour
     {
         if (auth?.CurrentUser == null)
         {
-           
             yield break;
         }
 
@@ -192,6 +191,10 @@ public class PersistentPlayerData : MonoBehaviour
                     if (IsValidPlayerData(tempData))
                     {
                         multiCharacterData = tempData;
+
+                        // ✅ โหลด character stats หลังจาก deserialize JSON
+                        multiCharacterData.LoadCharacterStatsFromResources();
+
                         isDataLoaded = true;
                         loaded = true;
 
@@ -224,8 +227,6 @@ public class PersistentPlayerData : MonoBehaviour
                 loaded = false;
             }
 
-           
-
             if (loaded)
             {
                 LoadCurrencyData();
@@ -234,14 +235,10 @@ public class PersistentPlayerData : MonoBehaviour
         else if (elapsed >= timeout)
         {
             Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Trying backup before creating new...");
-
-          
         }
         else
         {
             Debug.Log("[PersistentPlayerData] No Firebase data found, checking backup...");
-
-            
         }
 
         RegisterPlayerInDirectory();
@@ -333,6 +330,10 @@ public class PersistentPlayerData : MonoBehaviour
         multiCharacterData.currentActiveCharacter = "Assassin";
 
         InitializeCurrencyForNewPlayer();
+
+        // ✅ โหลด character stats หลังจากสร้าง MultiCharacterPlayerData แล้ว
+        multiCharacterData.LoadCharacterStatsFromResources();
+
         isDataLoaded = true;
         SaveToPlayerPrefs();
 
@@ -440,6 +441,7 @@ public class PersistentPlayerData : MonoBehaviour
         PlayerPrefs.SetFloat("PlayerAttackSpeed", currentCharacter.totalAttackSpeed);
         PlayerPrefs.SetFloat("PlayerReductionCoolDown", currentCharacter.totalReductionCoolDown);
         PlayerPrefs.SetFloat("PlayerLifeSteal", currentCharacter.totalLifeSteal);
+        PlayerPrefs.SetFloat("PlayerAmpDamage", currentCharacter.totalAmpdamage);
         PlayerPrefs.SetInt("PlayerMigicArmor", currentCharacter.totalMagicArmor);
         PlayerPrefs.SetFloat("PlayerHealthRegen", currentCharacter.totalHealthRegen);
         PlayerPrefs.SetFloat("PlayerManaRegen", currentCharacter.totalManaRegen);
@@ -468,7 +470,7 @@ public class PersistentPlayerData : MonoBehaviour
 
     public void UpdateLevelAndStats(int level, int exp, int expToNext, int maxHp, int maxMana,
     int attackDamage, int magicDamage, int armor, float critChance, float critDamageBonus,
-    float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal,int magicArmor,float healthRegen,float manaRegen)
+    float moveSpeed, float hitRate, float evasionRate, float attackSpeed, float reductionCoolDown, float lifeSteal,int magicArmor,float healthRegen,float manaRegen,float amp)
     {
         if (multiCharacterData == null)
         {
@@ -502,6 +504,7 @@ public class PersistentPlayerData : MonoBehaviour
             character.totalAttackSpeed = attackSpeed;
             character.totalReductionCoolDown = reductionCoolDown;
             character.totalLifeSteal = lifeSteal; // ✅ บันทึก LifeSteal
+            character.totalAmpdamage = amp; // ✅ บันทึก LifeSteal
             character.totalMagicArmor = magicArmor; // ✅ บันทึก LifeSteal
             character.totalHealthRegen = healthRegen; // ✅ บันทึก LifeSteal
             character.totalManaRegen = manaRegen; // ✅ บันทึก LifeSteal
@@ -3014,44 +3017,148 @@ public class PersistentPlayerData : MonoBehaviour
         newCharacter.currentExp = 0;
         newCharacter.expToNextLevel = 100;
 
-        CharacterStats characterStats = null;
+        // ✅ ใช้ TryLoadCharacterStats แทนการโหลดโดยตรง
+        TryLoadCharacterStats(newCharacter, characterType);
 
+        return newCharacter;
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับโหลด character stats อย่างปลอดภัย
+    private void TryLoadCharacterStats(CharacterProgressData character, string characterType)
+    {
+        try
+        {
+            CharacterStats characterStats = null;
+
+            switch (characterType)
+            {
+                case "BloodKnight":
+                    characterStats = Resources.Load<CharacterStats>("Characters/BloodKnightStats");
+                    break;
+                case "Archer":
+                    characterStats = Resources.Load<CharacterStats>("Characters/ArcherStats");
+                    break;
+                case "Assassin":
+                    characterStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
+                    break;
+                case "IronJuggernaut":
+                    characterStats = Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
+                    break;
+            }
+
+            if (characterStats != null)
+            {
+                // ✅ Copy stats จาก ScriptableObject
+                character.baseMaxHp = characterStats.maxHp;
+                character.baseMaxMana = characterStats.maxMana;
+                character.baseAttackDamage = characterStats.attackDamage;
+                character.baseMagicDamage = characterStats.magicDamage;
+                character.baseArmor = characterStats.arrmor;
+                character.baseCriticalChance = characterStats.criticalChance;
+                character.baseCriticalDamageBonus = characterStats.criticalDamageBonus;
+                character.baseMoveSpeed = characterStats.moveSpeed;
+                character.baseHitRate = characterStats.hitRate;
+                character.baseEvasionRate = characterStats.evasionRate;
+                character.baseAttackSpeed = characterStats.attackSpeed;
+                character.baseReductionCoolDown = characterStats.reductionCoolDown;
+                character.baseLifeSteal = characterStats.lifeSteal;
+                character.baseAmpDamage = characterStats.ampdamage;
+                character.baseMagicArmor = characterStats.magicArmor;
+                character.baseHealthRegen = characterStats.healthRegen;
+                character.baseManaRegen = characterStats.manaRegen;
+                character.attackType = characterStats.attackType;
+
+                // Copy to total stats
+                character.totalMaxHp = characterStats.maxHp;
+                character.totalMaxMana = characterStats.maxMana;
+                character.totalAttackDamage = characterStats.attackDamage;
+                character.totalMagicDamage = characterStats.magicDamage;
+                character.totalArmor = characterStats.arrmor;
+                character.totalCriticalChance = characterStats.criticalChance;
+                character.totalCriticalDamageBonus = characterStats.criticalDamageBonus;
+                character.totalMoveSpeed = characterStats.moveSpeed;
+                character.totalHitRate = characterStats.hitRate;
+                character.totalEvasionRate = characterStats.evasionRate;
+                character.totalAttackSpeed = characterStats.attackSpeed;
+                character.totalReductionCoolDown = characterStats.reductionCoolDown;
+                character.totalLifeSteal = characterStats.lifeSteal;
+                character.totalAmpdamage = characterStats.ampdamage;
+                character.totalMagicArmor = characterStats.magicArmor;
+                character.totalHealthRegen = characterStats.healthRegen;
+                character.totalManaRegen = characterStats.manaRegen;
+
+                Debug.Log($"✅ Loaded {characterType} stats from ScriptableObject");
+            }
+            else
+            {
+                Debug.LogWarning($"⚠️ Could not load {characterType} stats, using defaults");
+                SetDefaultStatsForCharacter(character, characterType);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"❌ Error loading {characterType} stats: {e.Message}");
+            SetDefaultStatsForCharacter(character, characterType);
+        }
+    }
+
+    // ✅ เพิ่ม method สำหรับตั้ง default stats
+    private void SetDefaultStatsForCharacter(CharacterProgressData character, string characterType)
+    {
+        // ตั้งค่า default stats ตาม character type
         switch (characterType)
         {
-            case "BloodKnight":
-                characterStats = Resources.Load<CharacterStats>("Characters/BloodKnightStats");
+            case "Assassin":
+                character.baseMaxHp = 100;
+                character.baseMaxMana = 50;
+                character.baseAttackDamage = 15;
+                character.baseMoveSpeed = 3.5f;
                 break;
             case "Archer":
-                characterStats = Resources.Load<CharacterStats>("Characters/ArcherStats");
+                character.baseMaxHp = 80;
+                character.baseMaxMana = 70;
+                character.baseAttackDamage = 12;
+                character.baseMoveSpeed = 3.2f;
                 break;
-            case "Assassin":
-                characterStats = Resources.Load<CharacterStats>("Characters/AssassinStats");
+            case "BloodKnight":
+                character.baseMaxHp = 150;
+                character.baseMaxMana = 30;
+                character.baseAttackDamage = 18;
+                character.baseMoveSpeed = 2.8f;
                 break;
             case "IronJuggernaut":
-                characterStats = Resources.Load<CharacterStats>("Characters/IronJuggernautStats");
+                character.baseMaxHp = 200;
+                character.baseMaxMana = 20;
+                character.baseAttackDamage = 20;
+                character.baseMoveSpeed = 2.5f;
+                break;
+            default:
+                character.baseMaxHp = 100;
+                character.baseMaxMana = 50;
+                character.baseAttackDamage = 15;
+                character.baseMoveSpeed = 3.0f;
                 break;
         }
 
-        if (characterStats != null)
-        {
-            newCharacter.totalMaxHp = characterStats.maxHp;
-            newCharacter.totalMaxMana = characterStats.maxMana;
-            newCharacter.totalAttackDamage = characterStats.attackDamage;
-            newCharacter.totalMagicDamage = characterStats.magicDamage;
-            newCharacter.totalArmor = characterStats.arrmor;
-            newCharacter.totalCriticalChance = characterStats.criticalChance;
-            newCharacter.totalCriticalDamageBonus = characterStats.criticalDamageBonus;
-            newCharacter.totalMoveSpeed = characterStats.moveSpeed;
-            newCharacter.totalAttackRange = characterStats.attackRange;
-            newCharacter.totalAttackCooldown = characterStats.attackCoolDown;
-            newCharacter.totalHitRate = characterStats.hitRate;
-            newCharacter.totalEvasionRate = characterStats.evasionRate;
-            newCharacter.totalAttackSpeed = characterStats.attackSpeed;
-            newCharacter.totalReductionCoolDown = characterStats.reductionCoolDown;
+        // ตั้งค่า stats อื่นๆ
+        character.baseMagicDamage = 10;
+        character.baseArmor = 5;
+        character.baseCriticalChance = 5f;
+        character.baseCriticalDamageBonus = 150f;
+        character.baseHitRate = 85f;
+        character.baseEvasionRate = 10f;
+        character.baseAttackSpeed = 1f;
+        character.baseReductionCoolDown = 0f;
+        character.baseLifeSteal = 0f;
+        character.baseMagicArmor = 0;
+        character.baseHealthRegen = 0.5f;
+        character.baseManaRegen = 1f;
+        character.attackType = AttackType.Physical;
 
-            Debug.Log($"✅ Created {characterType} with stats from ScriptableObject");
-        }
-        return newCharacter;
+        // Copy ไป total stats
+        character.UpdateTotalStats();
+
+        Debug.Log($"⚠️ Used default stats for {characterType}");
     }
     #region 🆕 Currency Save/Load Methods
 
@@ -3213,7 +3320,8 @@ public class PersistentPlayerData : MonoBehaviour
         float baseEvasion = character.characterStats.evasionRate;
         float baseAtkSpeed = character.characterStats.attackSpeed;
         float baseCdr = character.characterStats.reductionCoolDown;
-        float baseLifeSteal = character.characterStats.lifeSteal + (levelBonus * levelManager.levelUpStats.lifeStealBonusPerLevel);
+        float baseLifeSteal = character.characterStats.lifeSteal ;
+        float baseAmpDamage = character.characterStats.ampdamage ;
 
         // ✅ เพิ่ม 3 stats ใหม่ จาก ScriptableObject
         int baseMagicArmor = character.characterStats.magicArmor + (levelBonus * levelManager.levelUpStats.magicArmorBonusPerLevel);
@@ -3244,15 +3352,10 @@ public class PersistentPlayerData : MonoBehaviour
         characterData.UpdateBaseStats(
             baseHp, baseMana, baseAttack, baseMagic, baseArmor,
             baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
-            baseAtkSpeed, baseCdr, baseLifeSteal, baseMagicArmor, baseHealthRegen, baseManaRegen
+            baseAtkSpeed, baseCdr, baseLifeSteal, baseMagicArmor, baseHealthRegen, baseManaRegen,baseAmpDamage
         );
 
-        Debug.Log($"[PersistentPlayerData] 📊 Calculated PURE base stats (ScriptableObject + Level + Upgrades):");
-        Debug.Log($"  ScriptableObject base: HP={character.characterStats.maxHp}, ATK={character.characterStats.attackDamage}");
-        Debug.Log($"  + Level {levelManager.CurrentLevel} bonuses: HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}");
-        Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
-        Debug.Log($"  = Final base stats: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
-        Debug.Log($"    MAGIC_ARM={baseMagicArmor}, HEALTH_REGEN={baseHealthRegen:F1}, MANA_REGEN={baseManaRegen:F1}");
+        
     }
     private void SaveCurrentTotalStats(Character character, CharacterProgressData characterData)
     {
@@ -3261,12 +3364,10 @@ public class PersistentPlayerData : MonoBehaviour
             character.MaxHp, character.MaxMana, character.AttackDamage, character.MagicDamage, character.Armor,
             character.CriticalChance, character.CriticalDamageBonus, character.MoveSpeed,
             character.HitRate, character.EvasionRate, character.AttackSpeed, character.ReductionCoolDown,
-            character.LifeSteal, character.MagicArmor, character.HealthRegen, character.ManaRegen // ✅ เพิ่ม 3 stats ใหม่
+            character.LifeSteal, character.MagicArmor, character.HealthRegen, character.ManaRegen,character.AmpDamage // ✅ เพิ่ม 3 stats ใหม่
         );
 
-        Debug.Log($"[PersistentPlayerData] 📈 Saved total stats:");
-        Debug.Log($"  Total: HP={character.MaxHp}, ATK={character.AttackDamage}, LifeSteal={character.LifeSteal:F1}%");
-        Debug.Log($"  MAGIC_ARM={character.MagicArmor}, HEALTH_REGEN={character.HealthRegen:F1}, MANA_REGEN={character.ManaRegen:F1}");
+       
     }
 
     // ✅ เพิ่ม method สำหรับบันทึก total stats แยกต่างหาก

@@ -74,6 +74,9 @@ public class Character : NetworkBehaviour
     public float ReductionCoolDown { get { return reductionCoolDown; } set { reductionCoolDown = value; } }
     [SerializeField] private float lifeSteal;
     public float LifeSteal { get { return lifeSteal; } set { lifeSteal = value; } }
+    
+    [SerializeField] private float ampDamage;
+    public float AmpDamage { get { return ampDamage; } set { ampDamage = value; } }
     #region สถานะพื้นฐานทั้งหมด - เพิ่ม 3 stats ใหม่
     // เพิ่มในส่วน stats declarations หลัง lifeSteal
     [SerializeField] private int magicArmor;
@@ -396,7 +399,7 @@ public class Character : NetworkBehaviour
             rb.freezeRotation = true;
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ | RigidbodyConstraints.FreezeRotationY;
             rb.useGravity = true;
-            rb.drag = 1.0f;
+            rb.linearDamping = 1.0f;
             rb.mass = 10f;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
@@ -426,6 +429,7 @@ public class Character : NetworkBehaviour
             attackSpeed = characterStats.attackSpeed;
             reductionCoolDown = characterStats.reductionCoolDown;
             lifeSteal = characterStats.lifeSteal;
+            ampDamage = characterStats.ampdamage;
 
             // ✅ แก้ไข Magic Armor - ใช้ค่าจาก ScriptableObject โดยตรง
             magicArmor = characterStats.magicArmor; // ไม่ใช้ arrmor ซ้ำ
@@ -647,12 +651,7 @@ public class Character : NetworkBehaviour
             int atkBonus = AttackDamage - baseAttack;
             float lifeStealBonus = LifeSteal - baseLifeSteal;
 
-            Debug.Log($"[Character] ✅ Equipment bonuses applied with preserved HP:");
-            Debug.Log($"  HP: {baseHp} + {hpBonus} = {MaxHp}");
-            Debug.Log($"  Mana: {baseMana} + {manaBonus} = {MaxMana}");
-            Debug.Log($"  ATK: {baseAttack} + {atkBonus} = {AttackDamage}");
-            Debug.Log($"  LifeSteal: {baseLifeSteal:F1}% + {lifeStealBonus:F1}% = {LifeSteal:F1}%");
-            Debug.Log($"  Final HP: {CurrentHp}/{MaxHp} ({preservedHpPercentage:P0}) - PRESERVED");
+            
 
             // Force update network state
             ForceUpdateNetworkState();
@@ -712,7 +711,7 @@ public class Character : NetworkBehaviour
                 AttackSpeed = characterData.baseAttackSpeed;
                 ReductionCoolDown = characterData.baseReductionCoolDown;
                 LifeSteal = characterData.baseLifeSteal;
-
+                AmpDamage = characterData.baseAmpDamage;
                 // ✅ แก้ไข 3 stats ใหม่ - ใช้ค่าจาก characterData โดยตรง
                 MagicArmor = characterData.baseMagicArmor;
                 HealthRegen = characterData.baseHealthRegen;
@@ -810,10 +809,7 @@ public class Character : NetworkBehaviour
             // ดึง equipment stats
             EquipmentStats equipmentStats = equipmentManager.GetTotalStats();
 
-            Debug.Log($"[Character] 📊 Equipment bonuses to apply:");
-            Debug.Log($"  HP+{equipmentStats.maxHpBonus}, Mana+{equipmentStats.maxManaBonus}");
-            Debug.Log($"  ATK+{equipmentStats.attackDamageBonus}, MAG+{equipmentStats.magicDamageBonus}");
-            Debug.Log($"  ARM+{equipmentStats.armorBonus}, LifeSteal+{equipmentStats.lifeStealBonus:F1}%");
+           
 
             // Apply equipment bonuses
             MaxHp += equipmentStats.maxHpBonus;
@@ -829,14 +825,11 @@ public class Character : NetworkBehaviour
             AttackSpeed += equipmentStats.attackSpeedBonus;
             ReductionCoolDown += equipmentStats.reductionCoolDownBonus;
             LifeSteal += equipmentStats.lifeStealBonus;
+            AmpDamage += equipmentStats.ampDamageBonus;
             MagicArmor += equipmentStats.magicArmorBonus;
             HealthRegen += equipmentStats.healthRegenBonus;
             ManaRegen += equipmentStats.manaRegenBonus;
 
-            Debug.Log($"[Character] 📊 After applying equipment bonuses:");
-            Debug.Log($"  MaxHP={MaxHp}, MaxMana={MaxMana}");
-            Debug.Log($"  ATK={AttackDamage}, MAG={MagicDamage}, ARM={Armor}");
-            Debug.Log($"  LifeSteal={LifeSteal:F1}%");
         }
         catch (System.Exception e)
         {
@@ -1470,9 +1463,7 @@ public class Character : NetworkBehaviour
             NetworkedCurrentMana = currentMana;
 
             float equipmentBonus = equipmentManager != null ? equipmentManager.GetManaRegenBonus() : 0f;
-            Debug.Log($"[Mana Regen] {CharacterName}: +{currentMana - oldMana} MP (Cap: {maxManaRegenPerTick})");
-            Debug.Log($"  Base: {baseManaRegenPerSecond:F1}/s + Character: {ManaRegen:F1}/s + Equipment: {equipmentBonus:F1}/s = {totalManaRegen:F1}/s");
-            Debug.Log($"  Calculated: {totalManaRegen * regenTickInterval:F1}, Applied: {currentMana - oldMana}");
+            
 
             if (HasStateAuthority)
             {
@@ -1483,20 +1474,17 @@ public class Character : NetworkBehaviour
     public void SetHealthRegenCap(float newCap)
     {
         maxHealthRegenPerTick = newCap;
-        Debug.Log($"[Regen Cap] {CharacterName}: Health regen cap set to {newCap}/tick");
     }
 
     public void SetManaRegenCap(float newCap)
     {
         maxManaRegenPerTick = newCap;
-        Debug.Log($"[Regen Cap] {CharacterName}: Mana regen cap set to {newCap}/tick");
     }
 
     // ✅ เพิ่ม methods สำหรับปรับ regen interval
     public void SetRegenInterval(float newInterval)
     {
         regenTickInterval = Mathf.Max(0.1f, newInterval); // อย่างน้อย 0.1 วินาที
-        Debug.Log($"[Regen Interval] {CharacterName}: Regen interval set to {regenTickInterval}s");
     }
 
     // ✅ เพิ่ม method สำหรับดูสถานะ regen
@@ -1505,10 +1493,7 @@ public class Character : NetworkBehaviour
         float totalHealthRegen = GetTotalHealthRegenRate();
         float totalManaRegen = GetTotalManaRegenRate();
 
-        Debug.Log($"[Regen Status] {CharacterName}:");
-        Debug.Log($"  Health: {totalHealthRegen:F1}/s (Cap: {maxHealthRegenPerTick}/tick, Interval: {regenTickInterval}s)");
-        Debug.Log($"  Mana: {totalManaRegen:F1}/s (Cap: {maxManaRegenPerTick}/tick, Interval: {regenTickInterval}s)");
-        Debug.Log($"  Theoretical per tick - Health: {totalHealthRegen * regenTickInterval:F1}, Mana: {totalManaRegen * regenTickInterval:F1}");
+       
     }
     public float GetTotalHealthRegenRate()
     {
@@ -1572,7 +1557,6 @@ public class Character : NetworkBehaviour
         // ใช้ this.ReductionCoolDown ที่รวม equipment bonus แล้ว (เหมือน LifeSteal)
         float totalCDR = this.ReductionCoolDown; // ค่านี้รวม equipment bonus แล้วจาก EquipmentManager
 
-        Debug.Log($"Total CDR (including equipment): {totalCDR}%");
 
         float finalReduction = Mathf.Clamp(totalCDR, 0f, 75f);
 
@@ -1611,7 +1595,6 @@ public class Character : NetworkBehaviour
         // ✅ คำนวณ cooldown reduction ด้วย Diminishing Returns
         float cooldownReduction = CalculateAttackSpeedReduction(totalAttackSpeedBonus);
 
-        Debug.Log($"[GetEffectiveAttackSpeed] {CharacterName}: Attack Speed Bonus = {totalAttackSpeedBonus}%, Cooldown Reduction = {cooldownReduction * 100f}%");
 
         return cooldownReduction;
     }
@@ -1646,7 +1629,6 @@ public class Character : NetworkBehaviour
             if (attackSpeedFromUpgrades > 0)
             {
                 totalAttackSpeedBonus += attackSpeedFromUpgrades; // แปลงเป็น %
-                Debug.Log($"[GetAttackSpeedMultiplierForUI] Attack Speed from upgrades: +{attackSpeedFromUpgrades:F1}%");
             }
         }
 
@@ -1667,7 +1649,6 @@ public class Character : NetworkBehaviour
         // ✅ แปลง % เป็น multiplier สำหรับ UI
         float multiplier = 1f + (totalAttackSpeedBonus / 100f);
 
-        Debug.Log($"[GetAttackSpeedMultiplierForUI] {CharacterName}: Total Bonus={totalAttackSpeedBonus:F1}%, Multiplier=x{multiplier:F2}");
 
         return multiplier;
     }
@@ -1682,7 +1663,6 @@ public class Character : NetworkBehaviour
 
         float totalBonus = baseCriticalBonus + equipmentBonus;
 
-        Debug.Log($"[GetEffectiveCriticalDamageBonus] {CharacterName}: Base={CriticalDamageBonus}, Equipment={equipmentManager?.GetCriticalMultiplierBonus()}, Total={totalBonus}");
 
         return totalBonus;
     }
@@ -1692,7 +1672,6 @@ public class Character : NetworkBehaviour
         // ✅ ใช้ this.LifeSteal ที่รวม equipment bonus แล้ว - ไม่ต้องบวกซ้ำ
         float totalLifeSteal = this.LifeSteal; // ค่านี้รวม equipment bonus แล้วจาก EquipmentManager
 
-        Debug.Log($"[GetEffectiveLifeSteal] {CharacterName}: Total LifeSteal={totalLifeSteal:F1}% (already includes equipment bonus)");
 
         return Mathf.Clamp(totalLifeSteal, 0f, 100f);
     }
@@ -1893,7 +1872,6 @@ public class Character : NetworkBehaviour
 
         if (emptySlotIndex == -1)
         {
-            DebugPotionSlots();
             return false;
         }
 
@@ -1960,23 +1938,7 @@ public class Character : NetworkBehaviour
             potionStackCounts[slotIndex] = stackCount;
         }
     }
-    private void DebugPotionSlots()
-    {
-        Debug.Log("=== POTION SLOTS STATUS ===");
-        for (int i = 0; i < potionSlots.Count; i++)
-        {
-            ItemData potion = potionSlots[i];
-            int stackCount = i < potionStackCounts.Count ? potionStackCounts[i] : 0;
-
-            if (potion != null)
-            {
-                Debug.Log($"Slot {i}: {potion.ItemName} x{stackCount}");
-            }
-            else
-            {
-            }
-        }
-    }
+   
     public void ApplyBaseStatsOnly()
     {
         try
@@ -2008,6 +1970,7 @@ public class Character : NetworkBehaviour
             AttackSpeed = characterData.baseAttackSpeed;
             ReductionCoolDown = characterData.baseReductionCoolDown;
             LifeSteal = characterData.baseLifeSteal;
+            LifeSteal = characterData.baseAmpDamage;
             MagicArmor = characterData.baseMagicArmor;
             HealthRegen = characterData.baseHealthRegen;
 
@@ -2135,6 +2098,7 @@ public class Character : NetworkBehaviour
                 totalStats.hitRateBonus += itemStats.hitRateBonus;
                 totalStats.evasionRateBonus += itemStats.evasionRateBonus;
                 totalStats.lifeStealBonus += itemStats.lifeStealBonus;
+                totalStats.ampDamageBonus += itemStats.ampDamageBonus;
                 totalStats.reductionCoolDownBonus += itemStats.reductionCoolDownBonus;
                 totalStats.physicalResistanceBonus += itemStats.physicalResistanceBonus;
                 totalStats.magicalResistanceBonus += itemStats.magicalResistanceBonus;
@@ -2174,7 +2138,9 @@ public class Character : NetworkBehaviour
         if (totalStats.reductionCoolDownBonus != 0f)
             totalStatsList.Add($"CDR+{totalStats.reductionCoolDownBonus:F1}%");
         if (totalStats.lifeStealBonus != 0f)
-            totalStatsList.Add($"LST+{totalStats.lifeStealBonus:F1}%");
+            totalStatsList.Add($"LST+{totalStats.lifeStealBonus:F1}%"); 
+        if (totalStats.ampDamageBonus != 0f)
+            totalStatsList.Add($"AMP+{totalStats.ampDamageBonus:F1}%");
         if (totalStats.magicArmorBonus != 0)
             totalStatsList.Add($"MAG_ARM+{totalStats.magicArmorBonus}");
         if (totalStats.manaRegenBonus != 0f)
@@ -2603,7 +2569,7 @@ public class Character : NetworkBehaviour
                 characterData.UpdateTotalStats(
                     MaxHp, MaxMana, AttackDamage, MagicDamage, Armor,
                     CriticalChance, CriticalDamageBonus, MoveSpeed,
-                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown,LifeSteal, MagicArmor,HealthRegen, ManaRegen
+                    HitRate, EvasionRate, AttackSpeed, ReductionCoolDown,LifeSteal, MagicArmor,HealthRegen, ManaRegen,AmpDamage
                 );
 
                 // บันทึกลง Firebase
@@ -2870,6 +2836,7 @@ public class Character : NetworkBehaviour
             AttackSpeed = characterStats.attackSpeed;
             ReductionCoolDown = characterStats.reductionCoolDown;
             LifeSteal = characterStats.lifeSteal;
+            AmpDamage = characterStats.ampdamage;
             MagicArmor = characterStats.magicArmor;
             HealthRegen = characterStats.healthRegen;
             ManaRegen = characterStats.manaRegen;

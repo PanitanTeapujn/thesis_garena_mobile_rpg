@@ -22,7 +22,22 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 302fc64691d916c4eacd1fe76f6b075c, type: 2}
   - {fileID: 11400000, guid: 13546f430abe02e40b141d9b51b79b95, type: 2}
   - {fileID: 11400000, guid: 6ccb263308b8ecd4aaed51c7a9760ba9, type: 2}
-  - {fileID: 11400000, guid: 76cc984706daecd449afdb38bf7091e1, type: 2}
+  - {fileID: 11400000, guid: b7a69c06dd07df042b128949acad2c91, type: 2}
+  - {fileID: 11400000, guid: 32c85d79e36c0fc48a55ab6d1497197b, type: 2}
+  - {fileID: 11400000, guid: 72765db20a485dd47bdbd21cdce65d67, type: 2}
+  - {fileID: 11400000, guid: 74cf02732e035644c9651ecb2f312db2, type: 2}
+  - {fileID: 11400000, guid: 3543aee06224c9c47ad31342b3c92b15, type: 2}
+  - {fileID: 11400000, guid: 4b9f706aff3f8f0418a2ee4458cb9b1f, type: 2}
+  - {fileID: 11400000, guid: bbb01be3064d64447a4635d484deee7f, type: 2}
+  - {fileID: 11400000, guid: 9680b81fe7b60814b9925b19913c351e, type: 2}
+  - {fileID: 11400000, guid: 318dfcc0e46ae654080b992cd4800220, type: 2}
+  - {fileID: 11400000, guid: 2bdf47faa1ee1cd4181be977b6e6fc9a, type: 2}
+  - {fileID: 11400000, guid: 9d55908313ef44742adcfc9080d546ae, type: 2}
+  - {fileID: 11400000, guid: 8b305bd086f33bd4b910315f52fc34cf, type: 2}
+  - {fileID: 11400000, guid: 46e7621e460980a4e9d29c51f3ac596a, type: 2}
+  - {fileID: 11400000, guid: daa46192ed8a60740a2d5aae0a23fdac, type: 2}
+  - {fileID: 11400000, guid: 8cede69f2b00b664bbf480bf26646bbd, type: 2}
+  - {fileID: 11400000, guid: bee81c87f1dfb3d418b6cb2cc1148168, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:

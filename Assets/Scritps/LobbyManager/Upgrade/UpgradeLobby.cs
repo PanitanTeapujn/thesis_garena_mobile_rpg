@@ -522,6 +522,7 @@ public class UpgradeLobby : MonoBehaviour
             float baseCdr = localHero.characterStats.reductionCoolDown;
             float baseHit = localHero.characterStats.hitRate;
             float baseLifeSteal = localHero.characterStats.lifeSteal;
+            float baseAmpDamage = localHero.characterStats.ampdamage;
             int basemagicArmor = localHero.characterStats.magicArmor;
             float basehealthRegen = localHero.characterStats.healthRegen;
             float basemanaRegen = localHero.characterStats.manaRegen;
@@ -551,14 +552,10 @@ public class UpgradeLobby : MonoBehaviour
             characterData.UpdateBaseStats(
                 baseHp, baseMana, baseAttack, baseMagic, baseArmor,
                 baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
-                baseAtkSpeed, baseCdr, baseLifeSteal,basemagicArmor,basehealthRegen,basemanaRegen
+                baseAtkSpeed, baseCdr, baseLifeSteal,basemagicArmor,basehealthRegen,basemanaRegen,baseAmpDamage
             );
 
-            Debug.Log($"[UpgradeLobby] 🎯 Updated base stats with upgrades:");
-            Debug.Log($"  ScriptableObject: HP={localHero.characterStats.maxHp}, ATK={localHero.characterStats.attackDamage}");
-            Debug.Log($"  + Level {currentLevel}: HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}, ATK+{levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel}");
-            Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
-            Debug.Log($"  = Final base: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
+            
         }
         catch (System.Exception e)
         {
@@ -601,6 +598,7 @@ public class UpgradeLobby : MonoBehaviour
             localHero.AttackSpeed = characterData.baseAttackSpeed;
             localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
             localHero.LifeSteal = characterData.baseLifeSteal;
+            localHero.AmpDamage = characterData.baseAmpDamage;
             localHero.MagicArmor = characterData.baseMagicArmor;
             localHero.HealthRegen = characterData.baseHealthRegen;
             localHero.ManaRegen = characterData.baseManaRegen;
@@ -633,7 +631,7 @@ public class UpgradeLobby : MonoBehaviour
             characterData.UpdateTotalStats(
                 localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
                 localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
-                localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal,localHero.MagicArmor,localHero.HealthRegen,localHero.ManaRegen
+                localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal,localHero.MagicArmor,localHero.HealthRegen,localHero.ManaRegen,localHero.AmpDamage
             );
 
             // บันทึกลง Firebase
@@ -685,6 +683,7 @@ public class UpgradeLobby : MonoBehaviour
             localHero.AttackSpeed = characterData.baseAttackSpeed;
             localHero.ReductionCoolDown = characterData.baseReductionCoolDown;
             localHero.LifeSteal = characterData.baseLifeSteal;
+            localHero.AmpDamage = characterData.baseAmpDamage;
             localHero.MagicArmor = characterData.baseMagicArmor;
             localHero.HealthRegen = characterData.baseHealthRegen;
             localHero.ManaRegen = characterData.baseManaRegen;
@@ -730,15 +729,13 @@ public class UpgradeLobby : MonoBehaviour
                 characterData.UpdateTotalStats(
                     localHero.MaxHp, localHero.MaxMana, localHero.AttackDamage, localHero.MagicDamage, localHero.Armor,
                     localHero.CriticalChance, localHero.CriticalDamageBonus, localHero.MoveSpeed,
-                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal, localHero.MagicArmor, localHero.HealthRegen, localHero.ManaRegen
+                    localHero.HitRate, localHero.EvasionRate, localHero.AttackSpeed, localHero.ReductionCoolDown, localHero.LifeSteal, localHero.MagicArmor, localHero.HealthRegen, localHero.ManaRegen,localHero.AmpDamage
                 );
 
                 // ✅ 3. บันทึกลง Firebase
                 PersistentPlayerData.Instance.SavePlayerDataAsync();
 
-                Debug.Log($"[UpgradeLobby] 💾 Saved both base and total stats to Firebase");
-                Debug.Log($"  Base: HP={characterData.baseMaxHp}, ATK={characterData.baseAttackDamage}");
-                Debug.Log($"  Total: HP={localHero.MaxHp}, ATK={localHero.AttackDamage}");
+              
             }
         }
         catch (System.Exception e)
@@ -782,6 +779,7 @@ public class UpgradeLobby : MonoBehaviour
             float baseCdr = localHero.characterStats.reductionCoolDown;
             float baseHit = localHero.characterStats.hitRate;
             float baseLifeSteal = localHero.characterStats.lifeSteal + (levelBonus * levelManager.levelUpStats.lifeStealBonusPerLevel);
+            float baseAmpDamage = localHero.characterStats.ampdamage;
             int basemagicArmor = localHero.characterStats.magicArmor;
             float basehealthRegen = localHero.characterStats.healthRegen;
             float basemanaRegen = localHero.characterStats.manaRegen;
@@ -809,14 +807,10 @@ public class UpgradeLobby : MonoBehaviour
             characterData.UpdateBaseStats(
                 baseHp, baseMana, baseAttack, baseMagic, baseArmor,
                 baseCrit, baseCritDmg, baseSpeed, baseHit, baseEvasion,
-                baseAtkSpeed, baseCdr, baseLifeSteal, basemagicArmor, basehealthRegen, basemanaRegen
+                baseAtkSpeed, baseCdr, baseLifeSteal, basemagicArmor, basehealthRegen, basemanaRegen,baseAmpDamage
             );
 
-            Debug.Log($"[UpgradeLobby] 📊 Recalculated base stats with upgrades:");
-            Debug.Log($"  Original ScriptableObject: HP={localHero.characterStats.maxHp}, ATK={localHero.characterStats.attackDamage}");
-            Debug.Log($"  + Level bonuses (Level {currentLevel}): HP+{levelBonus * levelManager.levelUpStats.hpBonusPerLevel}, ATK+{levelBonus * levelManager.levelUpStats.attackDamageBonusPerLevel}");
-            Debug.Log($"  + Stat upgrades: HP+{hpBonus}, ATK+{atkBonus}, LifeSteal+{lifeStealBonus:F1}%");
-            Debug.Log($"  = Final base stats: HP={baseHp}, ATK={baseAttack}, LifeSteal={baseLifeSteal:F1}%");
+            
         }
         catch (System.Exception e)
         {

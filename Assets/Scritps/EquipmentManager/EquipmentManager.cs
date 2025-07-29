@@ -67,6 +67,7 @@ public class EquipmentStats
     #endregion
     [Header("Special Stats")]
     public float lifeStealBonus = 0f;
+    public float ampDamageBonus = 0f;
     public int magicArmorBonus = 0;
     public float manaRegenBonus = 0f;
     public float healthRegenBonus = 0f;
@@ -120,6 +121,7 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedReductionCoolDown { get; set; }
     [Networked] public float NetworkedCriticalMultiplierBonus { get; set; }
     [Networked] public float NetworkedLifeStealBonus { get; set; }
+    [Networked] public float NetworkedAmpDamageBonus { get; set; }
     // เพิ่ม Networked properties สำหรับ 3 stats ใหม่
     [Networked] public int NetworkedSetMagicArmorBonus { get; set; }
     [Networked] public float NetworkedSetHealthRegenBonus { get; set; }
@@ -230,6 +232,7 @@ public class EquipmentManager : NetworkBehaviour
         character.HealthRegen += currentEquipmentStats.healthRegenBonus;
         // ✅ เพิ่มบรรทัดนี้
         character.LifeSteal += currentEquipmentStats.lifeStealBonus;
+        character.AmpDamage += currentEquipmentStats.ampDamageBonus;
 
         character.MaxHp += currentEquipmentStats.maxHpBonus;
         character.MaxMana += currentEquipmentStats.maxManaBonus;
@@ -257,6 +260,7 @@ public class EquipmentManager : NetworkBehaviour
 
         // ✅ เพิ่มบรรทัดนี้
         character.LifeSteal -= currentEquipmentStats.lifeStealBonus;
+        character.AmpDamage -= currentEquipmentStats.ampDamageBonus;
 
         character.MaxHp -= currentEquipmentStats.maxHpBonus;
         character.MaxMana -= currentEquipmentStats.maxManaBonus;
@@ -289,6 +293,7 @@ public class EquipmentManager : NetworkBehaviour
             character.ManaRegen = Mathf.Max(character.characterStats.manaRegen, character.ManaRegen);
             character.HealthRegen = Mathf.Max(character.characterStats.healthRegen, character.HealthRegen);
             character.LifeSteal = Mathf.Max(character.characterStats.lifeSteal, character.LifeSteal);
+            character.AmpDamage = Mathf.Max(character.characterStats.ampdamage, character.AmpDamage);
         }
         else
         {
@@ -308,6 +313,7 @@ public class EquipmentManager : NetworkBehaviour
             character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
             character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
             character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+            character.AmpDamage = Mathf.Max(0f, character.AmpDamage);
         }
 
         // Adjust current HP/Mana if needed
@@ -329,6 +335,7 @@ public class EquipmentManager : NetworkBehaviour
         character.HealthRegen += currentRuneStats.healthRegenBonus;
         // ✅ เพิ่มบรรทัดนี้
         character.LifeSteal += currentRuneStats.lifeStealBonus;
+        character.AmpDamage += currentRuneStats.ampDamageBonus;
 
         character.MaxHp += currentRuneStats.maxHpBonus;
         character.MaxMana += currentRuneStats.maxManaBonus;
@@ -351,6 +358,7 @@ public class EquipmentManager : NetworkBehaviour
 
         // ✅ เพิ่มบรรทัดนี้
         character.LifeSteal -= currentRuneStats.lifeStealBonus;
+        character.AmpDamage -= currentRuneStats.ampDamageBonus;
         character.MagicArmor -= currentRuneStats.magicArmorBonus;
         character.ManaRegen -= currentRuneStats.manaRegenBonus;
         character.HealthRegen -= currentRuneStats.healthRegenBonus;
@@ -381,6 +389,7 @@ public class EquipmentManager : NetworkBehaviour
             character.ManaRegen = Mathf.Max(character.characterStats.manaRegen, character.ManaRegen);
             character.HealthRegen = Mathf.Max(character.characterStats.healthRegen, character.HealthRegen);
             character.LifeSteal = Mathf.Max(character.characterStats.lifeSteal, character.LifeSteal);
+            character.AmpDamage = Mathf.Max(character.characterStats.ampdamage, character.AmpDamage);
         }
         else
         {
@@ -400,6 +409,7 @@ public class EquipmentManager : NetworkBehaviour
             character.ManaRegen = Mathf.Max(0f, character.ManaRegen);
             character.HealthRegen = Mathf.Max(0f, character.HealthRegen);
             character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+            character.AmpDamage = Mathf.Max(0f, character.AmpDamage);
         }
     }
 
@@ -462,7 +472,7 @@ public class EquipmentManager : NetworkBehaviour
     #endregion
 
     #region Network Synchronization  การ sync equipment stats ผ่าน network
-    private new void SyncEquipmentStats()
+    private  void SyncEquipmentStats()
     {
         if (HasStateAuthority)
         {
@@ -484,6 +494,8 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedAttackSpeedBonus = totalStats.attackSpeedBonus;
             NetworkedReductionCoolDown = totalStats.reductionCoolDownBonus;
             NetworkedLifeStealBonus = totalStats.lifeStealBonus;
+            NetworkedAmpDamageBonus = totalStats.ampDamageBonus;
+
             NetworkedSetMagicArmorBonus = totalStats.magicArmorBonus;
             NetworkedSetHealthRegenBonus = totalStats.manaRegenBonus;
             NetworkedSetManaRegenBonus = totalStats.healthRegenBonus;
@@ -499,6 +511,7 @@ public class EquipmentManager : NetworkBehaviour
             NetworkedSetMoveSpeedBonus = currentSetBonusStats.moveSpeedBonus;
             NetworkedSetAttackSpeedBonus = currentSetBonusStats.attackSpeedBonus;
             NetworkedSetLifeStealBonus = currentSetBonusStats.lifeStealBonus;
+            NetworkedAmpDamageBonus = currentSetBonusStats.ampDamageBonus;
 
             // ✅ เพิ่ม Network sync สำหรับ 3 stats ใหม่
             NetworkedSetMagicArmorBonus = currentSetBonusStats.magicArmorBonus;
@@ -509,13 +522,7 @@ public class EquipmentManager : NetworkBehaviour
         }
     }
     #endregion
-    public void DebugSetBonusStats()
-    {
-        Debug.Log($"[SetBonus Debug] {character.CharacterName}:");
-        Debug.Log($"  Set Bonus Stats: ATK+{currentSetBonusStats.attackDamageBonus}, MagicArmor+{currentSetBonusStats.magicArmorBonus}");
-        Debug.Log($"  Set Bonus Regen: Health+{currentSetBonusStats.healthRegenBonus:F1}/s, Mana+{currentSetBonusStats.manaRegenBonus:F1}/s");
-        Debug.Log($"  Character Stats: MagicArmor={character.MagicArmor}, HealthRegen={character.HealthRegen:F1}, ManaRegen={character.ManaRegen:F1}");
-    }
+    
     #region Public Query Methods  methods สำหรับดูข้อมูล stats ต่างๆ
     public float GetLifeStealBonus()
     {
@@ -585,7 +592,7 @@ public class EquipmentManager : NetworkBehaviour
         return total;
     }
 
-    public new EquipmentStats GetTotalStats()
+    public  EquipmentStats GetTotalStats()
     {
         EquipmentStats total = new EquipmentStats();
 
@@ -605,6 +612,7 @@ public class EquipmentManager : NetworkBehaviour
         total.attackSpeedBonus = currentEquipmentStats.attackSpeedBonus + currentRuneStats.attackSpeedBonus + currentSetBonusStats.attackSpeedBonus;
         total.reductionCoolDownBonus = currentEquipmentStats.reductionCoolDownBonus + currentRuneStats.reductionCoolDownBonus + currentSetBonusStats.reductionCoolDownBonus;
         total.lifeStealBonus = currentEquipmentStats.lifeStealBonus + currentRuneStats.lifeStealBonus + currentSetBonusStats.lifeStealBonus;
+        total.ampDamageBonus = currentEquipmentStats.ampDamageBonus + currentRuneStats.ampDamageBonus + currentSetBonusStats.ampDamageBonus;
 
         // ✅ เพิ่ม 3 stats ใหม่ที่รวม Set Bonus
         total.magicArmorBonus = currentEquipmentStats.magicArmorBonus + currentRuneStats.magicArmorBonus + currentSetBonusStats.magicArmorBonus;
@@ -633,6 +641,7 @@ public class EquipmentManager : NetworkBehaviour
     [Networked] public float NetworkedSetMoveSpeedBonus { get; set; }
     [Networked] public float NetworkedSetAttackSpeedBonus { get; set; }
     [Networked] public float NetworkedSetLifeStealBonus { get; set; }
+    [Networked] public float NetworkedAmpDamegeBonus { get; set; }
 
     /// <summary>
     /// Apply set bonuses to character
@@ -693,6 +702,7 @@ public class EquipmentManager : NetworkBehaviour
         character.CriticalChance += currentSetBonusStats.criticalChanceBonus;
         character.CriticalDamageBonus += currentSetBonusStats.criticalMultiplierBonus;
         character.LifeSteal += currentSetBonusStats.lifeStealBonus;
+        character.AmpDamage += currentSetBonusStats.ampDamageBonus;
         character.MaxHp += currentSetBonusStats.maxHpBonus;
         character.MaxMana += currentSetBonusStats.maxManaBonus;
         character.MoveSpeed += currentSetBonusStats.moveSpeedBonus;
@@ -710,13 +720,7 @@ public class EquipmentManager : NetworkBehaviour
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
-        Debug.Log($"[SetBonus Applied] {character.CharacterName} - " +
-                  $"ATK+{currentSetBonusStats.attackDamageBonus}, " +
-                  $"HP+{currentSetBonusStats.maxHpBonus}, " +
-                  $"Lifesteal+{currentSetBonusStats.lifeStealBonus}%, " +
-                  $"MagicArmor+{currentSetBonusStats.magicArmorBonus}, " +
-                  $"HealthRegen+{currentSetBonusStats.healthRegenBonus:F1}/s, " +
-                  $"ManaRegen+{currentSetBonusStats.manaRegenBonus:F1}/s");
+     
     }
 
     private void RemoveSetBonusStats()
@@ -727,6 +731,7 @@ public class EquipmentManager : NetworkBehaviour
         character.CriticalChance -= currentSetBonusStats.criticalChanceBonus;
         character.CriticalDamageBonus -= currentSetBonusStats.criticalMultiplierBonus;
         character.LifeSteal -= currentSetBonusStats.lifeStealBonus;
+        character.AmpDamage -= currentSetBonusStats.ampDamageBonus;
         character.MaxHp -= currentSetBonusStats.maxHpBonus;
         character.MaxMana -= currentSetBonusStats.maxManaBonus;
         character.MoveSpeed -= currentSetBonusStats.moveSpeedBonus;
@@ -755,6 +760,7 @@ public class EquipmentManager : NetworkBehaviour
             character.ReductionCoolDown = Mathf.Max(character.characterStats.reductionCoolDown, character.ReductionCoolDown);
             character.CriticalDamageBonus = Mathf.Max(character.characterStats.criticalDamageBonus, character.CriticalDamageBonus);
             character.LifeSteal = Mathf.Max(character.characterStats.lifeSteal, character.LifeSteal);
+            character.AmpDamage = Mathf.Max(character.characterStats.ampdamage, character.AmpDamage);
 
             // ✅ เพิ่มการตรวจสอบ 3 stats ใหม่
             character.MagicArmor = Mathf.Max(character.characterStats.magicArmor, character.MagicArmor);
@@ -776,6 +782,7 @@ public class EquipmentManager : NetworkBehaviour
             character.ReductionCoolDown = Mathf.Max(0f, character.ReductionCoolDown);
             character.CriticalDamageBonus = Mathf.Max(0f, character.CriticalDamageBonus);
             character.LifeSteal = Mathf.Max(0f, character.LifeSteal);
+            character.AmpDamage = Mathf.Max(0f, character.AmpDamage);
 
             // ✅ เพิ่ม fallback สำหรับ 3 stats ใหม่
             character.MagicArmor = Mathf.Max(0, character.MagicArmor);
@@ -787,13 +794,7 @@ public class EquipmentManager : NetworkBehaviour
         character.CurrentHp = Mathf.Min(character.CurrentHp, character.MaxHp);
         character.CurrentMana = Mathf.Min(character.CurrentMana, character.MaxMana);
 
-        Debug.Log($"[SetBonus Removed] {character.CharacterName} - " +
-                  $"ATK-{currentSetBonusStats.attackDamageBonus}, " +
-                  $"HP-{currentSetBonusStats.maxHpBonus}, " +
-                  $"Lifesteal-{currentSetBonusStats.lifeStealBonus}%, " +
-                  $"MagicArmor-{currentSetBonusStats.magicArmorBonus}, " +
-                  $"HealthRegen-{currentSetBonusStats.healthRegenBonus:F1}/s, " +
-                  $"ManaRegen-{currentSetBonusStats.manaRegenBonus:F1}/s");
+        
     }
     #endregion
 #if UNITY_EDITOR

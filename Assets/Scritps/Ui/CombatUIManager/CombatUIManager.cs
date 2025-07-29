@@ -92,6 +92,7 @@ public class CombatUIManager : MonoBehaviour
     public TextMeshProUGUI attackSpeedText;
     public TextMeshProUGUI reductionCoolDownText;
     public TextMeshProUGUI liftSteal;
+    public TextMeshProUGUI ampDamage;
     public TextMeshProUGUI magicArmor;
     public TextMeshProUGUI HealthRegen;
     public TextMeshProUGUI ManaRegen;
@@ -1422,6 +1423,10 @@ public class CombatUIManager : MonoBehaviour
         if (reductionCoolDownText != null)
         {
             reductionCoolDownText.text = $"CDR : {localHero.ReductionCoolDown:F1}%";
+        }
+        if (ampDamage != null)
+        {
+            ampDamage.text = $"Amp : {localHero.AmpDamage:F1}%";
         }
         if (attackSpeedText != null)
         {
