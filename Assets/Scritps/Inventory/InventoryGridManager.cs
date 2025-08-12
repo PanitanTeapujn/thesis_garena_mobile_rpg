@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-
+using TMPro;
 public class InventoryGridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
@@ -27,7 +27,17 @@ public class InventoryGridManager : MonoBehaviour
     // Events
     public System.Action<int> OnSlotSelectionChanged;   // เมื่อเลือก slot ใหม่
     public System.Action<int> OnSlotDoubleClicked;      // เมื่อ double click (สำหรับ equip ในอนาคต)
+    [Header("🔍 Inventory Filter System")]
+    public TMP_Dropdown categoryFilterDropdown;     // Dropdown สำหรับ filter ตาม ItemType
+    public TMP_Dropdown tierFilterDropdown;        // Dropdown สำหรับ filter ตาม ItemTier
+    public Button clearFiltersButton;              // ปุ่มล้าง filters
+    public TextMeshProUGUI filteredItemCountText;  // แสดงจำนวน items หลัง filter
 
+    [Header("🔍 Filter Variables")]
+    private ItemType selectedItemType = ItemType.Weapon; // เก็บ type ที่เลือก (-1 = All)
+    private ItemTier selectedItemTier = ItemTier.Common;  // เก็บ tier ที่เลือก (-1 = All)
+    private bool isFilteringByType = false;              // สถานะการ filter ตาม type
+    private bool isFilteringByTier = false;              // สถานะการ filter ตาม tier
     // Properties
     public Character OwnerCharacter { get { return ownerCharacter; } }
     public int TotalSlots { get { return totalSlots; } }
@@ -43,6 +53,7 @@ public class InventoryGridManager : MonoBehaviour
     private void Start()
     {
         SetupCharacterConnection();
+        SetupInventoryFilters();
 
         // ✅ เปลี่ยนจาก CreateInventoryGrid(); เป็น
         // สร้าง grid เสมอ แม้ว่าจะยังไม่มี character
@@ -241,8 +252,7 @@ public class InventoryGridManager : MonoBehaviour
 
                         slot.SetFilledState(itemIcon, stackCount);
 
-                        Color tierColor = item.itemData.GetTierColor();
-                        slot.SetTierBackground(tierColor);
+                       
 
                         Debug.Log($"[InventoryGrid] Immediate sync slot {i}: {item.itemData.ItemName}");
                     }
@@ -374,8 +384,7 @@ public class InventoryGridManager : MonoBehaviour
 
                 slot.SetFilledState(itemIcon, stackCount);
 
-                Color tierColor = item.itemData.GetTierColor();
-                slot.SetTierBackground(tierColor);
+               
 
                 Debug.Log($"[InventoryGrid] Slot {slotIndex} synced with item: {item.itemData.ItemName}");
             }
@@ -809,6 +818,7 @@ public class InventoryGridManager : MonoBehaviour
 
         // ✅ เพิ่ม force refresh ทั้ง grid
         ForceRefreshAllSlots();
+        ApplyInventoryFilters();
 
         Debug.Log("[InventoryGrid] ✅ Completed loading all items with force sync");
     }
@@ -868,6 +878,7 @@ public class InventoryGridManager : MonoBehaviour
 
         // Force canvas update
         Canvas.ForceUpdateCanvases();
+        ApplyInventoryFilters();
 
         Debug.Log($"[InventoryGrid] ✅ Refreshed {refreshedCount} slots");
     }
@@ -914,8 +925,7 @@ public class InventoryGridManager : MonoBehaviour
 
             slot.SetFilledState(itemIcon, showStackCount ? stackCount : 0);
 
-            Color tierColor = item.itemData.GetTierColor();
-            slot.SetTierBackground(tierColor);
+           
 
         }
 
@@ -1118,8 +1128,579 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log($"[InventoryGrid] Spacing changed to {spacing}");
     }
     #endregion
-   
-   
 
-   
+    private void SetupInventoryFilters()
+    {
+        Debug.Log("[InventoryGrid] 🔧 Setting up inventory filters...");
+
+        // ✅ Setup Category Filter Dropdown
+        if (categoryFilterDropdown != null)
+        {
+            try
+            {
+                categoryFilterDropdown.ClearOptions();
+                List<string> categoryOptions = new List<string> { "All Types" };
+
+                foreach (ItemType itemType in System.Enum.GetValues(typeof(ItemType)))
+                {
+                    categoryOptions.Add(itemType.ToString());
+                }
+
+                categoryFilterDropdown.AddOptions(categoryOptions);
+                categoryFilterDropdown.value = 0;
+                categoryFilterDropdown.RefreshShownValue();
+
+                // ✅ Setup dropdown content layout พร้อม optimization
+                SetupDropdownContentLayout(categoryFilterDropdown, "Category");
+                OptimizeDropdownUsability(categoryFilterDropdown, "Category");
+
+                // เพิ่ม event listener
+                categoryFilterDropdown.onValueChanged.AddListener(OnCategoryFilterChanged);
+
+                Debug.Log($"[InventoryGrid] ✅ Category filter setup: {categoryOptions.Count} options");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[InventoryGrid] ❌ Category filter setup failed: {e.Message}");
+            }
+        }
+
+        // ✅ Setup Tier Filter Dropdown
+        if (tierFilterDropdown != null)
+        {
+            try
+            {
+                tierFilterDropdown.ClearOptions();
+                List<string> tierOptions = new List<string> { "All Tiers" };
+
+                foreach (ItemTier tier in System.Enum.GetValues(typeof(ItemTier)))
+                {
+                    tierOptions.Add(tier.ToString());
+                }
+
+                tierFilterDropdown.AddOptions(tierOptions);
+                tierFilterDropdown.value = 0;
+                tierFilterDropdown.RefreshShownValue();
+
+                // ✅ Setup dropdown content layout พร้อม optimization
+                SetupDropdownContentLayout(tierFilterDropdown, "Tier");
+                OptimizeDropdownUsability(tierFilterDropdown, "Tier");
+
+                // เพิ่ม event listener
+                tierFilterDropdown.onValueChanged.AddListener(OnTierFilterChanged);
+
+                Debug.Log($"[InventoryGrid] ✅ Tier filter setup: {tierOptions.Count} options");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[InventoryGrid] ❌ Tier filter setup failed: {e.Message}");
+            }
+        }
+
+        // ✅ Setup Clear Filters Button
+        if (clearFiltersButton != null)
+        {
+            clearFiltersButton.onClick.RemoveAllListeners();
+            clearFiltersButton.onClick.AddListener(ClearAllFilters);
+            Debug.Log("[InventoryGrid] ✅ Clear filters button setup");
+        }
+
+        Debug.Log("[InventoryGrid] 🎉 Inventory filters setup completed with improved usability!");
+    }
+    private void SetupDropdownContentLayout(TMP_Dropdown dropdown, string dropdownName)
+    {
+        if (dropdown == null) return;
+
+        try
+        {
+            // หา dropdown content (Template)
+            Transform template = dropdown.transform.Find("Template");
+            if (template == null)
+            {
+                Debug.LogWarning($"[InventoryGrid] No Template found in {dropdownName} dropdown");
+                return;
+            }
+
+            // หา Viewport และ Content
+            Transform viewport = template.Find("Viewport");
+            if (viewport == null)
+            {
+                Debug.LogWarning($"[InventoryGrid] No Viewport found in {dropdownName} dropdown template");
+                return;
+            }
+
+            Transform content = viewport.Find("Content");
+            if (content == null)
+            {
+                Debug.LogWarning($"[InventoryGrid] No Content found in {dropdownName} dropdown viewport");
+                return;
+            }
+
+            // ✅ เพิ่ม Vertical Layout Group ใน Content
+            VerticalLayoutGroup verticalLayout = content.GetComponent<VerticalLayoutGroup>();
+            if (verticalLayout == null)
+            {
+                verticalLayout = content.gameObject.AddComponent<VerticalLayoutGroup>();
+                Debug.Log($"[InventoryGrid] ✅ Added VerticalLayoutGroup to {dropdownName} dropdown content");
+            }
+
+            // ✅ ตั้งค่า Vertical Layout Group ให้กดง่าย (เหมือน ShopLooby)
+            verticalLayout.padding = new RectOffset(2, 2, 15, 2);       // padding น้อยลง
+            verticalLayout.spacing = 25f;                               // ไม่มีระยะห่างระหว่างตัวเลือก
+            verticalLayout.childAlignment = TextAnchor.UpperLeft;       // จัดเรียงซ้ายบน
+            verticalLayout.childControlWidth = true;                   // ควบคุมความกว้าง
+            verticalLayout.childControlHeight = true;                  // ควบคุมความสูง
+            verticalLayout.childForceExpandWidth = true;               // บังคับขยายความกว้าง
+            verticalLayout.childForceExpandHeight = false;             // ไม่บังคับขยายความสูง
+
+            // ✅ เพิ่ม Content Size Fitter
+            ContentSizeFitter sizeFitter = content.GetComponent<ContentSizeFitter>();
+            if (sizeFitter == null)
+            {
+                sizeFitter = content.gameObject.AddComponent<ContentSizeFitter>();
+            }
+            sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            // ✅ ปรับ Template size ให้เหมาะสมกับการกด
+            RectTransform templateRect = template.GetComponent<RectTransform>();
+            if (templateRect != null)
+            {
+                // กำหนดความสูงสูงสุดของ dropdown
+                float maxHeight = 300; // สูงสุด 200 pixels
+                Vector2 templateSize = templateRect.sizeDelta;
+                templateSize.y = maxHeight;
+                templateRect.sizeDelta = templateSize;
+
+                Debug.Log($"[InventoryGrid] Set {dropdownName} dropdown template max height to {maxHeight}");
+            }
+
+            // ✅ เพิ่ม ScrollRect ถ้าไม่มี (สำหรับกรณีตัวเลือกเยอะ)
+            ScrollRect scrollRect = template.GetComponent<ScrollRect>();
+            if (scrollRect == null)
+            {
+                scrollRect = template.gameObject.AddComponent<ScrollRect>();
+                scrollRect.content = content.GetComponent<RectTransform>();
+                scrollRect.viewport = viewport.GetComponent<RectTransform>();
+                scrollRect.horizontal = false;
+                scrollRect.vertical = true;
+                scrollRect.scrollSensitivity = 20f;
+
+                Debug.Log($"[InventoryGrid] ✅ Added ScrollRect to {dropdownName} dropdown");
+            }
+
+            // ✅ ปรับแต่ง dropdown items ให้กดง่าย
+            SetupDropdownItemInteraction(dropdown, dropdownName);
+
+            Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown content layout setup completed");
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown layout: {e.Message}");
+        }
+    }
+    private void SetupDropdownItemInteraction(TMP_Dropdown dropdown, string dropdownName)
+    {
+        if (dropdown == null) return;
+
+        try
+        {
+            // หา dropdown item prefab
+            Transform template = dropdown.transform.Find("Template");
+            if (template == null) return;
+
+            Transform viewport = template.Find("Viewport");
+            if (viewport == null) return;
+
+            Transform content = viewport.Find("Content");
+            if (content == null) return;
+
+            Transform item = content.Find("Item");
+            if (item == null) return;
+
+            // ✅ ปรับแต่ง item toggle component
+            Toggle itemToggle = item.GetComponent<Toggle>();
+            if (itemToggle != null)
+            {
+                // ปรับสี transition ให้เห็นชัดเจนขึ้น
+                ColorBlock colors = itemToggle.colors;
+                colors.normalColor = new Color(1f, 1f, 1f, 0.8f);      // ปกติ - ขาวโปร่งใส
+                colors.highlightedColor = new Color(0.9f, 0.9f, 1f, 1f); // hover - ฟ้าอ่อน
+                colors.pressedColor = new Color(0.7f, 0.7f, 1f, 1f);     // กด - ฟ้าเข้ม
+                colors.selectedColor = new Color(0.8f, 1f, 0.8f, 1f);    // เลือก - เขียวอ่อน
+                colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f); // ปิดใช้งาน - เทา
+                colors.colorMultiplier = 1f;
+                colors.fadeDuration = 0.1f;
+                itemToggle.colors = colors;
+
+                // ตั้งค่า transition เป็น ColorTint เพื่อให้เห็นการเปลี่ยนแปลงชัด
+                itemToggle.transition = Selectable.Transition.ColorTint;
+            }
+
+            // ✅ ปรับขนาด item ให้กดง่าย
+            RectTransform itemRect = item.GetComponent<RectTransform>();
+            if (itemRect != null)
+            {
+                // เพิ่มความสูงของแต่ละ item ให้กดง่าย
+                Vector2 itemSize = itemRect.sizeDelta;
+                itemSize.y = Mathf.Max(itemSize.y, 25f); // ความสูงขั้นต่ำ 25 pixels
+                itemRect.sizeDelta = itemSize;
+            }
+
+            // ✅ ปรับแต่ง text component ใน item
+            TextMeshProUGUI itemText = item.GetComponentInChildren<TextMeshProUGUI>();
+            if (itemText != null)
+            {
+                // ตั้งค่า text alignment
+                itemText.alignment = TextAlignmentOptions.Left;
+                itemText.margin = new Vector4(10, 4, 10, 4); // margin ซ้าย, บน, ขวา, ล่าง
+
+                // ปรับขนาดตัวอักษรให้อ่านง่าย
+                if (itemText.fontSize < 14f)
+                {
+                    itemText.fontSize = 14f;
+                }
+            }
+
+            Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown item interaction setup completed");
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown item interaction: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม method สำหรับปรับแต่ง dropdown ทั้งตัว
+    private void OptimizeDropdownUsability(TMP_Dropdown dropdown, string dropdownName)
+    {
+        if (dropdown == null) return;
+
+        try
+        {
+            // ✅ ปรับแต่ง dropdown button เอง
+            Button dropdownButton = dropdown.GetComponent<Button>();
+            if (dropdownButton != null)
+            {
+                // ปรับสี transition
+                ColorBlock colors = dropdownButton.colors;
+                colors.normalColor = new Color(0.9f, 0.9f, 0.9f, 1f);
+                colors.highlightedColor = new Color(1f, 1f, 1f, 1f);
+                colors.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+                colors.disabledColor = new Color(0.6f, 0.6f, 0.6f, 0.5f);
+                colors.colorMultiplier = 1f;
+                colors.fadeDuration = 0.1f;
+                dropdownButton.colors = colors;
+            }
+
+            // ✅ ปรับขนาด dropdown ให้กดง่าย
+            RectTransform dropdownRect = dropdown.GetComponent<RectTransform>();
+            if (dropdownRect != null)
+            {
+                Vector2 dropdownSize = dropdownRect.sizeDelta;
+                dropdownSize.y = Mathf.Max(dropdownSize.y, 30f); // ความสูงขั้นต่ำ 30 pixels
+                dropdownRect.sizeDelta = dropdownSize;
+            }
+
+            // ✅ ปรับแต่ง dropdown arrow
+            Transform arrow = dropdown.transform.Find("Arrow");
+            if (arrow != null)
+            {
+                Image arrowImage = arrow.GetComponent<Image>();
+                if (arrowImage != null)
+                {
+                    arrowImage.color = new Color(0.3f, 0.3f, 0.3f, 1f); // สีเทาเข้มให้เห็นชัด
+                }
+            }
+
+            Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown usability optimized");
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[InventoryGrid] ❌ Error optimizing {dropdownName} dropdown usability: {e.Message}");
+        }
+    }
+
+    private void SetupFilterContainer()
+    {
+        // หา filter container หรือสร้างใหม่
+        Transform filterContainer = transform.parent?.Find("FilterContainer");
+
+        if (filterContainer == null && categoryFilterDropdown != null)
+        {
+            // หา parent ของ dropdown แล้วเพิ่ม Vertical Layout Group
+            Transform dropdownParent = categoryFilterDropdown.transform.parent;
+
+            if (dropdownParent != null)
+            {
+                // เพิ่ม Vertical Layout Group ถ้ายังไม่มี
+                VerticalLayoutGroup verticalLayout = dropdownParent.GetComponent<VerticalLayoutGroup>();
+                if (verticalLayout == null)
+                {
+                    verticalLayout = dropdownParent.gameObject.AddComponent<VerticalLayoutGroup>();
+
+                    // ตั้งค่า Vertical Layout Group
+                    verticalLayout.spacing = 10f;
+                    verticalLayout.childAlignment = TextAnchor.UpperCenter;
+                    verticalLayout.childControlWidth = true;
+                    verticalLayout.childControlHeight = false;
+                    verticalLayout.childForceExpandWidth = true;
+                    verticalLayout.childForceExpandHeight = false;
+
+                    // เพิ่ม Content Size Fitter
+                    ContentSizeFitter sizeFitter = dropdownParent.GetComponent<ContentSizeFitter>();
+                    if (sizeFitter == null)
+                    {
+                        sizeFitter = dropdownParent.gameObject.AddComponent<ContentSizeFitter>();
+                    }
+                    sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                    sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                    Debug.Log("[InventoryGrid] ✅ Added Vertical Layout Group to filter container");
+                }
+            }
+        }
+    }
+    // ✅ เพิ่ม Event Handlers
+    private void OnCategoryFilterChanged(int filterIndex)
+    {
+        Debug.Log($"[InventoryGrid] Category filter changed to index: {filterIndex}");
+
+        if (filterIndex == 0)
+        {
+            // "All Types" selected
+            isFilteringByType = false;
+            Debug.Log("[InventoryGrid] Showing all item types");
+        }
+        else
+        {
+            // Specific type selected
+            isFilteringByType = true;
+            selectedItemType = (ItemType)(filterIndex - 1);
+            Debug.Log($"[InventoryGrid] Filtering by type: {selectedItemType}");
+        }
+
+        ApplyInventoryFilters();
+    }
+
+    private void OnTierFilterChanged(int filterIndex)
+    {
+        Debug.Log($"[InventoryGrid] Tier filter changed to index: {filterIndex}");
+
+        if (filterIndex == 0)
+        {
+            // "All Tiers" selected
+            isFilteringByTier = false;
+            Debug.Log("[InventoryGrid] Showing all tiers");
+        }
+        else
+        {
+            // Specific tier selected
+            isFilteringByTier = true;
+            selectedItemTier = (ItemTier)filterIndex;
+            Debug.Log($"[InventoryGrid] Filtering by tier: {selectedItemTier}");
+        }
+
+        ApplyInventoryFilters();
+    }
+
+    private void ClearAllFilters()
+    {
+        Debug.Log("[InventoryGrid] 🧹 Clearing all filters...");
+
+        // Reset dropdowns
+        if (categoryFilterDropdown != null)
+        {
+            categoryFilterDropdown.value = 0;
+            categoryFilterDropdown.RefreshShownValue();
+        }
+
+        if (tierFilterDropdown != null)
+        {
+            tierFilterDropdown.value = 0;
+            tierFilterDropdown.RefreshShownValue();
+        }
+
+        // Reset filter states
+        isFilteringByType = false;
+        isFilteringByTier = false;
+
+        // Apply filters (จะแสดง items ทั้งหมด)
+        ApplyInventoryFilters();
+    }
+
+    private void ApplyInventoryFilters()
+    {
+        if (ownerCharacter?.GetInventory() == null)
+        {
+            Debug.LogWarning("[InventoryGrid] No inventory to filter");
+            return;
+        }
+
+        Debug.Log($"[InventoryGrid] 🔍 Applying filters - Type: {(isFilteringByType ? selectedItemType.ToString() : "All")}, Tier: {(isFilteringByTier ? selectedItemTier.ToString() : "All")}");
+
+        Inventory inventory = ownerCharacter.GetInventory();
+        int visibleItems = 0;
+        int totalItems = 0;
+
+        // ✅ วนลูปทุก slot แต่ไม่ซ่อน slot เอง
+        for (int i = 0; i < allSlots.Count && i < inventory.CurrentSlots; i++)
+        {
+            InventorySlot slot = allSlots[i];
+            InventoryItem item = inventory.GetItem(i);
+
+            if (slot == null) continue;
+
+            // ✅ แสดง slot เสมอ (ไม่ซ่อน)
+            slot.gameObject.SetActive(true);
+
+            bool shouldShowItem = ShouldShowItem(item);
+
+            if (item != null && !item.IsEmpty)
+            {
+                totalItems++;
+
+                if (shouldShowItem)
+                {
+                    // แสดง item ปกติ
+                    visibleItems++;
+                    SetSlotVisualState(slot, true);
+                }
+                else
+                {
+                    // ซ่อน item แต่แสดง slot แบบ dimmed
+                    SetSlotVisualState(slot, false);
+                }
+            }
+            else
+            {
+                // Empty slot - แสดงปกติเสมอ
+                SetSlotVisualState(slot, true);
+            }
+        }
+
+        // อัพเดท item count text
+        UpdateFilteredItemCount(visibleItems, totalItems);
+
+        Debug.Log($"[InventoryGrid] ✅ Filter applied - Visible: {visibleItems}/{totalItems} items");
+    }
+    private void SetSlotVisualState(InventorySlot slot, bool showItem)
+    {
+        if (slot == null) return;
+
+        if (showItem)
+        {
+            // แสดง item ปกติ
+            if (slot.itemIcon != null)
+            {
+                slot.itemIcon.color = Color.white;
+            }
+           
+            if (slot.stackText != null)
+            {
+                slot.stackText.color = Color.white;
+            }
+        }
+        else
+        {
+            // ทำให้ item มอง dimmed/gray
+            if (slot.itemIcon != null)
+            {
+                slot.itemIcon.color = new Color(0.5f, 0.5f, 0.5f, 0.3f); // สีเทาจาง
+            }
+            
+            if (slot.stackText != null)
+            {
+                slot.stackText.color = new Color(0.5f, 0.5f, 0.5f, 0.5f); // ตัวเลขเทาจาง
+            }
+        }
+    }
+    // ✅ เพิ่ม method สำหรับตรวจสอบว่า item ควรแสดงหรือไม่
+    private bool ShouldShowItem(InventoryItem item)
+    {
+        // ถ้า slot ว่าง - แสดงเสมอ
+        if (item == null || item.IsEmpty)
+        {
+            return true; // ✅ เปลี่ยนให้แสดง empty slots เสมอ
+        }
+
+        // ตรวจสอบ type filter
+        if (isFilteringByType && item.itemData.ItemType != selectedItemType)
+        {
+            return false;
+        }
+
+        // ตรวจสอบ tier filter
+        if (isFilteringByTier && item.itemData.Tier != selectedItemTier)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    private void UpdateFilteredItemCount(int visibleItems, int totalItems)
+    {
+        if (filteredItemCountText != null)
+        {
+            if (isFilteringByType || isFilteringByTier)
+            {
+                filteredItemCountText.text = $"Showing: {visibleItems}/{totalItems} items";
+                filteredItemCountText.gameObject.SetActive(true);
+            }
+            else
+            {
+                filteredItemCountText.text = $"Total: {totalItems} items";
+                filteredItemCountText.gameObject.SetActive(totalItems > 0);
+            }
+        }
+    }
+    // ✅ เพิ่ม method สำหรับอัพเดท item count
+    private void UpdateFilteredItemCount(int visibleCount)
+    {
+        if (filteredItemCountText != null)
+        {
+            if (isFilteringByType || isFilteringByTier)
+            {
+                filteredItemCountText.text = $"Showing: {visibleCount} items";
+                filteredItemCountText.gameObject.SetActive(true);
+            }
+            else
+            {
+                filteredItemCountText.gameObject.SetActive(false);
+            }
+        }
+    }
+    public void ResetFilters()
+    {
+        ClearAllFilters();
+    }
+
+    public bool HasActiveFilters()
+    {
+        return isFilteringByType || isFilteringByTier;
+    }
+
+    public string GetCurrentFilterStatus()
+    {
+        if (!HasActiveFilters())
+        {
+            return "No filters active";
+        }
+
+        List<string> activeFilters = new List<string>();
+
+        if (isFilteringByType)
+        {
+            activeFilters.Add($"Type: {selectedItemType}");
+        }
+
+        if (isFilteringByTier)
+        {
+            activeFilters.Add($"Tier: {selectedItemTier}");
+        }
+
+        return "Filters: " + string.Join(", ", activeFilters);
+    }
 }

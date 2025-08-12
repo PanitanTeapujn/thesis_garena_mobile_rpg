@@ -73,7 +73,11 @@ public class CombatUIManager : MonoBehaviour
     public GameObject setBonusPanel;           // Panel แสดง Set Bonus
     public SetBonusUI setBonusUI;             // Component SetBonusUI
 
-
+    [Header("🔍 Inventory Filter UI")]
+    public TMP_Dropdown inventoryCategoryFilter;    // Dropdown สำหรับ filter category
+    public TMP_Dropdown inventoryTierFilter;        // Dropdown สำหรับ filter tier
+    public Button inventoryClearFiltersButton;      // ปุ่มล้าง filters
+    public TextMeshProUGUI inventoryFilterStatusText; // แสดงสถานะ filter
     [Header("Character Stats in Inventory")]
     public TextMeshProUGUI characterNameText;
     public TextMeshProUGUI characterLevelText;
@@ -279,6 +283,7 @@ public class CombatUIManager : MonoBehaviour
             // Setup Item Info Panel
             SetupItemDetailPanel();
 
+            SetupInventoryFilters();
 
         }
         else
@@ -286,7 +291,113 @@ public class CombatUIManager : MonoBehaviour
             Debug.LogError("❌ Inventory Panel not assigned in Inspector!");
         }
     }
-  
+    private void SetupInventoryFilters()
+    {
+        Debug.Log("=== Setting up Inventory Filter UI ===");
+
+        // หา filter components ถ้าไม่ได้ assign ใน Inspector
+        if (inventoryCategoryFilter == null)
+        {
+            inventoryCategoryFilter = FindUIComponentInInventory<TMP_Dropdown>("CategoryFilter");
+        }
+
+        if (inventoryTierFilter == null)
+        {
+            inventoryTierFilter = FindUIComponentInInventory<TMP_Dropdown>("TierFilter");
+        }
+
+        if (inventoryClearFiltersButton == null)
+        {
+            inventoryClearFiltersButton = FindUIComponentInInventory<Button>("ClearFiltersButton");
+        }
+
+        if (inventoryFilterStatusText == null)
+        {
+            inventoryFilterStatusText = FindUIComponentInInventory<TextMeshProUGUI>("FilterStatusText");
+        }
+
+        // เชื่อมต่อกับ InventoryGridManager
+        if (inventoryGridManager != null)
+        {
+            ConnectFiltersToGridManager();
+            Debug.Log("✅ Inventory filters connected to grid manager");
+        }
+        else
+        {
+            Debug.LogWarning("❌ InventoryGridManager not found, will connect filters later");
+        }
+
+        Debug.Log("✅ Inventory Filter UI setup complete");
+    }
+
+    // ✅ เพิ่ม method สำหรับเชื่อมต่อ filters กับ grid manager
+    private void ConnectFiltersToGridManager()
+    {
+        if (inventoryGridManager == null) return;
+
+        // เชื่อมต่อ filter components กับ grid manager
+        if (inventoryCategoryFilter != null)
+        {
+            inventoryGridManager.categoryFilterDropdown = inventoryCategoryFilter;
+        }
+
+        if (inventoryTierFilter != null)
+        {
+            inventoryGridManager.tierFilterDropdown = inventoryTierFilter;
+        }
+
+        if (inventoryClearFiltersButton != null)
+        {
+            inventoryGridManager.clearFiltersButton = inventoryClearFiltersButton;
+        }
+
+        if (inventoryFilterStatusText != null)
+        {
+            inventoryGridManager.filteredItemCountText = inventoryFilterStatusText;
+        }
+
+        // เรียก setup filters ใน grid manager
+        StartCoroutine(DelayedFilterSetup());
+    }
+
+    // ✅ เพิ่ม coroutine สำหรับ delayed filter setup
+    private IEnumerator DelayedFilterSetup()
+    {
+        // รอ 2 frames เพื่อให้ grid พร้อม
+        yield return null;
+        yield return null;
+
+        if (inventoryGridManager != null)
+        {
+            // เรียก private method ผ่าน reflection หรือทำ public
+            inventoryGridManager.GetType().GetMethod("SetupInventoryFilters",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(inventoryGridManager, null);
+
+            Debug.Log("[CombatUI] ✅ Delayed filter setup completed");
+        }
+    }
+
+    // ✅ เพิ่ม helper method สำหรับหา UI components ใน inventory panel
+    private T FindUIComponentInInventory<T>(string componentName) where T : Component
+    {
+        if (inventoryPanel == null) return null;
+
+        // หาใน inventory panel และ children
+        T[] components = inventoryPanel.GetComponentsInChildren<T>(true);
+
+        foreach (T component in components)
+        {
+            if (component.gameObject.name.Contains(componentName))
+            {
+                Debug.Log($"[CombatUI] Found {componentName}: {component.gameObject.name}");
+                return component;
+            }
+        }
+
+        Debug.LogWarning($"[CombatUI] {componentName} of type {typeof(T).Name} not found in inventory panel");
+        return null;
+    }
     private void SetupItemDetailPanel()
     {
         Debug.Log("=== Setting up Item Detail Panel ===");
@@ -389,6 +500,7 @@ public class CombatUIManager : MonoBehaviour
 
         // Subscribe to grid events
         inventoryGridManager.OnSlotSelectionChanged += HandleSlotSelectionChanged;
+        ConnectFiltersToGridManager();
 
         // 🎯 เชื่อมต่อกับ local hero ถ้ามีแล้ว
         if (localHero != null)
@@ -406,7 +518,32 @@ public class CombatUIManager : MonoBehaviour
 
         Debug.Log("✅ Inventory Grid setup complete");
     }
+    public void ResetInventoryFilters()
+    {
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ResetFilters();
+            Debug.Log("[CombatUI] Reset inventory filters");
+        }
+    }
 
+    public bool HasActiveInventoryFilters()
+    {
+        if (inventoryGridManager != null)
+        {
+            return inventoryGridManager.HasActiveFilters();
+        }
+        return false;
+    }
+
+    public string GetInventoryFilterStatus()
+    {
+        if (inventoryGridManager != null)
+        {
+            return inventoryGridManager.GetCurrentFilterStatus();
+        }
+        return "Filters not available";
+    }
     // ✅ เพิ่ม method ใหม่สำหรับ refresh ItemDeleteManager
     private void RefreshItemDeleteManagerReferences()
     {

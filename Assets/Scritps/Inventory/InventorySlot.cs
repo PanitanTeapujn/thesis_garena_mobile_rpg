@@ -9,7 +9,6 @@ public class InventorySlot : MonoBehaviour
     public Image itemIcon;          // ไอคอน item (ซ่อนถ้าไม่มี item)
     public Button slotButton;       // ปุ่มสำหรับ touch events
     public TextMeshProUGUI stackText; // จำนวน item (optional สำหรับอนาคต)
-    public Image tierBackground;    // พื้นหลังแสดงสี tier (อยู่ข้างหลัง itemIcon)
 
     [Header("Visual Settings")]
     public Color emptySlotColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);      // สีเทาเมื่อไม่มี item
@@ -79,8 +78,7 @@ public class InventorySlot : MonoBehaviour
         }
 
         // 🚨 ไม่สร้างอัตโนมัติ - ให้ลากใส่ใน Inspector เท่านั้น
-        if (tierBackground == null)
-            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: TierBackground not assigned! Please drag it from Inspector.");
+        
 
         if (itemIcon == null)
             Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: ItemIcon not assigned! Please drag it from Inspector.");
@@ -156,8 +154,6 @@ public class InventorySlot : MonoBehaviour
 
             SetFilledState(itemIcon, stackCount);
 
-            Color tierColor = item.itemData.GetTierColor();
-            SetTierBackground(tierColor);
 
             Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync SUCCESS - {item.itemData.ItemName} x{item.stackCount}");
         }
@@ -184,10 +180,7 @@ public class InventorySlot : MonoBehaviour
         }
 
         // ปิด tier background
-        if (tierBackground != null)
-        {
-            tierBackground.enabled = false;
-        }
+       
 
         // ซ่อน stack text
         if (stackText != null)
@@ -197,7 +190,6 @@ public class InventorySlot : MonoBehaviour
         }
 
         // ✅ เพิ่มบรรทัดนี้ - Force sync หลัง set state
-        ForceRefreshThisSlot();
     }
     public void SetFilledState(Sprite itemSprite, int stackCount = 0)
     {
@@ -305,8 +297,6 @@ public class InventorySlot : MonoBehaviour
 
             SetFilledState(itemIcon, stackCount);
 
-            Color tierColor = item.itemData.GetTierColor();
-            SetTierBackground(tierColor);
 
             Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to {item.itemData.ItemName} x{item.stackCount}");
         }
@@ -413,11 +403,7 @@ public class InventorySlot : MonoBehaviour
             allGood = false;
         }
 
-        if (tierBackground == null)
-        {
-            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: tierBackground missing!");
-            allGood = false;
-        }
+       
 
         if (itemIcon == null)
         {
@@ -443,18 +429,25 @@ public class InventorySlot : MonoBehaviour
     #region Button Events
     private void OnSlotClicked()
     {
+        // 🆕 Toggle selected state ก่อน (เหมือน EquipmentSlot)
+        SetSelectedState(!isSelected);
+
         Debug.Log($"[InventorySlot] Slot {slotIndex} clicked - Empty: {isEmpty}, Selected: {isSelected}");
 
-        // 🆕 แจ้ง static event สำหรับ ItemDeleteManager
+        // แจ้ง static event สำหรับ ItemDeleteManager
         OnSlotClickedForDelete?.Invoke(slotIndex);
 
         // แจ้ง InventoryGridManager ว่า slot นี้ถูกกด
         OnSlotSelected?.Invoke(slotIndex);
 
-        // ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด (จะถูก block ใน CombatUIManager ถ้าอยู่ในโหมดลบ)
+        // ถ้า slot นี้มีไอเทม ให้แสดงรายละเอียด
         if (!isEmpty)
         {
             ShowItemDetailForThisSlot();
+        }
+        else
+        {
+            Debug.Log($"[InventorySlot] Slot {slotIndex} is empty, not showing item detail");
         }
     }
     public void ForceUpdateVisuals()
@@ -545,8 +538,6 @@ public class InventorySlot : MonoBehaviour
                 SetFilledState(itemIcon, stackCount);
 
                 // 🆕 เปลี่ยนจาก SetRarityColor เป็น SetTierBackground
-                Color tierColor = item.itemData.GetTierColor();
-                SetTierBackground(tierColor);
 
                 Debug.Log($"[InventorySlot] ✅ Updated slot {slotIndex}: {item.itemData.ItemName} x{item.stackCount}");
 
@@ -555,29 +546,10 @@ public class InventorySlot : MonoBehaviour
             }
         }
     }
-    public void SetTierBackground(Color tierColor)
-    {
-        if (tierBackground != null)
-        {
-            tierBackground.color = tierColor;
-            tierBackground.enabled = true;
-            Debug.Log($"[InventorySlot] 🌈 Slot {slotIndex}: Tier background = {tierColor}");
-        }
-        else
-        {
-            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: TierBackground not assigned in Inspector!");
-        }
-    }
+   
 
     // 🆕 ปิด tier background
-    public void DisableTierBackground()
-    {
-        if (tierBackground != null)
-        {
-            tierBackground.enabled = false;
-            Debug.Log($"[InventorySlot] 🚫 Slot {slotIndex}: Tier background disabled");
-        }
-    }
+   
     public void ForceSync()
     {
         Debug.Log($"[InventorySlot] 🔄 Force syncing slot {slotIndex}...");
