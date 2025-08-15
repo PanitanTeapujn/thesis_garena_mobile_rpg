@@ -335,6 +335,216 @@ public class GlobalMemoryManager : MonoBehaviour
         }
     }
 
+    // แทนที่ AggressiveTextureCleanup ด้วยเวอร์ชันที่ปลอดภัยกว่า
+    [ContextMenu("Safe Texture Cleanup")]
+    public void SafeTextureCleanup()
+    {
+        StartCoroutine(SafeTextureCleanupCoroutine());
+    }
+
+    private System.Collections.IEnumerator SafeTextureCleanupCoroutine()
+    {
+        Debug.Log("🖼️ Starting SAFE texture cleanup...");
+
+        Texture2D[] allTextures = Resources.FindObjectsOfTypeAll<Texture2D>();
+        Debug.Log($"📊 Found {allTextures.Length} textures total");
+
+        int markedCount = 0;
+        int processedCount = 0;
+
+        // สร้าง list ของ textures ที่ปลอดภัยที่จะ mark
+        System.Collections.Generic.List<Texture2D> safteToUnload = new System.Collections.Generic.List<Texture2D>();
+
+        for (int i = 0; i < allTextures.Length; i++)
+        {
+            Texture2D texture = allTextures[i];
+            if (texture == null) continue;
+
+            processedCount++;
+
+            // เช็คว่าปลอดภัยที่จะ unload หรือไม่ (มีเงื่อนไขเข้มงวดกว่า)
+            if (IsSafeToUnloadTexture(texture))
+            {
+                safteToUnload.Add(texture);
+                markedCount++;
+            }
+
+            // รอทุก 100 textures
+            if (processedCount % 100 == 0)
+            {
+                Debug.Log($"🔄 Analyzed {processedCount}/{allTextures.Length} textures...");
+                yield return null;
+            }
+        }
+
+        Debug.Log($"🎯 Marked {markedCount} textures as safe to unload");
+
+        // Unload textures แบบระวัง ทีละน้อย
+        int unloadedCount = 0;
+        for (int i = 0; i < safteToUnload.Count; i++)
+        {
+            Texture2D texture = safteToUnload[i];
+            bool shouldYield = false;
+            try
+            {
+                if (texture != null)
+                {
+                    texture = null;
+                    unloadedCount++;
+                    if (unloadedCount % 20 == 0)
+                    {
+                        shouldYield = true;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Cannot process texture: {e.Message}");
+            }
+            if (shouldYield)
+            {
+                yield return null;
+            }
+        }
+
+        // Force GC แทน Resources.UnloadAsset
+        for (int i = 0; i < 5; i++)
+        {
+            System.GC.Collect();
+            yield return new WaitForSeconds(0.2f);
+            System.GC.WaitForPendingFinalizers();
+            yield return null;
+        }
+
+        // ทำ Resources.UnloadUnusedAssets เบาๆ
+        Resources.UnloadUnusedAssets();
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log($"✅ Safe texture cleanup completed!");
+        Debug.Log($"🗑️ Processed {unloadedCount} textures safely");
+
+        // แสดงผลลัพธ์
+        StartCoroutine(LogTextureMemoryUsageSafe());
+    }
+
+    private bool IsSafeToUnloadTexture(Texture2D texture)
+    {
+        if (texture == null) return false;
+
+        string texName = texture.name.ToLower();
+
+        // ไม่ยุ่งกับ textures เหล่านี้เด็ดขาด (เงื่อนไขเข้มงวดมาก)
+        if (texName.Contains("default") ||
+            texName.Contains("unity") ||
+            texName.Contains("builtin") ||
+            texName.Contains("gui") ||
+            texName.Contains("ui") ||
+            texName.Contains("font") ||
+            texName.Contains("cursor") ||
+            texName.Contains("icon") ||
+            texName.Contains("button") ||
+            texName.Contains("background") ||
+            texName.Contains("sprite") ||
+            texName.Contains("atlas") ||
+            texName.StartsWith("ui/") ||
+            texName.StartsWith("gui/") ||
+            texName.StartsWith("fonts/") ||
+            texture.width <= 64 || // เล็กกว่า 64x64 ไม่ยุ่ง
+            texture.height <= 64)
+            return false;
+
+        // เช็คว่ากำลังใช้ใน scene หรือไม่
+        if (IsTextureActivelyUsed(texture))
+            return false;
+
+        // ยุ่งแค่ textures ที่ใหญ่มากๆ และชื่อไม่สำคัญ
+        return (texture.width > 256 && texture.height > 256) &&
+               (texName.Contains("temp") ||
+                texName.Contains("cache") ||
+                texName.Contains("old") ||
+                texName.Contains("unused"));
+    }
+
+    private bool IsTextureActivelyUsed(Texture2D texture)
+    {
+        // เช็ค UI Images ที่ active
+        UnityEngine.UI.Image[] images = FindObjectsOfType<UnityEngine.UI.Image>();
+        foreach (var img in images)
+        {
+            if (img.gameObject.activeInHierarchy &&
+                img.sprite != null &&
+                img.sprite.texture == texture)
+                return true;
+        }
+
+        // เช็ค Renderers ที่ active
+        Renderer[] renderers = FindObjectsOfType<Renderer>();
+        foreach (var renderer in renderers)
+        {
+            if (renderer.gameObject.activeInHierarchy &&
+                renderer.material != null &&
+                renderer.material.mainTexture == texture)
+                return true;
+        }
+
+        return false;
+    }
+
+    private System.Collections.IEnumerator LogTextureMemoryUsageSafe()
+    {
+        yield return new WaitForSeconds(1f); // รอให้ GC ทำงาน
+
+        Texture2D[] remainingTextures = Resources.FindObjectsOfTypeAll<Texture2D>();
+
+        Debug.Log($"📊 Texture Memory Report (Safe):");
+        Debug.Log($"🖼️ Remaining textures: {remainingTextures.Length}");
+
+        if (remainingTextures.Length > 1000)
+        {
+            Debug.LogWarning($"⚠️ Still many textures: {remainingTextures.Length}");
+            Debug.LogWarning("💡 Consider manual texture optimization in Project Settings");
+        }
+        else if (remainingTextures.Length > 500)
+        {
+            Debug.Log($"📊 Moderate texture count: {remainingTextures.Length}");
+        }
+        else
+        {
+            Debug.Log($"✅ Good texture count: {remainingTextures.Length}");
+        }
+    }
+
+    // อัพเดท hotkey ให้ใช้ SafeTextureCleanup แทน
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.F2))
+        {
+            SafeEmergencyCleanup();
+        }
+
+        if (Input.GetKeyDown(KeyCode.F3))
+        {
+            QuickMemoryStatus();
+        }
+
+        if (Input.GetKeyDown(KeyCode.F4))
+        {
+            GenerateDetailedMemoryReport();
+        }
+
+        // เปลี่ยนเป็น SafeTextureCleanup
+        if (Input.GetKeyDown(KeyCode.F5))
+        {
+            SafeTextureCleanup();
+        }
+
+        if (Input.GetKeyDown(KeyCode.F6))
+        {
+            StartCoroutine(LogTextureMemoryUsageSafe());
+        }
+    }
+
+    // อัพเดท CheckMemoryAndCleanup ให้ใช้ SafeTextureCleanup
     private void CheckMemoryAndCleanup()
     {
         try
@@ -350,7 +560,18 @@ public class GlobalMemoryManager : MonoBehaviour
             else if (totalMemoryMB > memoryThresholdMB)
             {
                 Debug.LogWarning($"⚠️ HIGH MEMORY in {currentSceneName}: {totalMemoryMB} MB!");
-                DoLightCleanup(); // ใช้ light cleanup แทน
+
+                // เช็คว่าปัญหาเกิดจาก textures หรือไม่
+                Texture2D[] textures = Resources.FindObjectsOfTypeAll<Texture2D>();
+                if (textures.Length > 800) // ถ้า textures เกิน 800 ตัว
+                {
+                    Debug.Log("🖼️ Too many textures detected! Starting SAFE texture cleanup...");
+                    SafeTextureCleanup(); // เปลี่ยนเป็น SafeTextureCleanup
+                }
+                else
+                {
+                    DoLightCleanup();
+                }
             }
         }
         catch (System.Exception e)
@@ -461,7 +682,7 @@ public class GlobalMemoryManager : MonoBehaviour
         System.GC.Collect();
     }
 
-   
+    
 
     public void SafeEmergencyCleanup()
     {
@@ -893,25 +1114,7 @@ public class GlobalMemoryManager : MonoBehaviour
 
 
     // Update hotkeys ใหม่
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.F2))
-        {
-            SafeEmergencyCleanup();
-        }
-
-        if (Input.GetKeyDown(KeyCode.F3))
-        {
-            // Memory status แบบเร็ว ไม่กระตุก
-            QuickMemoryStatus();
-        }
-
-        if (Input.GetKeyDown(KeyCode.F4))
-        {
-            // Detailed report แบบ coroutine
-            GenerateDetailedMemoryReport();
-        }
-    }
+   
 
     private void QuickMemoryStatus()
     {
