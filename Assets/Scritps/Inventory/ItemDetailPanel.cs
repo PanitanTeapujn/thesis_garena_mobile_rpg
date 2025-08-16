@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 public class ItemDetailPanel : MonoBehaviour
 {
@@ -23,6 +24,7 @@ public class ItemDetailPanel : MonoBehaviour
     public Button unequipButton;            // ปุ่ม Unequip
     public TextMeshProUGUI equipButtonText; // ข้อความในปุ่ม Equip
     public TextMeshProUGUI unequipButtonText; // ข้อความในปุ่ม Unequip
+    private Dictionary<ItemTier, Sprite> tierBackgroundSprites = new Dictionary<ItemTier, Sprite>();
 
     private InventoryItem currentItem;      // Item ที่กำลังแสดงอยู่
     private Character currentCharacter;     // Character ที่เป็นเจ้าของ item
@@ -58,12 +60,31 @@ public class ItemDetailPanel : MonoBehaviour
         combatUIManager = GetComponentInParent<CombatUIManager>();
 
         // 🆕 Setup tier background for itemIconImage (ใช้ background แทน outline)
+        LoadTierBackgroundSprites();
 
         // ซ่อน panel ตั้งแต่เริ่มต้น
         HideItemDetail();
     }
 
+    // 🆕 Method สำหรับโหลด tier background sprites
+    private void LoadTierBackgroundSprites()
+    {
+        try
+        {
+            // โหลด sprites จาก Resources/TierBackgrounds/
+            tierBackgroundSprites[ItemTier.Common] = Resources.Load<Sprite>("TierBackgrounds/Common_Background");
+            tierBackgroundSprites[ItemTier.Uncommon] = Resources.Load<Sprite>("TierBackgrounds/Uncommon_Background");
+            tierBackgroundSprites[ItemTier.Rare] = Resources.Load<Sprite>("TierBackgrounds/Rare_Background");
+            tierBackgroundSprites[ItemTier.Epic] = Resources.Load<Sprite>("TierBackgrounds/Epic_Background");
+            tierBackgroundSprites[ItemTier.Legendary] = Resources.Load<Sprite>("TierBackgrounds/Legendary_Background");
 
+            Debug.Log("[ItemDetailPanel] ✅ Loaded tier background sprites from Resources");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ItemDetailPanel] ❌ Failed to load tier background sprites: {e.Message}");
+        }
+    }
     private void OnShowValueButtonClicked()
     {
         if (currentItem == null)
@@ -116,10 +137,10 @@ public class ItemDetailPanel : MonoBehaviour
         if (itemIconImage != null)
         {
             itemIconImage.sprite = itemData.ItemIcon;
-            itemIconImage.color = Color.white; // 🆕 ใช้สีขาวแทนการเปลี่ยนสี
+            itemIconImage.color = Color.white;
 
-            // 🆕 เซ็ต tier border แทนการเปลี่ยนสี
-            SetItemIconTierBackground(itemData.GetTierColor());
+            // 🔧 เปลี่ยนจากการส่ง Color เป็นการส่ง ItemTier
+            SetItemIconTierBackground(itemData.Tier);
         }
 
         // แสดงชื่อไอเทม
@@ -187,17 +208,41 @@ public class ItemDetailPanel : MonoBehaviour
 
         Debug.Log($"[ItemDetailPanel] Showing details for: {itemData.ItemName}");
     }
-    private void SetItemIconTierBackground(Color tierColor)
+    private void SetItemIconTierBackground(ItemTier tier)
     {
-        if (itemTierBackground != null)
+        if (itemTierBackground == null)
         {
-            itemTierBackground.color = tierColor;
+            Debug.LogWarning("[ItemDetailPanel] itemTierBackground is null! Please assign it in Inspector");
+            return;
+        }
+
+        // 🆕 ใช้ Sprite แทนการเปลี่ยนสี
+        if (tierBackgroundSprites.ContainsKey(tier) && tierBackgroundSprites[tier] != null)
+        {
+            itemTierBackground.sprite = tierBackgroundSprites[tier];
+            itemTierBackground.color = Color.white; // ใช้สีขาวเพื่อแสดง sprite ตามต้นฉบับ
             itemTierBackground.enabled = true;
-            Debug.Log($"[ItemDetailPanel] Set item icon tier background to {tierColor}");
+            Debug.Log($"[ItemDetailPanel] ✅ Set tier background sprite for {tier}");
         }
         else
         {
-            Debug.LogWarning("[ItemDetailPanel] itemTierBackground is null! Please assign it in Inspector");
+            // Fallback: ใช้สีเดิมถ้าไม่มี sprite
+            Color tierColor = GetTierColorFallback(tier);
+            itemTierBackground.color = tierColor;
+            itemTierBackground.enabled = true;
+            Debug.LogWarning($"[ItemDetailPanel] ⚠️ No sprite found for tier {tier}, using color fallback");
+        }
+    }
+    private Color GetTierColorFallback(ItemTier tier)
+    {
+        switch (tier)
+        {
+            case ItemTier.Common: return Color.white;
+            case ItemTier.Uncommon: return Color.green;
+            case ItemTier.Rare: return Color.cyan;
+            case ItemTier.Epic: return Color.magenta;
+            case ItemTier.Legendary: return Color.yellow;
+            default: return Color.white;
         }
     }
 
@@ -206,14 +251,15 @@ public class ItemDetailPanel : MonoBehaviour
     {
         if (itemTierBackground != null)
         {
+            itemTierBackground.sprite = null; // 🆕 เคลียร์ sprite ด้วย
             itemTierBackground.enabled = false;
             Debug.Log("[ItemDetailPanel] Disabled item icon tier background");
         }
     }
 
-   
+
     // 🆕 method สำหรับปิด tier border
-   
+
 
     public void HideItemDetail()
     {
