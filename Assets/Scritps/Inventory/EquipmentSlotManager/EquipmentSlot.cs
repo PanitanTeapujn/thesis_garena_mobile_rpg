@@ -313,15 +313,15 @@ public class EquipmentSlot : MonoBehaviour
 
             if (potionData != null)
             {
-                // อัปเดต UI
-                SetFilledState(potionData.ItemIcon, potionData.GetTierColor());
-              //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: {potionData.ItemName}");
+                // อัปเดต UI - เอา GetTierColor() ออก
+                SetFilledState(potionData.ItemIcon); // ไม่ส่ง color parameter
+                                                     //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: {potionData.ItemName}");
             }
             else
             {
                 // Slot ว่าง
                 SetEmptyState();
-              //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: EMPTY");
+                //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: EMPTY");
             }
         }
         else
@@ -331,13 +331,14 @@ public class EquipmentSlot : MonoBehaviour
 
             if (equippedItem != null)
             {
-                SetFilledState(equippedItem.ItemIcon, equippedItem.GetTierColor());
-             //   Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: {equippedItem.ItemName}");
+                // อัปเดต UI - เอา GetTierColor() ออก
+                SetFilledState(equippedItem.ItemIcon); // ไม่ส่ง color parameter
+                                                       //   Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: {equippedItem.ItemName}");
             }
             else
             {
                 SetEmptyState();
-               // Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: EMPTY");
+                // Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: EMPTY");
             }
         }
     }
@@ -345,7 +346,7 @@ public class EquipmentSlot : MonoBehaviour
     {
         if (itemSprite == null)
         {
-           // Debug.LogWarning($"[EquipmentSlot] Trying to fill {slotType} slot with null sprite!");
+            // Debug.LogWarning($"[EquipmentSlot] Trying to fill {slotType} slot with null sprite!");
             SetEmptyState();
             return;
         }
@@ -359,7 +360,8 @@ public class EquipmentSlot : MonoBehaviour
         if (itemIcon != null)
         {
             itemIcon.sprite = itemSprite;
-            itemIcon.color = tierColor != default ? tierColor : Color.white;
+            // แก้ไขตรงนี้ - ใช้สีขาวเสมอ ไม่เปลี่ยนตาม tier
+            itemIcon.color = Color.white;  // เอา tierColor ออก
             itemIcon.gameObject.SetActive(true);
             itemIcon.raycastTarget = false;
         }
@@ -373,8 +375,9 @@ public class EquipmentSlot : MonoBehaviour
             Canvas.ForceUpdateCanvases();
         }
 
-       // Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
+        // Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
     }
+
     private bool ShouldShowSlotTypeText()
     {
         // แสดงข้อความประเภท slot เฉพาะ equipment slots (ไม่ใช่ potion slots)

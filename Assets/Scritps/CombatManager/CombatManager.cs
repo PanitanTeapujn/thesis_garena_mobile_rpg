@@ -21,6 +21,8 @@ public enum DamageType
 public class CombatManager : NetworkBehaviour
 {
     // Combat Events
+    public System.Action<Character, int, DamageType, bool> OnLocalDamageTaken;
+
     public static event Action<Character, int, DamageType, bool> OnDamageTaken;
     public static event Action<Character> OnCharacterDeath;
     public static event Action<Character, int> OnCharacterHealed;
