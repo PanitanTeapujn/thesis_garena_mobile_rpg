@@ -59,37 +59,43 @@ public class CharacterVisualManager : NetworkBehaviour
 
         InitializeColorSystem();
     }
+    protected virtual void Start()
+    {
+        // Subscribe to events
+        StatusEffectManager.OnStatusEffectChanged += HandleStatusEffectVisual;
+        StatusEffectManager.OnStatusDamageFlash += HandleStatusDamageFlash;
+        CombatManager.OnDamageTaken += HandleDamageFlash; // ⭐ ต้องมีบรรทัดนี้
 
+        // Initialize VFX
+        InitializeVFX();
+    }
     private void InitializeColorSystem()
     {
+        if (characterRenderer == null)
+            characterRenderer = GetComponent<Renderer>();
+
         if (characterRenderer != null)
         {
-            // เช็คว่า material มี _Color property หรือไม่
-            if (characterRenderer.material.HasProperty("_Color"))
+            // ลองหา SpriteRenderer ก่อน
+            spriteRenderer = GetComponent<SpriteRenderer>();
+
+            if (spriteRenderer != null)
             {
-                // ใช้ material color
+                originalColor = spriteRenderer.color;
+                isUsingVertexColors = true;
+                Debug.Log($"Using SpriteRenderer Color system - Original: {originalColor}");
+            }
+            else if (characterRenderer.material.HasProperty("_Color"))
+            {
                 originalColor = characterRenderer.material.color;
                 isUsingVertexColors = false;
-                Debug.Log("Using Material Color system");
+                Debug.Log($"Using Material Color system - Original: {originalColor}");
             }
             else
             {
-                // ถ้าไม่มี _Color property ให้ใช้ SpriteRenderer
-                Debug.Log("Material doesn't have _Color property. Switching to SpriteRenderer.");
-
-                spriteRenderer = GetComponent<SpriteRenderer>();
-                if (spriteRenderer != null)
-                {
-                    originalColor = spriteRenderer.color;
-                    isUsingVertexColors = true;
-                    Debug.Log("Using SpriteRenderer Color system");
-                }
-                else
-                {
-                    originalColor = Color.white;
-                    isUsingVertexColors = true;
-                    Debug.LogWarning("No color system found, using default white color");
-                }
+                originalColor = Color.white;
+                isUsingVertexColors = true;
+                Debug.LogWarning("No color system found, using default white color");
             }
         }
         else
@@ -294,16 +300,7 @@ public class CharacterVisualManager : NetworkBehaviour
         }
     }
 
-    protected virtual void Start()
-    {
-        // Subscribe to events
-        StatusEffectManager.OnStatusEffectChanged += HandleStatusEffectVisual;
-        StatusEffectManager.OnStatusDamageFlash += HandleStatusDamageFlash;
-        CombatManager.OnDamageTaken += HandleDamageFlash;
-
-        // Initialize VFX
-        InitializeVFX();
-    }
+   
 
     protected virtual void OnDestroy()
     {
@@ -384,8 +381,19 @@ public class CharacterVisualManager : NetworkBehaviour
 
     private void HandleDamageFlash(Character targetCharacter, int damage, DamageType damageType, bool isCritical)
     {
-        if (targetCharacter != character) return;
+        Debug.Log($"[HandleDamageFlash] Called for {targetCharacter?.CharacterName}, damage: {damage}");
+        Debug.Log($"[HandleDamageFlash] My character: {character?.CharacterName}");
+        Debug.Log($"[HandleDamageFlash] Character comparison: {targetCharacter == character}");
+        Debug.Log($"[HandleDamageFlash] Character names match: {targetCharacter?.CharacterName == character?.CharacterName}");
 
+        // ✅ เปลี่ยนเงื่อนไขจากการเปรียบเทียบ object เป็นเปรียบเทียบชื่อ
+        if (targetCharacter?.CharacterName != character?.CharacterName)
+        {
+            Debug.Log($"[HandleDamageFlash] Wrong character, expected {character?.CharacterName}");
+            return;
+        }
+
+        Debug.Log($"[HandleDamageFlash] Starting damage flash for {character.CharacterName}");
         StartCoroutine(DamageFlash(damageType, isCritical));
     }
 

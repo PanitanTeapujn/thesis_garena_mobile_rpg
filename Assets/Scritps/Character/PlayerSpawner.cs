@@ -62,7 +62,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     }
     private void OnEnable()
     {
-        _runner = FindObjectOfType<NetworkRunner>();
+        /*_runner = FindObjectOfType<NetworkRunner>();
         if (_runner != null)
         {
             _runner.AddCallbacks(this);
@@ -71,7 +71,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         else
         {
             Debug.LogError("NetworkRunner not found in the scene!");
-        }
+        }*/
     }
     private void SetupCombatUI(NetworkObject playerObject)
     {

@@ -117,7 +117,7 @@ public class InventorySlot : MonoBehaviour
         InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
         if (gridManager?.OwnerCharacter == null)
         {
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: No character yet, setting empty");
+          //  Debug.Log($"[InventorySlot] Slot {slotIndex}: No character yet, setting empty");
             SetEmptyState();
             return;
         }
@@ -125,7 +125,7 @@ public class InventorySlot : MonoBehaviour
         Inventory inventory = gridManager.OwnerCharacter.GetInventory();
         if (inventory == null)
         {
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: No inventory yet, setting empty");
+          //  Debug.Log($"[InventorySlot] Slot {slotIndex}: No inventory yet, setting empty");
             SetEmptyState();
             return;
         }
@@ -133,19 +133,19 @@ public class InventorySlot : MonoBehaviour
         // ตรวจสอบว่า slot index ถูกต้องหรือไม่
         if (slotIndex < 0 || slotIndex >= inventory.CurrentSlots)
         {
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: Out of range, setting empty");
+          //  Debug.Log($"[InventorySlot] Slot {slotIndex}: Out of range, setting empty");
             SetEmptyState();
             return;
         }
 
         InventoryItem item = inventory.GetItem(slotIndex);
 
-        Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync from character...");
+      //  Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync from character...");
 
         if (item == null || item.IsEmpty)
         {
             SetEmptyState();
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: Character data is EMPTY");
+          //  Debug.Log($"[InventorySlot] Slot {slotIndex}: Character data is EMPTY");
         }
         else
         {
@@ -155,12 +155,12 @@ public class InventorySlot : MonoBehaviour
             SetFilledState(itemIcon, stackCount);
 
 
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync SUCCESS - {item.itemData.ItemName} x{item.stackCount}");
+           // Debug.Log($"[InventorySlot] Slot {slotIndex}: Initial sync SUCCESS - {item.itemData.ItemName} x{item.stackCount}");
         }
     }
     public void SetEmptyState()
     {
-        Debug.Log($"[InventorySlot] 🧹 Setting empty state for slot {slotIndex}");
+        //Debug.Log($"[InventorySlot] 🧹 Setting empty state for slot {slotIndex}");
 
         isEmpty = true;
         isSelected = false;
@@ -199,7 +199,7 @@ public class InventorySlot : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
+       // Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
 
         isEmpty = false;
         isSelected = false;
@@ -220,7 +220,7 @@ public class InventorySlot : MonoBehaviour
         }
         else
         {
-            Debug.LogError($"[InventorySlot] Slot {slotIndex}: ItemIcon not assigned in Inspector!");
+           // Debug.LogError($"[InventorySlot] Slot {slotIndex}: ItemIcon not assigned in Inspector!");
         }
 
         // จัดการ stack text
@@ -257,11 +257,11 @@ public class InventorySlot : MonoBehaviour
             // Force canvas update
             Canvas.ForceUpdateCanvases();
 
-            Debug.Log($"[InventorySlot] 🔄 Force refreshed slot {slotIndex}");
+          //  Debug.Log($"[InventorySlot] 🔄 Force refreshed slot {slotIndex}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[InventorySlot] Error refreshing slot {slotIndex}: {e.Message}");
+          //  Debug.LogError($"[InventorySlot] Error refreshing slot {slotIndex}: {e.Message}");
         }
     }
     public void ForceSyncFromCharacterNow()
@@ -270,25 +270,25 @@ public class InventorySlot : MonoBehaviour
         InventoryGridManager gridManager = GetComponentInParent<InventoryGridManager>();
         if (gridManager?.OwnerCharacter == null)
         {
-            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No character to sync from");
+           // Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No character to sync from");
             return;
         }
 
         Inventory inventory = gridManager.OwnerCharacter.GetInventory();
         if (inventory == null)
         {
-            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No inventory to sync from");
+         //   Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No inventory to sync from");
             return;
         }
 
         InventoryItem item = inventory.GetItem(slotIndex);
 
-        Debug.Log($"[InventorySlot] 🔄 Force syncing slot {slotIndex} from character...");
+       // Debug.Log($"[InventorySlot] 🔄 Force syncing slot {slotIndex} from character...");
 
         if (item == null || item.IsEmpty)
         {
             SetEmptyState();
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to EMPTY");
+          //  Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to EMPTY");
         }
         else
         {
@@ -298,7 +298,7 @@ public class InventorySlot : MonoBehaviour
             SetFilledState(itemIcon, stackCount);
 
 
-            Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to {item.itemData.ItemName} x{item.stackCount}");
+          //  Debug.Log($"[InventorySlot] Slot {slotIndex}: Synced to {item.itemData.ItemName} x{item.stackCount}");
         }
     }
     public void SetTierBorder(Color tierColor)
@@ -310,11 +310,11 @@ public class InventorySlot : MonoBehaviour
             {
                 outline.effectColor = tierColor;
                 outline.enabled = true; // เปิดใช้งาน outline
-                Debug.Log($"[InventorySlot] 🌈 Slot {slotIndex}: Set tier border color to {tierColor}");
+               // Debug.Log($"[InventorySlot] 🌈 Slot {slotIndex}: Set tier border color to {tierColor}");
             }
             else
             {
-                Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No Outline component found on itemIcon");
+             //   Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: No Outline component found on itemIcon");
             }
         }
     }
@@ -326,7 +326,7 @@ public class InventorySlot : MonoBehaviour
             if (outline != null)
             {
                 outline.enabled = false;
-                Debug.Log($"[InventorySlot] 🚫 Slot {slotIndex}: Disabled tier border");
+               // Debug.Log($"[InventorySlot] 🚫 Slot {slotIndex}: Disabled tier border");
             }
         }
     }
@@ -352,12 +352,12 @@ public class InventorySlot : MonoBehaviour
             if (isSelected)
             {
                 slotBackground.color = selectedSlotColor;
-                Debug.Log($"[InventorySlot] Slot {slotIndex} selected - Item: {itemInfo}");
+              //  Debug.Log($"[InventorySlot] Slot {slotIndex} selected - Item: {itemInfo}");
             }
             else
             {
                 slotBackground.color = isEmpty ? emptySlotColor : filledSlotColor;
-                Debug.Log($"[InventorySlot] Slot {slotIndex} deselected - Item: {itemInfo}");
+               // Debug.Log($"[InventorySlot] Slot {slotIndex} deselected - Item: {itemInfo}");
             }
         }
     }
@@ -389,7 +389,7 @@ public class InventorySlot : MonoBehaviour
     #endregion
     public void ForceSetupComponents()
     {
-        Debug.Log($"[InventorySlot] Force setup components for slot {slotIndex}");
+       // Debug.Log($"[InventorySlot] Force setup components for slot {slotIndex}");
 
         SetupComponents();
         SetupButton();
@@ -399,7 +399,7 @@ public class InventorySlot : MonoBehaviour
 
         if (slotBackground == null)
         {
-            Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotBackground missing!");
+         //   Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotBackground missing!");
             allGood = false;
         }
 
@@ -407,23 +407,23 @@ public class InventorySlot : MonoBehaviour
 
         if (itemIcon == null)
         {
-            Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: itemIcon missing!");
+           // Debug.LogWarning($"[InventorySlot] Slot {slotIndex}: itemIcon missing!");
             allGood = false;
         }
 
         if (slotButton == null)
         {
-            Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotButton missing!");
+          //  Debug.LogError($"[InventorySlot] Slot {slotIndex}: slotButton missing!");
             allGood = false;
         }
 
         if (allGood)
         {
-            Debug.Log($"[InventorySlot] ✅ Slot {slotIndex}: All components ready");
+           // Debug.Log($"[InventorySlot] ✅ Slot {slotIndex}: All components ready");
         }
         else
         {
-            Debug.LogWarning($"[InventorySlot] ⚠️ Slot {slotIndex}: Some components missing - please assign in Inspector");
+           // Debug.LogWarning($"[InventorySlot] ⚠️ Slot {slotIndex}: Some components missing - please assign in Inspector");
         }
     }
     #region Button Events

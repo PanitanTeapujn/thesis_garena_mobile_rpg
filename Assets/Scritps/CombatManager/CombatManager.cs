@@ -235,18 +235,13 @@ public class CombatManager : NetworkBehaviour
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
-
         int finalDamage = CalculateFinalDamage(damage, isCritical, damageType, null);
-
         Debug.Log($"[TakeDamage] {character.CharacterName}: {damage} -> {finalDamage} ({damageType})");
-
         int oldHp = character.CurrentHp;
         character.CurrentHp -= finalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
-
         // Sync network state
         SyncHealthUpdate();
-
         // ✅ แสดง Damage Text ผ่าน RPC
         if (HasStateAuthority)
         {
@@ -254,8 +249,11 @@ public class CombatManager : NetworkBehaviour
             RPC_ShowDamageText(textPosition, finalDamage, damageType, isCritical, false, false);
         }
 
+        OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
+
+        // ลบ 2 บรรทัดนี้ออก:
         // 🆕 ✅ Fire damage event สำหรับ visual flash
-       // OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
+        // OnDamageTaken?.Invoke(character, finalDamage, damageType, isCritical);
 
         // Check death
         if (character.CurrentHp <= 0)

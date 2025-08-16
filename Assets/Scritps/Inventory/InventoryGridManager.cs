@@ -895,16 +895,16 @@ public class InventoryGridManager : MonoBehaviour
 
         if (slot == null)
         {
-            Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
+          //  Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
             return;
         }
 
-        Debug.Log($"[InventoryGrid] Updating slot {slotIndex}, Current isEmpty: {slot.IsEmpty}");
+     //   Debug.Log($"[InventoryGrid] Updating slot {slotIndex}, Current isEmpty: {slot.IsEmpty}");
 
         if (item == null || item.IsEmpty)
         {
             slot.SetEmptyState();
-            Debug.Log($"[InventoryGrid] Set slot {slotIndex} to empty");
+           // Debug.Log($"[InventoryGrid] Set slot {slotIndex} to empty");
         }
         else
         {
@@ -914,11 +914,11 @@ public class InventoryGridManager : MonoBehaviour
 
             if (itemIcon == null)
             {
-                Debug.LogError($"[InventoryGrid] Item {item.itemData.ItemName} has null icon!");
+             //   Debug.LogError($"[InventoryGrid] Item {item.itemData.ItemName} has null icon!");
                 return;
             }
 
-            Debug.Log($"[InventoryGrid] Setting slot {slotIndex} with item: {item.itemData.ItemName} x{stackCount}");
+          //  Debug.Log($"[InventoryGrid] Setting slot {slotIndex} with item: {item.itemData.ItemName} x{stackCount}");
 
             // แสดง stack count เฉพาะตอนที่ item สามารถ stack ได้ และมีมากกว่า 1
             bool showStackCount = item.itemData.CanStack() && stackCount > 1;
@@ -940,7 +940,7 @@ public class InventoryGridManager : MonoBehaviour
 
     public void ForceSyncAllSlots()
     {
-        Debug.Log("[InventoryGrid] Force syncing all slots...");
+       // Debug.Log("[InventoryGrid] Force syncing all slots...");
 
         if (ownerCharacter?.GetInventory() == null) return;
 
@@ -953,7 +953,7 @@ public class InventoryGridManager : MonoBehaviour
 
             if (slot != null)
             {
-                Debug.Log($"[InventoryGrid] Syncing slot {i}: {(item?.IsEmpty != false ? "Empty" : item.itemData.ItemName)}");
+             //   Debug.Log($"[InventoryGrid] Syncing slot {i}: {(item?.IsEmpty != false ? "Empty" : item.itemData.ItemName)}");
                 UpdateSlotFromInventoryItem(i, item);
             }
         }
@@ -991,7 +991,7 @@ public class InventoryGridManager : MonoBehaviour
     {
         if (ownerCharacter == null) return;
 
-        Debug.Log("[InventoryGrid] Force loading items after character connection...");
+       // Debug.Log("[InventoryGrid] Force loading items after character connection...");
 
         // ตรวจสอบว่ามี slots แล้วหรือยัง
         if (allSlots.Count == 0)
@@ -1008,7 +1008,7 @@ public class InventoryGridManager : MonoBehaviour
         // ✅ เพิ่มบรรทัดนี้ - แจ้ง ItemDeleteManager หลัง load เสร็จ
         NotifyItemDeleteManagerForRefresh();
 
-        Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed");
+       // Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed");
     }
     public bool IsProperlyConnected()
     {
@@ -1016,7 +1016,7 @@ public class InventoryGridManager : MonoBehaviour
         bool hasInventory = ownerCharacter?.GetInventory() != null;
         bool hasSlots = allSlots != null && allSlots.Count > 0;
 
-        Debug.Log($"[InventoryGrid] Connection Status - Character: {hasCharacter}, Inventory: {hasInventory}, Slots: {hasSlots}");
+       // Debug.Log($"[InventoryGrid] Connection Status - Character: {hasCharacter}, Inventory: {hasInventory}, Slots: {hasSlots}");
 
         return hasCharacter && hasInventory && hasSlots;
     }
@@ -1040,13 +1040,13 @@ public class InventoryGridManager : MonoBehaviour
     {
         if (ownerCharacter?.GetInventory() == null)
         {
-            Debug.LogWarning($"[InventoryGrid] No character or inventory to update slot {slotIndex}");
+         //   Debug.LogWarning($"[InventoryGrid] No character or inventory to update slot {slotIndex}");
             return;
         }
 
         if (slotIndex < 0 || slotIndex >= allSlots.Count)
         {
-            Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range (0-{allSlots.Count - 1})");
+         //   Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range (0-{allSlots.Count - 1})");
             return;
         }
 
@@ -1056,23 +1056,23 @@ public class InventoryGridManager : MonoBehaviour
 
         if (slot == null)
         {
-            Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
+         //   Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
             return;
         }
 
-        Debug.Log($"[InventoryGrid] 🔄 Updating slot {slotIndex} from character data...");
+      //  Debug.Log($"[InventoryGrid] 🔄 Updating slot {slotIndex} from character data...");
 
         // 🆕 แสดงข้อมูลก่อนและหลัง update
         string beforeState = slot.IsEmpty ? "EMPTY" : "FILLED";
         string itemInfo = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
 
-        Debug.Log($"[InventoryGrid] Slot {slotIndex} - Before: {beforeState}, Character Data: {itemInfo}");
+       // Debug.Log($"[InventoryGrid] Slot {slotIndex} - Before: {beforeState}, Character Data: {itemInfo}");
 
         // อัปเดต slot ตามข้อมูลจาก character
         UpdateSlotFromInventoryItem(slotIndex, item);
 
         string afterState = slot.IsEmpty ? "EMPTY" : "FILLED";
-        Debug.Log($"[InventoryGrid] Slot {slotIndex} - After: {afterState}");
+     //   Debug.Log($"[InventoryGrid] Slot {slotIndex} - After: {afterState}");
 
         // 🆕 Force refresh เฉพาะ slot นี้
         if (slot.slotButton != null)
@@ -1083,7 +1083,7 @@ public class InventoryGridManager : MonoBehaviour
     }
     public void NotifyItemDeleteManagerForRefresh()
     {
-        Debug.Log("[InventoryGrid] 📢 Notifying ItemDeleteManager to refresh references...");
+      //  Debug.Log("[InventoryGrid] 📢 Notifying ItemDeleteManager to refresh references...");
 
         try
         {
@@ -1091,16 +1091,16 @@ public class InventoryGridManager : MonoBehaviour
             if (deleteManager != null)
             {
                 deleteManager.ForceRefreshReferences();
-                Debug.Log("[InventoryGrid] ✅ Successfully notified ItemDeleteManager");
+             //   Debug.Log("[InventoryGrid] ✅ Successfully notified ItemDeleteManager");
             }
             else
             {
-                Debug.LogWarning("[InventoryGrid] ItemDeleteManager not found for notification");
+               // Debug.LogWarning("[InventoryGrid] ItemDeleteManager not found for notification");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[InventoryGrid] Error notifying ItemDeleteManager: {e.Message}");
+          //  Debug.LogError($"[InventoryGrid] Error notifying ItemDeleteManager: {e.Message}");
         }
     }
     #region Runtime Grid Modification
@@ -1131,7 +1131,7 @@ public class InventoryGridManager : MonoBehaviour
 
     private void SetupInventoryFilters()
     {
-        Debug.Log("[InventoryGrid] 🔧 Setting up inventory filters...");
+      //  Debug.Log("[InventoryGrid] 🔧 Setting up inventory filters...");
 
         // ✅ Setup Category Filter Dropdown
         if (categoryFilterDropdown != null)
@@ -1157,11 +1157,11 @@ public class InventoryGridManager : MonoBehaviour
                 // เพิ่ม event listener
                 categoryFilterDropdown.onValueChanged.AddListener(OnCategoryFilterChanged);
 
-                Debug.Log($"[InventoryGrid] ✅ Category filter setup: {categoryOptions.Count} options");
+              //  Debug.Log($"[InventoryGrid] ✅ Category filter setup: {categoryOptions.Count} options");
             }
             catch (System.Exception e)
             {
-                Debug.LogError($"[InventoryGrid] ❌ Category filter setup failed: {e.Message}");
+             //   Debug.LogError($"[InventoryGrid] ❌ Category filter setup failed: {e.Message}");
             }
         }
 
@@ -1189,7 +1189,7 @@ public class InventoryGridManager : MonoBehaviour
                 // เพิ่ม event listener
                 tierFilterDropdown.onValueChanged.AddListener(OnTierFilterChanged);
 
-                Debug.Log($"[InventoryGrid] ✅ Tier filter setup: {tierOptions.Count} options");
+             //   Debug.Log($"[InventoryGrid] ✅ Tier filter setup: {tierOptions.Count} options");
             }
             catch (System.Exception e)
             {
@@ -1202,10 +1202,10 @@ public class InventoryGridManager : MonoBehaviour
         {
             clearFiltersButton.onClick.RemoveAllListeners();
             clearFiltersButton.onClick.AddListener(ClearAllFilters);
-            Debug.Log("[InventoryGrid] ✅ Clear filters button setup");
+          //  Debug.Log("[InventoryGrid] ✅ Clear filters button setup");
         }
 
-        Debug.Log("[InventoryGrid] 🎉 Inventory filters setup completed with improved usability!");
+       // Debug.Log("[InventoryGrid] 🎉 Inventory filters setup completed with improved usability!");
     }
     private void SetupDropdownContentLayout(TMP_Dropdown dropdown, string dropdownName)
     {
@@ -1217,7 +1217,7 @@ public class InventoryGridManager : MonoBehaviour
             Transform template = dropdown.transform.Find("Template");
             if (template == null)
             {
-                Debug.LogWarning($"[InventoryGrid] No Template found in {dropdownName} dropdown");
+              //  Debug.LogWarning($"[InventoryGrid] No Template found in {dropdownName} dropdown");
                 return;
             }
 
@@ -1225,14 +1225,14 @@ public class InventoryGridManager : MonoBehaviour
             Transform viewport = template.Find("Viewport");
             if (viewport == null)
             {
-                Debug.LogWarning($"[InventoryGrid] No Viewport found in {dropdownName} dropdown template");
+           //     Debug.LogWarning($"[InventoryGrid] No Viewport found in {dropdownName} dropdown template");
                 return;
             }
 
             Transform content = viewport.Find("Content");
             if (content == null)
             {
-                Debug.LogWarning($"[InventoryGrid] No Content found in {dropdownName} dropdown viewport");
+            //    Debug.LogWarning($"[InventoryGrid] No Content found in {dropdownName} dropdown viewport");
                 return;
             }
 
@@ -1241,7 +1241,7 @@ public class InventoryGridManager : MonoBehaviour
             if (verticalLayout == null)
             {
                 verticalLayout = content.gameObject.AddComponent<VerticalLayoutGroup>();
-                Debug.Log($"[InventoryGrid] ✅ Added VerticalLayoutGroup to {dropdownName} dropdown content");
+            //    Debug.Log($"[InventoryGrid] ✅ Added VerticalLayoutGroup to {dropdownName} dropdown content");
             }
 
             // ✅ ตั้งค่า Vertical Layout Group ให้กดง่าย (เหมือน ShopLooby)
@@ -1272,7 +1272,7 @@ public class InventoryGridManager : MonoBehaviour
                 templateSize.y = maxHeight;
                 templateRect.sizeDelta = templateSize;
 
-                Debug.Log($"[InventoryGrid] Set {dropdownName} dropdown template max height to {maxHeight}");
+             //   Debug.Log($"[InventoryGrid] Set {dropdownName} dropdown template max height to {maxHeight}");
             }
 
             // ✅ เพิ่ม ScrollRect ถ้าไม่มี (สำหรับกรณีตัวเลือกเยอะ)
@@ -1286,7 +1286,7 @@ public class InventoryGridManager : MonoBehaviour
                 scrollRect.vertical = true;
                 scrollRect.scrollSensitivity = 20f;
 
-                Debug.Log($"[InventoryGrid] ✅ Added ScrollRect to {dropdownName} dropdown");
+              //  Debug.Log($"[InventoryGrid] ✅ Added ScrollRect to {dropdownName} dropdown");
             }
 
             // ✅ ปรับแต่ง dropdown items ให้กดง่าย
@@ -1363,12 +1363,12 @@ public class InventoryGridManager : MonoBehaviour
                 }
             }
 
-            Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown item interaction setup completed");
+         //   Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown item interaction setup completed");
 
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown item interaction: {e.Message}");
+           // Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown item interaction: {e.Message}");
         }
     }
 
@@ -1414,12 +1414,12 @@ public class InventoryGridManager : MonoBehaviour
                 }
             }
 
-            Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown usability optimized");
+           // Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown usability optimized");
 
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[InventoryGrid] ❌ Error optimizing {dropdownName} dropdown usability: {e.Message}");
+          //  Debug.LogError($"[InventoryGrid] ❌ Error optimizing {dropdownName} dropdown usability: {e.Message}");
         }
     }
 

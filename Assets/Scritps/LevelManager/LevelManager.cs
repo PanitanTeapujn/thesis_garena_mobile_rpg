@@ -587,7 +587,7 @@ public class LevelManager : NetworkBehaviour
         character.NetworkedMaxMana = newMaxMana;
         character.NetworkedCurrentMana = newMaxMana;
 
-        Debug.Log($"✅ Level up synced: Level {newLevel}, HP: {newMaxHp}, Mana: {newMaxMana}");
+      //  Debug.Log($"✅ Level up synced: Level {newLevel}, HP: {newMaxHp}, Mana: {newMaxMana}");
     }
 
     // ✅ เพิ่ม RPC methods สำหรับ Level Up sync

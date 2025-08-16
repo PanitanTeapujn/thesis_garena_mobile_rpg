@@ -1577,7 +1577,7 @@ public class CombatUIManager : MonoBehaviour
             liftSteal.text = $"LST: {effectiveLifesteal:F1}%";
 
             // ✅ เพิ่ม debug
-            Debug.Log($"[CombatUI] Lifesteal UI: Base={localHero.LifeSteal:F1}, Effective={effectiveLifesteal:F1}");
+         //   Debug.Log($"[CombatUI] Lifesteal UI: Base={localHero.LifeSteal:F1}, Effective={effectiveLifesteal:F1}");
         }
 
     }
@@ -1590,7 +1590,7 @@ public class CombatUIManager : MonoBehaviour
             InventoryItem displayItem = new InventoryItem(itemData, 1, -1);
             itemDetailManager.ShowItemDetail(displayItem);
 
-            Debug.Log($"[CombatUI] Showing equipment item detail: {itemData.ItemName}");
+            //Debug.Log($"[CombatUI] Showing equipment item detail: {itemData.ItemName}");
         }
         else
         {
