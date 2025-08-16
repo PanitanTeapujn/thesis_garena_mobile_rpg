@@ -22,6 +22,10 @@ public class EquipmentSlot : MonoBehaviour
     public Color emptySlotColor = new Color(0.2f, 0.2f, 0.2f, 0.8f);
     public Color filledSlotColor = new Color(0.3f, 0.3f, 0.3f, 1f);
     public Color selectedSlotColor = new Color(0.8f, 0.8f, 0.2f, 1f);     // สีเหลืองเมื่อถูกเลือก
+    [Header("Tier Background")]
+    public Image itemTierBackground;    // Background สำหรับแสดง tier ของ item
+
+    // 🆕 เพิ่มตัวแปรสำหรับ cache sprites
 
     [Header("🔍 Debug Info")]
     [SerializeField] private bool isEmpty = true;
@@ -45,6 +49,7 @@ public class EquipmentSlot : MonoBehaviour
         SetupComponents();
         SetupButton();
         UpdateSlotTypeDisplay();
+
     }
 
     private void OnValidate()
@@ -52,6 +57,7 @@ public class EquipmentSlot : MonoBehaviour
         // อัปเดต slot type text เมื่อเปลี่ยนใน inspector
         UpdateSlotTypeDisplay();
     }
+  
     #endregion
 
     #region Setup
@@ -76,6 +82,16 @@ public class EquipmentSlot : MonoBehaviour
         if (slotTypeText == null)
             slotTypeText = GetComponentInChildren<TextMeshProUGUI>();
 
+        // 🆕 เช็ค itemTierBackground
+        if (itemTierBackground == null)
+        {
+            itemTierBackground = transform.Find("ItemTierBackground")?.GetComponent<Image>();
+            if (itemTierBackground == null)
+            {
+                //Debug.LogWarning($"[EquipmentSlot] {slotType} slot: itemTierBackground not assigned! Please assign it in Inspector");
+            }
+        }
+
         // สร้าง ItemIcon ถ้าไม่มี
         if (itemIcon == null)
         {
@@ -92,7 +108,7 @@ public class EquipmentSlot : MonoBehaviour
             CreateSlotTypeText();
         }
 
-        // 🆕 สร้าง StackCountText สำหรับ potion ถ้าไม่มี
+        // สร้าง StackCountText สำหรับ potion ถ้าไม่มี
         if (stackCountText == null && slotType == ItemType.Potion)
         {
             CreateStackCountText();
@@ -104,6 +120,9 @@ public class EquipmentSlot : MonoBehaviour
 
         if (stackCountText != null)
             stackCountText.raycastTarget = false;
+
+        if (itemTierBackground != null)
+            itemTierBackground.raycastTarget = false;
     }
 
     private void CreateStackCountText()
@@ -219,13 +238,14 @@ public class EquipmentSlot : MonoBehaviour
             itemIcon.gameObject.SetActive(false);
         }
 
-        // 🆕 ซ่อน stack count text ด้วย
+        // 🆕 ปิด tier background
+        DisableItemTierBackground();
+
+        // ซ่อน stack count text ด้วย
         if (stackCountText != null)
         {
             stackCountText.gameObject.SetActive(false);
         }
-
-     //   Debug.Log($"[EquipmentSlot] {slotType} slot set to empty, isEmpty now: {isEmpty}");
     }
 
     private void UpdatePotionStackCount()
@@ -313,15 +333,13 @@ public class EquipmentSlot : MonoBehaviour
 
             if (potionData != null)
             {
-                // อัปเดต UI - เอา GetTierColor() ออก
-                SetFilledState(potionData.ItemIcon); // ไม่ส่ง color parameter
-                                                     //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: {potionData.ItemName}");
+                // 🔧 อัปเดต UI พร้อม tier background
+                SetFilledState(potionData.ItemIcon, potionData.Tier);
             }
             else
             {
                 // Slot ว่าง
                 SetEmptyState();
-                //  Debug.Log($"[EquipmentSlot] 🔄 Refreshed potion slot {potionSlotIndex}: EMPTY");
             }
         }
         else
@@ -331,14 +349,12 @@ public class EquipmentSlot : MonoBehaviour
 
             if (equippedItem != null)
             {
-                // อัปเดต UI - เอา GetTierColor() ออก
-                SetFilledState(equippedItem.ItemIcon); // ไม่ส่ง color parameter
-                                                       //   Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: {equippedItem.ItemName}");
+                // 🔧 อัปเดต UI พร้อม tier background
+                SetFilledState(equippedItem.ItemIcon, equippedItem.Tier);
             }
             else
             {
                 SetEmptyState();
-                // Debug.Log($"[EquipmentSlot] 🔄 Refreshed {slotType} slot: EMPTY");
             }
         }
     }
@@ -346,7 +362,6 @@ public class EquipmentSlot : MonoBehaviour
     {
         if (itemSprite == null)
         {
-            // Debug.LogWarning($"[EquipmentSlot] Trying to fill {slotType} slot with null sprite!");
             SetEmptyState();
             return;
         }
@@ -360,22 +375,54 @@ public class EquipmentSlot : MonoBehaviour
         if (itemIcon != null)
         {
             itemIcon.sprite = itemSprite;
-            // แก้ไขตรงนี้ - ใช้สีขาวเสมอ ไม่เปลี่ยนตาม tier
-            itemIcon.color = Color.white;  // เอา tierColor ออก
+            itemIcon.color = Color.white;  // ใช้สีขาวเสมอ
             itemIcon.gameObject.SetActive(true);
             itemIcon.raycastTarget = false;
         }
 
-        // 🆕 สำหรับ potion: แสดง stack count จาก character และ force update
+        // สำหรับ potion: แสดง stack count จาก character และ force update
         if (slotType == ItemType.Potion && stackCountText != null)
         {
             UpdatePotionStackCount();
-
-            // 🆕 Force update ทันทีหลัง set filled state
             Canvas.ForceUpdateCanvases();
         }
+    }
 
-        // Debug.Log($"[EquipmentSlot] {slotType} slot filled with item: {itemSprite.name}, isEmpty now: {isEmpty}");
+    // 🆕 เพิ่ม overload method สำหรับรับ ItemTier
+    public void SetFilledState(Sprite itemSprite, ItemTier tier)
+    {
+        // เรียก method เดิมก่อน
+        SetFilledState(itemSprite);
+
+        // เซ็ต tier background
+        SetItemTierBackground(tier);
+    }
+
+    // 🆕 Method สำหรับเซ็ต tier background
+    private void SetItemTierBackground(ItemTier tier)
+    {
+        if (itemTierBackground == null) return;
+        TierBackgroundManager.Instance.SetTierBackground(itemTierBackground, tier);
+    }
+
+    // 🆕 Method สำหรับ fallback color
+    private Color GetTierColorFallback(ItemTier tier)
+    {
+        switch (tier)
+        {
+            case ItemTier.Common: return Color.white;
+            case ItemTier.Uncommon: return Color.green;
+            case ItemTier.Rare: return Color.cyan;
+            case ItemTier.Epic: return Color.magenta;
+            case ItemTier.Legendary: return Color.yellow;
+            default: return Color.white;
+        }
+    }
+
+    // 🆕 Method สำหรับปิด tier background
+    private void DisableItemTierBackground()
+    {
+        TierBackgroundManager.Instance.DisableTierBackground(itemTierBackground);
     }
 
     private bool ShouldShowSlotTypeText()

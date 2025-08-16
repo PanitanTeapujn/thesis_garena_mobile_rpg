@@ -895,41 +895,33 @@ public class InventoryGridManager : MonoBehaviour
 
         if (slot == null)
         {
-          //  Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
             return;
         }
-
-     //   Debug.Log($"[InventoryGrid] Updating slot {slotIndex}, Current isEmpty: {slot.IsEmpty}");
 
         if (item == null || item.IsEmpty)
         {
             slot.SetEmptyState();
-           // Debug.Log($"[InventoryGrid] Set slot {slotIndex} to empty");
         }
         else
         {
-            // ใช้ icon จาก ItemData และแสดง stack count
+            // ใช้ icon จาก ItemData และแสดง stack count พร้อม tier
             Sprite itemIcon = item.itemData.ItemIcon;
             int stackCount = item.stackCount;
+            ItemTier tier = item.itemData.Tier; // 🆕 เพิ่มการดึง tier
 
             if (itemIcon == null)
             {
-             //   Debug.LogError($"[InventoryGrid] Item {item.itemData.ItemName} has null icon!");
                 return;
             }
-
-          //  Debug.Log($"[InventoryGrid] Setting slot {slotIndex} with item: {item.itemData.ItemName} x{stackCount}");
 
             // แสดง stack count เฉพาะตอนที่ item สามารถ stack ได้ และมีมากกว่า 1
             bool showStackCount = item.itemData.CanStack() && stackCount > 1;
 
-            slot.SetFilledState(itemIcon, showStackCount ? stackCount : 0);
-
-           
-
+            // 🔧 เรียกใช้ method ใหม่ที่รับ tier ด้วย
+            slot.SetFilledState(itemIcon, showStackCount ? stackCount : 0, tier);
         }
 
-        // ✅ เพิ่มบรรทัดนี้ - Force sync slot ทันที
+        // Force sync slot ทันที
         slot.ForceSyncFromCharacterNow();
     }
     private IEnumerator DelayedCanvasRefresh()

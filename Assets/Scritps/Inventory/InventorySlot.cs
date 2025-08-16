@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 public class InventorySlot : MonoBehaviour
 {
@@ -19,6 +20,8 @@ public class InventorySlot : MonoBehaviour
     [SerializeField] private int slotIndex = -1;
     [SerializeField] private bool isEmpty = true;
     [SerializeField] private bool isSelected = false;
+    [Header("Tier Background")]
+    public Image itemTierBackground;    // Background สำหรับแสดง tier ของ item
 
     // Events
     public System.Action<int> OnSlotSelected;
@@ -46,6 +49,7 @@ public class InventorySlot : MonoBehaviour
     {
         SetupComponents();
         SetupButton();
+
     }
 
     private void Start()
@@ -56,7 +60,7 @@ public class InventorySlot : MonoBehaviour
         // ✅ เพิ่มบรรทัดนี้แทน - ให้ sync จาก character ทันที
         StartCoroutine(DelayedSyncFromCharacter());
     }
-
+  
     #endregion
 
     #region Component Setup
@@ -160,8 +164,6 @@ public class InventorySlot : MonoBehaviour
     }
     public void SetEmptyState()
     {
-        //Debug.Log($"[InventorySlot] 🧹 Setting empty state for slot {slotIndex}");
-
         isEmpty = true;
         isSelected = false;
 
@@ -180,7 +182,7 @@ public class InventorySlot : MonoBehaviour
         }
 
         // ปิด tier background
-       
+        DisableItemTierBackground();
 
         // ซ่อน stack text
         if (stackText != null)
@@ -188,8 +190,13 @@ public class InventorySlot : MonoBehaviour
             stackText.text = "";
             stackText.gameObject.SetActive(false);
         }
+    }
 
-        // ✅ เพิ่มบรรทัดนี้ - Force sync หลัง set state
+    // 🆕 Method สำหรับปิด tier background
+    private void DisableItemTierBackground()
+    {
+        TierBackgroundManager.Instance.DisableTierBackground(itemTierBackground);
+
     }
     public void SetFilledState(Sprite itemSprite, int stackCount = 0)
     {
@@ -198,8 +205,6 @@ public class InventorySlot : MonoBehaviour
             SetEmptyState();
             return;
         }
-
-       // Debug.Log($"[InventorySlot] 🎨 Setting filled state for slot {slotIndex}: {itemSprite.name}");
 
         isEmpty = false;
         isSelected = false;
@@ -216,11 +221,6 @@ public class InventorySlot : MonoBehaviour
             itemIcon.sprite = itemSprite;
             itemIcon.color = Color.white;
             itemIcon.gameObject.SetActive(true);
-            //Debug.Log($"[InventorySlot] 🖼️ Slot {slotIndex}: ItemIcon activated");
-        }
-        else
-        {
-           // Debug.LogError($"[InventorySlot] Slot {slotIndex}: ItemIcon not assigned in Inspector!");
         }
 
         // จัดการ stack text
@@ -230,7 +230,6 @@ public class InventorySlot : MonoBehaviour
             {
                 stackText.text = stackCount.ToString();
                 stackText.gameObject.SetActive(true);
-               // Debug.Log($"[InventorySlot] 📊 Slot {slotIndex}: Stack text = {stackCount}");
             }
             else
             {
@@ -239,10 +238,35 @@ public class InventorySlot : MonoBehaviour
             }
         }
 
-        // ✅ เพิ่มบรรทัดนี้ - Force sync หลัง set state
         ForceRefreshThisSlot();
+    }
+    public void SetFilledState(Sprite itemSprite, int stackCount, ItemTier tier)
+    {
+        // เรียก method เดิมก่อน
+        SetFilledState(itemSprite, stackCount);
 
-       // Debug.Log($"[InventorySlot] ✅ Slot {slotIndex} filled state complete");
+        // เซ็ต tier background
+        SetItemTierBackground(tier);
+    }
+    private void SetItemTierBackground(ItemTier tier)
+    {
+        if (itemTierBackground == null) return;
+        TierBackgroundManager.Instance.SetTierBackground(itemTierBackground, tier);
+    }
+
+
+    // 🆕 Method สำหรับ fallback color
+    private Color GetTierColorFallback(ItemTier tier)
+    {
+        switch (tier)
+        {
+            case ItemTier.Common: return Color.white;
+            case ItemTier.Uncommon: return Color.green;
+            case ItemTier.Rare: return Color.cyan;
+            case ItemTier.Epic: return Color.magenta;
+            case ItemTier.Legendary: return Color.yellow;
+            default: return Color.white;
+        }
     }
     private void ForceRefreshThisSlot()
     {
