@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: -400204652379301390}
   - component: {fileID: 8283572041256556508}
   - component: {fileID: 1925022699066192109}
+  - component: {fileID: 628438453581785132}
   m_Layer: 7
   m_Name: BossSlime
   m_TagString: Enemy
@@ -50,8 +51,8 @@ SpriteRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8670071803579099242}
   m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
   m_DynamicOccludee: 1
   m_StaticShadowCaster: 0
   m_MotionVectors: 1
@@ -59,10 +60,13 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 7ff0de84e11f2ad459bdbda0d2028c44, type: 2}
+  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -305,6 +309,7 @@ MonoBehaviour:
     criticalChanceBonusPerLevel: 0.5
     moveSpeedBonusPerLevel: 0.1
     lifeStealBonusPerLevel: 0
+    magicArmorBonusPerLevel: 1
   expSettings:
     baseExpToNextLevel: 100
     expGrowthRate: 1.2
@@ -383,6 +388,13 @@ MonoBehaviour:
   attackSpeed: 0
   reductionCoolDown: 0
   lifeSteal: 0
+  ampDamage: 0
+  magicArmor: 0
+  manaRegen: 0
+  healthRegen: 0
+  _NetworkedMagicArmor: 0
+  _NetworkedManaRegen: 0
+  _NetworkedHealthRegen: 0
   attackType: 0
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
@@ -393,8 +405,10 @@ MonoBehaviour:
   _NetworkedLifeSteal: 0
   isStatsLoaded: 0
   isSpawnComplete: 0
-  healthRegenPerSecond: 0.5
-  manaRegenPerSecond: 1
+  baseHealthRegenPerSecond: 0.2
+  baseManaRegenPerSecond: 0.5
+  maxHealthRegenPerTick: 50
+  maxManaRegenPerTick: 100
   rb: {fileID: 0}
   characterEquippedItems: []
   potionSlots: []
@@ -474,3 +488,28 @@ MonoBehaviour:
   _NetworkedPhase: 0
   _ActiveMinionsCount: 0
   _IsPerformingSpecialAttack: 0
+--- !u!114 &628438453581785132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4fbc8716eb4ce49986489ebf9ed273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetSpriteRenderer: {fileID: 0}
+  shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
+  shadowAlpha: 0.7
+  shadowOffset: {x: 0.1, y: -0.3, z: 0}
+  shadowScale: {x: 1, y: 0.6, z: 1}
+  shadowRotation: {x: 0, y: 0, z: 0}
+  skewX: 0
+  followTarget: 1
+  mirrorFlip: 0
+  sameFacing: 1
+  useSameSprite: 1
+  customShadowSprite: {fileID: 0}
+  shadowMaterial: {fileID: 0}

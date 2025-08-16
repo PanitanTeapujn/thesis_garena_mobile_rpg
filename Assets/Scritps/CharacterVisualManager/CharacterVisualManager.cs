@@ -40,7 +40,6 @@ public class CharacterVisualManager : NetworkBehaviour
     private CombatManager combatManager;
 
     // ========== Color System Support ==========
-    private bool isUsingVertexColors = false;
     private SpriteRenderer spriteRenderer;
 
     // ========== Flash Control ==========
@@ -59,105 +58,80 @@ public class CharacterVisualManager : NetworkBehaviour
 
         InitializeColorSystem();
     }
+
     protected virtual void Start()
     {
         // Subscribe to events
         StatusEffectManager.OnStatusEffectChanged += HandleStatusEffectVisual;
         StatusEffectManager.OnStatusDamageFlash += HandleStatusDamageFlash;
-        CombatManager.OnDamageTaken += HandleDamageFlash; // ⭐ ต้องมีบรรทัดนี้
+        CombatManager.OnDamageTaken += HandleDamageFlash;
 
         // Initialize VFX
         InitializeVFX();
     }
+
     private void InitializeColorSystem()
     {
-        if (characterRenderer == null)
-            characterRenderer = GetComponent<Renderer>();
+        // หา SpriteRenderer
+        spriteRenderer = GetComponent<SpriteRenderer>();
 
-        if (characterRenderer != null)
+        if (spriteRenderer != null)
         {
-            // ลองหา SpriteRenderer ก่อน
-            spriteRenderer = GetComponent<SpriteRenderer>();
-
-            if (spriteRenderer != null)
-            {
-                originalColor = spriteRenderer.color;
-                isUsingVertexColors = true;
-                Debug.Log($"Using SpriteRenderer Color system - Original: {originalColor}");
-            }
-            else if (characterRenderer.material.HasProperty("_Color"))
-            {
-                originalColor = characterRenderer.material.color;
-                isUsingVertexColors = false;
-                Debug.Log($"Using Material Color system - Original: {originalColor}");
-            }
-            else
-            {
-                originalColor = Color.white;
-                isUsingVertexColors = true;
-                Debug.LogWarning("No color system found, using default white color");
-            }
+            // ✅ ไม่เปลี่ยน Material อัตโนมัติ - ให้ผู้ใช้เปลี่ยนเอง
+            originalColor = spriteRenderer.color;
+            Debug.Log($"Using SpriteRenderer Color system - Original: {originalColor}");
+            Debug.Log($"Current Material: {spriteRenderer.material?.name ?? "Default"}");
+            Debug.Log($"Note: Make sure to use a material that supports vertex colors (like Sprites-Default)");
         }
         else
         {
-            Debug.LogWarning("CharacterRenderer is null! Cannot initialize color system.");
+            Debug.LogError("No SpriteRenderer found! Cannot change colors.");
         }
     }
 
     private void SetCharacterColor(Color color)
     {
-        if (characterRenderer == null) return;
+        Debug.Log($"[SetCharacterColor] Setting color to: {color} for {character?.CharacterName}");
 
-        if (isUsingVertexColors)
+        if (spriteRenderer != null)
         {
-            // ใช้ SpriteRenderer
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.color = color;
-            }
+            spriteRenderer.color = color;
+            Debug.Log($"[SetCharacterColor] Color set to: {spriteRenderer.color}");
         }
         else
         {
-            // ใช้ material color (เช็คอีกครั้งเพื่อความปลอดภัย)
-            if (characterRenderer.material.HasProperty("_Color"))
+            Debug.LogError($"[SetCharacterColor] spriteRenderer is null!");
+        }
+    }
+
+    private Color GetCharacterColor()
+    {
+        if (spriteRenderer != null)
+        {
+            return spriteRenderer.color;
+        }
+        return originalColor;
+    }
+
+    // ========== Status Effect Visual Methods ==========
+    private void ShowPoisonEffect(bool show)
+    {
+        if (poisonVFX != null)
+        {
+            poisonVFX.SetActive(show);
+        }
+
+        if (spriteRenderer != null && !isFlashingFromPoison && !isTakingDamage)
+        {
+            if (show)
             {
-                characterRenderer.material.color = color;
+                SetCharacterColor(poisonColor);
             }
             else
             {
-                // Fallback ไปใช้ SpriteRenderer
-                if (spriteRenderer == null)
-                    spriteRenderer = GetComponent<SpriteRenderer>();
-
-                if (spriteRenderer != null)
-                {
-                    spriteRenderer.color = color;
-                    isUsingVertexColors = true;
-                }
+                SetCharacterColor(GetReturnColor());
             }
         }
-    }
-    private Color GetCharacterColor()
-    {
-        if (characterRenderer == null) return originalColor;
-
-        if (isUsingVertexColors)
-        {
-            if (spriteRenderer != null)
-            {
-                return spriteRenderer.color;
-            }
-        }
-        else
-        {
-            // เช็คว่ามี _Color property หรือไม่
-            if (characterRenderer.material.HasProperty("_Color"))
-            {
-                return characterRenderer.material.color;
-            }
-        }
-
-        return originalColor;
     }
 
     private void ShowBurnEffect(bool show)
@@ -167,7 +141,7 @@ public class CharacterVisualManager : NetworkBehaviour
             burnVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -187,7 +161,7 @@ public class CharacterVisualManager : NetworkBehaviour
             bleedVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -207,7 +181,7 @@ public class CharacterVisualManager : NetworkBehaviour
             armorBreakVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -227,7 +201,7 @@ public class CharacterVisualManager : NetworkBehaviour
             blindVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -247,7 +221,7 @@ public class CharacterVisualManager : NetworkBehaviour
             weaknessVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -267,7 +241,7 @@ public class CharacterVisualManager : NetworkBehaviour
             stunVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -287,7 +261,7 @@ public class CharacterVisualManager : NetworkBehaviour
             freezeVFX.SetActive(show);
         }
 
-        if (characterRenderer != null && !isFlashingFromStatus && !isTakingDamage)
+        if (spriteRenderer != null && !isFlashingFromStatus && !isTakingDamage)
         {
             if (show)
             {
@@ -300,35 +274,6 @@ public class CharacterVisualManager : NetworkBehaviour
         }
     }
 
-   
-
-    protected virtual void OnDestroy()
-    {
-        // Unsubscribe events
-        StatusEffectManager.OnStatusEffectChanged -= HandleStatusEffectVisual;
-        StatusEffectManager.OnStatusDamageFlash -= HandleStatusDamageFlash;
-        CombatManager.OnDamageTaken -= HandleDamageFlash;
-    }
-
-    protected virtual void Update()
-    {
-        // Update visual effects based on network state
-        UpdateVisualEffects();
-    }
-
-    // ========== VFX Initialization ==========
-    private void InitializeVFX()
-    {
-        if (poisonVFX != null) poisonVFX.SetActive(false);
-        if (burnVFX != null) burnVFX.SetActive(false);
-        if (freezeVFX != null) freezeVFX.SetActive(false);
-        if (stunVFX != null) stunVFX.SetActive(false);
-        if (bleedVFX != null) bleedVFX.SetActive(false);
-        if (armorBreakVFX != null) armorBreakVFX.SetActive(false);
-        if (blindVFX != null) blindVFX.SetActive(false);
-        if (weaknessVFX != null) weaknessVFX.SetActive(false);
-    }
-
     // ========== Event Handlers ==========
     private void HandleStatusEffectVisual(Character targetCharacter, StatusEffectType effectType, bool isActive)
     {
@@ -336,7 +281,6 @@ public class CharacterVisualManager : NetworkBehaviour
 
         switch (effectType)
         {
-            // Magical Effects
             case StatusEffectType.Poison:
                 ShowPoisonEffect(isActive);
                 break;
@@ -349,8 +293,6 @@ public class CharacterVisualManager : NetworkBehaviour
             case StatusEffectType.Freeze:
                 ShowFreezeEffect(isActive);
                 break;
-
-            // Physical Effects
             case StatusEffectType.Stun:
                 ShowStunEffect(isActive);
                 break;
@@ -375,53 +317,21 @@ public class CharacterVisualManager : NetworkBehaviour
             case StatusEffectType.Poison:
                 StartCoroutine(PoisonDamageFlash());
                 break;
-                // เพิ่ม status effects อื่นๆ ต่อไป
         }
     }
 
     private void HandleDamageFlash(Character targetCharacter, int damage, DamageType damageType, bool isCritical)
     {
-        Debug.Log($"[HandleDamageFlash] Called for {targetCharacter?.CharacterName}, damage: {damage}");
-        Debug.Log($"[HandleDamageFlash] My character: {character?.CharacterName}");
-        Debug.Log($"[HandleDamageFlash] Character comparison: {targetCharacter == character}");
-        Debug.Log($"[HandleDamageFlash] Character names match: {targetCharacter?.CharacterName == character?.CharacterName}");
-
-        // ✅ เปลี่ยนเงื่อนไขจากการเปรียบเทียบ object เป็นเปรียบเทียบชื่อ
-        if (targetCharacter?.CharacterName != character?.CharacterName)
-        {
-            Debug.Log($"[HandleDamageFlash] Wrong character, expected {character?.CharacterName}");
-            return;
-        }
+        if (targetCharacter != character) return;
 
         Debug.Log($"[HandleDamageFlash] Starting damage flash for {character.CharacterName}");
         StartCoroutine(DamageFlash(damageType, isCritical));
     }
 
-    // ========== Status Effect Visuals ==========
-    private void ShowPoisonEffect(bool show)
-    {
-        if (poisonVFX != null)
-        {
-            poisonVFX.SetActive(show);
-        }
-
-        if (characterRenderer != null && !isFlashingFromPoison && !isTakingDamage)
-        {
-            if (show)
-            {
-                SetCharacterColor(poisonColor);
-            }
-            else
-            {
-                SetCharacterColor(GetReturnColor());
-            }
-        }
-    }
-
     // ========== Flash Effects ==========
     private IEnumerator DamageFlash(DamageType damageType, bool isCritical)
     {
-        if (characterRenderer == null) yield break;
+        if (spriteRenderer == null) yield break;
 
         isTakingDamage = true;
         Color flashColor = GetFlashColorByDamageType(damageType, isCritical);
@@ -442,7 +352,7 @@ public class CharacterVisualManager : NetworkBehaviour
 
     private IEnumerator PoisonDamageFlash()
     {
-        if (characterRenderer == null) yield break;
+        if (spriteRenderer == null) yield break;
 
         isFlashingFromPoison = true;
 
@@ -469,17 +379,17 @@ public class CharacterVisualManager : NetworkBehaviour
         switch (damageType)
         {
             case DamageType.Poison:
-                return new Color(0.8f, 0f, 0.8f); // สีม่วง
+                return new Color(0.8f, 0f, 0.8f);
             case DamageType.Burn:
-                return new Color(1f, 0.3f, 0f); // สีส้มแดง
+                return new Color(1f, 0.3f, 0f);
             case DamageType.Freeze:
-                return new Color(0.3f, 0.8f, 1f); // สีน้ำเงินอ่อน
+                return new Color(0.3f, 0.8f, 1f);
             case DamageType.Stun:
-                return new Color(1f, 1f, 0f); // สีเหลือง
+                return new Color(1f, 1f, 0f);
             case DamageType.Bleed:
-                return new Color(0.7f, 0f, 0f); // สีแดงเข้ม
+                return new Color(0.7f, 0f, 0f);
             case DamageType.Critical:
-                return new Color(1f, 0.8f, 0f); // สีทอง
+                return new Color(1f, 0.8f, 0f);
             default:
                 return isCritical ? new Color(1f, 0.5f, 0f) : Color.red;
         }
@@ -487,32 +397,44 @@ public class CharacterVisualManager : NetworkBehaviour
 
     private Color GetReturnColor()
     {
-        // ลำดับความสำคัญของสี (สถานะที่สำคัญกว่าจะแสดงก่อน)
         if (statusEffectManager != null)
         {
-            // Physical Effects (มีผลกระทบต่อการต่อสู้มาก)
-            if (statusEffectManager.IsStunned) return stunColor;        // ⚡ Stun - สำคัญที่สุด
-            if (statusEffectManager.IsFrozen) return freezeColor;       // ❄️ Freeze
-            if (statusEffectManager.IsBlind) return blindColor;        // 👁️ Blind
-            if (statusEffectManager.IsWeak) return weaknessColor;      // 💪 Weakness
-            if (statusEffectManager.IsArmorBreak) return armorBreakColor; // 🛡️ Armor Break
-
-            // Magical Effects (damage over time)
-            if (statusEffectManager.IsPoisoned) return poisonColor;    // 🧪 Poison
-            if (statusEffectManager.IsBurning) return burnColor;       // 🔥 Burn
-            if (statusEffectManager.IsBleeding) return bleedColor;     // 🩸 Bleed
+            if (statusEffectManager.IsStunned) return stunColor;
+            if (statusEffectManager.IsFrozen) return freezeColor;
+            if (statusEffectManager.IsBlind) return blindColor;
+            if (statusEffectManager.IsWeak) return weaknessColor;
+            if (statusEffectManager.IsArmorBreak) return armorBreakColor;
+            if (statusEffectManager.IsPoisoned) return poisonColor;
+            if (statusEffectManager.IsBurning) return burnColor;
+            if (statusEffectManager.IsBleeding) return bleedColor;
         }
 
         return originalColor;
     }
 
-    // ========== Visual Updates ==========
+    // ========== VFX & Updates ==========
+    private void InitializeVFX()
+    {
+        if (poisonVFX != null) poisonVFX.SetActive(false);
+        if (burnVFX != null) burnVFX.SetActive(false);
+        if (freezeVFX != null) freezeVFX.SetActive(false);
+        if (stunVFX != null) stunVFX.SetActive(false);
+        if (bleedVFX != null) bleedVFX.SetActive(false);
+        if (armorBreakVFX != null) armorBreakVFX.SetActive(false);
+        if (blindVFX != null) blindVFX.SetActive(false);
+        if (weaknessVFX != null) weaknessVFX.SetActive(false);
+    }
+
+    protected virtual void Update()
+    {
+        UpdateVisualEffects();
+    }
+
     private void UpdateVisualEffects()
     {
-        // อัพเดท VFX ตาม network state
         if (statusEffectManager != null)
         {
-            // Magical Effects VFX
+            // Update VFX states
             if (poisonVFX != null && poisonVFX.activeSelf != statusEffectManager.IsPoisoned)
                 poisonVFX.SetActive(statusEffectManager.IsPoisoned);
 
@@ -525,7 +447,6 @@ public class CharacterVisualManager : NetworkBehaviour
             if (freezeVFX != null && freezeVFX.activeSelf != statusEffectManager.IsFrozen)
                 freezeVFX.SetActive(statusEffectManager.IsFrozen);
 
-            // Physical Effects VFX
             if (stunVFX != null && stunVFX.activeSelf != statusEffectManager.IsStunned)
                 stunVFX.SetActive(statusEffectManager.IsStunned);
 
@@ -539,8 +460,8 @@ public class CharacterVisualManager : NetworkBehaviour
                 weaknessVFX.SetActive(statusEffectManager.IsWeak);
         }
 
-        // อัพเดทสีเฉพาะเมื่อไม่มีการ flash
-        if (characterRenderer != null && !isTakingDamage && !isFlashingFromPoison && !isFlashingFromStatus)
+        // Update colors when not flashing
+        if (spriteRenderer != null && !isTakingDamage && !isFlashingFromPoison && !isFlashingFromStatus)
         {
             Color targetColor = GetReturnColor();
             Color currentColor = GetCharacterColor();
@@ -553,10 +474,40 @@ public class CharacterVisualManager : NetworkBehaviour
         }
     }
 
+    protected virtual void OnDestroy()
+    {
+        // Unsubscribe events
+        StatusEffectManager.OnStatusEffectChanged -= HandleStatusEffectVisual;
+        StatusEffectManager.OnStatusDamageFlash -= HandleStatusDamageFlash;
+        CombatManager.OnDamageTaken -= HandleDamageFlash;
+    }
+
+    // ========== Debug & Testing Methods ==========
+    [ContextMenu("🔴 Test Red Color")]
+    private void TestRedColor()
+    {
+        Debug.Log($"[TEST] Testing red color for {character?.CharacterName}");
+        SetCharacterColor(Color.red);
+    }
+
+    [ContextMenu("⚪ Reset Color")]
+    private void TestResetColor()
+    {
+        Debug.Log($"[TEST] Resetting color for {character?.CharacterName}");
+        SetCharacterColor(originalColor);
+    }
+
+    [ContextMenu("🔥 Test Damage Flash")]
+    private void TestDamageFlash()
+    {
+        Debug.Log($"[TEST] Testing damage flash for {character?.CharacterName}");
+        StartCoroutine(DamageFlash(DamageType.Normal, false));
+    }
+
     // ========== Public Methods ==========
     public void ForceUpdateColor()
     {
-        if (characterRenderer != null && !isTakingDamage && !isFlashingFromPoison)
+        if (spriteRenderer != null && !isTakingDamage && !isFlashingFromPoison)
         {
             SetCharacterColor(GetReturnColor());
         }
@@ -564,7 +515,7 @@ public class CharacterVisualManager : NetworkBehaviour
 
     public void SetCustomColor(Color color, float duration = 0f)
     {
-        if (characterRenderer != null)
+        if (spriteRenderer != null)
         {
             if (duration > 0f)
             {
@@ -583,16 +534,5 @@ public class CharacterVisualManager : NetworkBehaviour
         SetCharacterColor(color);
         yield return new WaitForSeconds(duration);
         SetCharacterColor(GetReturnColor());
-    }
-
-    // ========== Debug Methods ==========
-    public void TestPoisonFlash()
-    {
-        StartCoroutine(PoisonDamageFlash());
-    }
-
-    public void TestDamageFlash(DamageType damageType, bool isCritical = false)
-    {
-        StartCoroutine(DamageFlash(damageType, isCritical));
     }
 }
