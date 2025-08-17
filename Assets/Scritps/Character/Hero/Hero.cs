@@ -12,13 +12,6 @@
         [Networked] public bool NetworkedFlipX { get; set; }
         [Networked] public float NetworkedYRotation { get; set; }
         [Networked] public Vector3 NetworkedScale { get; set; }
-
-        [Networked] public int NetworkedCurrentHp { get; set; }
-        [Networked] public int NetworkedMaxHp { get; set; }
-        [Networked] public int NetworkedCurrentMana { get; set; }
-        [Networked] public int NetworkedMaxMana { get; set; }
-        [Networked] public bool IsNetworkStateReady { get; set; }
-
         [Networked] public TickTimer AttackCooldownTimer { get; set; }
         protected float nextAttackTime = 0f;
 

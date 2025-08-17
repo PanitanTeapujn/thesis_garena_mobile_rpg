@@ -125,35 +125,17 @@ public class DynamicShadow : MonoBehaviour
             shadowRenderer.sprite = targetSpriteRenderer.sprite;
         }
 
-        // ✅ ตั้ง Material เป็น Sprites-Default
+        // ✅ ใช้เฉพาะ Material ที่ใส่มาใน Inspector เท่านั้น
         if (shadowMaterial != null)
         {
             shadowRenderer.material = shadowMaterial;
+            Debug.Log("[DynamicShadow] Using assigned shadow material");
         }
         else
         {
-            // ใช้ Sprites-Default แทน Lit
-            Material defaultSpriteMaterial = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-            if (defaultSpriteMaterial != null)
-            {
-                shadowRenderer.material = defaultSpriteMaterial;
-                Debug.Log("[DynamicShadow] Using Sprites-Default material");
-            }
-            else
-            {
-                // ถ้าหาไม่เจอ ให้สร้างใหม่
-                Shader spriteShader = Shader.Find("Sprites/Default");
-                if (spriteShader != null)
-                {
-                    shadowRenderer.material = new Material(spriteShader);
-                    Debug.Log("[DynamicShadow] Created new Sprites/Default material");
-                }
-                else
-                {
-                    shadowRenderer.material = null; // ใช้ default
-                    Debug.Log("[DynamicShadow] Using null material (default)");
-                }
-            }
+            // ✅ ถ้าไม่ได้ใส่ Material ให้ใช้ default ของ Unity
+            shadowRenderer.material = null;
+            Debug.Log("[DynamicShadow] No material assigned, using Unity default");
         }
 
         // ตั้งสีและ alpha

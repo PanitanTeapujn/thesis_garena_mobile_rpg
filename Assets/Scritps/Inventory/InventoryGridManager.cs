@@ -75,7 +75,16 @@ public class InventoryGridManager : MonoBehaviour
         // ปรับขนาดอัตโนมัติเมื่อ parent panel เปลี่ยนขนาด
         if (autoFitToParent && gridLayout != null)
         {
-            StartCoroutine(DelayedRefreshLayout());
+            // ✅ ตรวจสอบก่อนเรียก Coroutine
+            if (gameObject.activeInHierarchy)
+            {
+                StartCoroutine(DelayedRefreshLayout());
+            }
+            else
+            {
+                // ถ้า GameObject ไม่ active ให้ refresh ทันที
+                RefreshGridLayout();
+            }
         }
     }
 
@@ -209,19 +218,69 @@ public class InventoryGridManager : MonoBehaviour
             CreateSlot(i);
         }
 
-        if (needsCanvasRefresh)
+        // ✅ แก้ไข - ตรวจสอบก่อนเรียก Coroutine
+        if (needsCanvasRefresh && gameObject.activeInHierarchy)
         {
             StartCoroutine(ForceCanvasRefreshRoutine());
         }
+        else if (needsCanvasRefresh)
+        {
+            // ถ้า GameObject ไม่ active ให้ refresh ทันที
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[InventoryGrid] Force refreshed canvas immediately (object inactive)");
+        }
 
-        // ✅ เพิ่ม immediate sync หลังสร้าง slots เสร็จ
-        if (ownerCharacter != null)
+        // ✅ แก้ไข - เพิ่ม immediate sync หลังสร้าง slots เสร็จ
+        if (ownerCharacter != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(ImmediateSyncAllSlotsAfterCreate());
+        }
+        else if (ownerCharacter != null)
+        {
+            // ถ้า GameObject ไม่ active ให้ sync ทันที
+            ImmediateSyncAllSlotsNow();
         }
 
         Debug.Log($"[InventoryGrid] Created {allSlots.Count} inventory slots");
     }
+    private void ImmediateSyncAllSlotsNow()
+    {
+        Debug.Log("[InventoryGrid] 🔄 Immediate sync all slots without coroutine...");
+
+        if (ownerCharacter?.GetInventory() != null)
+        {
+            Inventory inventory = ownerCharacter.GetInventory();
+
+            for (int i = 0; i < allSlots.Count && i < inventory.CurrentSlots; i++)
+            {
+                InventorySlot slot = allSlots[i];
+                InventoryItem item = inventory.GetItem(i);
+
+                if (slot != null)
+                {
+                    if (item == null || item.IsEmpty)
+                    {
+                        slot.SetEmptyState();
+                    }
+                    else
+                    {
+                        Sprite itemIcon = item.itemData.ItemIcon;
+                        int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+                        slot.SetFilledState(itemIcon, stackCount);
+
+                        Debug.Log($"[InventoryGrid] Immediate sync slot {i}: {item.itemData.ItemName}");
+                    }
+                }
+            }
+
+            // Force canvas update
+            Canvas.ForceUpdateCanvases();
+
+            Debug.Log("[InventoryGrid] ✅ Immediate sync completed for all slots (no coroutine)");
+        }
+    }
+
     private System.Collections.IEnumerator ImmediateSyncAllSlotsAfterCreate()
     {
         // รอ 2 frames เพื่อให้ slots สร้างเสร็จ
@@ -351,18 +410,47 @@ public class InventoryGridManager : MonoBehaviour
         // ✅ Setup components ทันทีที่สร้าง
         slot.ForceSetupComponents();
 
-        // ✅ ลบบรรทัดนี้ออก - ไม่ให้ SetEmptyState ทันที
-        // slot.SetEmptyState();
-
         allSlots.Add(slot);
 
-        // ✅ เพิ่มบรรทัดนี้ - ถ้ามี character แล้วให้ sync ทันที
-        if (ownerCharacter != null)
+        // ✅ แก้ไข - ตรวจสอบก่อนเรียก Coroutine
+        if (ownerCharacter != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(DelayedSyncSlotFromCharacter(slot, slotIndex));
         }
+        else if (ownerCharacter != null)
+        {
+            // ถ้า GameObject ไม่ active ให้ sync ทันที
+            SyncSlotFromCharacterNow(slot, slotIndex);
+        }
 
         Debug.Log($"[InventoryGrid] Created slot {slotIndex} without forcing empty state");
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ sync แบบไม่ใช้ Coroutine
+    private void SyncSlotFromCharacterNow(InventorySlot slot, int slotIndex)
+    {
+        if (ownerCharacter?.GetInventory() != null)
+        {
+            InventoryItem item = ownerCharacter.GetInventory().GetItem(slotIndex);
+
+            if (item == null || item.IsEmpty)
+            {
+                slot.SetEmptyState();
+            }
+            else
+            {
+                Sprite itemIcon = item.itemData.ItemIcon;
+                int stackCount = item.itemData.CanStack() && item.stackCount > 1 ? item.stackCount : 0;
+
+                slot.SetFilledState(itemIcon, stackCount);
+
+                Debug.Log($"[InventoryGrid] Slot {slotIndex} synced immediately with item: {item.itemData.ItemName}");
+            }
+        }
+        else
+        {
+            slot.SetEmptyState();
+        }
     }
     private System.Collections.IEnumerator DelayedSyncSlotFromCharacter(InventorySlot slot, int slotIndex)
     {
@@ -565,8 +653,15 @@ public class InventoryGridManager : MonoBehaviour
         {
             Debug.LogWarning("[InventoryGrid] No character found during setup!");
 
-            // ลองหาอีกครั้งใน coroutine
-            StartCoroutine(RetryFindCharacter());
+            // ✅ ตรวจสอบก่อนเรียก Coroutine
+            if (gameObject.activeInHierarchy)
+            {
+                StartCoroutine(RetryFindCharacter());
+            }
+            else
+            {
+                Debug.LogWarning("[InventoryGrid] GameObject inactive, cannot start retry coroutine");
+            }
         }
     }
     private Character FindCharacterMultipleWays()
@@ -687,22 +782,68 @@ public class InventoryGridManager : MonoBehaviour
             Inventory.OnInventorySlotCountChanged += OnCharacterInventoryChanged;
             Inventory.OnInventoryItemChanged += OnCharacterItemChanged;
 
-            // อัปเดต grid ทันที
-            if (allSlots.Count == 0)
+            // ✅ ตรวจสอบ GameObject active ก่อนการทำงาน
+            if (gameObject.activeInHierarchy)
             {
-                CreateInventoryGrid();
+                // อัปเดต grid ทันที
+                if (allSlots.Count == 0)
+                {
+                    CreateInventoryGrid();
+                }
+                else
+                {
+                    UpdateGridFromCharacterInventory();
+                }
+                ForceLoadFromCharacterAfterConnection();
             }
             else
             {
-                UpdateGridFromCharacterInventory();
+                Debug.LogWarning("[InventoryGrid] GameObject is inactive, setting up delayed activation handler");
+
+                // สร้าง grid แบบไม่ใช้ coroutine
+                if (allSlots.Count == 0)
+                {
+                    CreateInventoryGrid();
+                }
+                else
+                {
+                    UpdateGridFromCharacterInventory();
+                }
+
+                // Force load แบบไม่ใช้ coroutine
+                ForceLoadFromCharacterAfterConnectionNoCoroutine();
             }
-            ForceLoadFromCharacterAfterConnection();
 
             Debug.Log($"[InventoryGrid] Successfully connected to {ownerCharacter.CharacterName}'s inventory");
 
             // ✅ เพิ่มบรรทัดนี้ - แจ้ง ItemDeleteManager
             NotifyItemDeleteManagerForRefresh();
         }
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ force load แบบไม่ใช้ coroutine
+    private void ForceLoadFromCharacterAfterConnectionNoCoroutine()
+    {
+        if (ownerCharacter == null) return;
+
+        Debug.Log("[InventoryGrid] Force loading items after character connection (no coroutine)...");
+
+        // ตรวจสอบว่ามี slots แล้วหรือยัง
+        if (allSlots.Count == 0)
+        {
+            CreateInventoryGrid();
+        }
+
+        // โหลด items ทันที
+        LoadItemsFromCharacterInventory();
+
+        // ✅ Force refresh ทุก slot
+        ForceRefreshAllSlots();
+
+        // ✅ เพิ่มบรรทัดนี้ - แจ้ง ItemDeleteManager หลัง load เสร็จ
+        NotifyItemDeleteManagerForRefresh();
+
+        Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed (no coroutine)");
     }
     // เพิ่ม method สำหรับ handle character inventory events
     private void OnCharacterInventoryChanged(Character character, int newSlotCount)
@@ -1680,7 +1821,7 @@ public class InventoryGridManager : MonoBehaviour
         {
             return "No filters active";
         }
-
+        
         List<string> activeFilters = new List<string>();
 
         if (isFilteringByType)

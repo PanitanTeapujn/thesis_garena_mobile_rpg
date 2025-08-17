@@ -267,11 +267,6 @@ MonoBehaviour:
   _NetworkedFlipX: 0
   _NetworkedYRotation: 0
   _NetworkedScale: {x: 0, y: 0, z: 0}
-  _NetworkedCurrentHp: 0
-  _NetworkedMaxHp: 0
-  _NetworkedCurrentMana: 0
-  _NetworkedMaxMana: 0
-  _IsNetworkStateReady: 0
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 0}
   cameraRotationSpeed: 50
@@ -705,4 +700,4 @@ MonoBehaviour:
   sameFacing: 1
   useSameSprite: 1
   customShadowSprite: {fileID: 0}
-  shadowMaterial: {fileID: 0}
+  shadowMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}

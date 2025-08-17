@@ -96,7 +96,7 @@ public class WorldSpaceUI : MonoBehaviour
 
     private void UpdateBars()
     {
-        if (targetHero == null) return;
+        if (targetHero == null || !targetHero.IsSpawned) return; // เพิ่มการตรวจสอบ IsSpawned
 
         // รอให้ network state พร้อม
         if (!targetHero.IsNetworkStateReady) return;
@@ -118,35 +118,41 @@ public class WorldSpaceUI : MonoBehaviour
 
     private void UpdateTextContent()
     {
-        if (targetHero == null) return;
+        if (targetHero == null || !targetHero.IsSpawned) return;
 
-        int currentLevel = targetHero.GetCurrentLevel();
-
-        // Update Player Name (3D TextMeshPro)
-        if (playerNameText3D != null)
+        try
         {
-            if (showLevelInName)
+            int currentLevel = targetHero.GetCurrentLevel();
+
+            // Update Player Name (3D TextMeshPro)
+            if (playerNameText3D != null)
             {
-                playerNameText3D.text = $"[Lv.{currentLevel}] {targetHero.CharacterName}";
+                if (showLevelInName)
+                {
+                    playerNameText3D.text = $"[Lv.{currentLevel}] {targetHero.CharacterName}";
+                }
+                else
+                {
+                    playerNameText3D.text = targetHero.CharacterName;
+                }
             }
-            else
+            // Update Level Text แยก (3D TextMeshPro)
+            if (levelText3D != null && !showLevelInName)
             {
-                playerNameText3D.text = targetHero.CharacterName;
+                float expProgress = targetHero.GetExpProgress();
+                if (expProgress > 0 && !targetHero.IsMaxLevel())
+                {
+                    levelText3D.text = $"Lv.{currentLevel}";
+                }
+                else
+                {
+                    levelText3D.text = $"Lv.{currentLevel}";
+                }
             }
         }
-
-        // Update Level Text แยก (3D TextMeshPro)
-        if (levelText3D != null && !showLevelInName)
+        catch
         {
-            float expProgress = targetHero.GetExpProgress();
-            if (expProgress > 0 && !targetHero.IsMaxLevel())
-            {
-                levelText3D.text = $"Lv.{currentLevel}";
-            }
-            else
-            {
-                levelText3D.text = $"Lv.{currentLevel}";
-            }
+            // เงียบๆ ไม่แสดง error ระหว่างรอ spawn
         }
     }
 
@@ -198,7 +204,7 @@ public class WorldSpaceUI : MonoBehaviour
     /// </summary>
     public void UpdateHealthBarColor()
     {
-        if (healthBar == null || targetHero == null) return;
+        if (healthBar == null || targetHero == null || !targetHero.IsSpawned) return; // เพิ่มการตรวจสอบ IsSpawned
 
         float healthPercent = (float)targetHero.NetworkedCurrentHp / targetHero.NetworkedMaxHp;
         Image fillImage = healthBar.fillRect?.GetComponent<Image>();
@@ -270,7 +276,7 @@ public class WorldSpaceUI : MonoBehaviour
     /// </summary>
     public void UpdateTextColors()
     {
-        if (playerNameText3D != null)
+        if (playerNameText3D != null && targetHero != null && targetHero.IsSpawned) // เพิ่มการตรวจสอบ IsSpawned
         {
             // เปลี่ยนสีชื่อตาม HP
             float healthPercent = (float)targetHero.NetworkedCurrentHp / targetHero.NetworkedMaxHp;

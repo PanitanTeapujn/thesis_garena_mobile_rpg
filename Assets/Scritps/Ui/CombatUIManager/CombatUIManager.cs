@@ -126,11 +126,23 @@ public class CombatUIManager : MonoBehaviour
 
     // 🎯 NEW: Inventory Grid Manager
     private InventoryGridManager inventoryGridManager;
+    public static CombatUIManager Instance { get; private set; }
+    private void Awake()
+    {
+        // ✅ Singleton check
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("Duplicate CombatUIManager found! Destroying...");
+            Destroy(gameObject);
+            return;
+        }
 
+        Instance = this;
+        DontDestroyOnLoad(gameObject); // ถ้าต้องการให้คงอยู่ข้าม scene
+    }
     private void Start()
     {
         Debug.Log("CombatUIManager Start");
-        CreateCombatUIFromPrefab();
 
         // ใช้ Coroutine เพื่อหา InputController
         StartCoroutine(FindInputControllerRoutine());
@@ -231,41 +243,7 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
-    private void CreateCombatUIFromPrefab()
-    {
-        if (combatUIPrefab == null)
-        {
-            Debug.LogError("Combat UI Prefab not assigned!");
-            return;
-        }
-
-        Canvas canvas = FindObjectOfType<Canvas>();
-        if (canvas == null)
-        {
-            Debug.LogError("Canvas not found!");
-            return;
-        }
-
-        Transform safeArea = canvas.transform.Find("SafeArea");
-        if (safeArea == null)
-        {
-            GameObject safeAreaObj = new GameObject("SafeArea");
-            safeAreaObj.transform.SetParent(canvas.transform, false);
-
-            RectTransform safeAreaRect = safeAreaObj.AddComponent<RectTransform>();
-            safeAreaRect.anchorMin = Vector2.zero;
-            safeAreaRect.anchorMax = Vector2.one;
-            safeAreaRect.offsetMin = Vector2.zero;
-            safeAreaRect.offsetMax = Vector2.zero;
-
-            safeArea = safeAreaRect;
-        }
-
-        uiInstance = Instantiate(combatUIPrefab, safeArea);
-        Debug.Log($"UI Instance created: {uiInstance.name}");
-
-        SetupInventoryPanel();
-    }
+    
 
     // 🎯 UPDATED: Setup Inventory Panel with Grid System
     private void SetupInventoryPanel()
@@ -1437,9 +1415,10 @@ public class CombatUIManager : MonoBehaviour
 
     public void UpdateUI()
     {
-        if (localHero == null) return;
+        if (localHero == null || !localHero.IsSpawned) return; // เพิ่มการตรวจสอบ IsSpawned
+
         UpdatePotionButtons();
-        UpdateSkillCooldowns(); // เพิ่มบรรทัดนี้
+        UpdateSkillCooldowns();
 
         // ใช้ NetworkedCurrentHp/NetworkedMaxHp แทน
         if (healthBar != null && localHero.NetworkedMaxHp > 0)
@@ -1465,11 +1444,10 @@ public class CombatUIManager : MonoBehaviour
             manaText.text = $"{localHero.NetworkedCurrentMana}/{localHero.NetworkedMaxMana}";
         }
     }
-
     // เพิ่มฟังก์ชันอัพเดท Character Stats ใน Inventory Panel
     public void UpdateInventoryCharacterStats()
     {
-        if (localHero == null) return;
+        if (localHero == null || !localHero.IsSpawned) return; // เพิ่มการตรวจสอบ IsSpawned
 
         // Character Name & Level
         if (characterNameText != null)

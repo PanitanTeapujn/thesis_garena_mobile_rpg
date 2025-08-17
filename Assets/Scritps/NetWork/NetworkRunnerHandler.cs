@@ -13,6 +13,9 @@ public class NetworkRunnerHandler : MonoBehaviour
 
     private async void Start()
     {
+        Debug.LogError("[MOBILE] NetworkRunnerHandler Start - Platform: " + Application.platform);
+        Debug.LogError("[MOBILE] Internet: " + Application.internetReachability);
+
         // หา PlayerSpawner
         _spawner = FindObjectOfType<PlayerSpawner>();
         if (_spawner == null)
@@ -48,7 +51,7 @@ public class NetworkRunnerHandler : MonoBehaviour
 
         var startGameArgs = new StartGameArgs()
         {
-            GameMode = GameMode.AutoHostOrClient,
+            GameMode = GameMode.Single,
             SessionName = sessionName,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         };
@@ -85,7 +88,32 @@ public class NetworkRunnerHandler : MonoBehaviour
             Debug.LogError("EnemySpawner prefab not assigned!");
         }
     }
+    private void Update()
+    {
+        // ✅ Debug บนหน้าจอ
+        if (Application.platform == RuntimePlatform.Android)
+        {
+            DrawDebugOnScreen();
+        }
+    }
+    private void DrawDebugOnScreen()
+    {
+        var runner = FindObjectOfType<NetworkRunner>();
+        var heroes = FindObjectsOfType<Hero>();
 
+        // Simple on-screen debug
+        GUIStyle style = new GUIStyle();
+        style.fontSize = 30;
+        style.normal.textColor = Color.red;
+
+        GUI.Label(new Rect(10, 10, 500, 400),
+            $"Platform: {Application.platform}\n" +
+            $"Internet: {Application.internetReachability}\n" +
+            $"NetworkRunner: {(runner != null ? "FOUND" : "NULL")}\n" +
+            $"IsRunning: {(runner?.IsRunning ?? false)}\n" +
+            $"Heroes: {heroes.Length}\n" +
+            $"Time: {Time.time:F1}", style);
+    }
     private void OnDestroy()
     {
         if (_spawner != null)

@@ -971,4 +971,5 @@ public class LevelManager : NetworkBehaviour
             Debug.LogError($"[LevelManager] ❌ Error giving money: {e.Message}");
         }
     }
+    
 }

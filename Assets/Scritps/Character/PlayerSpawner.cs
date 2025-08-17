@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
+using TMPro;
+
 public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
     [Header("Character Prefabs")]
@@ -42,7 +44,8 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     private Dictionary<PlayerRef, NetworkObject> spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
     private void Awake()
     {
-        _runner = FindObjectOfType<NetworkRunner>();
+        // ✅ อย่าหา NetworkRunner ใน Awake เพราะยังไม่ถูกสร้าง
+        // _runner = FindObjectOfType<NetworkRunner>();
 
         // ✅ สร้าง spawn points อัตโนมัติถ้าไม่มี
         if (autoCreateSpawnPoints && (spawnPoints == null || spawnPoints.Length == 0))
@@ -50,6 +53,8 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             CreateDefaultSpawnPointsRuntime();
         }
 
+        // ✅ ลบส่วนนี้ออก - จะหา NetworkRunner ใน Update แทน
+        /*
         if (_runner != null)
         {
             _runner.AddCallbacks(this);
@@ -59,7 +64,9 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         {
             Debug.LogError("NetworkRunner not found in the scene!");
         }
+        */
     }
+
     private void OnEnable()
     {
         /*_runner = FindObjectOfType<NetworkRunner>();
@@ -273,14 +280,16 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     private void Update()
     {
+        // ✅ หา NetworkRunner ใน Update แทน
         if (_runner == null)
         {
             _runner = FindObjectOfType<NetworkRunner>();
             if (_runner != null)
             {
                 _runner.AddCallbacks(this);
-                Debug.Log("PlayerSpawner registered with NetworkRunner");
+                Debug.Log($"PlayerSpawner registered with NetworkRunner. IsServer: {_runner.IsServer}");
             }
+            // ✅ ลบ Debug.LogError ออก เพราะจะแสดงตลอดก่อนที่ NetworkRunner จะถูกสร้าง
         }
     }
     public void OnHeroSpawnComplete(Hero hero)
@@ -360,15 +369,22 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
+        Debug.LogError($"[MOBILE] Player joined: {player}, IsServer: {runner.IsServer}");
 
         _runner = runner;
 
         if (!runner.IsServer)
         {
-            Debug.Log("Not server, skipping spawn");
+            Debug.LogError("[MOBILE] Not server - cannot spawn!");
             return;
         }
-
+        if (runner.GameMode == GameMode.Single)
+        {
+            Debug.LogError("[MOBILE] Single mode - forcing spawn");
+            PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
+            SpawnCharacterForPlayer(runner.LocalPlayer, selectedCharacter);
+            return;
+        }
         // ตรวจสอบและลบข้อมูลเก่าของผู้เล่นนี้ (ถ้ามี)
         if (spawnedCharacters.ContainsKey(player))
         {
