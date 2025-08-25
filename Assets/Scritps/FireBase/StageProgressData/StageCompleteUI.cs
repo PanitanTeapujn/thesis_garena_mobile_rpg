@@ -63,7 +63,15 @@ public class StageCompleteUI : MonoBehaviour
             backToLobbyButton.onClick.AddListener(BackToLobby);
         }
     }
-
+    private void Update()
+    {
+        // ✅ Debug timeScale (ลบออกได้เมื่อแก้เสร็จแล้ว)
+        if (Time.timeScale != 1f && !stageCompletePanel.activeInHierarchy)
+        {
+            Debug.LogWarning($"[StageCompleteUI] TimeScale is {Time.timeScale} but UI is not showing! Resetting...");
+            Time.timeScale = 1f;
+        }
+    }
     /// <summary>
     /// แสดง Stage Complete UI พร้อมข้อมูล rewards - เรียกจาก RPC
     /// </summary>
@@ -178,9 +186,9 @@ public class StageCompleteUI : MonoBehaviour
             yield return StartCoroutine(AnimatePlayerExpOnly(stageResult));
         }
 
-        // หยุดเวลาชั่วขณะหลังจากแสดงเสร็จแล้ว
-        Time.timeScale = 0.1f;
-        StartCoroutine(RestoreTimeScale());
+        // ❌ ลบส่วนนี้ออก - ไม่ต้องปรับ timeScale
+        // Time.timeScale = 0.1f;
+        // StartCoroutine(RestoreTimeScale());
 
         Debug.Log($"🏆 [StageCompleteUI] Stage complete UI fully displayed for: {stageName}");
     }
@@ -1023,40 +1031,41 @@ public class StageCompleteUI : MonoBehaviour
     private void BackToLobby()
     {
         Debug.Log("[StageCompleteUI] Going back to lobby...");
+
+        // ✅ แน่ใจว่า timeScale กลับเป็น 1 ก่อน
+        Time.timeScale = 1f;
+
         StartCoroutine(BackToLobbyWithTransition());
 
         // 🆕 Force reset rewards ก่อนกลับ Lobby
         StageRewardTracker.ForceResetRewards();
 
-        // คืนค่า Time Scale ปกติก่อน
-        Time.timeScale = 1f;
-
         // ทำความสะอาด Network Components เหมือน LoseScene
         CleanupNetworkComponents();
 
         // โหลด Lobby Scene
         SceneManager.LoadScene("Lobby");
     }
-    private IEnumerator BackToLobbyWithTransition()
-    {
-        // Fade out panel ก่อน
-        yield return StartCoroutine(FadeOutPanel());
+   private IEnumerator BackToLobbyWithTransition()
+{
+    // ✅ แน่ใจว่า timeScale เป็น 1 ตั้งแต่เริ่มต้น
+    Time.timeScale = 1f;
+    
+    // Fade out panel ก่อน
+    yield return StartCoroutine(FadeOutPanel());
 
-        // 🆕 Force reset rewards ก่อนกลับ Lobby
-        StageRewardTracker.ForceResetRewards();
+    // 🆕 Force reset rewards ก่อนกลับ Lobby
+    StageRewardTracker.ForceResetRewards();
 
-        // คืนค่า Time Scale ปกติก่อน
-        Time.timeScale = 1f;
+    // ทำความสะอาด Network Components เหมือน LoseScene
+    CleanupNetworkComponents();
 
-        // ทำความสะอาด Network Components เหมือน LoseScene
-        CleanupNetworkComponents();
+    // รอหน่วงเวลานิดหนึ่งก่อนโหลด scene
+    yield return new WaitForSeconds(0.5f);
 
-        // รอหน่วงเวลานิดหนึ่งก่อนโหลด scene
-        yield return new WaitForSeconds(0.5f);
-
-        // โหลด Lobby Scene
-        SceneManager.LoadScene("Lobby");
-    }
+    // โหลด Lobby Scene
+    SceneManager.LoadScene("Lobby");
+}
 
     /// <summary>
     /// ทำความสะอาด Network Components - คัดลอกจาก LoseScene
@@ -1105,10 +1114,11 @@ public class StageCompleteUI : MonoBehaviour
     /// </summary>
     private IEnumerator RestoreTimeScale()
     {
-        yield return new WaitForSecondsRealtime(3f); // เพิ่มเป็น 3 วินาที
+        // ✅ ปรับให้คืนค่าเร็วขึ้น หรือลบ method นี้ออกไปเลย
+        yield return new WaitForSecondsRealtime(0.5f); // ลดจาก 3 วินาที
 
-        // Smooth transition กลับเป็น normal time
-        float duration = 1f;
+        // Smooth transition กลับเป็น normal time (เร็วขึ้น)
+        float duration = 0.2f; // ลดจาก 1 วินาที
         float elapsed = 0f;
 
         while (elapsed < duration)
@@ -1122,6 +1132,12 @@ public class StageCompleteUI : MonoBehaviour
 
         Time.timeScale = 1f;
         Debug.Log("⏰ [StageCompleteUI] Time scale restored to normal");
+    }
+    private void OnDestroy()
+    {
+        // ✅ แน่ใจว่า timeScale กลับเป็น 1 เมื่อ destroy object
+        Time.timeScale = 1f;
+        Debug.Log("[StageCompleteUI] OnDestroy: Time.timeScale reset to 1");
     }
 
     #region Debug Methods
