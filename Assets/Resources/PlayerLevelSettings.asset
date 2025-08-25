@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 239ef5ef91498314194bd1e304959638, type: 3}
+  m_Name: PlayerLevelSettings
+  m_EditorClassIdentifier: 
+  baseExpToNextLevel: 100
+  expIncreasePerLevel: 50
+  maxPlayerLevel: 999
+  baseStageCompletionExp: 50
+  worldExpBonuses:
+  - worldName: PlayRoom1
+    expBonus: 10
+  - worldName: PlayRoom2
+    expBonus: 20
+  - worldName: PlayRoom3
+    expBonus: 30
+  subStageExpBonuses:
+  - stageNumber: 1
+    expBonus: 5
+  - stageNumber: 2
+    expBonus: 10
+  - stageNumber: 3
+    expBonus: 15
+  baseLevelUpGold: 1000
+  goldIncreasePerLevel: 500
+  baseLevelUpGems: 5
+  gemsIncreaseEveryNLevels: 10
+  baseFirstClearGems: 50
+  worldFirstClearBonuses:
+  - worldName: PlayRoom1
+    gemsBonus: 10000
+  - worldName: PlayRoom2
+    gemsBonus: 150
+  - worldName: PlayRoom3
+    gemsBonus: 200
+  subStageFirstClearBonuses:
+  - stageNumber: 1
+    gemsBonus: 1000
+  - stageNumber: 2
+    gemsBonus: 25
+  - stageNumber: 3
+    gemsBonus: 50
+  characterLevelUpExpBonus:
+    baseExp: 20
+    expPerCharacterLevel: 5

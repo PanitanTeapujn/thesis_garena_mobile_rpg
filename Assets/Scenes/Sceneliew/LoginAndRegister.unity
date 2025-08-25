@@ -394,6 +394,17 @@ MonoBehaviour:
     registrationDate: 2025-07-01 12:01:09
     lastLoginDate: 2025-07-01 12:01:09
     currentActiveCharacter: Assassin
+    playerLevel: 1
+    playerExp: 0
+    playerExpToNext: 100
+    playerLevelGoldReward: 0
+    playerLevelGemsReward: 0
+    firstClearedStages: []
+    totalFirstClearBonusGems: 0
+    hasPlayerLevelData: 0
+    playerLevelLastUpdateTime: 2025-08-25 14:56:35
+    totalCharacterLevelUps: 0
+    totalStageFirstClears: 0
     characters: []
     stageProgress:
       completedStages: []
@@ -411,6 +422,7 @@ MonoBehaviour:
       gridHeight: 4
       lastSaveTime: 2025-07-01 18:29:29
       totalItemCount: 0
+    playerLevelSettings: {fileID: 0}
     hasInventoryData: 0
     inventoryLastSaveTime: 2025-07-01 18:29:29
     totalSharedItems: 0
@@ -424,6 +436,8 @@ MonoBehaviour:
     hasCurrencyData: 0
     currencyLastSaveTime: 2025-07-11 18:25:23
   isDataLoaded: 0
+  playerLevelSettings: {fileID: 11400000, guid: c7d18e87a37518143928cb1c9156d252,
+    type: 2}
 --- !u!4 &140433958
 Transform:
   m_ObjectHideFlags: 0

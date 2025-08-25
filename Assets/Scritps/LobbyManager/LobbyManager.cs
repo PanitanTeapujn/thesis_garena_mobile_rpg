@@ -97,7 +97,7 @@ public class LobbyManager : MonoBehaviour
     // Player data
     private CharacterProgressData currentCharacterData;
     private bool isPlayerDataLoaded = false;
-
+    private PersistentPlayerData persistentPlayerDataInstance;
     // Friends auto refresh system
     private Coroutine autoRefreshCoroutine;
     private bool isRefreshing = false;
@@ -385,7 +385,7 @@ public class LobbyManager : MonoBehaviour
             // ใช้ข้อมูลจาก Firebase/PersistentPlayerData
             playerName = PersistentPlayerData.Instance.GetPlayerName();
             savedCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-            savedLevel = PersistentPlayerData.Instance.GetCurrentLevel();
+            savedLevel = PersistentPlayerData.Instance.GetPlayerLevel();
 
             Debug.Log($"[LobbyManager] Using data from PersistentPlayerData: {playerName}, {savedCharacter}, Level {savedLevel}");
         }
@@ -451,7 +451,7 @@ public class LobbyManager : MonoBehaviour
             }
 
             if (playerLevelText != null)
-                playerLevelText.text = $"Level {currentCharacterData.currentLevel}";
+                playerLevelText.text = $"Level {persistentPlayerDataInstance.GetPlayerLevel()}";
 
             if (playerExpText != null)
                 playerExpText.text = $"EXP: {currentCharacterData.currentExp}/{currentCharacterData.expToNextLevel}";

@@ -199,9 +199,19 @@ public class CurrencyManager : NetworkBehaviour
     /// <summary>
     /// เพิ่มเพชร
     /// </summary>
+    /// <summary>
+    /// เพิ่มเพชร
+    /// </summary>
     public bool AddGems(int amount, bool saveImmediately = true)
     {
-        if (amount <= 0) return false;
+        if (amount <= 0)
+        {
+            Debug.LogWarning($"[CurrencyManager] Invalid gems amount: {amount}");
+            return false;
+        }
+
+        Debug.Log($"[CurrencyManager] 💎 Attempting to add {amount} gems...");
+        Debug.Log($"[CurrencyManager] HasStateAuthority: {HasStateAuthority}, HasInputAuthority: {HasInputAuthority}");
 
         if (HasStateAuthority)
         {
@@ -212,8 +222,11 @@ public class CurrencyManager : NetworkBehaviour
             RPC_RequestCurrencyChange(CurrencyType.Gems, amount, TransactionType.Earn);
             return true;
         }
-
-        return false;
+        else
+        {
+            Debug.LogWarning("[CurrencyManager] No authority to add gems!");
+            return false;
+        }
     }
 
     /// <summary>
@@ -298,12 +311,13 @@ public class CurrencyManager : NetworkBehaviour
         long newValue = 0;
         bool success = false;
 
+        Debug.Log($"[CurrencyManager] 🔧 AddCurrencyInternal called: {currencyType} amount={amount}");
+
         if (currencyType == CurrencyType.Gold)
         {
             oldValue = NetworkedGold;
             long newGold = NetworkedGold + amount;
 
-            // Check max limit
             if (newGold > 999999999) newGold = 999999999;
 
             NetworkedGold = newGold;
@@ -316,10 +330,12 @@ public class CurrencyManager : NetworkBehaviour
         else if (currencyType == CurrencyType.Gems)
         {
             oldValue = NetworkedGems;
+            int oldGems = NetworkedGems;
             int newGems = NetworkedGems + (int)amount;
 
-            // Check max limit
             if (newGems > 999999) newGems = 999999;
+
+            Debug.Log($"[CurrencyManager] 💎 Gems update: {oldGems} → {newGems} (adding {amount})");
 
             NetworkedGems = newGems;
             cachedGems = newGems;
@@ -327,13 +343,15 @@ public class CurrencyManager : NetworkBehaviour
             success = true;
 
             OnGemsChanged?.Invoke((int)oldValue, (int)newValue);
+
+            Debug.Log($"[CurrencyManager] 💎 NetworkedGems after update: {NetworkedGems}");
         }
 
         if (success)
         {
             OnCurrencyTransaction?.Invoke(currencyType, amount, TransactionType.Earn);
 
-            // Broadcast to all clients
+            // ✅ Force broadcast ทันที
             RPC_BroadcastCurrency(NetworkedGold, NetworkedGems);
 
             if (saveImmediately)
@@ -341,7 +359,7 @@ public class CurrencyManager : NetworkBehaviour
                 QuickSaveCurrency();
             }
 
-            Debug.Log($"💰 Added {amount} {currencyType}: {oldValue} → {newValue}");
+            Debug.Log($"💰 [CurrencyManager] Successfully added {amount} {currencyType}: {oldValue} → {newValue}");
         }
 
         return success;

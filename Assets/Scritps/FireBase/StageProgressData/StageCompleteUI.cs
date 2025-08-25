@@ -5,7 +5,20 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 using Fusion;
-
+[System.Serializable]
+public struct StageCompletionResult
+{
+    public int expGained;
+    public int playerLevelBefore;
+    public int playerLevelAfter;
+    public int playerExpBefore;
+    public int playerExpAfter;
+    public int playerExpToNextBefore;
+    public int playerExpToNextAfter;
+    public bool isFirstClear;
+    public int firstClearGemsBonus;
+    public PlayerLevelUpResult levelUpResult;
+}
 public class StageCompleteUI : MonoBehaviour
 {
     [Header("UI References")]
@@ -27,6 +40,13 @@ public class StageCompleteUI : MonoBehaviour
     [Header("Audio")]
     public AudioSource victoryAudioSource;
     public AudioClip victorySound;
+    [Header("📈 Player EXP Display")]
+    public Slider playerExpSlider;
+    public TextMeshProUGUI playerLevelText;
+    public TextMeshProUGUI playerExpText;
+    public TextMeshProUGUI playerExpGainedText;
+    public AudioClip playerLevelUpSound;
+
 
     private void Awake()
     {
@@ -65,6 +85,9 @@ public class StageCompleteUI : MonoBehaviour
     /// แสดงข้อมูล rewards ที่ได้รับ
     /// </summary>
     /// 
+    /// <summary>
+    /// แสดงข้อมูล rewards
+    /// </summary>
     private void DisplayStageRewards()
     {
         var rewards = StageRewardTracker.GetCurrentRewards();
@@ -86,23 +109,41 @@ public class StageCompleteUI : MonoBehaviour
 
         Debug.Log($"[StageCompleteUI] 🏆 Displayed rewards: Gold={rewards.totalGoldEarned:N0}, Gems={rewards.totalGemsEarned}, Items={rewards.itemsEarned.Count}");
     }
+
+    /// <summary>
+    /// แสดงเงินและเพชรรวม First Clear Bonus
+    /// </summary>
+    /// <summary>
+    /// แสดงเงินและเพชรรวม First Clear Bonus
+    /// </summary>
+    private void DisplayCurrencyRewardsWithFirstClear(StageRewardData rewards)
+    {
+        if (goldRewardText != null)
+        {
+            goldRewardText.text = $"💰 {rewards.totalGoldEarned:N0}";
+            goldRewardText.color = Color.yellow;
+        }
+
+        if (gemsRewardText != null)
+        {
+            // ✅ แค่แสดงเพชรปกติ ไม่ต้องตรวจสอบ First Clear ใน UI
+            gemsRewardText.text = $"💎 {rewards.totalGemsEarned}";
+            gemsRewardText.color = Color.cyan;
+        }
+    }
     private IEnumerator ShowStageCompleteWithDelay(string stageName)
     {
         Debug.Log($"🕒 [StageCompleteUI] Waiting {delayBeforeShow} seconds before showing UI...");
 
         yield return new WaitForSeconds(delayBeforeShow);
 
-        var preDisplayRewards = StageRewardTracker.GetCurrentRewards();
-        Debug.Log($"[StageCompleteUI] 🔍 Pre-display rewards: Gold={preDisplayRewards.totalGoldEarned}, Items={preDisplayRewards.itemsEarned.Count}");
-
+        // หยุดการติดตาม rewards และคำนวณเวลา
         StageRewardTracker.Instance.StopStageTracking();
 
-        var postStopRewards = StageRewardTracker.GetCurrentRewards();
-        Debug.Log($"[StageCompleteUI] 🔍 Post-stop rewards: Gold={postStopRewards.totalGoldEarned}, Items={postStopRewards.itemsEarned.Count}");
+        // ✅ ประมวลผล Player EXP และ First Clear ก่อนแสดง UI
+        var stageResult = ProcessStageCompletionData(stageName);
 
-        // ✅ เพิ่ม Player EXP เมื่อจบด่าน
-        ProcessStageCompletionPlayerExp(stageName);
-
+        // ตั้งค่า panel ให้โปร่งใสก่อน (สำหรับ fade in effect)
         if (stageCompletePanel != null)
         {
             CanvasGroup canvasGroup = stageCompletePanel.GetComponent<CanvasGroup>();
@@ -113,93 +154,605 @@ public class StageCompleteUI : MonoBehaviour
             stageCompletePanel.SetActive(true);
         }
 
+        // ตั้งค่าข้อความพื้นฐาน
         if (stageNameText != null)
             stageNameText.text = stageName;
 
         if (congratsText != null)
             congratsText.text = "🎉 STAGE COMPLETED! 🎉";
 
-        DisplayStageRewards();
+        // ✅ แสดงข้อมูลแบบ Static ก่อน (ไม่มี Animation)
+        DisplayAllRewardsStatic(stageResult);
+
+        // เล่นเสียง
         PlayVictorySound();
 
+        // เริ่ม fade in effect
         yield return StartCoroutine(FadeInPanel());
 
+        // ✅ หลังจาก UI แสดงเสร็จแล้ว ค่อยเล่น EXP Animation
+        yield return new WaitForSecondsRealtime(0.5f);
+
+        if (stageResult.expGained > 0)
+        {
+            yield return StartCoroutine(AnimatePlayerExpOnly(stageResult));
+        }
+
+        // หยุดเวลาชั่วขณะหลังจากแสดงเสร็จแล้ว
         Time.timeScale = 0.1f;
         StartCoroutine(RestoreTimeScale());
 
         Debug.Log($"🏆 [StageCompleteUI] Stage complete UI fully displayed for: {stageName}");
     }
-
-    /// <summary>
-    /// 🆕 ให้ Player EXP เมื่อจบด่าน
-    /// </summary>
-    private void ProcessStageCompletionPlayerExp(string stageName)
+    private void DisplayAllRewardsStatic(StageCompletionResult stageResult)
     {
+        var stageRewards = StageRewardTracker.GetCurrentRewards();
+
+        if (stageRewards == null)
+        {
+            Debug.LogWarning("[StageCompleteUI] No reward data available!");
+            return;
+        }
+
+        // 1. แสดงข้อมูลพื้นฐาน (Gold, Items, Stats)
+        DisplayBasicRewards(stageRewards);
+        DisplayStatistics(stageRewards);
+        DisplayItemRewards(stageRewards);
+
+        // 2. แสดง Gems รวม (ไม่มี Animation)
+        DisplayFinalGemsReward(stageRewards, stageResult);
+
+        // 3. Setup Player EXP เริ่มต้น (ค่าเก่าก่อน Animation)
+        SetupPlayerExpDisplayInitial(stageResult.playerLevelBefore, stageResult.playerExpBefore, stageResult.playerExpToNextBefore);
+
+        Debug.Log($"[StageCompleteUI] 🏆 All rewards displayed (static)");
+    }
+    private void SetupPlayerExpDisplayInitial(int level, int exp, int expToNext)
+    {
+        if (playerExpSlider != null)
+        {
+            float progress = (float)exp / expToNext;
+            playerExpSlider.value = progress;
+        }
+
+        if (playerLevelText != null)
+            playerLevelText.text = $"PLAYER LEVEL {level}";
+
+        if (playerExpText != null)
+            playerExpText.text = $"{exp}/{expToNext} EXP";
+
+        if (playerExpGainedText != null)
+            playerExpGainedText.text = ""; // เคลียร์ก่อน
+    }
+    private StageCompletionResult ProcessStageCompletionData(string stageName)
+    {
+        var result = new StageCompletionResult();
+
         try
         {
             var persistentData = PersistentPlayerData.Instance;
-            if (persistentData?.multiCharacterData == null) return;
+            if (persistentData?.multiCharacterData == null) return result;
+
+            // บันทึกข้อมูล Player ก่อนเพิ่ม EXP
+            result.playerLevelBefore = persistentData.GetPlayerLevel();
+            result.playerExpBefore = persistentData.GetPlayerExp();
+            result.playerExpToNextBefore = persistentData.GetPlayerExpToNext();
+
+            // ✅ ตรวจสอบ First Clear Bonus
+            result.isFirstClear = persistentData.multiCharacterData.IsFirstClearStage(stageName);
+
+            if (result.isFirstClear)
+            {
+                result.firstClearGemsBonus = persistentData.multiCharacterData.ProcessFirstClearBonus(stageName);
+                Debug.Log($"💎 [FirstClear] Processing first clear bonus: {result.firstClearGemsBonus} gems");
+
+                // เพิ่มเพชร First Clear Bonus ทันที
+                if (result.firstClearGemsBonus > 0)
+                {
+                    var currencyManager = FindObjectOfType<CurrencyManager>();
+                    if (currencyManager != null)
+                    {
+                        currencyManager.AddGems(result.firstClearGemsBonus, true);
+                    }
+                }
+            }
 
             // คำนวณ EXP ที่ได้จากการจบด่าน
-            int stageCompletionExp = CalculateStageCompletionExp(stageName);
+            result.expGained = CalculateStageCompletionExp(stageName);
 
-            if (stageCompletionExp > 0)
+            if (result.expGained > 0)
             {
-                // เพิ่ม Player EXP โดยตรง (แยกจาก Character Level Up)
-                var result = persistentData.multiCharacterData.GainPlayerExpFromStageCompletion(stageName, stageCompletionExp);
+                result.levelUpResult = persistentData.multiCharacterData.GainPlayerExpFromStageCompletion(stageName, result.expGained);
 
-                if (result.didLevelUp)
+                // เพิ่มรางวัลจาก Player Level Up
+                if (result.levelUpResult.didLevelUp && result.levelUpResult.HasRewards())
                 {
-                    Debug.Log($"🎉 [StageComplete] PLAYER LEVEL UP from stage completion! New level: {result.newPlayerLevel}");
-
-                    // เพิ่มรางวัลเงินและเพชร
-                    if (result.HasRewards())
+                    var currencyManager = FindObjectOfType<CurrencyManager>();
+                    if (currencyManager != null)
                     {
-                        AddStageCompletionPlayerLevelRewards(result);
+                        if (result.levelUpResult.goldReward > 0)
+                            currencyManager.AddGold(result.levelUpResult.goldReward, false);
+                        if (result.levelUpResult.gemsReward > 0)
+                            currencyManager.AddGems(result.levelUpResult.gemsReward, false);
                     }
-
-                    // แสดง notification
-                    ShowStageCompletionPlayerLevelUpNotification(result);
                 }
-
-                Debug.Log($"[StageComplete] 📈 Player gained {stageCompletionExp} EXP from completing {stageName}");
 
                 // บันทึกข้อมูล
                 persistentData.SavePlayerDataAsync();
             }
 
+            // บันทึกข้อมูล Player หลังเพิ่ม EXP
+            result.playerLevelAfter = persistentData.GetPlayerLevel();
+            result.playerExpAfter = persistentData.GetPlayerExp();
+            result.playerExpToNextAfter = persistentData.GetPlayerExpToNext();
+
+            Debug.Log($"[StageComplete] 📈 Player gained {result.expGained} EXP from completing {stageName}");
+            Debug.Log($"[StageComplete] First clear: {result.isFirstClear}, Bonus gems: {result.firstClearGemsBonus}");
+
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[StageComplete] ❌ Error in ProcessStageCompletionPlayerExp: {e.Message}");
+            Debug.LogError($"[StageComplete] ❌ Error in ProcessStageCompletionData: {e.Message}");
+        }
+
+        return result;
+    }
+    /// <summary>
+    /// ✅ แสดงข้อมูล rewards ทั้งหมดแบบ animated
+    /// </summary>
+    /// <summary>
+    /// ✅ แสดงข้อมูล rewards ทั้งหมดแบบ animated (แบบง่าย)
+    /// </summary>
+  
+
+    /// <summary>
+    /// แสดง Gems รวม (ไม่มี Animation)
+    /// </summary>
+    private void DisplayFinalGemsReward(StageRewardData stageRewards, StageCompletionResult stageResult)
+    {
+        if (gemsRewardText == null) return;
+
+        // คำนวณเพชรรวมทั้งหมด
+        int totalGems = stageRewards.totalGemsEarned;
+        if (stageResult.isFirstClear) totalGems += stageResult.firstClearGemsBonus;
+        if (stageResult.levelUpResult.didLevelUp) totalGems += stageResult.levelUpResult.gemsReward;
+
+        // แสดงผลรวม
+        string gemText = $"💎 {totalGems}";
+
+        // เพิ่มข้อความ breakdown ถ้ามี bonus
+        List<string> bonusInfo = new List<string>();
+
+        if (stageResult.isFirstClear && stageResult.firstClearGemsBonus > 0)
+        {
+            bonusInfo.Add($"First Clear +{stageResult.firstClearGemsBonus}");
+            gemsRewardText.color = Color.magenta; // สีพิเศษสำหรับ first clear
+        }
+        else
+        {
+            gemsRewardText.color = Color.cyan;
+        }
+
+        if (stageResult.levelUpResult.didLevelUp && stageResult.levelUpResult.gemsReward > 0)
+        {
+            bonusInfo.Add($"Level Up +{stageResult.levelUpResult.gemsReward}");
+        }
+
+        // เพิ่มข้อความ bonus (ถ้ามี)
+        if (bonusInfo.Count > 0)
+        {
+            gemText += $" ({string.Join(", ", bonusInfo)})";
+        }
+
+        gemsRewardText.text = gemText;
+
+        Debug.Log($"[StageCompleteUI] Final gems display: {totalGems} (Base: {stageRewards.totalGemsEarned}, First Clear: {stageResult.firstClearGemsBonus}, Level Up: {stageResult.levelUpResult.gemsReward})");
+    }
+
+    /// <summary>
+    /// Animate เฉพาะ Player EXP Slider
+    /// </summary>
+    /// <summary>
+    /// Animate เฉพาะ Player EXP Slider (หลังจาก UI แสดงแล้ว)
+    /// </summary>
+    private IEnumerator AnimatePlayerExpOnly(StageCompletionResult stageResult)
+    {
+        Debug.Log($"[StageCompleteUI] 🎬 Starting EXP animation...");
+
+        // ✅ แสดง EXP gained text ก่อน
+        if (playerExpGainedText != null)
+        {
+            playerExpGainedText.text = $"+{stageResult.expGained} EXP";
+            playerExpGainedText.color = Color.green;
+        }
+
+        yield return new WaitForSecondsRealtime(0.3f);
+
+        bool hasLeveledUp = stageResult.levelUpResult.didLevelUp;
+
+        if (hasLeveledUp)
+        {
+            // ✅ กรณี Level Up: แยกเป็น 2 phase
+            yield return StartCoroutine(AnimateExpWithLevelUp(stageResult));
+        }
+        else
+        {
+            // ✅ กรณีไม่ Level Up: animate ปกติ
+            yield return StartCoroutine(AnimateExpNormal(stageResult));
+        }
+
+        Debug.Log($"✅ [StageCompleteUI] Player EXP animation completed");
+    }
+
+    /// <summary>
+    /// Animate EXP แบบปกติ (ไม่ Level Up)
+    /// </summary>
+    private IEnumerator AnimateExpNormal(StageCompletionResult stageResult)
+    {
+        float animationDuration = 1.5f;
+        float elapsed = 0f;
+
+        int startExp = stageResult.playerExpBefore;
+        int endExp = stageResult.playerExpAfter;
+        int expToNext = stageResult.playerExpToNextBefore;
+
+        Debug.Log($"[StageCompleteUI] Normal EXP animation: {startExp} → {endExp}/{expToNext}");
+
+        while (elapsed < animationDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / animationDuration;
+
+            int currentExp = Mathf.RoundToInt(Mathf.Lerp(startExp, endExp, progress));
+
+            // Update UI
+            if (playerExpSlider != null)
+            {
+                float sliderValue = (float)currentExp / expToNext;
+                playerExpSlider.value = sliderValue;
+            }
+
+            if (playerExpText != null)
+                playerExpText.text = $"{currentExp}/{expToNext} EXP";
+
+            yield return null;
+        }
+
+        // Final values
+        if (playerExpSlider != null)
+            playerExpSlider.value = (float)endExp / expToNext;
+
+        if (playerExpText != null)
+            playerExpText.text = $"{endExp}/{expToNext} EXP";
+    }
+
+    /// <summary>
+    /// Animate EXP พร้อม Level Up (2 Phase Animation)
+    /// </summary>
+    private IEnumerator AnimateExpWithLevelUp(StageCompletionResult stageResult)
+    {
+        int startExp = stageResult.playerExpBefore;
+        int expToNext = stageResult.playerExpToNextBefore;
+        int startLevel = stageResult.playerLevelBefore;
+        int endLevel = stageResult.playerLevelAfter;
+        int finalExp = stageResult.playerExpAfter;
+        int finalExpToNext = stageResult.playerExpToNextAfter;
+
+        Debug.Log($"[StageCompleteUI] Level Up EXP animation: Level {startLevel} → {endLevel}");
+        Debug.Log($"[StageCompleteUI] EXP: {startExp}/{expToNext} → {finalExp}/{finalExpToNext}");
+
+        // ✅ Phase 1: เติม EXP จนเต็ม (ถึง expToNext)
+        Debug.Log($"[StageCompleteUI] Phase 1: Filling EXP bar to full...");
+
+        float phase1Duration = 1.2f;
+        float elapsed = 0f;
+
+        while (elapsed < phase1Duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / phase1Duration;
+
+            int currentExp = Mathf.RoundToInt(Mathf.Lerp(startExp, expToNext, progress));
+
+            // Update UI
+            if (playerExpSlider != null)
+            {
+                float sliderValue = (float)currentExp / expToNext;
+                playerExpSlider.value = sliderValue;
+            }
+
+            if (playerExpText != null)
+                playerExpText.text = $"{currentExp}/{expToNext} EXP";
+
+            yield return null;
+        }
+
+        // ✅ เติมให้เต็มพอดี 100%
+        if (playerExpSlider != null)
+            playerExpSlider.value = 1f;
+
+        if (playerExpText != null)
+            playerExpText.text = $"{expToNext}/{expToNext} EXP";
+
+        yield return new WaitForSecondsRealtime(0.3f); // รอให้เห็นแถบเต็ม
+
+        // ✅ Phase 2: Level Up Effect + Reset Bar
+        Debug.Log($"[StageCompleteUI] Phase 2: Level up effect and reset bar...");
+
+        StartCoroutine(ShowLevelUpEffect());
+
+        // อัพเดต Level text
+        if (playerLevelText != null)
+            playerLevelText.text = $"PLAYER LEVEL {endLevel}";
+
+        yield return new WaitForSecondsRealtime(0.5f); // รอให้ level up effect เล่น
+
+        // ✅ Phase 3: Reset bar และ animate ไปยัง EXP ใหม่
+        Debug.Log($"[StageCompleteUI] Phase 3: Animating new level EXP...");
+
+        float phase3Duration = 0.8f;
+        elapsed = 0f;
+
+        while (elapsed < phase3Duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / phase3Duration;
+
+            int currentExp = Mathf.RoundToInt(Mathf.Lerp(0, finalExp, progress));
+
+            // Update UI
+            if (playerExpSlider != null)
+            {
+                float sliderValue = (float)currentExp / finalExpToNext;
+                playerExpSlider.value = sliderValue;
+            }
+
+            if (playerExpText != null)
+                playerExpText.text = $"{currentExp}/{finalExpToNext} EXP";
+
+            yield return null;
+        }
+
+        // ✅ Final values
+        if (playerExpSlider != null)
+            playerExpSlider.value = (float)finalExp / finalExpToNext;
+
+        if (playerLevelText != null)
+            playerLevelText.text = $"PLAYER LEVEL {endLevel}";
+
+        if (playerExpText != null)
+            playerExpText.text = $"{finalExp}/{finalExpToNext} EXP";
+
+        // Log level up rewards
+        if (stageResult.levelUpResult.goldReward > 0)
+            Debug.Log($"💰 [StageCompleteUI] Level up reward: {stageResult.levelUpResult.goldReward:N0} gold");
+        if (stageResult.levelUpResult.gemsReward > 0)
+            Debug.Log($"💎 [StageCompleteUI] Level up reward: {stageResult.levelUpResult.gemsReward} gems");
+
+        Debug.Log($"🎉 [StageCompleteUI] Level up animation completed!");
+    }
+
+    /// <summary>
+    /// แสดง Level Up Effect แบบง่าย
+    /// </summary>
+    private IEnumerator ShowLevelUpEffect()
+    {
+        // เล่นเสียง level up
+        if (victoryAudioSource != null && playerLevelUpSound != null)
+        {
+            victoryAudioSource.PlayOneShot(playerLevelUpSound);
+        }
+
+        // Pulse effect บน level text
+        if (playerLevelText != null)
+        {
+            Vector3 originalScale = playerLevelText.transform.localScale;
+            Color originalColor = playerLevelText.color;
+
+            float pulseDuration = 1f;
+            float elapsed = 0f;
+
+            while (elapsed < pulseDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float progress = elapsed / pulseDuration;
+
+                // Pulse scale
+                float scale = 1f + (Mathf.Sin(progress * Mathf.PI * 6) * 0.15f);
+                playerLevelText.transform.localScale = originalScale * scale;
+
+                // Color flash
+                Color flashColor = Color.Lerp(originalColor, Color.yellow, Mathf.Sin(progress * Mathf.PI * 6) * 0.5f + 0.5f);
+                playerLevelText.color = flashColor;
+
+                yield return null;
+            }
+
+            // Restore original
+            playerLevelText.transform.localScale = originalScale;
+            playerLevelText.color = originalColor;
         }
     }
 
     /// <summary>
-    /// คำนวณ EXP ที่ได้จากการจบด่าน
+    /// แสดงข้อมูลพื้นฐาน (ไม่รวม Bonus ต่างๆ)
     /// </summary>
+    private void DisplayBasicRewards(StageRewardData rewards)
+    {
+        if (goldRewardText != null)
+        {
+            goldRewardText.text = $"💰 {rewards.totalGoldEarned:N0}";
+            goldRewardText.color = Color.yellow;
+        }
+
+        if (gemsRewardText != null)
+        {
+            gemsRewardText.text = $"💎 0"; // เริ่มจาก 0
+            gemsRewardText.color = Color.cyan;
+        }
+    }
+
+    /// <summary>
+    /// Setup Player EXP Display
+    /// </summary>
+   
+
+    /// <summary>
+    /// Animate Player EXP Gain (แบบรวมใน UI หลัก)
+    /// </summary>
+    private IEnumerator AnimatePlayerExpGainIntegrated(StageCompletionResult stageResult)
+    {
+        if (playerExpGainedText != null)
+        {
+            playerExpGainedText.text = $"+{stageResult.expGained} EXP";
+            playerExpGainedText.color = Color.green;
+        }
+
+        float animationDuration = 1.5f;
+        float elapsed = 0f;
+
+        int currentExp = stageResult.playerExpBefore;
+        int targetExp = stageResult.playerExpAfter;
+        int currentExpToNext = stageResult.playerExpToNextBefore;
+        int currentLevel = stageResult.playerLevelBefore;
+
+        while (elapsed < animationDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / animationDuration;
+
+            // Calculate animated values
+            int animatedExp = Mathf.RoundToInt(Mathf.Lerp(currentExp, targetExp, progress));
+
+            // Handle level up during animation
+            if (progress >= 0.7f && stageResult.levelUpResult.didLevelUp)
+            {
+                currentLevel = stageResult.playerLevelAfter;
+                currentExpToNext = stageResult.playerExpToNextAfter;
+                animatedExp = stageResult.playerExpAfter;
+            }
+
+            // Update UI
+            if (playerExpSlider != null)
+            {
+                float sliderProgress = (float)animatedExp / currentExpToNext;
+                playerExpSlider.value = sliderProgress;
+            }
+
+            if (playerLevelText != null)
+                playerLevelText.text = $"PLAYER LEVEL {currentLevel}";
+
+            if (playerExpText != null)
+                playerExpText.text = $"{animatedExp}/{currentExpToNext} EXP";
+
+            // Level up effect
+            if (progress >= 0.7f && stageResult.levelUpResult.didLevelUp && playerLevelText != null)
+            {
+                float pulse = 1f + (Mathf.Sin(Time.unscaledTime * 8f) * 0.1f);
+                playerLevelText.transform.localScale = Vector3.one * pulse;
+                playerLevelText.color = Color.Lerp(Color.white, Color.yellow, Mathf.PingPong(Time.unscaledTime * 2f, 1f));
+            }
+
+            yield return null;
+        }
+
+        // Reset level text effects
+        if (playerLevelText != null)
+        {
+            playerLevelText.transform.localScale = Vector3.one;
+            playerLevelText.color = Color.white;
+        }
+    }
+
+    /// <summary>
+    /// Animate First Clear Bonus
+    /// </summary>
+   
+
+    /// <summary>
+    /// อัปเดต Gems ขั้นสุดท้าย (รวมทุก bonus)
+    /// </summary>
+   
+    
+
+    /// <summary>
+    /// ✅ แสดง Player EXP Animation
+    /// </summary>
+   
+
+    /// <summary>
+    /// ✅ แสดง Level Up Effect
+    /// </summary>
+    private System.Collections.IEnumerator ShowPlayerLevelUpEffect(int newLevel)
+    {
+        // เล่นเสียง level up
+        if (victoryAudioSource != null && playerLevelUpSound != null)
+        {
+            victoryAudioSource.PlayOneShot(playerLevelUpSound);
+        }
+
+        // แสดง level up text effect
+        if (playerLevelText != null)
+        {
+            Vector3 originalScale = playerLevelText.transform.localScale;
+            Color originalColor = playerLevelText.color;
+
+            // Pulse effect
+            float pulseDuration = 0.5f;
+            float elapsed = 0f;
+
+            while (elapsed < pulseDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float progress = elapsed / pulseDuration;
+
+                float scale = 1f + (Mathf.Sin(progress * Mathf.PI * 4) * 0.2f);
+                playerLevelText.transform.localScale = originalScale * scale;
+
+                float alpha = 1f + (Mathf.Sin(progress * Mathf.PI * 4) * 0.3f);
+                Color newColor = originalColor;
+                newColor.a = alpha;
+                playerLevelText.color = newColor;
+
+                yield return null;
+            }
+
+            playerLevelText.transform.localScale = originalScale;
+            playerLevelText.color = originalColor;
+        }
+
+        Debug.Log($"🎉 [StageCompleteUI] Player reached level {newLevel}!");
+    }
+
+    /// <summary>
+    /// ✅ แสดง Player Level Up Rewards
+    /// </summary>
+
+
+
     private int CalculateStageCompletionExp(string stageName)
     {
-        // Base EXP สำหรับการจบด่าน
+        
+
+        // Fallback to default logic
         int baseExp = 50;
 
-        // เพิ่ม EXP ตาม World/Stage
         if (stageName.Contains("PlayRoom1"))
-            baseExp += 10; // World 1
+            baseExp += 20;
         else if (stageName.Contains("PlayRoom2"))
-            baseExp += 20; // World 2
+            baseExp += 40;
         else if (stageName.Contains("PlayRoom3"))
-            baseExp += 30; // World 3
+            baseExp += 60;
+        else if (stageName.Contains("PlayRoom4"))
+            baseExp += 80;
 
-        // เพิ่ม EXP ตาม Sub-stage
         if (stageName.EndsWith("_1"))
-            baseExp += 5;  // Stage 1
+            baseExp += 5;
         else if (stageName.EndsWith("_2"))
-            baseExp += 10; // Stage 2
+            baseExp += 10;
         else if (stageName.EndsWith("_3"))
-            baseExp += 15; // Stage 3 (Boss)
+            baseExp += 15;
 
-        Debug.Log($"[StageComplete] Calculated {baseExp} EXP for completing {stageName}");
         return baseExp;
     }
 

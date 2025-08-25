@@ -11,7 +11,7 @@ public class PersistentPlayerData : MonoBehaviour
     [Header("Multi-Character Data")]
     public MultiCharacterPlayerData multiCharacterData;
     public bool isDataLoaded = false;
-
+    [Header("⚙️ Settings")]
     // Singleton
     private static PersistentPlayerData _instance;
     public static PersistentPlayerData Instance
@@ -191,7 +191,7 @@ public class PersistentPlayerData : MonoBehaviour
                     if (IsValidPlayerData(tempData))
                     {
                         multiCharacterData = tempData;
-
+                       
                         // ✅ โหลด character stats หลังจาก deserialize JSON
                         multiCharacterData.LoadCharacterStatsFromResources();
 
@@ -324,22 +324,22 @@ public class PersistentPlayerData : MonoBehaviour
     {
         multiCharacterData = new MultiCharacterPlayerData();
 
-        // 🆕 ใช้ชื่อจาก Firebase Auth หรือ default
+        // ✅ ส่ง settings reference ทันทีหลังสร้าง
+        
+
         string newPlayerName = auth?.CurrentUser?.DisplayName ?? "Player";
         multiCharacterData.playerName = newPlayerName;
         multiCharacterData.currentActiveCharacter = "Assassin";
 
         InitializeCurrencyForNewPlayer();
-
-        // ✅ โหลด character stats หลังจากสร้าง MultiCharacterPlayerData แล้ว
         multiCharacterData.LoadCharacterStatsFromResources();
 
         isDataLoaded = true;
         SaveToPlayerPrefs();
 
         Debug.Log($"✅ Created default data for NEW PLAYER: {multiCharacterData.playerName}");
-        Debug.Log($"✅ New player gold: {multiCharacterData.sharedCurrency?.gold ?? 5000}");
     }
+   
     private void InitializeCurrencyForNewPlayer()
     {
         if (multiCharacterData != null)
@@ -3026,7 +3026,29 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// ดึง potion stack counts list จาก Character (private field)
     /// </summary>
+    /// <summary>
+    /// ตรวจสอบว่าด่านนี้ผ่านครั้งแรกหรือไม่
+    /// </summary>
+    public bool IsFirstClearStage(string stageName)
+    {
+        return multiCharacterData?.IsFirstClearStage(stageName) ?? true;
+    }
 
+    /// <summary>
+    /// ดึงจำนวนด่านที่ First Clear แล้ว
+    /// </summary>
+    public int GetTotalFirstClearStages()
+    {
+        return multiCharacterData?.totalStageFirstClears ?? 0;
+    }
+
+    /// <summary>
+    /// ดึงจำนวนเพชรรวมจาก First Clear
+    /// </summary>
+    public int GetTotalFirstClearGemsEarned()
+    {
+        return multiCharacterData?.totalFirstClearBonusGems ?? 0;
+    }
 
     #endregion
     public CharacterProgressData GetOrCreateCharacterData(string characterType)

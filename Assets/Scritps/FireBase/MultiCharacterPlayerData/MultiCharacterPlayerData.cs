@@ -744,16 +744,20 @@ public class MultiCharacterPlayerData
     public string currentActiveCharacter = "Assassin";
     #region 🆕 Player Level System
     [Header("🎯 Player Level System")]
-    public int playerLevel = 1;                    // Level ของผู้เล่น (แยกจากตัวละคร)
+    public int playerLevel = 1;
+    public int maxlevel = 100;// Level ของผู้เล่น (แยกจากตัวละคร)
     public int playerExp = 0;                      // EXP ของผู้เล่น
     public int playerExpToNext = 100;              // EXP ที่ต้องการเพื่อ Level up
     public long playerLevelGoldReward = 0;         // เงินที่ได้จาก Player Level up รวม
     public int playerLevelGemsReward = 0;          // เพชรที่ได้จาก Player Level up รวม
-
+    [Header("💎 First Clear Bonus System")]
+    public List<string> firstClearedStages = new List<string>();  // ด่านที่ผ่านครั้งแรกแล้ว
+    public int totalFirstClearBonusGems = 0;
     [Header("🔍 Player Level Debug Info")]
     public bool hasPlayerLevelData = false;
     public string playerLevelLastUpdateTime = "";
-    public int totalCharacterLevelUps = 0;         // จำนวนครั้งที่ตัวละครทั้งหมด Level up
+    public int totalCharacterLevelUps = 0;
+    public int totalStageFirstClears = 0;
     #endregion
     [Header("Character Data")]
     public List<CharacterProgressData> characters = new List<CharacterProgressData>();
@@ -771,7 +775,7 @@ public class MultiCharacterPlayerData
     #region 🆕 Inventory System
     [Header("🎒 Shared Inventory System")]
     public SharedInventoryData sharedInventory = new SharedInventoryData();
-
+    [Header("⚙️ Settings Reference")]
     [Header("🔍 Inventory Debug Info")]
     public bool hasInventoryData = false;        // มีข้อมูล inventory หรือไม่
     public string inventoryLastSaveTime = "";    // เวลาที่ save inventory ล่าสุด
@@ -826,6 +830,9 @@ public class MultiCharacterPlayerData
         playerLevelGoldReward = 0;
         playerLevelGemsReward = 0;
         totalCharacterLevelUps = 0;
+        firstClearedStages = new List<string>();
+        totalFirstClearBonusGems = 0;
+        totalStageFirstClears = 0;
         hasPlayerLevelData = false;
         playerLevelLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
@@ -848,7 +855,10 @@ public class MultiCharacterPlayerData
     /// </summary>
     public int CalculatePlayerExpToNext(int level)
     {
-        return 100 + (level - 1) * 50; // เพิ่ม 50 EXP ทุก level
+        
+
+        // Fallback to default
+        return 100 + (level - 1) * 50;
     }
 
     /// <summary>
@@ -857,6 +867,110 @@ public class MultiCharacterPlayerData
     /// <summary>
     /// เพิ่ม EXP ให้ผู้เล่นเมื่อจบด่าน (แยกจาก Character Level Up)
     /// </summary>
+    /// /// <summary>
+    /// ตรวจสอบว่าด่านนี้ผ่านครั้งแรกหรือไม่
+    /// </summary>
+    public bool IsFirstClearStage(string stageName)
+    {
+        return !firstClearedStages.Contains(stageName);
+    }
+
+    /// <summary>
+    /// เพิ่มด่านลงรายการ First Clear และคืนค่าเพชร bonus
+    /// </summary>
+    /// <summary>
+    /// เพิ่มด่านลงรายการ First Clear และคืนค่าเพชร bonus
+    /// </summary>
+    /// <summary>
+    /// เพิ่มด่านลงรายการ First Clear และคืนค่าเพชร bonus
+    /// </summary>
+    public int ProcessFirstClearBonus(string stageName)
+    {
+        Debug.Log($"[FirstClear] 🔍 Checking first clear for: {stageName}");
+
+        if (!IsFirstClearStage(stageName))
+        {
+            Debug.Log($"[FirstClear] ❌ {stageName} already cleared before");
+            return 0; // ไม่ใช่ครั้งแรก
+        }
+
+        // เพิ่มลงรายการ First Clear
+        firstClearedStages.Add(stageName);
+        totalStageFirstClears++;
+
+        // คำนวณเพชร bonus
+        int gemsBonus = CalculateFirstClearGemsBonus(stageName);
+        totalFirstClearBonusGems += gemsBonus;
+
+        Debug.Log($"🎉 [FirstClear] FIRST TIME clearing {stageName}! Bonus: {gemsBonus} gems");
+        Debug.Log($"💎 [FirstClear] Total first clear stages: {totalStageFirstClears}");
+        Debug.Log($"💎 [FirstClear] Total first clear gems earned: {totalFirstClearBonusGems}");
+
+        return gemsBonus;
+    }
+
+    /// <summary>
+    /// คำนวณเพชร bonus สำหรับ First Clear
+    /// </summary>
+    private int CalculateFirstClearGemsBonus(string stageName)
+    {
+        // ✅ ใช้ settings ก่อน
+        
+
+        Debug.LogWarning($"[FirstClear] PlayerLevelSettings is null, using fallback values");
+
+        // Fallback to default logic (เก่า)
+        int baseBonus = 50;
+
+        if (stageName.Contains("PlayRoom1"))
+            baseBonus = 100;
+        else if (stageName.Contains("PlayRoom2"))
+            baseBonus = 150;
+        else if (stageName.Contains("PlayRoom3"))
+            baseBonus = 200; 
+        else if (stageName.Contains("PlayRoom4"))
+            baseBonus = 250;
+
+        if (stageName.EndsWith("_1"))
+            baseBonus += 0;
+        else if (stageName.EndsWith("_2"))
+            baseBonus += 25;
+        else if (stageName.EndsWith("_3"))
+            baseBonus += 50;
+
+        Debug.Log($"[FirstClear] Using fallback value: {baseBonus} gems for {stageName}");
+        return baseBonus;
+    }
+
+    /// <summary>
+    /// รีเซ็ต First Clear data (สำหรับ debug)
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void ResetFirstClearData()
+    {
+        firstClearedStages.Clear();
+        totalFirstClearBonusGems = 0;
+        totalStageFirstClears = 0;
+        UpdatePlayerLevelDebugInfo();
+
+        Debug.Log("[FirstClear] 🔄 First clear data reset");
+    }
+
+    /// <summary>
+    /// ดึงรายการด่านที่ First Clear แล้ว
+    /// </summary>
+    public List<string> GetFirstClearedStages()
+    {
+        return new List<string>(firstClearedStages); // คืน copy เพื่อป้องกันการแก้ไข
+    }
+
+    /// <summary>
+    /// ดึงจำนวนเพชรรวมจาก First Clear
+    /// </summary>
+    public int GetTotalFirstClearGemsEarned()
+    {
+        return totalFirstClearBonusGems;
+    }
     public PlayerLevelUpResult GainPlayerExpFromStageCompletion(string stageName, int expAmount)
     {
         var result = new PlayerLevelUpResult();
@@ -921,29 +1035,32 @@ public class MultiCharacterPlayerData
 
         try
         {
-            // คำนวณ EXP ที่ได้จาก character level up (ยิ่ง level สูงได้ EXP มากขึ้น)
-            int expGain = 20 + (characterLevel * 5);
+            // ใช้ settings สำหรับคำนวณ EXP
+            int expGain = 25 + (characterLevel * 5); // default
+            
 
             playerExp += expGain;
             totalCharacterLevelUps++;
 
             Debug.Log($"[PlayerLevel] 📈 Gained {expGain} player EXP from {characterType} level {characterLevel}");
-            Debug.Log($"[PlayerLevel] Player EXP: {playerExp}/{playerExpToNext}");
 
             // ตรวจสอบ Player Level up
             bool leveledUp = false;
             long totalGoldEarned = 0;
             int totalGemsEarned = 0;
 
-            while (playerExp >= playerExpToNext && playerLevel < 999) // Max player level 999
+
+            while (playerExp >= playerExpToNext && playerLevel < maxlevel)
             {
                 playerExp -= playerExpToNext;
                 playerLevel++;
                 leveledUp = true;
 
-                // คำนวณรางวัล (ยิ่ง level สูงได้รางวัลมากขึ้น)
-                long goldReward = 1000 + (playerLevel * 500);
-                int gemsReward = 5 + (playerLevel / 10);
+                // ใช้ settings สำหรับคำนวณรางวัล
+                long goldReward = 1000 + (playerLevel * 500);  // ← เงินจาก Level Up
+                int gemsReward = 5 + (playerLevel / 10);       // ← เพชรจาก Level Up
+
+                
 
                 totalGoldEarned += goldReward;
                 totalGemsEarned += gemsReward;
@@ -951,14 +1068,12 @@ public class MultiCharacterPlayerData
                 playerLevelGoldReward += goldReward;
                 playerLevelGemsReward += gemsReward;
 
-                // คำนวณ EXP ที่ต้องการสำหรับ level ถัดไป
                 playerExpToNext = CalculatePlayerExpToNext(playerLevel);
 
                 Debug.Log($"🎉 [PlayerLevel] LEVEL UP! Player reached level {playerLevel}");
                 Debug.Log($"💰 Rewards: {goldReward} gold, {gemsReward} gems");
             }
 
-            // อัปเดต debug info
             UpdatePlayerLevelDebugInfo();
 
             result.didLevelUp = leveledUp;

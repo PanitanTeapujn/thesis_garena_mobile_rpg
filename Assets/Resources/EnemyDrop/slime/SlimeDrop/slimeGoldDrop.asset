@@ -16,8 +16,8 @@ MonoBehaviour:
   maxGoldDrop: 80
   goldDropChance: 50
   minGemsDrop: 0
-  maxGemsDrop: 3
-  gemsDropChance: 5
+  maxGemsDrop: 0
+  gemsDropChance: 0
   goldLevelBonus: 0
   dropChanceLevelBonus: 2
   showDropLogs: 1
