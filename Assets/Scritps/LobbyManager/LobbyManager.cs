@@ -31,6 +31,7 @@ public class LobbyManager : MonoBehaviour
     public Button upgradeButton;
     public Button shopButton;
     public Button gachaButton;
+    public Button questButton;
     [Header("Character Selection")]
     public Button characterSelectionButton;
     #endregion
@@ -74,6 +75,8 @@ public class LobbyManager : MonoBehaviour
 
     [Header("Shop")]
     public GameObject shopPanel;
+    [Header("Quest")]
+    public GameObject questPanel;
     #endregion
 
     #region External References - การอ้างอิงถึง Manager และ Component อื่นๆ
@@ -81,6 +84,7 @@ public class LobbyManager : MonoBehaviour
     public StageSelectionManager stageSelectionManager;
     public UpgradeLobby upgradeLobby;
     public ShopLooby shopLooby;
+    public QuestLobby questlobby;
     #endregion
 
     #region Gacha System Integration - เพิ่มในส่วน Header ของ LobbyManager
@@ -151,6 +155,7 @@ public class LobbyManager : MonoBehaviour
         playButton.onClick.AddListener(ShowStageSelection);
         logoutButton.onClick.AddListener(Logout);
         upgradeButton.onClick.AddListener(ShowUpgradePanel);
+        questButton.onClick.AddListener(ShowQuestPanel);
         // Party management buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
@@ -255,6 +260,12 @@ public class LobbyManager : MonoBehaviour
         // ส่ง localHero ไปให้ UpgradeLobby
         upgradeLobby.OpenUpgradeLobby();
     }
+    void ShowQuestPanel()
+    {
+        HideAllPanels();
+        questPanel.SetActive(true);
+
+    }
     void ShowShopPanel()
     {
 
@@ -283,6 +294,7 @@ public class LobbyManager : MonoBehaviour
         joinRoomPanel.SetActive(false);
         upGradePanel.SetActive(false);
         shopPanel.SetActive(false);
+        questPanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
 
