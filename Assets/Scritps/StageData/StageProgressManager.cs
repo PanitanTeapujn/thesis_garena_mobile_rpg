@@ -153,7 +153,6 @@ public class StageProgressManager : MonoBehaviour
         {
             // ข้อมูลมีอยู่แล้วจาก PersistentPlayerData
             Debug.Log($"✅ [StageProgress] Loaded from PersistentPlayerData - {StageProgress.completedStages.Count} completed stages");
-            StageProgress.LogProgress();
         }
         else
         {
@@ -192,7 +191,6 @@ public class StageProgressManager : MonoBehaviour
                 if (stageProgress != null)
                 {
                     Debug.Log($"✅ [StageProgress] Loaded from Firebase - {stageProgress.completedStages.Count} completed stages");
-                    stageProgress.LogProgress();
 
                     // ✅ Sync กับ PlayerPrefs
                     SaveToPlayerPrefs();

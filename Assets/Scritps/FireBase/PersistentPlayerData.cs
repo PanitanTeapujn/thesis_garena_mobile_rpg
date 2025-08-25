@@ -2991,12 +2991,42 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// ดึง potion slots list จาก Character (private field)
     /// </summary>
-   
 
+    /// <summary>
+    /// ดึง Player Level ปัจจุบัน
+    /// </summary>
+    public int GetPlayerLevel()
+    {
+        return multiCharacterData?.playerLevel ?? 1;
+    }
+
+    /// <summary>
+    /// ดึง Player EXP ปัจจุบัน
+    /// </summary>
+    public int GetPlayerExp()
+    {
+        return multiCharacterData?.playerExp ?? 0;
+    }
+
+    /// <summary>
+    /// ดึง Player EXP ที่ต้องการเพื่อ Level ถัดไป
+    /// </summary>
+    public int GetPlayerExpToNext()
+    {
+        return multiCharacterData?.playerExpToNext ?? 100;
+    }
+
+    /// <summary>
+    /// ตรวจสอบว่ามีข้อมูล Player Level หรือไม่
+    /// </summary>
+    public bool HasPlayerLevelData()
+    {
+        return multiCharacterData?.HasPlayerLevelData() ?? false;
+    }
     /// <summary>
     /// ดึง potion stack counts list จาก Character (private field)
     /// </summary>
-   
+
 
     #endregion
     public CharacterProgressData GetOrCreateCharacterData(string characterType)

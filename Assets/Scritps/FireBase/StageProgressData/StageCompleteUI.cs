@@ -90,21 +90,19 @@ public class StageCompleteUI : MonoBehaviour
     {
         Debug.Log($"🕒 [StageCompleteUI] Waiting {delayBeforeShow} seconds before showing UI...");
 
-        // หน่วงเวลาก่อนแสดง
         yield return new WaitForSeconds(delayBeforeShow);
 
-        // 🆕 Debug ข้อมูล rewards ก่อนแสดง
         var preDisplayRewards = StageRewardTracker.GetCurrentRewards();
         Debug.Log($"[StageCompleteUI] 🔍 Pre-display rewards: Gold={preDisplayRewards.totalGoldEarned}, Items={preDisplayRewards.itemsEarned.Count}");
 
-        // หยุดการติดตาม rewards และคำนวณเวลา
         StageRewardTracker.Instance.StopStageTracking();
 
-        // 🆕 Debug ข้อมูลหลัง StopTracking
         var postStopRewards = StageRewardTracker.GetCurrentRewards();
         Debug.Log($"[StageCompleteUI] 🔍 Post-stop rewards: Gold={postStopRewards.totalGoldEarned}, Items={postStopRewards.itemsEarned.Count}");
 
-        // ตั้งค่า panel ให้โปร่งใสก่อน (สำหรับ fade in effect)
+        // ✅ เพิ่ม Player EXP เมื่อจบด่าน
+        ProcessStageCompletionPlayerExp(stageName);
+
         if (stageCompletePanel != null)
         {
             CanvasGroup canvasGroup = stageCompletePanel.GetComponent<CanvasGroup>();
@@ -115,27 +113,125 @@ public class StageCompleteUI : MonoBehaviour
             stageCompletePanel.SetActive(true);
         }
 
-        // ตั้งค่าข้อความพื้นฐาน
         if (stageNameText != null)
             stageNameText.text = stageName;
 
         if (congratsText != null)
             congratsText.text = "🎉 STAGE COMPLETED! 🎉";
 
-        // แสดงข้อมูล rewards
         DisplayStageRewards();
-
-        // เล่นเสียง
         PlayVictorySound();
 
-        // เริ่ม fade in effect
         yield return StartCoroutine(FadeInPanel());
 
-        // หยุดเวลาชั่วขณะหลังจากแสดงเสร็จแล้ว
         Time.timeScale = 0.1f;
         StartCoroutine(RestoreTimeScale());
 
         Debug.Log($"🏆 [StageCompleteUI] Stage complete UI fully displayed for: {stageName}");
+    }
+
+    /// <summary>
+    /// 🆕 ให้ Player EXP เมื่อจบด่าน
+    /// </summary>
+    private void ProcessStageCompletionPlayerExp(string stageName)
+    {
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+            if (persistentData?.multiCharacterData == null) return;
+
+            // คำนวณ EXP ที่ได้จากการจบด่าน
+            int stageCompletionExp = CalculateStageCompletionExp(stageName);
+
+            if (stageCompletionExp > 0)
+            {
+                // เพิ่ม Player EXP โดยตรง (แยกจาก Character Level Up)
+                var result = persistentData.multiCharacterData.GainPlayerExpFromStageCompletion(stageName, stageCompletionExp);
+
+                if (result.didLevelUp)
+                {
+                    Debug.Log($"🎉 [StageComplete] PLAYER LEVEL UP from stage completion! New level: {result.newPlayerLevel}");
+
+                    // เพิ่มรางวัลเงินและเพชร
+                    if (result.HasRewards())
+                    {
+                        AddStageCompletionPlayerLevelRewards(result);
+                    }
+
+                    // แสดง notification
+                    ShowStageCompletionPlayerLevelUpNotification(result);
+                }
+
+                Debug.Log($"[StageComplete] 📈 Player gained {stageCompletionExp} EXP from completing {stageName}");
+
+                // บันทึกข้อมูล
+                persistentData.SavePlayerDataAsync();
+            }
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[StageComplete] ❌ Error in ProcessStageCompletionPlayerExp: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// คำนวณ EXP ที่ได้จากการจบด่าน
+    /// </summary>
+    private int CalculateStageCompletionExp(string stageName)
+    {
+        // Base EXP สำหรับการจบด่าน
+        int baseExp = 50;
+
+        // เพิ่ม EXP ตาม World/Stage
+        if (stageName.Contains("PlayRoom1"))
+            baseExp += 10; // World 1
+        else if (stageName.Contains("PlayRoom2"))
+            baseExp += 20; // World 2
+        else if (stageName.Contains("PlayRoom3"))
+            baseExp += 30; // World 3
+
+        // เพิ่ม EXP ตาม Sub-stage
+        if (stageName.EndsWith("_1"))
+            baseExp += 5;  // Stage 1
+        else if (stageName.EndsWith("_2"))
+            baseExp += 10; // Stage 2
+        else if (stageName.EndsWith("_3"))
+            baseExp += 15; // Stage 3 (Boss)
+
+        Debug.Log($"[StageComplete] Calculated {baseExp} EXP for completing {stageName}");
+        return baseExp;
+    }
+
+    /// <summary>
+    /// เพิ่มรางวัลจาก Player Level Up (Stage Completion)
+    /// </summary>
+    private void AddStageCompletionPlayerLevelRewards(PlayerLevelUpResult result)
+    {
+        var currencyManager = FindObjectOfType<CurrencyManager>();
+        if (currencyManager == null) return;
+
+        if (result.goldReward > 0)
+        {
+            currencyManager.AddGold(result.goldReward, false);
+            Debug.Log($"💰 [StageComplete] Added {result.goldReward} gold from player level up");
+        }
+
+        if (result.gemsReward > 0)
+        {
+            currencyManager.AddGems(result.gemsReward, false);
+            Debug.Log($"💎 [StageComplete] Added {result.gemsReward} gems from player level up");
+        }
+    }
+
+    /// <summary>
+    /// แสดง notification ของ Player Level Up (Stage Completion)
+    /// </summary>
+    private void ShowStageCompletionPlayerLevelUpNotification(PlayerLevelUpResult result)
+    {
+        Debug.Log($"📢 [StageComplete] Player Level Up from Stage Completion!");
+        Debug.Log($"   New Player Level: {result.newPlayerLevel}");
+        Debug.Log($"   Stage Completion Rewards: {result.goldReward} gold, {result.gemsReward} gems");
     }
     private IEnumerator FadeInPanel()
     {

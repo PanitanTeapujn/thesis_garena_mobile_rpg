@@ -486,6 +486,7 @@ public class LevelManager : NetworkBehaviour
 
         // ✅ บันทึก current stats เป็น total stats (รวม equipment แล้ว)
         SaveCurrentStatsAfterLevelUp();
+        ProcessPlayerLevelUpFromCharacterLevelUp();
 
         // ✅ Force sync network state หลัง level up
         if (HasStateAuthority)
@@ -509,6 +510,82 @@ public class LevelManager : NetworkBehaviour
         // Fire events
         OnLevelUp?.Invoke(character, CurrentLevel);
         OnStatsIncreased?.Invoke(character, levelUpStats);
+    }
+    private void ProcessPlayerLevelUpFromCharacterLevelUp()
+    {
+        if (!HasInputAuthority) return;
+
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+            if (persistentData?.multiCharacterData == null) return;
+
+            string characterType = GetCharacterTypeFromComponent();
+
+            // เพิ่ม Player EXP และตรวจสอบ Player Level Up
+            var result = persistentData.multiCharacterData.GainPlayerExpFromCharacterLevelUp(characterType, CurrentLevel);
+
+            if (result.didLevelUp)
+            {
+                Debug.Log($"🎉 [PlayerLevel] PLAYER LEVEL UP! New level: {result.newPlayerLevel}");
+
+                // เพิ่มรางวัลเงินและเพชร
+                if (result.HasRewards())
+                {
+                    AddPlayerLevelRewards(result);
+                }
+
+                // แสดง UI notification (ถ้ามี)
+                ShowPlayerLevelUpNotification(result);
+            }
+
+            // บันทึกข้อมูล Player Level
+            persistentData.SavePlayerDataAsync();
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PlayerLevel] ❌ Error in ProcessPlayerLevelUpFromCharacterLevelUp: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// เพิ่มรางวัลจาก Player Level Up
+    /// </summary>
+    private void AddPlayerLevelRewards(PlayerLevelUpResult result)
+    {
+        // เพิ่มเงิน
+        if (result.goldReward > 0)
+        {
+            var currencyManager = FindObjectOfType<CurrencyManager>();
+            if (currencyManager != null)
+            {
+                currencyManager.AddGold(result.goldReward, false);
+                Debug.Log($"💰 [PlayerLevel] Added {result.goldReward} gold as level up reward");
+            }
+        }
+
+        // เพิ่มเพชร
+        if (result.gemsReward > 0)
+        {
+            var currencyManager = FindObjectOfType<CurrencyManager>();
+            if (currencyManager != null)
+            {
+                currencyManager.AddGems(result.gemsReward, false);
+                Debug.Log($"💎 [PlayerLevel] Added {result.gemsReward} gems as level up reward");
+            }
+        }
+    }
+
+    /// <summary>
+    /// แสดง notification ของ Player Level Up (สามารถเชื่อมต่อกับ UI ได้)
+    /// </summary>
+    private void ShowPlayerLevelUpNotification(PlayerLevelUpResult result)
+    {
+        // TODO: แสดง UI popup หรือ notification
+        Debug.Log($"📢 [PlayerLevel] Player Level Up Notification:");
+        Debug.Log($"   New Player Level: {result.newPlayerLevel}");
+        Debug.Log($"   Rewards: {result.goldReward} gold, {result.gemsReward} gems");
     }
     private void SaveCurrentStatsAfterLevelUp()
     {

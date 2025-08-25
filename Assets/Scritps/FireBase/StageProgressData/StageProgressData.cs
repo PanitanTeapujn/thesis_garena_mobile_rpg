@@ -65,21 +65,5 @@ public class StageProgressData
     }
 
     // ✅ Debug method
-    public void LogProgress()
-    {
-        Debug.Log("=== STAGE PROGRESS ===");
-        Debug.Log($"Enemy Kills: {stageEnemyKills.Count} stages");
-        foreach (var kvp in stageEnemyKills)
-        {
-            Debug.Log($"  {kvp.Key}: {kvp.Value} kills");
-        }
-        Debug.Log($"Completed Stages: {completedStages.Count}");
-        foreach (string stage in completedStages)
-        {
-            Debug.Log($"  ✓ {stage}");
-        }
-        Debug.Log($"Last Played: {lastPlayedStage}");
-        Debug.Log($"Last Update: {lastUpdateDate}");
-        Debug.Log("====================");
-    }
+    
 }

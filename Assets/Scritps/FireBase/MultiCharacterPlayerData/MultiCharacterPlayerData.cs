@@ -629,8 +629,8 @@ public class SharedCurrencyData
     // Constructor
     public SharedCurrencyData()
     {
-        gold = 10000000000;  // เงินเริ่มต้น
-        gems = 10000000;    // เพชรเริ่มต้น
+        gold = 50000;  // เงินเริ่มต้น
+        gems = 500;    // เพชรเริ่มต้น
         maxGold = 999999999;
         maxGems = 999999;
         lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -742,7 +742,19 @@ public class MultiCharacterPlayerData
     public string registrationDate;
     public string lastLoginDate;
     public string currentActiveCharacter = "Assassin";
+    #region 🆕 Player Level System
+    [Header("🎯 Player Level System")]
+    public int playerLevel = 1;                    // Level ของผู้เล่น (แยกจากตัวละคร)
+    public int playerExp = 0;                      // EXP ของผู้เล่น
+    public int playerExpToNext = 100;              // EXP ที่ต้องการเพื่อ Level up
+    public long playerLevelGoldReward = 0;         // เงินที่ได้จาก Player Level up รวม
+    public int playerLevelGemsReward = 0;          // เพชรที่ได้จาก Player Level up รวม
 
+    [Header("🔍 Player Level Debug Info")]
+    public bool hasPlayerLevelData = false;
+    public string playerLevelLastUpdateTime = "";
+    public int totalCharacterLevelUps = 0;         // จำนวนครั้งที่ตัวละครทั้งหมด Level up
+    #endregion
     [Header("Character Data")]
     public List<CharacterProgressData> characters = new List<CharacterProgressData>();
 
@@ -806,6 +818,19 @@ public class MultiCharacterPlayerData
 
         Debug.Log("✅ Currency system initialized for new player data");
     }
+    private void InitializePlayerLevelSystem()
+    {
+        playerLevel = 1;
+        playerExp = 0;
+        playerExpToNext = CalculatePlayerExpToNext(1);
+        playerLevelGoldReward = 0;
+        playerLevelGemsReward = 0;
+        totalCharacterLevelUps = 0;
+        hasPlayerLevelData = false;
+        playerLevelLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log("✅ Player Level system initialized");
+    }
     public CharacterProgressData GetCurrentCharacterData()
     {
         return GetActiveCharacterData();
@@ -816,7 +841,177 @@ public class MultiCharacterPlayerData
         return HasInventoryData() || HasCurrencyData() || HasAnyInventoryOrEquipmentData();
     }
     #endregion
+    #region Player Level Methods
 
+    /// <summary>
+    /// คำนวณ EXP ที่ผู้เล่นต้องการเพื่อ Level up
+    /// </summary>
+    public int CalculatePlayerExpToNext(int level)
+    {
+        return 100 + (level - 1) * 50; // เพิ่ม 50 EXP ทุก level
+    }
+
+    /// <summary>
+    /// เพิ่ม EXP ให้ผู้เล่นเมื่อตัวละครใด ๆ Level up
+    /// </summary>
+    /// <summary>
+    /// เพิ่ม EXP ให้ผู้เล่นเมื่อจบด่าน (แยกจาก Character Level Up)
+    /// </summary>
+    public PlayerLevelUpResult GainPlayerExpFromStageCompletion(string stageName, int expAmount)
+    {
+        var result = new PlayerLevelUpResult();
+
+        try
+        {
+            playerExp += expAmount;
+
+            Debug.Log($"[PlayerLevel] 🏆 Gained {expAmount} player EXP from stage completion: {stageName}");
+            Debug.Log($"[PlayerLevel] Player EXP: {playerExp}/{playerExpToNext}");
+
+            // ตรวจสอบ Player Level up
+            bool leveledUp = false;
+            long totalGoldEarned = 0;
+            int totalGemsEarned = 0;
+
+            while (playerExp >= playerExpToNext && playerLevel < 999)
+            {
+                playerExp -= playerExpToNext;
+                playerLevel++;
+                leveledUp = true;
+
+                // รางวัลจากการ level up ผ่านการจบด่าน (มากกว่า character level up เล็กน้อย)
+                long goldReward = 1500 + (playerLevel * 750); // เพิ่ม 50% จาก character level up
+                int gemsReward = 8 + (playerLevel / 8);        // เพิ่มเพชรมากขึ้น
+
+                totalGoldEarned += goldReward;
+                totalGemsEarned += gemsReward;
+
+                playerLevelGoldReward += goldReward;
+                playerLevelGemsReward += gemsReward;
+
+                playerExpToNext = CalculatePlayerExpToNext(playerLevel);
+
+                Debug.Log($"🎉 [PlayerLevel] STAGE COMPLETION LEVEL UP! Player reached level {playerLevel}");
+                Debug.Log($"💰 Stage completion rewards: {goldReward} gold, {gemsReward} gems");
+            }
+
+            // อัปเดต debug info
+            UpdatePlayerLevelDebugInfo();
+
+            result.didLevelUp = leveledUp;
+            result.newPlayerLevel = playerLevel;
+            result.expGained = expAmount;
+            result.goldReward = totalGoldEarned;
+            result.gemsReward = totalGemsEarned;
+            result.currentExp = playerExp;
+            result.expToNext = playerExpToNext;
+
+            return result;
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PlayerLevel] ❌ Error in GainPlayerExpFromStageCompletion: {e.Message}");
+            return result;
+        }
+    }
+    public PlayerLevelUpResult GainPlayerExpFromCharacterLevelUp(string characterType, int characterLevel)
+    {
+        var result = new PlayerLevelUpResult();
+
+        try
+        {
+            // คำนวณ EXP ที่ได้จาก character level up (ยิ่ง level สูงได้ EXP มากขึ้น)
+            int expGain = 20 + (characterLevel * 5);
+
+            playerExp += expGain;
+            totalCharacterLevelUps++;
+
+            Debug.Log($"[PlayerLevel] 📈 Gained {expGain} player EXP from {characterType} level {characterLevel}");
+            Debug.Log($"[PlayerLevel] Player EXP: {playerExp}/{playerExpToNext}");
+
+            // ตรวจสอบ Player Level up
+            bool leveledUp = false;
+            long totalGoldEarned = 0;
+            int totalGemsEarned = 0;
+
+            while (playerExp >= playerExpToNext && playerLevel < 999) // Max player level 999
+            {
+                playerExp -= playerExpToNext;
+                playerLevel++;
+                leveledUp = true;
+
+                // คำนวณรางวัล (ยิ่ง level สูงได้รางวัลมากขึ้น)
+                long goldReward = 1000 + (playerLevel * 500);
+                int gemsReward = 5 + (playerLevel / 10);
+
+                totalGoldEarned += goldReward;
+                totalGemsEarned += gemsReward;
+
+                playerLevelGoldReward += goldReward;
+                playerLevelGemsReward += gemsReward;
+
+                // คำนวณ EXP ที่ต้องการสำหรับ level ถัดไป
+                playerExpToNext = CalculatePlayerExpToNext(playerLevel);
+
+                Debug.Log($"🎉 [PlayerLevel] LEVEL UP! Player reached level {playerLevel}");
+                Debug.Log($"💰 Rewards: {goldReward} gold, {gemsReward} gems");
+            }
+
+            // อัปเดต debug info
+            UpdatePlayerLevelDebugInfo();
+
+            result.didLevelUp = leveledUp;
+            result.newPlayerLevel = playerLevel;
+            result.expGained = expGain;
+            result.goldReward = totalGoldEarned;
+            result.gemsReward = totalGemsEarned;
+            result.currentExp = playerExp;
+            result.expToNext = playerExpToNext;
+
+            return result;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PlayerLevel] ❌ Error in GainPlayerExpFromCharacterLevelUp: {e.Message}");
+            return result;
+        }
+    }
+    /// <summary>
+    /// อัปเดต debug info ของ Player Level
+    /// </summary>
+    public void UpdatePlayerLevelDebugInfo()
+    {
+        hasPlayerLevelData = playerLevel > 1 || playerExp > 0;
+        playerLevelLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    /// <summary>
+    /// ตรวจสอบว่ามีข้อมูล Player Level หรือไม่
+    /// </summary>
+    public bool HasPlayerLevelData()
+    {
+        return hasPlayerLevelData && playerLevel > 0;
+    }
+
+    /// <summary>
+    /// รีเซ็ต Player Level (สำหรับ debug)
+    /// </summary>
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    public void ResetPlayerLevel()
+    {
+        playerLevel = 1;
+        playerExp = 0;
+        playerExpToNext = CalculatePlayerExpToNext(1);
+        playerLevelGoldReward = 0;
+        playerLevelGemsReward = 0;
+        totalCharacterLevelUps = 0;
+        UpdatePlayerLevelDebugInfo();
+
+        Debug.Log("[PlayerLevel] 🔄 Player level reset to 1");
+    }
+
+    #endregion
     #region Constructor and Initialization Constructor และฟังก์ชันสร้างตัวละครเริ่มต้น
 
     public MultiCharacterPlayerData()
@@ -829,6 +1024,7 @@ public class MultiCharacterPlayerData
         stageProgress = new StageProgressData();
         InitializeInventorySystem();
         InitializeCurrencySystem();
+        InitializePlayerLevelSystem();
 
         // ✅ เปลี่ยนจาก InitializeDefaultCharacter() เป็น CreateEmptyDefaultCharacter()
         CreateEmptyDefaultCharacter();
@@ -1672,5 +1868,21 @@ public class CharacterProgressData
     public bool HasStatPointData()
     {
         return hasStatPointData && (availableStatPoints > 0 || totalStatPointsUsed > 0);
+    }
+}
+[System.Serializable]
+public class PlayerLevelUpResult
+{
+    public bool didLevelUp = false;
+    public int newPlayerLevel = 1;
+    public int expGained = 0;
+    public long goldReward = 0;
+    public int gemsReward = 0;
+    public int currentExp = 0;
+    public int expToNext = 100;
+
+    public bool HasRewards()
+    {
+        return goldReward > 0 || gemsReward > 0;
     }
 }
