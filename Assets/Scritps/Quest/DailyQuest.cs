@@ -10,17 +10,25 @@ public class DailyQuestData
     public string questName;
     public string questDescription;
     public QuestType questType;
-    public int targetValue; // จำนวนที่ต้องทำให้ครบ
-    public int currentProgress; // ความก้าวหน้าปัจจุบัน
+    public int targetValue;
+    public int currentProgress;
     public bool isCompleted;
     public bool isRewardClaimed;
     public QuestReward reward;
-    public DateTime questDate; // วันที่ของ quest
+
+    // เก็บ questDate เป็น DateTime สำหรับใช้งานในเกม
+    [System.NonSerialized]
+    public DateTime questDate;
+
+    // ใช้เก็บบน Firebase/PlayerData เป็น string
+    public string questDateString;
+
     public string lastUpdateTime;
 
     public bool IsExpired()
     {
-        return questDate.Date < DateTime.Now.Date;
+        DateTime today = DateTime.Now.Date;
+        return questDate.Date < today;
     }
 
     public bool CanClaimReward()
@@ -33,7 +41,34 @@ public class DailyQuestData
         if (targetValue <= 0) return 0f;
         return Mathf.Clamp01((float)currentProgress / targetValue);
     }
+
+    // เรียกก่อน Save เพื่อ update questDateString
+    public void PrepareForSave()
+    {
+        questDateString = questDate.ToString("yyyy-MM-dd");
+    }
+
+    // เรียกหลัง Load เพื่อแปลง questDateString เป็น DateTime
+    public void LoadFromSave()
+    {
+        if (!string.IsNullOrEmpty(questDateString))
+        {
+            if (DateTime.TryParseExact(questDateString, "yyyy-MM-dd", null, System.Globalization.DateTimeStyles.None, out DateTime parsedDate))
+            {
+                questDate = parsedDate.Date;
+            }
+            else
+            {
+                questDate = DateTime.Now.Date; // fallback
+            }
+        }
+        else
+        {
+            questDate = DateTime.Now.Date; // fallback
+        }
+    }
 }
+
 
 [System.Serializable]
 public class QuestReward
@@ -272,11 +307,8 @@ public class DailyQuest : MonoBehaviour
 
     void GenerateDailyQuests()
     {
-        Debug.Log("[DailyQuest] Generating new daily quests...");
-        Debug.Log($"[DailyQuest] Before clear - Current quests: {currentQuests.Count}");
-
         currentQuests.Clear();
-        DateTime today = DateTime.Now.Date;
+        DateTime today = DateTime.Today;
 
         foreach (var template in questTemplates)
         {
@@ -295,12 +327,13 @@ public class DailyQuest : MonoBehaviour
                 lastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
             };
 
-            currentQuests.Add(questData);
-            Debug.Log($"[DailyQuest] Created new quest: {questData.questName} - ID: {questData.questId}");
-        }
+            questData.PrepareForSave(); // update questDateString
 
-        Debug.Log($"[DailyQuest] Generated {currentQuests.Count} new daily quests for {today:yyyy-MM-dd}");
+            currentQuests.Add(questData);
+        }
     }
+
+
 
     void CheckDailyLoginQuest()
     {
@@ -474,90 +507,53 @@ public class DailyQuest : MonoBehaviour
 
     void LoadQuestData()
     {
-        Debug.Log("[DailyQuest] LoadQuestData called");
-
         if (persistentData?.multiCharacterData == null)
         {
-            Debug.LogWarning("[DailyQuest] MultiCharacterPlayerData not available");
             currentQuests = new List<DailyQuestData>();
             lastQuestUpdate = DateTime.MinValue;
             return;
         }
 
-        try
+        if (persistentData.multiCharacterData.dailyQuests != null)
         {
-            // โหลดจาก MultiCharacterPlayerData
-            if (persistentData.multiCharacterData.dailyQuests != null && persistentData.multiCharacterData.dailyQuests.Count > 0)
+            currentQuests = new List<DailyQuestData>(persistentData.multiCharacterData.dailyQuests);
+
+            // แปลง questDateString เป็น DateTime
+            foreach (var quest in currentQuests)
             {
-                currentQuests = new List<DailyQuestData>(persistentData.multiCharacterData.dailyQuests);
-
-                if (DateTime.TryParse(persistentData.multiCharacterData.questLastUpdateTime, out DateTime savedDate))
-                {
-                    lastQuestUpdate = savedDate;
-                }
-
-                Debug.Log($"[DailyQuest] Loaded {currentQuests.Count} quests from MultiCharacterPlayerData");
-
-                // Debug แต่ละ quest ที่โหลด
-                foreach (var quest in currentQuests)
-                {
-                    Debug.Log($"[DailyQuest] Loaded quest from Firebase: {quest.questName} - Completed: {quest.isCompleted} - Claimed: {quest.isRewardClaimed} - Date: {quest.questDate:yyyy-MM-dd}");
-                }
+                quest.LoadFromSave();
             }
-            else
+
+            if (DateTime.TryParse(persistentData.multiCharacterData.questLastUpdateTime, out DateTime savedDate))
             {
-                Debug.Log("[DailyQuest] No quest data found in MultiCharacterPlayerData");
-                currentQuests = new List<DailyQuestData>();
-                lastQuestUpdate = DateTime.MinValue;
+                lastQuestUpdate = savedDate;
             }
         }
-        catch (System.Exception e)
+        else
         {
-            Debug.LogError($"[DailyQuest] Error loading quest data: {e.Message}");
             currentQuests = new List<DailyQuestData>();
             lastQuestUpdate = DateTime.MinValue;
         }
     }
 
+
     void SaveQuestData()
     {
-        if (persistentData?.multiCharacterData == null)
+        if (persistentData?.multiCharacterData == null) return;
+
+        // อัปเดต questDateString ก่อน save
+        foreach (var quest in currentQuests)
         {
-            Debug.LogWarning("[DailyQuest] MultiCharacterPlayerData not available, cannot save");
-            return;
+            quest.PrepareForSave();
         }
 
-        try
-        {
-            // บันทึกลง MultiCharacterPlayerData
-            persistentData.multiCharacterData.dailyQuests = new List<DailyQuestData>(currentQuests);
-            persistentData.multiCharacterData.questLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            persistentData.multiCharacterData.UpdateDailyQuestDebugInfo();
+        persistentData.multiCharacterData.dailyQuests = new List<DailyQuestData>(currentQuests);
+        persistentData.multiCharacterData.questLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-            Debug.Log($"[DailyQuest] Saving {currentQuests.Count} quests to MultiCharacterPlayerData");
+        // Save ลง Firebase / Local
+        persistentData.SavePlayerDataAsync();
 
-            // บันทึกลง Firebase ผ่าน PersistentPlayerData
-            persistentData.SavePlayerDataAsync();
-
-            // Validate การบันทึก
-            var savedQuests = persistentData.multiCharacterData.dailyQuests;
-            Debug.Log($"[DailyQuest] Validation - Saved {savedQuests?.Count ?? 0} quests");
-
-            if (savedQuests != null && savedQuests.Count > 0)
-            {
-                var loginQuest = savedQuests.Find(q => q.questType == QuestType.DailyLogin);
-                if (loginQuest != null)
-                {
-                    Debug.Log($"[DailyQuest] Login quest status after save - Completed: {loginQuest.isCompleted}, Claimed: {loginQuest.isRewardClaimed}");
-                }
-            }
-
-            Debug.Log("[DailyQuest] Quest data saved to MultiCharacterPlayerData and Firebase");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[DailyQuest] Error saving quest data: {e.Message}");
-        }
+        Debug.Log("[DailyQuest] Quest data saved with normalized questDateString");
     }
 
     void LoadDailyQuests()
