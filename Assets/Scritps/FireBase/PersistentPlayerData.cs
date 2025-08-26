@@ -142,7 +142,24 @@ public class PersistentPlayerData : MonoBehaviour
         return hasPlayerData && hasCurrentCharacter;
     }
     #endregion
+    public void UpdateDailyQuestProgress(QuestType questType, int amount = 1)
+    {
+        if (multiCharacterData == null)
+        {
+            Debug.LogWarning("[PersistentPlayerData] Cannot update quest - MultiCharacterData is null");
+            return;
+        }
 
+        Debug.Log($"[PersistentPlayerData] Updating quest progress: {questType} +{amount}");
+
+        multiCharacterData.UpdateQuestProgress(questType, amount);
+        multiCharacterData.UpdateDailyQuestDebugInfo();
+
+        // บันทึกลง Firebase ทันที
+        SavePlayerDataAsync();
+
+        Debug.Log($"[PersistentPlayerData] Quest progress saved to Firebase");
+    }
     #region Data Loading & Saving การโหลดและบันทึกข้อมูล
     public void LoadPlayerDataAsync()
     {

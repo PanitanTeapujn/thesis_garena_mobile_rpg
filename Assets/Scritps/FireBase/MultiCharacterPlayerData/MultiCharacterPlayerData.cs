@@ -813,6 +813,28 @@ public class MultiCharacterPlayerData
             sharedCurrency.UpdateDebugInfo();
         }
     }
+    public void UpdateQuestProgress(QuestType questType, int amount = 1)
+    {
+        if (dailyQuests == null) return;
+
+        foreach (var quest in dailyQuests)
+        {
+            if (quest.questType == questType && !quest.isCompleted)
+            {
+                quest.currentProgress = Mathf.Min(quest.currentProgress + amount, quest.targetValue);
+                quest.lastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+                if (quest.currentProgress >= quest.targetValue)
+                {
+                    quest.isCompleted = true;
+                    Debug.Log($"[MultiCharacterPlayerData] Quest completed: {quest.questName}");
+                }
+
+                Debug.Log($"[MultiCharacterPlayerData] Updated {quest.questName}: progress {quest.currentProgress}/{quest.targetValue}");
+                break;
+            }
+        }
+    }
     public void UpdateDailyQuestDebugInfo()
     {
         if (dailyQuests != null)

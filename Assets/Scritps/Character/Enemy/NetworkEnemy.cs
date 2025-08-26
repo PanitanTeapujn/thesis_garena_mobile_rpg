@@ -937,6 +937,8 @@ public class NetworkEnemy : Character
         // 🆕 ทำ drops และ session kill counting ทันทีเมื่อตาย
         if (HasStateAuthority)
         {
+            DailyQuestTracker.AddEnemyKill();
+
             // 1. Currency drops (เงิน + เพชร)
             EnemyDropManager currencyDropManager = GetComponent<EnemyDropManager>();
             if (currencyDropManager != null)

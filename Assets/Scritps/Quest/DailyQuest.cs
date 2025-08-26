@@ -85,6 +85,116 @@ public class DailyQuest : MonoBehaviour
         SetupUI();
         LoadDailyQuests();
         CheckAndUpdateQuests();
+
+        // เพิ่มการฟัง events จาก tracker
+        SubscribeToQuestTracker();
+
+        // เพิ่ม: Refresh ทุก 5 วินาทีเพื่อตรวจสอบ Firebase data
+        InvokeRepeating("ForceRefreshQuestsFromFirebase", 5f, 5f);
+    }
+    private void SubscribeToQuestTracker()
+    {
+        DailyQuestTracker.OnEnemiesKilledUpdate += OnEnemiesKilledFromGame;
+        DailyQuestTracker.OnStagesCompletedUpdate += OnStagesCompletedFromGame;
+        Debug.Log("[DailyQuest] Subscribed to quest tracker events");
+    }
+
+    private void OnDestroy()
+    {
+        // Unsubscribe เมื่อ destroy
+        DailyQuestTracker.OnEnemiesKilledUpdate -= OnEnemiesKilledFromGame;
+        DailyQuestTracker.OnStagesCompletedUpdate -= OnStagesCompletedFromGame;
+    }
+
+    private void OnEnemiesKilledFromGame(int killCount)
+    {
+        Debug.Log($"[DailyQuest] Received {killCount} enemy kills from session");
+
+        // อัปเดต quest progress (อาจจะอัปเดตแล้วจาก Firebase แต่ทำเพื่อให้แน่ใจ)
+        UpdateQuestProgress(QuestType.KillEnemies, killCount);
+
+        // Refresh UI เพื่อแสดงผลล่าสุด
+        RefreshQuestUI();
+    }
+
+    private void OnStagesCompletedFromGame(int stageCount)
+    {
+        Debug.Log($"[DailyQuest] Received {stageCount} stage completions from session");
+
+        // อัปเดต quest progress (อาจจะอัปเดตแล้วจาก Firebase แต่ทำเพื่อให้แน่ใจ)
+        UpdateQuestProgress(QuestType.CompleteStages, stageCount);
+
+        // Refresh UI เพื่อแสดงผลล่าสุด
+        RefreshQuestUI();
+    }
+
+    // เพิ่ม method ใหม่สำหรับ force refresh จาก Firebase
+    public void ForceRefreshQuestsFromFirebase()
+    {
+        if (persistentData?.multiCharacterData?.dailyQuests != null)
+        {
+            currentQuests = new List<DailyQuestData>(persistentData.multiCharacterData.dailyQuests);
+            RefreshQuestUI();
+            Debug.Log("[DailyQuest] Force refreshed quests from Firebase data");
+        }
+    }
+    public void UpdateQuestProgress(QuestType questType, int amount = 1)
+    {
+        if (persistentData?.multiCharacterData == null)
+        {
+            Debug.LogWarning("[DailyQuest] PersistentPlayerData not available, cannot update quest progress");
+            return;
+        }
+
+        bool questUpdated = false;
+
+        foreach (var quest in currentQuests)
+        {
+            if (quest.questType == questType && !quest.isCompleted)
+            {
+                int oldProgress = quest.currentProgress;
+                quest.currentProgress = Mathf.Min(quest.currentProgress + amount, quest.targetValue);
+                quest.lastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+                // ตรวจสอบว่า quest เสร็จแล้วหรือยัง
+                if (quest.currentProgress >= quest.targetValue && !quest.isCompleted)
+                {
+                    quest.isCompleted = true;
+                    Debug.Log($"[DailyQuest] ✅ Quest completed: {quest.questName}");
+
+                    // แสดง notification (ถ้าต้องการ)
+                    ShowQuestCompletionNotification(quest);
+                }
+
+                Debug.Log($"[DailyQuest] Updated {quest.questName}: {oldProgress} → {quest.currentProgress}/{quest.targetValue}");
+                questUpdated = true;
+                break;
+            }
+        }
+
+        if (questUpdated)
+        {
+            SaveQuestData();
+            RefreshQuestUI();
+        }
+        else
+        {
+            Debug.Log($"[DailyQuest] No active quest found for type: {questType}");
+        }
+    }
+
+    // เพิ่ม method แสดง notification เมื่อ quest เสร็จ
+    private void ShowQuestCompletionNotification(DailyQuestData quest)
+    {
+        // TODO: สร้าง popup หรือ notification UI สำหรับแจ้งว่า quest เสร็จแล้ว
+        Debug.Log($"🎉 [DailyQuest] QUEST COMPLETED: {quest.questName}!");
+        Debug.Log($"💰 Rewards available: {quest.reward.goldReward} gold, {quest.reward.gemsReward} gems, {quest.reward.expReward} exp");
+    }
+    // เพิ่ม method นี้ในส่วนท้าย
+    public void OnReturnToLobby()
+    {
+        // เรียกเมื่อผู้เล่นกลับมา lobby
+        DailyQuestTracker.FlushProgressToQuests();
     }
 
     void InitializeSystem()
@@ -484,7 +594,7 @@ public class DailyQuest : MonoBehaviour
         }
     }
 
-    public  System.Collections.IEnumerator WaitAndSavePersistentData()
+    public System.Collections.IEnumerator WaitAndSavePersistentData()
     {
         yield return new WaitForSeconds(1f);
         persistentData.SavePlayerDataAsync();

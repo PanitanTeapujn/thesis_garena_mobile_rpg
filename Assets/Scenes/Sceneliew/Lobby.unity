@@ -18776,6 +18776,24 @@ MonoBehaviour:
       goldReward: 500
       gemsReward: 50
       expReward: 0
+  - questId: 2
+    questName: ClearStage
+    questDescription: ClearStage
+    questType: 2
+    targetValue: 2
+    reward:
+      goldReward: 300
+      gemsReward: 0
+      expReward: 100
+  - questId: 3
+    questName: KillEnemy
+    questDescription: Kill10Enemy
+    questType: 1
+    targetValue: 10
+    reward:
+      goldReward: 200
+      gemsReward: 0
+      expReward: 80
 --- !u!114 &798175562
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -32827,6 +32845,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1241510916}
   m_CullTransparentMesh: 1
+--- !u!1 &1249885549
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1249885551}
+  - component: {fileID: 1249885550}
+  m_Layer: 0
+  m_Name: 'QuestProgressHandler '
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1249885550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249885549}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87ace30b230ae7d4883abc404524722d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &1249885551
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249885549}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 891.7382, y: 1307.3137, z: -1.1834383}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1253885023
 GameObject:
   m_ObjectHideFlags: 0
@@ -57301,3 +57363,4 @@ SceneRoots:
   - {fileID: 1907116864}
   - {fileID: 1619540512}
   - {fileID: 2041408494}
+  - {fileID: 1249885551}

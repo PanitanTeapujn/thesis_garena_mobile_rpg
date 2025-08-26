@@ -144,6 +144,7 @@ public class StageCompleteUI : MonoBehaviour
         Debug.Log($"🕒 [StageCompleteUI] Waiting {delayBeforeShow} seconds before showing UI...");
 
         yield return new WaitForSeconds(delayBeforeShow);
+        DailyQuestTracker.AddStageCompletion();
 
         // หยุดการติดตาม rewards และคำนวณเวลา
         StageRewardTracker.Instance.StopStageTracking();
@@ -1034,6 +1035,7 @@ public class StageCompleteUI : MonoBehaviour
 
         // ✅ แน่ใจว่า timeScale กลับเป็น 1 ก่อน
         Time.timeScale = 1f;
+        DailyQuestTracker.FlushProgressToQuests();
 
         StartCoroutine(BackToLobbyWithTransition());
 
