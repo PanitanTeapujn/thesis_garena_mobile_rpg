@@ -2543,21 +2543,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dbc5155b32865b14ab149e71c4c2959b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  questPanel: {fileID: 78183310}
-  closeQuestButton: {fileID: 540089190}
-  questContent: {fileID: 1541881168}
-  questUIPrefab: {fileID: 4802052632625659892, guid: 2103d8cec5cb08a4e9e2a42373221e74,
-    type: 3}
-  questScrollRect: {fileID: 2100338717}
-  questDetailPanel: {fileID: 1564507837}
-  detailQuestName: {fileID: 2015222391}
-  detailQuestType: {fileID: 2014860774}
-  detailDescription: {fileID: 1240018313}
-  detailObjectives: {fileID: 1734176580}
-  detailRewards: {fileID: 635441946}
-  closeDetailButton: {fileID: 1090253875}
-  maxActiveQuests: 3
-  activeQuestCountText: {fileID: 0}
 --- !u!1 &79438707
 GameObject:
   m_ObjectHideFlags: 0
@@ -4546,8 +4531,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 1644590100}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -9906,15 +9891,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.9960785, g: 0.8941177, b: 0.6745098, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 21300000, guid: 9b98c32789529154ab58dd396b6564b4, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -17992,8 +17977,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 1641601317}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -18783,8 +18768,8 @@ MonoBehaviour:
     type: 3}
   questTemplates:
   - questId: 1
-    questName: Welcome
-    questDescription: Login once
+    questName: The Returning Hero
+    questDescription: 'Log in today '
     questType: 0
     targetValue: 1
     reward:
@@ -33041,9 +33026,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
-    m_Left: 0
+    m_Left: 33
     m_Right: 0
-    m_Top: 0
+    m_Top: 15
     m_Bottom: 0
   m_ChildAlignment: 0
   m_StartCorner: 0
@@ -37398,8 +37383,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 2142309990}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -40134,8 +40119,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 877335640}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -48751,8 +48736,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 1478241561}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -49641,7 +49626,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 318, y: 337}
+  m_AnchoredPosition: {x: 267.9, y: 321}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1882642456
@@ -51745,8 +51730,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 948684515}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
@@ -52870,7 +52855,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -17, y: 344}
+  m_AnchoredPosition: {x: -17, y: 313.5}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1973237901
@@ -56860,8 +56845,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 5.668, y: -37.3366}
-  m_SizeDelta: {x: 710.0726, y: 659.4049}
+  m_AnchoredPosition: {x: -0.000021935, y: -37.3366}
+  m_SizeDelta: {x: 764.07, y: 659.4049}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2124438762
 MonoBehaviour:
@@ -56876,8 +56861,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Content: {fileID: 1254440131}
-  m_Horizontal: 1
-  m_Vertical: 1
+  m_Horizontal: 0
+  m_Vertical: 0
   m_MovementType: 1
   m_Elasticity: 0.1
   m_Inertia: 1
