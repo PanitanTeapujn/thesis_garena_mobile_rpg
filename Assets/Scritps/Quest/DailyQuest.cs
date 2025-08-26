@@ -304,6 +304,37 @@ public class DailyQuest : MonoBehaviour
         // อัปเดต UI
         RefreshQuestUI();
     }
+    [ContextMenu("Simulate New Day")]
+    void SimulateNewDay()
+    {
+        // บังคับ lastQuestUpdate ให้เป็นวันก่อนหน้า
+        lastQuestUpdate = DateTime.Now.Date.AddDays(-1);
+        Debug.Log($"[DailyQuest] Simulated last update as {lastQuestUpdate:yyyy-MM-dd}");
+
+        // เรียกเช็คและอัปเดต quest
+        CheckAndUpdateQuests();
+    }
+    [ContextMenu("Simulate New Day With Login Claimed")]
+    void SimulateNewDay_LoginClaimed()
+    {
+        // บังคับ lastQuestUpdate ให้เป็นวันก่อนหน้า
+        lastQuestUpdate = DateTime.Now.Date.AddDays(-1);
+        Debug.Log($"[DailyQuest] Simulated last update as {lastQuestUpdate:yyyy-MM-dd}");
+
+        // mark Daily Login Quest เป็น claimed
+        var loginQuest = currentQuests.Find(q => q.questType == QuestType.DailyLogin);
+        if (loginQuest != null)
+        {
+            loginQuest.isCompleted = true;
+            loginQuest.isRewardClaimed = true;
+            loginQuest.lastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            loginQuest.PrepareForSave();
+            Debug.Log("[DailyQuest] Daily Login Quest marked as claimed");
+        }
+
+        // เรียกเช็คและอัปเดต quest
+        CheckAndUpdateQuests();
+    }
 
     void GenerateDailyQuests()
     {
