@@ -17,11 +17,11 @@ MonoBehaviour:
   questType: 0
   requiredPlayerLevel: 1
   prerequisiteQuestIDs: []
-  questDescription: 
-  questDetailDescription: 
+  questDescription: Collect Magic Shoes
+  questDetailDescription: Collect Magic Shoes
   objectives:
   - objectiveType: 2
-    description: 
+    description: Collect Magic Shoes
     monsterID: 
     killCount: 0
     requiredItem: {fileID: 11400000, guid: 0c7bcbfd303485b439782276171e27a4, type: 2}
@@ -30,6 +30,12 @@ MonoBehaviour:
   rewards:
   - rewardType: 0
     goldAmount: 100
+    gemAmount: 0
+    playerExpAmount: 0
+    rewardItem: {fileID: 0}
+    itemQuantity: 0
+  - rewardType: 2
+    goldAmount: 0
     gemAmount: 0
     playerExpAmount: 50
     rewardItem: {fileID: 0}

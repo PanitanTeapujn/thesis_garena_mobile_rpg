@@ -2,6 +2,8 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Linq;
+
 public enum StatType
 {
     STR,    // Strength - HP, ATK, CRIT DAMAGE
@@ -786,7 +788,16 @@ public class MultiCharacterPlayerData
     #region 🆕 Currency System
     [Header("💰 Shared Currency System")]
     public SharedCurrencyData sharedCurrency = new SharedCurrencyData();
+    #region 🆕 Daily Quest System
+    [Header("📋 Daily Quest System")]
+    public List<DailyQuestData> dailyQuests = new List<DailyQuestData>();
 
+    [Header("🔍 Daily Quest Debug Info")]
+    public bool hasDailyQuestData = false;        // มีข้อมูล daily quest หรือไม่
+    public string questLastUpdateTime = "";       // เวลาที่อัปเดต quest ล่าสุด
+    public int totalQuestsCompleted = 0;          // จำนวน quest ที่ทำเสร็จทั้งหมด
+    public int totalRewardsClaimed = 0;           // จำนวนรางวัลที่รับไปแล้ว
+    #endregion
     [Header("🔍 Currency Debug Info")]
     public bool hasCurrencyData = false;        // มีข้อมูลเงินหรือไม่
     public string currencyLastSaveTime = "";    // เวลาที่ save เงินล่าสุด
@@ -802,7 +813,62 @@ public class MultiCharacterPlayerData
             sharedCurrency.UpdateDebugInfo();
         }
     }
+    public void UpdateDailyQuestDebugInfo()
+    {
+        if (dailyQuests != null)
+        {
+            questLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            hasDailyQuestData = dailyQuests.Count > 0;
 
+            totalQuestsCompleted = dailyQuests.Count(q => q.isCompleted);
+            totalRewardsClaimed = dailyQuests.Count(q => q.isRewardClaimed);
+        }
+    }
+
+    public bool HasDailyQuestData()
+    {
+        return hasDailyQuestData &&
+               dailyQuests != null &&
+               dailyQuests.Count > 0;
+    }
+
+    public DailyQuestData GetDailyQuest(string questId)
+    {
+        return dailyQuests?.Find(q => q.questId == questId);
+    }
+
+    public List<DailyQuestData> GetCompletedQuests()
+    {
+        return dailyQuests?.Where(q => q.isCompleted).ToList() ?? new List<DailyQuestData>();
+    }
+
+    public List<DailyQuestData> GetUnclaimedQuests()
+    {
+        return dailyQuests?.Where(q => q.isCompleted && !q.isRewardClaimed).ToList() ?? new List<DailyQuestData>();
+    }
+
+    public bool HasUnclaimedRewards()
+    {
+        return dailyQuests?.Any(q => q.CanClaimReward()) ?? false;
+    }
+    private void InitializeDailyQuestSystem()
+    {
+        // ถ้ามีข้อมูล quest อยู่แล้ว ไม่ต้อง reset
+        if (dailyQuests != null && dailyQuests.Count > 0)
+        {
+            Debug.Log("✅ Daily Quest system already has data, preserving existing quests");
+            return;
+        }
+
+        // สร้างใหม่เฉพาะเมื่อยังไม่มีข้อมูล
+        dailyQuests = new List<DailyQuestData>();
+        hasDailyQuestData = false;
+        questLastUpdateTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        totalQuestsCompleted = 0;
+        totalRewardsClaimed = 0;
+
+        Debug.Log("✅ Daily Quest system initialized for new player data");
+    }
     public bool HasCurrencyData()
     {
         return hasCurrencyData &&
@@ -845,7 +911,7 @@ public class MultiCharacterPlayerData
     // เพิ่มใน HasAnyInventoryOrEquipmentData method
     public bool HasAnyData()
     {
-        return HasInventoryData() || HasCurrencyData() || HasAnyInventoryOrEquipmentData();
+        return HasInventoryData() || HasCurrencyData() || HasAnyInventoryOrEquipmentData() || HasDailyQuestData();
     }
     #endregion
     #region Player Level Methods
@@ -1140,7 +1206,7 @@ public class MultiCharacterPlayerData
         InitializeInventorySystem();
         InitializeCurrencySystem();
         InitializePlayerLevelSystem();
-
+        InitializeDailyQuestSystem();
         // ✅ เปลี่ยนจาก InitializeDefaultCharacter() เป็น CreateEmptyDefaultCharacter()
         CreateEmptyDefaultCharacter();
         InitializeStageProgressSystem();

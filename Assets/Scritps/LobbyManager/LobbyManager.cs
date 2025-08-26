@@ -84,7 +84,6 @@ public class LobbyManager : MonoBehaviour
     public StageSelectionManager stageSelectionManager;
     public UpgradeLobby upgradeLobby;
     public ShopLooby shopLooby;
-    public QuestLobby questlobby;
     #endregion
 
     #region Gacha System Integration - เพิ่มในส่วน Header ของ LobbyManager

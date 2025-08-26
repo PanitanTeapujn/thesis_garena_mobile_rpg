@@ -428,20 +428,20 @@ public class CurrencyManager : NetworkBehaviour
             {
                 var currencyData = PersistentPlayerData.Instance.multiCharacterData.sharedCurrency;
 
-                // Update currency data
+                // บันทึกค่าล่าสุดจาก NetworkedGold/NetworkedGems
                 currencyData.gold = NetworkedGold;
                 currencyData.gems = NetworkedGems;
                 currencyData.UpdateDebugInfo();
 
-                // Save to Firebase
-                PersistentPlayerData.Instance.SaveCurrencyData();
+                // บังคับ save ทันทีลง Firebase
+                PersistentPlayerData.Instance.ForceSave();
 
-                Debug.Log($"💾 Currency saved: Gold={NetworkedGold}, Gems={NetworkedGems}");
+                Debug.Log($"[CurrencyManager] Force saved currency: Gold={NetworkedGold}, Gems={NetworkedGems}");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"❌ Error saving currency: {e.Message}");
+            Debug.LogError($"[CurrencyManager] Error saving currency: {e.Message}");
         }
     }
 
