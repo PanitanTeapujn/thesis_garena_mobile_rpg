@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 816a2ad7a2bff754c85ff450410f4af5, type: 3}
+  m_Name: Blood-01
+  m_EditorClassIdentifier: 
+  characterId: Ass-01
+  characterName: Assassin
+  rarity: 1
+  characterIcon: {fileID: 0}
+  fullArtwork: {fileID: 0}
+  animatorController: {fileID: 0}
+  characterPrefab: {fileID: 9004255372814543956, guid: d93f02d6599f17a4593d4ca316577698,
+    type: 3}
+  baseStats: {fileID: 11400000, guid: d387e15f11a3cda40a627b130d0498de, type: 2}
+  description: 
+  lore: 
+  isLimitedCharacter: 0
+  isFeatured: 1

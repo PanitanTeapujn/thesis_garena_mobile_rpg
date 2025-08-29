@@ -24,14 +24,10 @@ public class GachaSystem : MonoBehaviour
     [Header("UI References")]
     public GachaUIManager uiManager;
 
-   /* [Header(" Currency Integration")]
-    public bool ensureCurrencyManager = true;
-    public long defaultGold = 5000;
-    public int defaultGems = 500;
-   */
     // Cache สำหรับ player character
     private Character cachedPlayerCharacter;
     private Inventory cachedInventory;
+    private CharacterCollection cachedCharacterCollection;
     private bool isSearchingForPlayer = false;
 
     #region Singleton
@@ -66,7 +62,9 @@ public class GachaSystem : MonoBehaviour
     public List<GachaMachine> AllMachines => gachaMachines;
     public int MachineCount => gachaMachines.Count;
     public Character PlayerCharacter => cachedPlayerCharacter;
+    public CharacterCollection PlayerCharacterCollection => cachedCharacterCollection;
     public bool HasValidPlayer => cachedPlayerCharacter != null && cachedInventory != null;
+    public bool HasCharacterCollection => cachedCharacterCollection != null;
     #endregion
 
     #region Initialization
@@ -369,6 +367,7 @@ public class GachaSystem : MonoBehaviour
     {
         cachedPlayerCharacter = player;
         cachedInventory = player.GetComponent<Inventory>();
+        cachedCharacterCollection = player.GetComponent<CharacterCollection>();
 
         if (cachedInventory == null)
         {
@@ -377,9 +376,15 @@ public class GachaSystem : MonoBehaviour
             return;
         }
 
+        // CharacterCollection is optional but recommended for character gacha
+        if (cachedCharacterCollection == null)
+        {
+            Debug.LogWarning($" Player character '{player.name}' does not have a CharacterCollection component. Character gacha will not work properly.");
+        }
+
         if (enableDebugLog)
         {
-            Debug.Log($" Player character set: {player.name}");
+            Debug.Log($" Player character set: {player.name} (Inventory: /, CharacterCollection: {(cachedCharacterCollection != null ? "/" : "x")})");
         }
 
         OnPlayerCharacterFound?.Invoke(player);
@@ -411,6 +416,7 @@ public class GachaSystem : MonoBehaviour
 
         cachedPlayerCharacter = null;
         cachedInventory = null;
+        cachedCharacterCollection = null;
 
         if (enableDebugLog)
         {
@@ -454,6 +460,16 @@ public class GachaSystem : MonoBehaviour
     {
         return gachaMachines.Where(m => m.Pool == pool).ToList();
     }
+
+    public List<GachaMachine> GetCharacterMachines()
+    {
+        return gachaMachines.Where(m => m.isCharacterMachine).ToList();
+    }
+
+    public List<GachaMachine> GetItemMachines()
+    {
+        return gachaMachines.Where(m => !m.isCharacterMachine).ToList();
+    }
     #endregion
 
     #region Gacha Operations
@@ -488,7 +504,7 @@ public class GachaSystem : MonoBehaviour
             Debug.Log($" Gacha rolled on '{machine.machineName}': {rewards.Count} rewards");
         }
 
-        // เพิ่ม rewards เข้า inventory
+        // เพิ่ม rewards เข้า inventory/collection
         if (autoAddRewardsToInventory)
         {
             StartCoroutine(AddRewardsToInventory(rewards));
@@ -507,7 +523,8 @@ public class GachaSystem : MonoBehaviour
     {
         if (enableDebugLog)
         {
-            Debug.Log($" Rare item obtained: {reward.GetRewardText()} from '{machine.machineName}'");
+            string type = reward.rewardType == RewardType.Character ? "character" : "item";
+            Debug.Log($" Rare {type} obtained: {reward.GetRewardText()} from '{machine.machineName}'");
         }
 
         // แจ้ง UI แสดง rare item effect
@@ -607,29 +624,33 @@ public class GachaSystem : MonoBehaviour
         {
             if (reward == null || !reward.IsValid()) continue;
 
-            // ตรวจสอบว่า inventory ยังใช้ได้
-            if (cachedInventory == null)
-            {
-                Debug.LogError(" Inventory reference lost during processing");
-                RefreshPlayerCharacter();
-                yield break;
-            }
+            bool success = false;
 
-            // ลองเพิ่มเข้า inventory
-            bool success = cachedInventory.AddItem(reward.itemData, reward.quantity);
+            switch (reward.rewardType)
+            {
+                case RewardType.Item:
+                    success = ProcessItemReward(reward);
+                    break;
+                case RewardType.Character:
+                    success = ProcessCharacterReward(reward);
+                    break;
+                case RewardType.Currency:
+                    success = ProcessCurrencyReward(reward);
+                    break;
+            }
 
             if (success)
             {
                 addedRewards.Add(reward);
                 if (enableDebugLog)
                 {
-                    Debug.Log($" Added to inventory: {reward.GetRewardText()}");
+                    Debug.Log($" Added to player: {reward.GetRewardText()}");
                 }
             }
             else
             {
                 failedRewards.Add(reward);
-                Debug.LogWarning($" Failed to add to inventory: {reward.GetRewardText()} (Inventory may be full)");
+                Debug.LogWarning($" Failed to add: {reward.GetRewardText()}");
                 OnInventoryFull?.Invoke(reward);
             }
 
@@ -643,8 +664,59 @@ public class GachaSystem : MonoBehaviour
 
         if (failedRewards.Count > 0)
         {
-            // TODO: จัดการ items ที่เพิ่มไม่ได้ (เช่น เก็บไว้ใน mailbox)
-            Debug.LogWarning($" {failedRewards.Count} items could not be added to inventory");
+            Debug.LogWarning($" {failedRewards.Count} rewards could not be processed");
+        }
+    }
+
+    private bool ProcessItemReward(GachaReward reward)
+    {
+        // ตรวจสอบว่า inventory ยังใช้ได้
+        if (cachedInventory == null)
+        {
+            Debug.LogError(" Inventory reference lost during processing");
+            RefreshPlayerCharacter();
+            return false;
+        }
+
+        // ลองเพิ่มเข้า inventory
+        return cachedInventory.AddItem(reward.itemData, reward.quantity);
+    }
+
+    private bool ProcessCharacterReward(GachaReward reward)
+    {
+        // ตรวจสอบว่ามี CharacterCollection
+        if (cachedCharacterCollection == null)
+        {
+            Debug.LogError(" CharacterCollection not found - cannot add character reward");
+            return false;
+        }
+
+        // เพิ่มตัวละครเข้า collection
+        return cachedCharacterCollection.AddCharacter(reward.characterData);
+    }
+
+    private bool ProcessCurrencyReward(GachaReward reward)
+    {
+        // หา CurrencyManager และเพิ่ม currency
+        CurrencyManager currencyManager = CurrencyManager.FindCurrencyManager();
+        if (currencyManager == null)
+        {
+            Debug.LogError(" CurrencyManager not found - cannot add currency reward");
+            return false;
+        }
+
+        if (reward.currencyType == "Gold")
+        {
+            return currencyManager.AddGold(reward.quantity);
+        }
+        else if (reward.currencyType == "Gems")
+        {
+            return currencyManager.AddGems(reward.quantity);
+        }
+        else
+        {
+            Debug.LogWarning($" Unsupported currency type: {reward.currencyType}");
+            return false;
         }
     }
     #endregion
@@ -699,6 +771,23 @@ public class GachaSystem : MonoBehaviour
     {
         return pendingRewards.Sum(rewards => rewards.Count);
     }
+
+    public Dictionary<string, object> GetSystemStats()
+    {
+        var stats = new Dictionary<string, object>
+        {
+            ["TotalMachines"] = MachineCount,
+            ["CharacterMachines"] = GetCharacterMachines().Count,
+            ["ItemMachines"] = GetItemMachines().Count,
+            ["HasValidPlayer"] = HasValidPlayer,
+            ["HasCharacterCollection"] = HasCharacterCollection,
+            ["PendingRewards"] = GetPendingRewardsCount(),
+            ["AutoAddRewards"] = autoAddRewardsToInventory,
+            ["DebugLogging"] = enableDebugLog
+        };
+
+        return stats;
+    }
     #endregion
 
     #region Debug & Testing
@@ -707,7 +796,7 @@ public class GachaSystem : MonoBehaviour
     {
         foreach (var machine in gachaMachines)
         {
-            Debug.Log($" Testing machine: {machine.machineName}");
+            Debug.Log($" Testing machine: {machine.machineName} ({(machine.isCharacterMachine ? "Character" : "Item")})");
             machine.TestSingleRoll();
         }
     }
@@ -715,21 +804,30 @@ public class GachaSystem : MonoBehaviour
     [ContextMenu("Debug System Info")]
     public void DebugSystemInfo()
     {
-        Debug.Log(" === GACHA SYSTEM INFO ===");
-        Debug.Log($"Machines: {gachaMachines.Count}");
+        Debug.Log("=== GACHA SYSTEM INFO ===");
+        Debug.Log($"Machines: {gachaMachines.Count} (Character: {GetCharacterMachines().Count}, Item: {GetItemMachines().Count})");
         Debug.Log($"Auto-add to inventory: {autoAddRewardsToInventory}");
         Debug.Log($"Debug logging: {enableDebugLog}");
         Debug.Log($"Has valid player: {HasValidPlayer}");
+        Debug.Log($"Has character collection: {HasCharacterCollection}");
         Debug.Log($"Pending rewards: {GetPendingRewardsCount()}");
 
         if (HasValidPlayer)
         {
             Debug.Log($"Player: {cachedPlayerCharacter.name}");
+            Debug.Log($"  - Inventory: {(cachedInventory != null ? "✓" : "✗")}");
+            Debug.Log($"  - Character Collection: {(cachedCharacterCollection != null ? "✓" : "✗")}");
         }
 
-        foreach (var machine in gachaMachines)
+        Debug.Log("=== MACHINES ===");
+        foreach (var machine in gachaMachines.OrderBy(m => m.isCharacterMachine))
         {
-            Debug.Log($"  Machine: {machine.machineName} - Pool: {machine.Pool?.poolName ?? "None"}");
+            string type = machine.isCharacterMachine ? "Character" : "Item";
+            string poolName = machine.isCharacterMachine ?
+                machine.CharacterPool?.poolName ?? "None" :
+                machine.Pool?.poolName ?? "None";
+
+            Debug.Log($"  {machine.machineName} ({type}) - Pool: {poolName}");
         }
     }
 
@@ -745,6 +843,27 @@ public class GachaSystem : MonoBehaviour
         int count = GetPendingRewardsCount();
         pendingRewards.Clear();
         Debug.Log($" Cleared {count} pending rewards");
+    }
+
+    [ContextMenu("Test Character Gacha")]
+    public void TestCharacterGacha()
+    {
+        var characterMachines = GetCharacterMachines();
+        if (characterMachines.Count > 0)
+        {
+            var machine = characterMachines[0];
+            Debug.Log($" Testing character gacha: {machine.machineName}");
+            var rewards = machine.Roll(1);
+
+            foreach (var reward in rewards)
+            {
+                Debug.Log($"  Result: {reward.GetFullDisplayText()}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning(" No character gacha machines found for testing");
+        }
     }
     #endregion
 }

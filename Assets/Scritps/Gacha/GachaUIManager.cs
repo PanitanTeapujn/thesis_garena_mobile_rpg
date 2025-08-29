@@ -413,24 +413,48 @@ public class GachaUIManager : MonoBehaviour
 
     private void UpdateMachineUI()
     {
-        if (currentMachine == null || currentMachine.Pool == null) return;
+        if (currentMachine == null) return;
 
         // Update machine info
         if (machineNameText != null)
             machineNameText.text = currentMachine.machineName;
 
-        if (machineDescriptionText != null)
-            machineDescriptionText.text = currentMachine.Pool.description;
+        string description = "";
+        Sprite icon = null;
+        int costSingle = 0;
+        int costTen = 0;
+        string currency = "";
 
-        if (machineIconImage != null && currentMachine.Pool.poolIcon != null)
-            machineIconImage.sprite = currentMachine.Pool.poolIcon;
+        // Get data from appropriate pool
+        if (currentMachine.isCharacterMachine && currentMachine.CharacterPool != null)
+        {
+            description = currentMachine.CharacterPool.description;
+            icon = currentMachine.CharacterPool.poolIcon;
+            costSingle = currentMachine.CharacterPool.costPerRoll;
+            costTen = currentMachine.CharacterPool.costPerTenRolls;
+            currency = currentMachine.CharacterPool.costCurrency;
+        }
+        else if (currentMachine.Pool != null)
+        {
+            description = currentMachine.Pool.description;
+            icon = currentMachine.Pool.poolIcon;
+            costSingle = currentMachine.Pool.costPerRoll;
+            costTen = currentMachine.Pool.costPerTenRolls;
+            currency = currentMachine.Pool.costCurrency;
+        }
+
+        if (machineDescriptionText != null)
+            machineDescriptionText.text = description;
+
+        if (machineIconImage != null && icon != null)
+            machineIconImage.sprite = icon;
 
         // Update cost display
         if (costSingleText != null)
-            costSingleText.text = $"{currentMachine.Pool.costPerRoll} {currentMachine.Pool.costCurrency}";
+            costSingleText.text = $"{costSingle} {currency}";
 
         if (costTenText != null)
-            costTenText.text = $"{currentMachine.Pool.costPerTenRolls} {currentMachine.Pool.costCurrency}";
+            costTenText.text = $"{costTen} {currency}";
 
         // Update button states
         UpdateRollButtonStates();
@@ -986,6 +1010,8 @@ public class GachaUIManager : MonoBehaviour
                (gachaResultPanel != null && gachaResultPanel.activeSelf);
     }
     #endregion
+
+
 }
 
 #region Data Classes

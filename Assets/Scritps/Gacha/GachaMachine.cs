@@ -10,6 +10,10 @@ public class GachaMachine : MonoBehaviour
     public string machineName = "";
     public GachaPoolData gachaPool;
 
+    [Header("Character Gacha Pool")]
+    public CharacterGachaPoolData characterPool;
+    public bool isCharacterMachine = false;
+
     [Header("Guarantee Tracking")]
     public bool trackGuarantee = true;
     private int rollsSinceLastRare = 0;
@@ -29,8 +33,18 @@ public class GachaMachine : MonoBehaviour
 
     #region Properties
     public GachaPoolData Pool => gachaPool;
+    public CharacterGachaPoolData CharacterPool => characterPool;
     public int RollsSinceLastRare => rollsSinceLastRare;
-    public bool IsGuaranteeReady => trackGuarantee && gachaPool != null && gachaPool.hasGuarantee && rollsSinceLastRare >= gachaPool.guaranteeCount;
+    public bool IsGuaranteeReady => trackGuarantee && GetGuaranteeCount() > 0 && rollsSinceLastRare >= GetGuaranteeCount();
+
+    private int GetGuaranteeCount()
+    {
+        if (isCharacterMachine && characterPool != null)
+            return characterPool.guaranteeCount;
+        else if (gachaPool != null)
+            return gachaPool.guaranteeCount;
+        return 0;
+    }
     #endregion
 
     #region Initialization
@@ -43,7 +57,10 @@ public class GachaMachine : MonoBehaviour
 
         if (string.IsNullOrEmpty(machineName))
         {
-            machineName = gachaPool?.poolName ?? name;
+            if (isCharacterMachine && characterPool != null)
+                machineName = characterPool.poolName;
+            else
+                machineName = gachaPool?.poolName ?? name;
         }
     }
 
@@ -54,27 +71,54 @@ public class GachaMachine : MonoBehaviour
 
     private void ValidateSetup()
     {
-        if (gachaPool == null)
+        if (isCharacterMachine)
         {
-            Debug.LogError($" GachaMachine '{machineName}' has no gacha pool assigned!");
-            return;
-        }
+            if (characterPool == null)
+            {
+                Debug.LogError($" GachaMachine '{machineName}' is set as character machine but has no character pool assigned!");
+                return;
+            }
 
-        if (gachaPool.GachaItems.Count == 0)
+            if (characterPool.CharacterEntries.Count == 0)
+            {
+                Debug.LogError($" GachaMachine '{machineName}' character pool has no characters!");
+                return;
+            }
+
+            Debug.Log($" Character GachaMachine '{machineName}' initialized with {characterPool.CharacterEntries.Count} characters");
+        }
+        else
         {
-            Debug.LogError($" GachaMachine '{machineName}' pool has no items!");
-            return;
-        }
+            if (gachaPool == null)
+            {
+                Debug.LogError($" GachaMachine '{machineName}' has no gacha pool assigned!");
+                return;
+            }
 
-        Debug.Log($" GachaMachine '{machineName}' initialized with {gachaPool.GachaItems.Count} items");
+            if (gachaPool.GachaItems.Count == 0)
+            {
+                Debug.LogError($" GachaMachine '{machineName}' pool has no items!");
+                return;
+            }
+
+            Debug.Log($" GachaMachine '{machineName}' initialized with {gachaPool.GachaItems.Count} items");
+        }
     }
     #endregion
 
     #region Gacha Operations
     public bool CanRoll(int rollCount = 1)
     {
-        if (gachaPool == null) return false;
-        if (gachaPool.GachaItems.Count == 0) return false;
+        if (isCharacterMachine)
+        {
+            if (characterPool == null) return false;
+            if (characterPool.CharacterEntries.Count == 0) return false;
+        }
+        else
+        {
+            if (gachaPool == null) return false;
+            if (gachaPool.GachaItems.Count == 0) return false;
+        }
 
         // TODO: ตรวจสอบ currency ที่นี่
         return true;
@@ -95,14 +139,14 @@ public class GachaMachine : MonoBehaviour
         if (!CanRoll(count))
         {
             string error = "Cannot perform gacha roll";
-            Debug.LogWarning($" {error}");
+            Debug.LogWarning($"Gacha {error}");
             OnGachaError?.Invoke(this, error);
             return new List<GachaReward>();
         }
 
         List<GachaReward> rewards = new List<GachaReward>();
 
-        Debug.Log($"🎰 Rolling {count} times on machine '{machineName}'");
+        Debug.Log($" Rolling {count} times on machine '{machineName}'{(isCharacterMachine ? " (Character)" : "")}");
 
         for (int i = 0; i < count; i++)
         {
@@ -123,6 +167,18 @@ public class GachaMachine : MonoBehaviour
     }
 
     private GachaReward PerformSingleRoll()
+    {
+        if (isCharacterMachine)
+        {
+            return PerformCharacterRoll();
+        }
+        else
+        {
+            return PerformItemRoll();
+        }
+    }
+
+    private GachaReward PerformItemRoll()
     {
         if (gachaPool == null) return null;
 
@@ -155,7 +211,7 @@ public class GachaMachine : MonoBehaviour
                     $"IsValid={e.IsValid()}"
                 );
             }
-            
+
             Debug.LogError(" Failed to get valid gacha item");
             return null;
         }
@@ -172,7 +228,68 @@ public class GachaMachine : MonoBehaviour
         }
 
         Debug.Log($" Rolled: {reward.GetRewardText()} (Tier: {selectedEntry.itemData.GetTierText()})");
+        return reward;
+    }
 
+    private GachaReward PerformCharacterRoll()
+    {
+        if (characterPool == null) return null;
+
+        CharacterGachaEntry selectedEntry = null;
+        bool isGuaranteed = false;
+
+        // ตรวจสอบ guarantee
+        if (IsGuaranteeReady)
+        {
+            selectedEntry = characterPool.GetGuaranteedCharacter(characterPool.guaranteeRarity);
+            isGuaranteed = true;
+            rollsSinceLastRare = 0;
+            Debug.Log($" Character guarantee activated! Got {selectedEntry?.characterData?.characterName}");
+        }
+        else
+        {
+            selectedEntry = characterPool.GetRandomCharacter();
+            rollsSinceLastRare++;
+        }
+
+        if (selectedEntry == null || !selectedEntry.IsValid())
+        {
+            Debug.LogError(" Failed to get valid gacha character");
+            return null;
+        }
+
+        // ตรวจสอบว่าเป็นตัวละครซ้ำหรือไม่ (ต้องมี CharacterCollection)
+        bool isDuplicate = false;
+        CharacterCollection collection = FindObjectOfType<CharacterCollection>();
+        if (collection != null)
+        {
+            isDuplicate = collection.HasCharacter(selectedEntry.characterData);
+        }
+
+        // สร้าง reward
+        GachaReward reward;
+
+        if (isDuplicate && selectedEntry.convertDuplicates && selectedEntry.duplicateRewardItem != null)
+        {
+            // แปลงตัวละครซ้ำเป็น item
+            reward = new GachaReward(selectedEntry.duplicateRewardItem, selectedEntry.duplicateRewardAmount, isGuaranteed);
+            reward.isDuplicate = true;
+            Debug.Log($" Duplicate character converted to: {reward.GetRewardText()}");
+        }
+        else
+        {
+            // ตัวละครปกติ
+            reward = new GachaReward(selectedEntry.characterData, isGuaranteed, isDuplicate);
+        }
+
+        // ตรวจสอบว่าเป็น rare character หรือไม่
+        if (selectedEntry.characterData.rarity >= CharacterRarity.Rare)
+        {
+            rollsSinceLastRare = 0; // reset guarantee counter
+            OnRareItemObtained?.Invoke(this, reward);
+        }
+
+        Debug.Log($" Rolled: {reward.GetRewardText()} (Rarity: {selectedEntry.characterData.GetRarityText()})");
         return reward;
     }
     #endregion
@@ -193,7 +310,7 @@ public class GachaMachine : MonoBehaviour
         }
 
         // เล่นเสียง
-        bool hasRareItem = rewards.Any(r => r.itemData.Tier >= ItemTier.Rare);
+        bool hasRareItem = rewards.Any(r => r.IsRareReward());
         AudioClip soundToPlay = hasRareItem && rareItemSound != null ? rareItemSound : rollSound;
 
         if (audioSource != null && soundToPlay != null)
@@ -232,16 +349,40 @@ public class GachaMachine : MonoBehaviour
     public void TestTenRolls()
     {
         var rewards = RollTen();
-        Debug.Log($" Test 10 Rolls completed. Got {rewards.Count} items");
+        Debug.Log($" Test 10 Rolls completed. Got {rewards.Count} rewards");
+
+        foreach (var reward in rewards)
+        {
+            Debug.Log($"  - {reward.GetRewardText()}");
+        }
     }
 
     [ContextMenu("Debug Machine Info")]
     public void DebugMachineInfo()
     {
         Debug.Log($" Machine: {machineName} ({machineId})");
-        Debug.Log($" Pool: {gachaPool?.poolName ?? "None"}");
-        Debug.Log($" Guarantee: {rollsSinceLastRare}/{(gachaPool?.guaranteeCount ?? 0)} rolls");
+        Debug.Log($" Type: {(isCharacterMachine ? "Character" : "Item")} Machine");
+
+        if (isCharacterMachine && characterPool != null)
+        {
+            Debug.Log($" Character Pool: {characterPool.poolName}");
+            Debug.Log($" Characters: {characterPool.CharacterEntries.Count}");
+        }
+        else if (gachaPool != null)
+        {
+            Debug.Log($" Item Pool: {gachaPool.poolName}");
+            Debug.Log($" Items: {gachaPool.GachaItems.Count}");
+        }
+
+        Debug.Log($" Guarantee: {rollsSinceLastRare}/{GetGuaranteeCount()} rolls");
         Debug.Log($" Guarantee Ready: {IsGuaranteeReady}");
+    }
+
+    [ContextMenu("Force Guarantee Next Roll")]
+    public void ForceGuaranteeNextRoll()
+    {
+        rollsSinceLastRare = GetGuaranteeCount();
+        Debug.Log($" Forced guarantee for next roll on '{machineName}'");
     }
     #endregion
 }

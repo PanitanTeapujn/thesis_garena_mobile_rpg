@@ -6673,18 +6673,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 224706269}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Script: {fileID: 11500000, guid: 59f8146938fff824cb5fd77236b75775, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_Padding:
     m_Left: 0
     m_Right: 0
-    m_Top: 0
+    m_Top: 10
     m_Bottom: 0
-  m_ChildAlignment: 4
-  m_Spacing: 0
+  m_ChildAlignment: 1
+  m_Spacing: 10
   m_ChildForceExpandWidth: 1
-  m_ChildForceExpandHeight: 1
+  m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
   m_ChildControlHeight: 0
   m_ChildScaleWidth: 0
@@ -18274,7 +18274,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -23710,7 +23710,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -29974,7 +29974,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -31717,7 +31717,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -47329,6 +47329,8 @@ MonoBehaviour:
   machineId: 0
   machineName: Tool
   gachaPool: {fileID: 11400000, guid: db1ef91966b08b04b85cb2ab63b33a92, type: 2}
+  characterPool: {fileID: 0}
+  isCharacterMachine: 0
   trackGuarantee: 1
   machineAnimator: {fileID: 0}
   rollEffect: {fileID: 0}
@@ -48221,6 +48223,61 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1809466807}
   m_CullTransparentMesh: 1
+--- !u!1 &1821642501
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1821642503}
+  - component: {fileID: 1821642502}
+  m_Layer: 0
+  m_Name: GachaMachine (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1821642502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1821642501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9406ef0f3dacaa42b1fc3bd5f6ee7ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  machineId: char 01
+  machineName: Char
+  gachaPool: {fileID: 0}
+  characterPool: {fileID: 11400000, guid: db04fc9fb37060649ae23cf3382cb585, type: 2}
+  isCharacterMachine: 1
+  trackGuarantee: 1
+  machineAnimator: {fileID: 0}
+  rollEffect: {fileID: 0}
+  audioSource: {fileID: 0}
+  rollSound: {fileID: 0}
+  rareItemSound: {fileID: 0}
+--- !u!4 &1821642503
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1821642501}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2041408494}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1824132834
 GameObject:
   m_ObjectHideFlags: 0
@@ -51596,7 +51653,7 @@ MonoBehaviour:
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 1
-  m_ActiveFontFeatures: 00000000
+  m_ActiveFontFeatures: 6e72656b
   m_enableExtraPadding: 0
   checkPaddingRequired: 0
   m_isRichText: 1
@@ -52731,6 +52788,7 @@ MonoBehaviour:
   manualPlayerReference: {fileID: 0}
   gachaMachines:
   - {fileID: 1761049498}
+  - {fileID: 1821642502}
   uiManager: {fileID: 1748101387}
 --- !u!4 &1969244585
 Transform:
@@ -54568,6 +54626,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2041408494}
+  - component: {fileID: 2041408495}
   m_Layer: 0
   m_Name: Gacha
   m_TagString: Untagged
@@ -54589,9 +54648,24 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1761049499}
+  - {fileID: 1821642503}
   - {fileID: 1969244585}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2041408495
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2041408493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a01919c939056cf438086e042017bf43, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ownedCharacters: []
+  currentActiveCharacter: {fileID: 0}
 --- !u!1 &2046568840
 GameObject:
   m_ObjectHideFlags: 0
