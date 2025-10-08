@@ -175,7 +175,7 @@ public class FirebaseLoginManager : MonoBehaviour
             // Start loading data in background
             PersistentPlayerData.Instance.LoadPlayerDataAsync();
 
-            // ไปหน้าต่อไป
+            // ไปหน้า Lobby (สำหรับผู้เล่นที่ Login)
             SceneManager.LoadScene("Lobby");
         }
     }
@@ -212,18 +212,23 @@ public class FirebaseLoginManager : MonoBehaviour
             user = registerTask.Result.User;
             Debug.Log($"Registration successful: {user.Email}");
 
-            // ✅ สร้างผู้เล่นใหม่ด้วย default Assassin stats ที่ถูกต้อง
+            // ✅ บันทึกข้อมูลพื้นฐานก่อนไปหน้าเลือกตัวละคร
+            string playerName = nameInput.text.Trim();
+            PlayerPrefs.SetString("PlayerName", playerName);
+            PlayerPrefs.SetString("PlayerId", user.UserId);
+            PlayerPrefs.SetInt("IsFirstTime", 1); // ✅ ทำเครื่องหมายว่าเป็นผู้เล่นใหม่
 
             // Create Firebase data in background
             StartCoroutine(CreateFirebaseDataAsync());
 
-            SceneManager.LoadScene("Lobby");
+            // ✅ ไปหน้าเลือกตัวละครสำหรับผู้เล่นใหม่
+            SceneManager.LoadScene("CharacterSelection");
         }
     }
     #endregion
 
     #region Player Data Setup - การตั้งค่าข้อมูลผู้เล่นเริ่มต้นและการโหลดข้อมูลด่วน
-    
+
 
     private void SetupPlayerDataQuick()
     {
@@ -287,7 +292,7 @@ public class FirebaseLoginManager : MonoBehaviour
         };
 
         // Save character data
-       
+
 
         var task = playerRef.SetValueAsync(playerDataDict);
         yield return new WaitUntil(() => task.IsCompleted);
