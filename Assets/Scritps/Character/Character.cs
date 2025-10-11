@@ -725,10 +725,7 @@ public class Character : NetworkBehaviour
 
                 ForceUpdateNetworkState();
 
-                Debug.Log($"[Character] ✅ Applied base stats:");
-                Debug.Log($"  HP={MaxHp}, ATK={AttackDamage}, ARM={Armor}");
-                Debug.Log($"  MAGIC_ARM={MagicArmor}, HEALTH_REGEN={HealthRegen:F1}, MANA_REGEN={ManaRegen:F1}");
-                Debug.Log($"  Current HP={CurrentHp}/{MaxHp} ({hpPercentage:P0})");
+              
             }
             else
             {
@@ -752,13 +749,11 @@ public class Character : NetworkBehaviour
     {
         try
         {
-            Debug.Log($"[Character] ⚔️ Applying equipment bonuses only...");
 
             // ✅ เก็บ HP/Mana percentage ก่อน apply equipment
             float hpPercentage = MaxHp > 0 ? (float)CurrentHp / MaxHp : 1f;
             float manaPercentage = MaxMana > 0 ? (float)CurrentMana / MaxMana : 1f;
 
-            Debug.Log($"[Character] Before equipment: HP={CurrentHp}/{MaxHp} ({hpPercentage:P0}), Mana={CurrentMana}/{MaxMana} ({manaPercentage:P0})");
 
             // เก็บ base stats ก่อน apply equipment
             int baseHp = MaxHp;
@@ -781,12 +776,7 @@ public class Character : NetworkBehaviour
             int atkBonus = AttackDamage - baseAttack;
             float lifeStealBonus = LifeSteal - baseLifeSteal;
 
-            Debug.Log($"[Character] ✅ Equipment bonuses applied:");
-            Debug.Log($"  HP: {baseHp} + {hpBonus} = {MaxHp}");
-            Debug.Log($"  ATK: {baseAttack} + {atkBonus} = {AttackDamage}");
-            Debug.Log($"  LifeSteal: {baseLifeSteal:F1}% + {lifeStealBonus:F1}% = {LifeSteal:F1}%");
-            Debug.Log($"  Current HP: {CurrentHp}/{MaxHp} ({(float)CurrentHp / MaxHp:P0})");
-            Debug.Log($"  Current Mana: {CurrentMana}/{MaxMana} ({(float)CurrentMana / MaxMana:P0})");
+            
 
             // Force update network state
             ForceUpdateNetworkState();

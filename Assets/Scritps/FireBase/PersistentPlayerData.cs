@@ -7,6 +7,8 @@ using System.Linq;
 
 public class PersistentPlayerData : MonoBehaviour
 {
+    private static Dictionary<string, CharacterStats> _characterStatsCache = new Dictionary<string, CharacterStats>();
+
     #region Variables and Properties  ตัวแปร, Singleton pattern และ Properties
     [Header("Multi-Character Data")]
     public MultiCharacterPlayerData multiCharacterData;
@@ -216,15 +218,10 @@ public class PersistentPlayerData : MonoBehaviour
                         loaded = true;
 
                         // ✅ เคลียร์ PlayerPrefs เก่าเฉพาะเมื่อโหลดข้อมูลใหม่จาก Firebase สำเร็จ
-                        ClearOldPlayerPrefsData();
 
-                        SaveToPlayerPrefs();
                         SaveCompleteBackupToPlayerPrefs();
 
-                        Debug.Log($"✅ Loaded valid data: {multiCharacterData.playerName}");
-                        Debug.Log($"  - Characters: {multiCharacterData.characters.Count}");
-                        Debug.Log($"  - Active: {multiCharacterData.currentActiveCharacter}");
-                        Debug.Log($"  - Gold: {multiCharacterData.sharedCurrency?.gold ?? 0}");
+                       
                     }
                     else
                     {
@@ -262,37 +259,7 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // 🆕 เพิ่ม method สำหรับเคลียร์ PlayerPrefs เก่า
-    private void ClearOldPlayerPrefsData()
-    {
-        try
-        {
-            // เคลียร์ข้อมูลพื้นฐาน
-            PlayerPrefs.DeleteKey("PlayerName");
-            PlayerPrefs.DeleteKey("PlayerGold");
-            PlayerPrefs.DeleteKey("PlayerGems");
-            PlayerPrefs.DeleteKey("LastCharacterSelected");
-
-            // เคลียร์ข้อมูล stats
-            PlayerPrefs.DeleteKey("PlayerLevel");
-            PlayerPrefs.DeleteKey("PlayerExp");
-            PlayerPrefs.DeleteKey("PlayerMaxHp");
-            PlayerPrefs.DeleteKey("PlayerAttackDamage");
-
-            // เคลียร์ backup data เก่า
-            PlayerPrefs.DeleteKey("PlayerDataBackup");
-            PlayerPrefs.DeleteKey("PlayerDataBackupDate");
-            PlayerPrefs.DeleteKey("CurrencyLastSave");
-            PlayerPrefs.DeleteKey("InventoryLastSave");
-
-            PlayerPrefs.Save();
-
-            Debug.Log("🧹 Cleared old PlayerPrefs data for new account");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ClearOldPlayerPrefsData] Error: {e.Message}");
-        }
-    }
+    
     // 🆕 เพิ่ม method สำหรับ validate ข้อมูล
     private bool IsValidPlayerData(MultiCharacterPlayerData data)
     {
@@ -325,11 +292,8 @@ public class PersistentPlayerData : MonoBehaviour
             if (multiCharacterData != null)
             {
                 string json = JsonUtility.ToJson(multiCharacterData, true);
-                PlayerPrefs.SetString("PlayerDataBackup", json);
-                PlayerPrefs.SetString("PlayerDataBackupDate", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                PlayerPrefs.Save();
+               
 
-                Debug.Log("[SaveCompleteBackupToPlayerPrefs] Complete backup saved");
             }
         }
         catch (System.Exception e)
@@ -337,37 +301,9 @@ public class PersistentPlayerData : MonoBehaviour
             Debug.LogError($"[SaveCompleteBackupToPlayerPrefs] Error: {e.Message}");
         }
     }
-    private void CreateDefaultMultiCharacterData()
-    {
-        multiCharacterData = new MultiCharacterPlayerData();
-
-        // ✅ ส่ง settings reference ทันทีหลังสร้าง
-        
-
-        string newPlayerName = auth?.CurrentUser?.DisplayName ?? "Player";
-        multiCharacterData.playerName = newPlayerName;
-        multiCharacterData.currentActiveCharacter = "Assassin";
-
-        InitializeCurrencyForNewPlayer();
-        multiCharacterData.LoadCharacterStatsFromResources();
-
-        isDataLoaded = true;
-        SaveToPlayerPrefs();
-
-        Debug.Log($"✅ Created default data for NEW PLAYER: {multiCharacterData.playerName}");
-    }
    
-    private void InitializeCurrencyForNewPlayer()
-    {
-        if (multiCharacterData != null)
-        {
-            multiCharacterData.sharedCurrency = new SharedCurrencyData();
-            multiCharacterData.hasCurrencyData = true;
-            multiCharacterData.currencyLastSaveTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-
-            Debug.Log("✅ Currency system initialized for new player");
-        }
-    }
+   
+  
     public void SavePlayerDataAsync()
     {
         if (multiCharacterData == null || auth?.CurrentUser == null)
@@ -411,7 +347,6 @@ public class PersistentPlayerData : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        SaveToPlayerPrefs();
         Debug.Log($"💾 Saved complete player data including stage progress for {multiCharacterData.playerName}");
 
         if (task.IsCompleted)
@@ -425,46 +360,14 @@ public class PersistentPlayerData : MonoBehaviour
                 Debug.Log($"✅ Successfully saved complete data to Firebase");
 
                 // 🆕 อัปเดต backup timestamp หลัง save สำเร็จ
-                PlayerPrefs.SetString("LastSuccessfulSave", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                PlayerPrefs.Save();
+               
             }
         }
 
         isSaving = false;
     }
 
-    private void SaveToPlayerPrefs()
-    {
-        if (multiCharacterData == null) return;
-
-        var currentCharacter = GetCurrentCharacterData();
-        if (currentCharacter == null) return;
-
-        PlayerPrefs.SetString("PlayerName", multiCharacterData.playerName);
-        PlayerPrefs.SetString("LastCharacterSelected", multiCharacterData.currentActiveCharacter);
-        PlayerPrefs.SetInt("PlayerLevel", currentCharacter.currentLevel);
-        PlayerPrefs.SetInt("PlayerExp", currentCharacter.currentExp);
-        PlayerPrefs.SetInt("PlayerExpToNext", currentCharacter.expToNextLevel);
-        PlayerPrefs.SetInt("PlayerMaxHp", currentCharacter.totalMaxHp);
-        PlayerPrefs.SetInt("PlayerMaxMana", currentCharacter.totalMaxMana);
-        PlayerPrefs.SetInt("PlayerAttackDamage", currentCharacter.totalAttackDamage);
-        PlayerPrefs.SetInt("PlayerMagicDamage", currentCharacter.totalMagicDamage);
-        PlayerPrefs.SetInt("PlayerArmor", currentCharacter.totalArmor);
-        PlayerPrefs.SetFloat("PlayerCritChance", currentCharacter.totalCriticalChance);
-        PlayerPrefs.SetFloat("PlayerCriticalDamageBonus", currentCharacter.totalCriticalDamageBonus);
-        PlayerPrefs.SetFloat("PlayerMoveSpeed", currentCharacter.totalMoveSpeed);
-        PlayerPrefs.SetFloat("PlayerHitRate", currentCharacter.totalHitRate);
-        PlayerPrefs.SetFloat("PlayerEvasionRate", currentCharacter.totalEvasionRate);
-        PlayerPrefs.SetFloat("PlayerAttackSpeed", currentCharacter.totalAttackSpeed);
-        PlayerPrefs.SetFloat("PlayerReductionCoolDown", currentCharacter.totalReductionCoolDown);
-        PlayerPrefs.SetFloat("PlayerLifeSteal", currentCharacter.totalLifeSteal);
-        PlayerPrefs.SetFloat("PlayerAmpDamage", currentCharacter.totalAmpdamage);
-        PlayerPrefs.SetInt("PlayerMigicArmor", currentCharacter.totalMagicArmor);
-        PlayerPrefs.SetFloat("PlayerHealthRegen", currentCharacter.totalHealthRegen);
-        PlayerPrefs.SetFloat("PlayerManaRegen", currentCharacter.totalManaRegen);
-
-        PlayerPrefs.Save();
-    }
+   
 
     public void ForceSave() => SavePlayerDataAsync();
     #endregion
@@ -479,7 +382,6 @@ public class PersistentPlayerData : MonoBehaviour
         }
 
         multiCharacterData.SwitchActiveCharacter(characterType);
-        SaveToPlayerPrefs();
         SavePlayerDataAsync();
 
         Debug.Log($"✅ Switched to character: {characterType}");
@@ -530,11 +432,7 @@ public class PersistentPlayerData : MonoBehaviour
             character.hasTotalStats = true;
             character.statsLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-            Debug.Log($"[PersistentPlayerData] 💾 Updated total stats for {characterType}:");
-            Debug.Log($"  HP: {oldHp} → {maxHp} (change: {maxHp - oldHp:+#;-#;0})");
-            Debug.Log($"  ATK: {oldAtk} → {attackDamage} (change: {attackDamage - oldAtk:+#;-#;0})");
-            Debug.Log($"  LifeSteal: {oldLifeSteal:F1}% → {lifeSteal:F1}% (change: {lifeSteal - oldLifeSteal:+#.#;-#.#;0})"); // 🆕 Debug LifeSteal
-            Debug.Log($"  Level: {level}, CRIT: {critChance:F1}%");
+          
 
             // 🆕 บันทึกลง Firebase ทันที
             SavePlayerDataAsync();
@@ -1166,43 +1064,7 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// บันทึกข้อมูล shared inventory
     /// </summary>
-    private bool SaveSharedInventoryData(Character character)
-    {
-        try
-        {
-            var inventory = character.GetInventory();
-            if (inventory == null)
-            {
-                Debug.LogWarning("[SaveSharedInventoryData] Character has no inventory");
-                return false;
-            }
-
-            Debug.Log($"[SaveSharedInventoryData] 📦 Saving shared inventory: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
-
-            // แปลง Inventory เป็น SharedInventoryData
-            var sharedData = InventoryDataConverter.ToSharedInventoryData(inventory);
-            if (sharedData == null)
-            {
-                Debug.LogError("[SaveSharedInventoryData] Failed to convert inventory data");
-                return false;
-            }
-
-            // บันทึกลง multiCharacterData
-            multiCharacterData.sharedInventory = sharedData;
-
-            Debug.Log($"[SaveSharedInventoryData] ✅ Saved {sharedData.items.Count} items to shared inventory");
-
-            // Debug: แสดงรายการไอเทมที่บันทึก
-            LogSavedInventoryItems(sharedData);
-
-            return true;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[SaveSharedInventoryData] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
+    
 
     /// <summary>
     /// บันทึกข้อมูล equipment และ potion ของ character
@@ -1381,32 +1243,12 @@ public class PersistentPlayerData : MonoBehaviour
         SaveInventoryData(character);
 
         // บันทึกลง PlayerPrefs ด้วย (เป็น backup)
-        SaveInventoryToPlayerPrefs(character);
     }
 
     /// <summary>
     /// บันทึกข้อมูล inventory พื้นฐานลง PlayerPrefs (เป็น backup)
     /// </summary>
-    private void SaveInventoryToPlayerPrefs(Character character)
-    {
-        try
-        {
-            var inventory = character?.GetInventory();
-            if (inventory != null)
-            {
-                PlayerPrefs.SetInt("InventoryCurrentSlots", inventory.CurrentSlots);
-                PlayerPrefs.SetInt("InventoryUsedSlots", inventory.UsedSlots);
-                PlayerPrefs.SetString("InventoryLastSave", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                PlayerPrefs.Save();
-
-                Debug.Log("[SaveInventoryToPlayerPrefs] ✅ Inventory backup saved to PlayerPrefs");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[SaveInventoryToPlayerPrefs] ❌ Error: {e.Message}");
-        }
-    }
+   
 
     #endregion
 
@@ -1822,35 +1664,9 @@ public class PersistentPlayerData : MonoBehaviour
             default: return ItemType.Weapon;
         }
     }
-    private System.Collections.IEnumerator DelayedUIRefresh(Character character)
-    {
-        yield return new WaitForSeconds(0.2f);
-
-        // Force refresh EquipmentSlotManager
-        var equipmentManager = character.GetComponent<EquipmentSlotManager>();
-        if (equipmentManager?.IsConnected() == true)
-        {
-            equipmentManager.ForceRefreshFromCharacter();
-        }
-
-        // Force refresh CombatUIManager
-        var combatUI = FindObjectOfType<CombatUIManager>();
-        if (combatUI?.equipmentSlotManager?.IsConnected() == true)
-        {
-            combatUI.equipmentSlotManager.ForceRefreshFromCharacter();
-        }
-
-        // แจ้ง stats changed
-        Character.RaiseOnStatsChanged();
-        Canvas.ForceUpdateCanvases();
-
-        Debug.Log("[DelayedUIRefresh] ✅ UI refreshed after equipment load");
-    }
+  
 
   
-   
-  
-    
    
 
     /// </summary>
@@ -1885,123 +1701,7 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// โหลดข้อมูล shared inventory
     /// </summary>
-    private bool LoadSharedInventoryData(Character character)
-    {
-        try
-        {
-            var inventory = character.GetInventory();
-            if (inventory == null)
-            {
-                Debug.LogWarning("[LoadSharedInventoryData] Character has no inventory");
-                return false;
-            }
-
-            var sharedData = multiCharacterData.sharedInventory;
-            if (sharedData == null || !sharedData.IsValid() || sharedData.items.Count == 0)
-            {
-                Debug.LogWarning("[LoadSharedInventoryData] No shared inventory data to load");
-                return false;
-            }
-
-            Debug.Log($"[LoadSharedInventoryData] 📦 Loading {sharedData.items.Count} items from shared inventory");
-
-            // 🆕 ตรวจสอบว่ามี items ใน inventory ปัจจุบันหรือไม่
-            int currentItems = inventory.UsedSlots;
-            Debug.Log($"[LoadSharedInventoryData] Current inventory has {currentItems} items");
-
-            // 🆕 ถ้ามี items อยู่แล้วและจำนวนตรงกับ Firebase ให้ skip การ load
-            if (currentItems > 0 && currentItems == sharedData.items.Count)
-            {
-                Debug.Log("[LoadSharedInventoryData] ✅ Inventory already has correct items, skipping load");
-                return true;
-            }
-
-            // 🆕 ถ้ามี items อยู่แล้วแต่จำนวนไม่ตรง ให้เก็บ backup ก่อน
-            List<InventoryItem> backupItems = null;
-            if (currentItems > 0)
-            {
-                Debug.LogWarning($"[LoadSharedInventoryData] ⚠️ Item count mismatch: Current={currentItems}, Firebase={sharedData.items.Count}");
-                backupItems = BackupCurrentInventory(inventory);
-            }
-
-           
-
-            // เคลียร์ inventory เฉพาะเมื่อแน่ใจว่าข้อมูล Firebase ถูกต้อง
-            Debug.Log("[LoadSharedInventoryData] 🧹 Clearing current inventory...");
-            inventory.ClearInventory();
-
-            // ตั้งค่า grid settings
-            if (sharedData.currentSlots > 0)
-            {
-                int expandSlots = sharedData.currentSlots - inventory.CurrentSlots;
-                if (expandSlots > 0 && inventory.CanExpandInventory(expandSlots))
-                {
-                    inventory.ExpandInventory(expandSlots);
-                    Debug.Log($"[LoadSharedInventoryData] Expanded inventory to {sharedData.currentSlots} slots");
-                }
-            }
-
-            // โหลดไอเทมทีละตัว
-            int successCount = 0;
-            int failCount = 0;
-
-            foreach (var savedItem in sharedData.items)
-            {
-                if (savedItem == null || !savedItem.IsValid())
-                {
-                    failCount++;
-                    continue;
-                }
-
-                bool loaded = LoadSingleInventoryItemSafe(inventory, savedItem);
-                if (loaded)
-                {
-                    successCount++;
-                }
-                else
-                {
-                    failCount++;
-                }
-            }
-
-            Debug.Log($"[LoadSharedInventoryData] Load result: {successCount} success, {failCount} failed");
-
-            // 🆕 ตรวจสอบผลลัพธ์และ restore backup ถ้าจำเป็น
-            if (successCount == 0)
-            {
-                Debug.LogError("[LoadSharedInventoryData] ❌ Failed to load any items!");
-
-                if (backupItems != null && backupItems.Count > 0)
-                {
-                    Debug.Log("[LoadSharedInventoryData] 🔄 Restoring backup inventory...");
-                    RestoreInventoryBackup(inventory, backupItems);
-                    return false;
-                }
-                else
-                {
-                    Debug.LogWarning("[LoadSharedInventoryData] ⚠️ No backup available, inventory is now empty");
-                    return false;
-                }
-            }
-
-            // 🆕 ตรวจสอบว่าโหลดครบถ้วนหรือไม่
-            if (successCount < sharedData.items.Count)
-            {
-                Debug.LogWarning($"[LoadSharedInventoryData] ⚠️ Partial load: {successCount}/{sharedData.items.Count} items");
-            }
-
-            Debug.Log($"[LoadSharedInventoryData] ✅ Successfully loaded {successCount} items to inventory");
-            Debug.Log($"[LoadSharedInventoryData] Final inventory usage: {inventory.UsedSlots}/{inventory.CurrentSlots} slots");
-
-            return successCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadSharedInventoryData] ❌ Error: {e.Message}");
-            Debug.LogError($"[LoadSharedInventoryData] Stack trace: {e.StackTrace}");
-            return false;
-        }
-    }
+  
  
     // ใน PersistentPlayerData.cs - แก้ไข SafeAutoSaveInventory method
     public void SafeAutoSaveInventory(Character character, string action = "Auto-Save")
@@ -2235,40 +1935,10 @@ public class PersistentPlayerData : MonoBehaviour
     }
 
     // 🆕 เพิ่ม method สำหรับ backup inventory
-    private List<InventoryItem> BackupCurrentInventory(Inventory inventory)
-    {
-        var backup = new List<InventoryItem>();
-
-        for (int i = 0; i < inventory.CurrentSlots; i++)
-        {
-            var item = inventory.GetItem(i);
-            if (item != null && !item.IsEmpty)
-            {
-                backup.Add(new InventoryItem(item.itemData, item.stackCount, item.slotIndex));
-            }
-        }
-
-        Debug.Log($"[BackupCurrentInventory] Backed up {backup.Count} items");
-        return backup;
-    }
+   
 
     // 🆕 เพิ่ม method สำหรับ restore inventory
-    private void RestoreInventoryBackup(Inventory inventory, List<InventoryItem> backup)
-    {
-        if (backup == null || backup.Count == 0) return;
-
-        Debug.Log($"[RestoreInventoryBackup] Restoring {backup.Count} items...");
-
-        foreach (var item in backup)
-        {
-            if (item != null && !item.IsEmpty)
-            {
-                inventory.AddItem(item.itemData, item.stackCount);
-            }
-        }
-
-        Debug.Log($"[RestoreInventoryBackup] ✅ Restored backup inventory");
-    }
+   
 
     /// <summary>
     /// โหลดไอเทมเดียวลง inventory
@@ -2279,156 +1949,12 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// โหลดข้อมูล equipment และ potion ของ character
     /// </summary>
-    private bool LoadCharacterEquipmentData(Character character)
-    {
-        try
-        {
-            string characterType = multiCharacterData.currentActiveCharacter;
-            Debug.Log($"[LoadCharacterEquipmentData] ⚔️ Loading equipment for {characterType} (Character: {character.CharacterName})");
-
-            var characterProgressData = multiCharacterData.GetCharacterData(characterType);
-            if (characterProgressData?.characterEquipment == null)
-            {
-                Debug.LogWarning($"[LoadCharacterEquipmentData] No equipment data for {characterType}");
-                return false;
-            }
-
-            var equipmentData = characterProgressData.characterEquipment;
-            if (!equipmentData.IsValid())
-            {
-                Debug.LogWarning($"[LoadCharacterEquipmentData] Invalid equipment data for {characterType}");
-                return false;
-            }
-
-            // Debug ข้อมูลก่อน load
-            Debug.Log($"[LoadCharacterEquipmentData] Equipment data found:");
-            Debug.Log($"  - Head: {equipmentData.equipment.headItemId}");
-            Debug.Log($"  - Armor: {equipmentData.equipment.armorItemId}");
-            Debug.Log($"  - Weapon: {equipmentData.equipment.weaponItemId}");
-            Debug.Log($"  - Pants: {equipmentData.equipment.pantsItemId}");
-            Debug.Log($"  - Shoes: {equipmentData.equipment.shoesItemId}");
-            Debug.Log($"  - Rune: {equipmentData.equipment.runeItemId}");
-            Debug.Log($"  - Total Equipment: {equipmentData.equipment.equippedCount}");
-            Debug.Log($"  - Total Potions: {equipmentData.totalPotionCount}");
-
-            // 1. โหลด Equipment Slots (6 ช่อง)
-            bool equipmentLoaded = LoadEquipmentSlots(character, equipmentData);
-
-            // 2. โหลด Potion Slots (5 ช่อง)
-            bool potionsLoaded = LoadPotionSlots(character, equipmentData);
-
-            if (equipmentLoaded || potionsLoaded)
-            {
-                Debug.Log($"[LoadCharacterEquipmentData] ✅ Equipment loaded for {characterType}");
-                Debug.Log($"[LoadCharacterEquipmentData] Equipment loaded: {equipmentLoaded}, Potions loaded: {potionsLoaded}");
-
-                return true;
-            }
-
-            return false;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadCharacterEquipmentData] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
-  
+   
 
 
   
 
-    private System.Collections.IEnumerator ForceRefreshEquipmentUICoroutine(Character character)
-    {
-        Debug.Log("[ForceRefreshEquipmentUICoroutine] 🔄 Starting equipment UI refresh...");
-
-        // รอ 2 frames เพื่อให้ equipment data settle
-        yield return null;
-        yield return null;
-
-        try
-        {
-            int refreshCount = 0;
-
-            // 1. หา และ refresh EquipmentSlotManager จาก character
-            var equipmentSlotManager = character.GetComponent<EquipmentSlotManager>();
-            if (equipmentSlotManager != null)
-            {
-                if (equipmentSlotManager.IsConnected())
-                {
-                    equipmentSlotManager.ForceRefreshFromCharacter();
-                    refreshCount++;
-                    Debug.Log("[ForceRefreshEquipmentUICoroutine] ✅ Character equipment slots refreshed");
-                }
-                else
-                {
-                    Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ Character EquipmentSlotManager not connected");
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ No EquipmentSlotManager on character");
-            }
-
-            // 2. หา และ refresh CombatUIManager equipment slots
-            var combatUIManager = FindObjectOfType<CombatUIManager>();
-            if (combatUIManager?.equipmentSlotManager != null)
-            {
-                if (combatUIManager.equipmentSlotManager.IsConnected())
-                {
-                    combatUIManager.equipmentSlotManager.ForceRefreshFromCharacter();
-                    refreshCount++;
-                    Debug.Log("[ForceRefreshEquipmentUICoroutine] ✅ CombatUI equipment slots refreshed");
-                }
-                else
-                {
-                    Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ CombatUI EquipmentSlotManager not connected");
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[ForceRefreshEquipmentUICoroutine] ⚠️ No CombatUIManager or equipment slot manager found");
-            }
-
-            // 3. แจ้ง Character.OnStatsChanged event
-            Character.RaiseOnStatsChanged();
-
-            // 4. Force update Canvas
-            Canvas.ForceUpdateCanvases();
-            if (refreshCount > 0)
-            {
-                // ทำซ้ำอีกครั้งเพื่อให้แน่ใจ
-                if (equipmentSlotManager != null && equipmentSlotManager.IsConnected())
-                {
-                    equipmentSlotManager.RefreshAllSlots();
-                }
-
-                if (combatUIManager?.equipmentSlotManager != null && combatUIManager.equipmentSlotManager.IsConnected())
-                {
-                    combatUIManager.equipmentSlotManager.RefreshAllSlots();
-                }
-
-                Canvas.ForceUpdateCanvases();
-
-                Debug.Log($"[ForceRefreshEquipmentUICoroutine] ✅ Equipment UI refresh complete ({refreshCount} managers refreshed)");
-            }
-            else
-            {
-                Debug.LogError("[ForceRefreshEquipmentUICoroutine] ❌ No equipment managers were refreshed!");
-
-                // ลอง debug สถานะ managers
-            }
-
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ForceRefreshEquipmentUICoroutine] ❌ Error: {e.Message}");
-        }// รออีก 1 frame แล้วทำซ้ำเพื่อให้แน่ใจ
-        yield return null;
-
-
-
-    }
+   
 
   
     
@@ -2581,266 +2107,7 @@ public class PersistentPlayerData : MonoBehaviour
     
 
     #endregion
-    /// <summary>
-    /// โหลด equipment slots (6 ช่อง)
-    /// </summary>
-    private bool LoadEquipmentSlots(Character character, CharacterEquipmentData equipmentData)
-    {
-        try
-        {
-            int loadedCount = 0;
-            var equipment = equipmentData.equipment;
-
-            Debug.Log("[LoadEquipmentSlots] Loading 6 equipment slots...");
-
-            // เคลียร์ equipment ก่อน
-            character.ClearAllEquipmentForLoad();
-
-            // โหลดแต่ละ slot
-            if (LoadSingleEquipmentSlot(character, ItemType.Head, equipment.headItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlot(character, ItemType.Armor, equipment.armorItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlot(character, ItemType.Weapon, equipment.weaponItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlot(character, ItemType.Pants, equipment.pantsItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlot(character, ItemType.Shoes, equipment.shoesItemId))
-                loadedCount++;
-            if (LoadSingleEquipmentSlot(character, ItemType.Rune, equipment.runeItemId))
-                loadedCount++;
-
-            // ✅ Apply stats และ refresh UI หลัง load equipment ทั้งหมด
-            if (loadedCount > 0)
-            {
-                character.ApplyLoadedEquipmentStats();
-                character.ForceRefreshEquipmentAfterLoad();
-            }
-
-            Debug.Log($"[LoadEquipmentSlots] ✅ Loaded {loadedCount}/6 equipment pieces");
-            return loadedCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadEquipmentSlots] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
-
-    private bool LoadSingleEquipmentSlot(Character character, ItemType itemType, string itemId)
-    {
-        if (string.IsNullOrEmpty(itemId))
-        {
-            Debug.Log($"[LoadSingleEquipmentSlot] No item to load for {itemType}");
-            return false;
-        }
-
-        try
-        {
-            // หา ItemData จาก ID
-            ItemData itemData = GetItemDataById(itemId);
-            if (itemData == null)
-            {
-                Debug.LogError($"[LoadSingleEquipmentSlot] Item not found: {itemId} for {itemType}");
-                return false;
-            }
-
-            // ตรวจสอบว่า item type ตรงกันหรือไม่
-            if (itemData.ItemType != itemType)
-            {
-                Debug.LogError($"[LoadSingleEquipmentSlot] Item type mismatch: {itemData.ItemType} != {itemType} for {itemData.ItemName}");
-                return false;
-            }
-
-            // โหลด item ลง character
-            bool success = character.LoadEquipmentDirectly(itemData);
-            if (success)
-            {
-                Debug.Log($"[LoadSingleEquipmentSlot] ✅ Loaded {itemData.ItemName} to {itemType} slot");
-                return true;
-            }
-            else
-            {
-                Debug.LogError($"[LoadSingleEquipmentSlot] Failed to load {itemData.ItemName} to {itemType} slot");
-                return false;
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadSingleEquipmentSlot] ❌ Error loading {itemType} item {itemId}: {e.Message}");
-            return false;
-        }
-    }
-
-   
-    /// <summary>
-    /// โหลด equipment slot เดียว
-    /// </summary>
-   
-
-   
-
-    private int GetSlotIndexForItemType(ItemType itemType)
-    {
-        switch (itemType)
-        {
-            case ItemType.Head: return 0;
-            case ItemType.Armor: return 1;
-            case ItemType.Weapon: return 2;
-            case ItemType.Pants: return 3;
-            case ItemType.Shoes: return 4;
-            case ItemType.Rune: return 5;
-            default: return -1;
-        }
-    }
-    /// </summary>
-    private bool LoadPotionSlots(Character character, CharacterEquipmentData equipmentData)
-    {
-        try
-        {
-            int loadedCount = 0;
-
-            Debug.Log("[LoadPotionSlots] Loading 5 potion slots...");
-
-            // 🔧 แก้ไข: ตรวจสอบ potion ที่มีอยู่แล้วอย่างละเอียด
-            for (int i = 0; i < 5; i++)
-            {
-                var potionSlot = equipmentData.GetPotionSlot(i);
-                if (potionSlot == null || potionSlot.IsEmpty())
-                {
-                    Debug.Log($"[LoadPotionSlots] Slot {i}: No potion data to load");
-                    continue;
-                }
-
-                // ตรวจสอบว่ามี potion ใน character แล้วหรือไม่
-                ItemData existingPotion = character.GetPotionInSlot(i);
-                if (existingPotion != null)
-                {
-                    int existingStack = character.GetPotionStackCount(i);
-
-                    if (existingPotion.ItemId == potionSlot.itemId)
-                    {
-                        Debug.LogWarning($"[LoadPotionSlots] ⚠️ DUPLICATE DETECTED!");
-                        Debug.LogWarning($"[LoadPotionSlots] Slot {i} already has {existingPotion.ItemName} x{existingStack}");
-                        Debug.LogWarning($"[LoadPotionSlots] Firebase wants to load {potionSlot.itemName} x{potionSlot.stackCount}");
-
-                        // 🔧 ถ้าจำนวนใน character น้อยกว่า Firebase ให้ใช้ค่าจาก Firebase
-                        if (existingStack < potionSlot.stackCount)
-                        {
-                            Debug.LogWarning($"[LoadPotionSlots] 🔄 Updating stack count: {existingStack} → {potionSlot.stackCount}");
-                            character.SetPotionStackCount(i, potionSlot.stackCount);
-                            loadedCount++;
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"[LoadPotionSlots] ❌ Skipping load to prevent duplication");
-                        }
-                        continue;
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"[LoadPotionSlots] Different potion in slot {i}: {existingPotion.ItemName} vs {potionSlot.itemName}");
-                        // เคลียร์ slot เก่าก่อน
-                        character.potionSlots[i] = null;
-                        character.SetPotionStackCount(i, 0);
-                    }
-                }
-
-                // โหลด potion ใหม่
-                bool loaded = LoadSinglePotionSlot(character, i, potionSlot);
-                if (loaded)
-                    loadedCount++;
-            }
-
-            Debug.Log($"[LoadPotionSlots] ✅ Loaded {loadedCount}/5 potion slots (prevented duplicates)");
-            return loadedCount > 0;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadPotionSlots] ❌ Error: {e.Message}");
-            return false;
-        }
-    }
-   
-
-    /// <summary>
-    /// โหลด potion slots (5 ช่อง)
-    /// </summary>
-
-
-    /// <summary>
-    /// โหลด potion slot เดียว
-    /// </summary>
-    private bool LoadSinglePotionSlot(Character character, int slotIndex, SavedPotionSlot potionSlot)
-    {
-        try
-        {
-            // หา ItemData จาก ID
-            ItemData itemData = GetItemDataById(potionSlot.itemId);
-            if (itemData == null)
-            {
-                Debug.LogError($"[LoadSinglePotionSlot] Potion not found: {potionSlot.itemId} ({potionSlot.itemName})");
-                return false;
-            }
-
-            // ตรวจสอบว่าเป็น potion หรือไม่
-            if (itemData.ItemType != ItemType.Potion)
-            {
-                Debug.LogError($"[LoadSinglePotionSlot] Item is not a potion: {itemData.ItemName} ({itemData.ItemType})");
-                return false;
-            }
-
-            // โหลด potion ลง character
-            bool success = character.LoadPotionDirectly(itemData, slotIndex, potionSlot.stackCount);
-
-            if (success)
-            {
-                Debug.Log($"[LoadSinglePotionSlot] ✅ Loaded {itemData.ItemName} x{potionSlot.stackCount} to potion slot {slotIndex}");
-                return true;
-            }
-            else
-            {
-                Debug.LogError($"[LoadSinglePotionSlot] Failed to load {itemData.ItemName}");
-                return false;
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadSinglePotionSlot] ❌ Error loading potion slot {slotIndex}: {e.Message}");
-            return false;
-        }
-    }
-    private void UpdatePotionStackCountsAfterLoad(Character character, CharacterEquipmentData equipmentData)
-    {
-        try
-        {
-            Debug.Log("[UpdatePotionStackCountsAfterLoad] Updating potion stack counts...");
-
-            for (int i = 0; i < 5; i++)
-            {
-                var savedPotionSlot = equipmentData.GetPotionSlot(i);
-                if (savedPotionSlot != null && !savedPotionSlot.IsEmpty())
-                {
-                    // หา potion ที่ equip แล้วใน character และ update stack count
-                    var currentPotion = character.GetPotionInSlot(i);
-                    if (currentPotion != null && currentPotion.ItemId == savedPotionSlot.itemId)
-                    {
-                        character.SetPotionStackCount(i, savedPotionSlot.stackCount);
-                        Debug.Log($"[UpdatePotionStackCountsAfterLoad] Updated slot {i} stack count to {savedPotionSlot.stackCount}");
-                    }
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[UpdatePotionStackCountsAfterLoad] ❌ Error: {e.Message}");
-        }
-    }
-
-    /// <summary>
-    /// ใส่ potion ลง slot โดยตรง (สำหรับ load data)
-    /// </summary>
-   
+  
 
     #endregion
 
@@ -3070,26 +2337,177 @@ public class PersistentPlayerData : MonoBehaviour
     #endregion
     public CharacterProgressData GetOrCreateCharacterData(string characterType)
     {
+        // ✅ ตรวจสอบว่ามี character อยู่แล้วหรือไม่
         CharacterProgressData existing = GetCharacterData(characterType);
         if (existing != null)
+        {
+            Debug.Log($"[GetOrCreateCharacterData] Character {characterType} already exists");
             return existing;
+        }
 
+        // ✅ สร้างตัวละครใหม่
+        Debug.Log($"[GetOrCreateCharacterData] Creating new character: {characterType}");
         CharacterProgressData newCharacter = CreateDefaultCharacterData(characterType);
+
+        if (multiCharacterData == null)
+        {
+            Debug.LogError("[GetOrCreateCharacterData] multiCharacterData is null!");
+            return null;
+        }
+
+        if (multiCharacterData.characters == null)
+        {
+            multiCharacterData.characters = new List<CharacterProgressData>();
+        }
+
         multiCharacterData.characters.Add(newCharacter);
+
+        Debug.Log($"✅ Created new character {characterType}. Total characters: {multiCharacterData.characters.Count}");
+
         return newCharacter;
     }
 
     public CharacterProgressData CreateDefaultCharacterData(string characterType)
     {
+        Debug.Log($"[CreateDefaultCharacterData] 🔨 Creating character: {characterType}");
+
         CharacterProgressData newCharacter = new CharacterProgressData(characterType);
         newCharacter.currentLevel = 1;
         newCharacter.currentExp = 0;
         newCharacter.expToNextLevel = 100;
+        newCharacter.AddStatPoints(1);
 
-        // ✅ ใช้ TryLoadCharacterStats แทนการโหลดโดยตรง
-        TryLoadCharacterStats(newCharacter, characterType);
+        CharacterStats characterStats = null;
+
+        // ✅ เพิ่ม debug path
+        string resourcePath = "";
+
+        switch (characterType)
+        {
+            case "BloodKnight":
+                resourcePath = "Characters/BloodKnightStats";
+                characterStats = Resources.Load<CharacterStats>(resourcePath);
+                Debug.Log($"[CreateDefaultCharacterData] 🔍 Loading BloodKnight from: {resourcePath}");
+                Debug.Log($"[CreateDefaultCharacterData] Result: {(characterStats != null ? "SUCCESS ✅" : "FAILED ❌")}");
+                break;
+            case "Archer":
+                resourcePath = "Characters/ArcherStats";
+                characterStats = Resources.Load<CharacterStats>(resourcePath);
+                Debug.Log($"[CreateDefaultCharacterData] 🔍 Loading Archer from: {resourcePath}");
+                Debug.Log($"[CreateDefaultCharacterData] Result: {(characterStats != null ? "SUCCESS ✅" : "FAILED ❌")}");
+                break;
+            case "Assassin":
+                resourcePath = "Characters/AssassinStats";
+                characterStats = Resources.Load<CharacterStats>(resourcePath);
+                Debug.Log($"[CreateDefaultCharacterData] 🔍 Loading Assassin from: {resourcePath}");
+                Debug.Log($"[CreateDefaultCharacterData] Result: {(characterStats != null ? "SUCCESS ✅" : "FAILED ❌")}");
+                break;
+            case "IronJuggernaut":
+                resourcePath = "Characters/IronJuggernautStats";
+                characterStats = Resources.Load<CharacterStats>(resourcePath);
+                Debug.Log($"[CreateDefaultCharacterData] 🔍 Loading IronJuggernaut from: {resourcePath}");
+                Debug.Log($"[CreateDefaultCharacterData] Result: {(characterStats != null ? "SUCCESS ✅" : "FAILED ❌")}");
+                break;
+        }
+
+        // ✅ ถ้าโหลด ScriptableObject ได้ ให้ copy stats
+        if (characterStats != null)
+        {
+            newCharacter.baseMaxHp = characterStats.maxHp;
+            newCharacter.baseMaxMana = characterStats.maxMana;
+            newCharacter.baseAttackDamage = characterStats.attackDamage;
+            newCharacter.baseMagicDamage = characterStats.magicDamage;
+            newCharacter.baseArmor = characterStats.arrmor;
+            newCharacter.baseCriticalChance = characterStats.criticalChance;
+            newCharacter.baseCriticalDamageBonus = characterStats.criticalDamageBonus;
+            newCharacter.baseMoveSpeed = characterStats.moveSpeed;
+            newCharacter.baseHitRate = characterStats.hitRate;
+            newCharacter.baseEvasionRate = characterStats.evasionRate;
+            newCharacter.baseAttackSpeed = characterStats.attackSpeed;
+            newCharacter.baseReductionCoolDown = characterStats.reductionCoolDown;
+            newCharacter.baseLifeSteal = characterStats.lifeSteal;
+            newCharacter.baseAmpDamage = characterStats.ampdamage;
+            newCharacter.baseMagicArmor = characterStats.magicArmor;
+            newCharacter.baseHealthRegen = characterStats.healthRegen;
+            newCharacter.baseManaRegen = characterStats.manaRegen;
+            newCharacter.baseAttackCoolDown = characterStats.attackCoolDown;
+            newCharacter.baseAttackRange = characterStats.attackRange;
+            newCharacter.attackType = characterStats.attackType;
+
+            // ✅ อัปเดต total stats ด้วย
+            newCharacter.UpdateTotalStats();
+
+            Debug.Log($"[CreateDefaultCharacterData] ✅ Stats loaded from ScriptableObject: HP={newCharacter.totalMaxHp}, ATK={newCharacter.totalAttackDamage}");
+        }
+        else
+        {
+            // ✅ ถ้าโหลดไม่ได้ ใช้ default stats
+            Debug.LogError($"[CreateDefaultCharacterData] ❌ ScriptableObject not found at path: {resourcePath}");
+            Debug.LogWarning($"[CreateDefaultCharacterData] ⚠️ Using default stats for {characterType}");
+            SetDefaultStatsForCharacter(newCharacter, characterType);
+        }
 
         return newCharacter;
+    }
+
+    // ✅ เพิ่ม method สำหรับ set default stats (กรณี ScriptableObject โหลดไม่ได้)
+    private void SetDefaultStatsForCharacter(CharacterProgressData character, string characterType)
+    {
+        switch (characterType)
+        {
+            case "BloodKnight":
+                character.baseMaxHp = 150;
+                character.baseMaxMana = 80;
+                character.baseAttackDamage = 25;
+                character.baseMagicDamage = 15;
+                character.baseArmor = 10;
+                character.baseMoveSpeed = 3.0f;
+                break;
+
+            case "Archer":
+                character.baseMaxHp = 90;
+                character.baseMaxMana = 60;
+                character.baseAttackDamage = 30;
+                character.baseMagicDamage = 10;
+                character.baseArmor = 5;
+                character.baseMoveSpeed = 3.5f;
+                break;
+
+            case "Assassin":
+                character.baseMaxHp = 100;
+                character.baseMaxMana = 50;
+                character.baseAttackDamage = 35;
+                character.baseMagicDamage = 10;
+                character.baseArmor = 5;
+                character.baseMoveSpeed = 4.0f;
+                break;
+
+            case "IronJuggernaut":
+                character.baseMaxHp = 200;
+                character.baseMaxMana = 70;
+                character.baseAttackDamage = 20;
+                character.baseMagicDamage = 12;
+                character.baseArmor = 15;
+                character.baseMoveSpeed = 2.5f;
+                break;
+        }
+
+        // Stats ที่เหมือนกันทุกตัว
+        character.baseCriticalChance = 5f;
+        character.baseCriticalDamageBonus = 150f;
+        character.baseHitRate = 85f;
+        character.baseEvasionRate = 5f;
+        character.baseAttackSpeed = 1f;
+        character.baseReductionCoolDown = 0f;
+        character.baseLifeSteal = 0f;
+        character.baseMagicArmor = 0;
+        character.baseHealthRegen = 0.5f;
+        character.baseManaRegen = 1f;
+        character.attackType = AttackType.Physical;
+
+        character.UpdateTotalStats();
+
+        Debug.Log($"[SetDefaultStatsForCharacter] ✅ Default stats set: HP={character.totalMaxHp}, ATK={character.totalAttackDamage}");
     }
 
     // ✅ เพิ่ม method ใหม่สำหรับโหลด character stats อย่างปลอดภัย
@@ -3161,74 +2579,16 @@ public class PersistentPlayerData : MonoBehaviour
             else
             {
                 Debug.LogWarning($"⚠️ Could not load {characterType} stats, using defaults");
-                SetDefaultStatsForCharacter(character, characterType);
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"❌ Error loading {characterType} stats: {e.Message}");
-            SetDefaultStatsForCharacter(character, characterType);
         }
     }
 
     // ✅ เพิ่ม method สำหรับตั้ง default stats
-    private void SetDefaultStatsForCharacter(CharacterProgressData character, string characterType)
-    {
-        // ตั้งค่า default stats ตาม character type
-        switch (characterType)
-        {
-            case "Assassin":
-                character.baseMaxHp = 100;
-                character.baseMaxMana = 50;
-                character.baseAttackDamage = 15;
-                character.baseMoveSpeed = 3.5f;
-                break;
-            case "Archer":
-                character.baseMaxHp = 80;
-                character.baseMaxMana = 70;
-                character.baseAttackDamage = 12;
-                character.baseMoveSpeed = 3.2f;
-                break;
-            case "BloodKnight":
-                character.baseMaxHp = 150;
-                character.baseMaxMana = 30;
-                character.baseAttackDamage = 18;
-                character.baseMoveSpeed = 2.8f;
-                break;
-            case "IronJuggernaut":
-                character.baseMaxHp = 200;
-                character.baseMaxMana = 20;
-                character.baseAttackDamage = 20;
-                character.baseMoveSpeed = 2.5f;
-                break;
-            default:
-                character.baseMaxHp = 100;
-                character.baseMaxMana = 50;
-                character.baseAttackDamage = 15;
-                character.baseMoveSpeed = 3.0f;
-                break;
-        }
-
-        // ตั้งค่า stats อื่นๆ
-        character.baseMagicDamage = 10;
-        character.baseArmor = 5;
-        character.baseCriticalChance = 5f;
-        character.baseCriticalDamageBonus = 150f;
-        character.baseHitRate = 85f;
-        character.baseEvasionRate = 10f;
-        character.baseAttackSpeed = 1f;
-        character.baseReductionCoolDown = 0f;
-        character.baseLifeSteal = 0f;
-        character.baseMagicArmor = 0;
-        character.baseHealthRegen = 0.5f;
-        character.baseManaRegen = 1f;
-        character.attackType = AttackType.Physical;
-
-        // Copy ไป total stats
-        character.UpdateTotalStats();
-
-        Debug.Log($"⚠️ Used default stats for {characterType}");
-    }
+   
     #region 🆕 Currency Save/Load Methods
 
     /// <summary>
@@ -3292,7 +2652,6 @@ public class PersistentPlayerData : MonoBehaviour
                 Debug.Log($"[LoadCurrencyData] ✅ Currency loaded - Gold: {multiCharacterData.sharedCurrency.gold}, Gems: {multiCharacterData.sharedCurrency.gems}");
 
                 // บันทึกลง PlayerPrefs เป็น backup
-                SaveCurrencyToPlayerPrefs();
             }
             else
             {
@@ -3311,25 +2670,7 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// บันทึกข้อมูลเงินลง PlayerPrefs (เป็น backup)
     /// </summary>
-    private void SaveCurrencyToPlayerPrefs()
-    {
-        try
-        {
-            if (multiCharacterData?.sharedCurrency != null)
-            {
-                PlayerPrefs.SetString("PlayerGold", multiCharacterData.sharedCurrency.gold.ToString());
-                PlayerPrefs.SetInt("PlayerGems", multiCharacterData.sharedCurrency.gems);
-                PlayerPrefs.SetString("CurrencyLastSave", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                PlayerPrefs.Save();
-
-                Debug.Log("[SaveCurrencyToPlayerPrefs] ✅ Currency backup saved to PlayerPrefs");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[SaveCurrencyToPlayerPrefs] ❌ Error: {e.Message}");
-        }
-    }
+   
     public void SaveBaseStats(Character character, LevelManager levelManager)
     {
         if (multiCharacterData == null || character == null || levelManager == null)
@@ -3470,28 +2811,7 @@ public class PersistentPlayerData : MonoBehaviour
     /// <summary>
     /// โหลดข้อมูลเงินจาก PlayerPrefs (fallback)
     /// </summary>
-    private void LoadCurrencyFromPlayerPrefs()
-    {
-        try
-        {
-            if (multiCharacterData?.sharedCurrency == null)
-                multiCharacterData.sharedCurrency = new SharedCurrencyData();
-
-            string goldStr = PlayerPrefs.GetString("PlayerGold", "1000");
-            if (long.TryParse(goldStr, out long gold))
-            {
-                multiCharacterData.sharedCurrency.gold = gold;
-            }
-
-            multiCharacterData.sharedCurrency.gems = PlayerPrefs.GetInt("PlayerGems", 50);
-
-            Debug.Log("[LoadCurrencyFromPlayerPrefs] ✅ Currency loaded from PlayerPrefs backup");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LoadCurrencyFromPlayerPrefs] ❌ Error: {e.Message}");
-        }
-    }
+   
     public void SaveEquippedItemsOnly(Character character)
     {
         if (character == null || multiCharacterData == null) return;
@@ -3555,7 +2875,6 @@ public class PersistentPlayerData : MonoBehaviour
     {
         Debug.Log("[ForceImmediateSaveCurrency] 🚀 Force saving currency data...");
         SaveCurrencyData();
-        SaveCurrencyToPlayerPrefs();
     }
 
     /// <summary>
@@ -3610,42 +2929,10 @@ public class PersistentPlayerData : MonoBehaviour
 
 
     #endregion
-    // Note: This method is not implemented - consider implementing or removing
 
    
-    // 🆕 เพิ่ม method สำหรับ restore จาก PlayerPrefs
-  
 
-    // 🆕 เพิ่ม method สำหรับตรวจสอบ data consistency
-  
-
-    // 🆕 Emergency load method ที่ไม่ clear inventory
-   
-
-    private System.Collections.IEnumerator DelayedCanvasUpdate()
-    {
-        yield return new WaitForSeconds(0.1f);
-        Canvas.ForceUpdateCanvases();
-
-        yield return new WaitForSeconds(0.1f);
-        Canvas.ForceUpdateCanvases();
-
-        Debug.Log("[DelayedCanvasUpdate] ✅ Delayed canvas updates completed");
-    }
-
-    // 🆕 Alternative fix method
     
-
-    // 🆕 Emergency starter items
-  
-
-    private System.Collections.IEnumerator DelayedEmergencySave(Character character)
-    {
-        yield return new WaitForSeconds(2f);
-
-        Debug.Log("💾 Emergency saving after starter items...");
-        SaveInventoryData(character);
-    }
     internal void CheckFirebaseStatus()
     {
         throw new System.NotImplementedException();

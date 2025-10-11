@@ -326,7 +326,7 @@ public class LobbyManager : MonoBehaviour
 
         if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(characterType, out var characterEnum))
         {
-            PlayerSelectionData.SaveCharacterSelection(characterEnum);
+           // PlayerSelectionData.SaveCharacterSelection(characterEnum);
         }
 
         Debug.Log($"✅ [LobbyManager] Successfully switched to {characterType}");
@@ -388,7 +388,7 @@ public class LobbyManager : MonoBehaviour
 
             Debug.Log($"[LobbyManager] Using data from PersistentPlayerData: {playerName}, {savedCharacter}, Level {savedLevel}");
         }
-        else
+        /*else
         {
             // Fallback เฉพาะเมื่อไม่มีข้อมูลใน PersistentPlayerData
             playerName = PlayerPrefs.GetString("PlayerName", "Player");
@@ -396,7 +396,7 @@ public class LobbyManager : MonoBehaviour
             savedLevel = PlayerPrefs.GetInt("PlayerLevel", 1);
 
             Debug.Log($"[LobbyManager] Using fallback from PlayerPrefs: {playerName}, {savedCharacter}, Level {savedLevel}");
-        }
+        }*/
 
         // แสดงผลใน UI
         if (playerNameText != null)
@@ -501,7 +501,7 @@ public class LobbyManager : MonoBehaviour
 
                 if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out var characterEnum))
                 {
-                    PlayerSelectionData.SaveCharacterSelection(characterEnum);
+                  //  PlayerSelectionData.SaveCharacterSelection(characterEnum);
                 }
 
                 UpdatePlayerStatsUI();

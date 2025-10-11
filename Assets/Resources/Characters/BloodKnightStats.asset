@@ -12,19 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d8e0e943aedcb94ca90cdc7a5c7420a, type: 3}
   m_Name: BloodKnightStats
   m_EditorClassIdentifier: 
-  characterName: BloodKinght
+  characterName: BloodKnight
   moveSpeed: 5.2
-  maxHp: 280
-  maxMana: 0
-  attackDamage: 20
+  maxHp: 300
+  maxMana: 60
+  attackDamage: 30
   magicDamage: 30
   arrmor: 8
   attackCoolDown: 1
   attackRange: 1
-  criticalChance: 10
-  criticalDamageBonus: 0.2
-  hitRate: 80
+  criticalChance: 5
+  criticalDamageBonus: 5
+  hitRate: 65
   evasionRate: 5
   attackSpeed: 1
   reductionCoolDown: 0
-  attackType: 1
+  lifeSteal: 3
+  ampdamage: 0
+  magicArmor: 5
+  manaRegen: 1
+  healthRegen: 2
+  attackType: 0

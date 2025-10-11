@@ -8,78 +8,559 @@ using TMPro;
 
 public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
-    [Header("Character Prefabs")]
-    public GameObject bloodKnightPrefab;
-    public GameObject archerPrefab;
-    public GameObject assassinPrefab;
-    public GameObject ironJuggernautPrefab;
+    #region Character Prefabs - Generic System
+    [Header("🎮 Character Prefabs - Array System")]
+    [SerializeField] private CharacterPrefabMapping[] characterPrefabsArray = new CharacterPrefabMapping[4];
 
+
+    [System.Serializable]
+    public class CharacterPrefabMapping
+    {
+        public PlayerSelectionData.CharacterType characterType;
+        public GameObject prefab;
+    }
+
+    // Dictionary for fast lookup
+    private Dictionary<PlayerSelectionData.CharacterType, GameObject> prefabDictionary;
+    #endregion
+
+    #region Network & Manager References
     [Header("Network Manager Prefab")]
-    public GameObject networkPlayerManagerPrefab; // ต้องสร้าง prefab นี้
-    [Header("Spawn Settings")]
-    public Transform[] spawnPoints; // สำหรับกำหนดจุด spawn แน่นอน
-    public float spawnHeight = 2f; // ความสูงในการ spawn
-    public LayerMask groundLayerMask = 1; // Layer ของพื้น
-    [SerializeField] private bool autoCreateSpawnPoints = true; // ✅ สร้างอัตโนมัติ
-    [SerializeField] private bool showSpawnPointDebug = true; // ✅ แสดง debug
-    private Dictionary<Hero, bool> heroStatsReady = new Dictionary<Hero, bool>();
+    public GameObject networkPlayerManagerPrefab;
 
     private NetworkRunner _runner;
-
     private HashSet<string> spawnRequests = new HashSet<string>();
+    #endregion
 
+    #region Spawn Settings
+    [Header("Spawn Settings")]
+    public Transform[] spawnPoints;
+    public float spawnHeight = 2f;
+    public LayerMask groundLayerMask = 1;
+    [SerializeField] private bool autoCreateSpawnPoints = true;
+    [SerializeField] private bool showSpawnPointDebug = true;
+    #endregion
+
+    #region UI References
     [Header("Combat UI")]
     public CombatUIManager combatUIManagerPrefab;
-    private Dictionary<Hero, GameObject> heroWorldUIs = new Dictionary<Hero, GameObject>();
 
     [Header("World UI")]
     public GameObject worldSpaceUIPrefab;
-    // Dictionary เพื่อเก็บข้อมูลตัวละครของแต่ละ player
+
+    private Dictionary<Hero, GameObject> heroWorldUIs = new Dictionary<Hero, GameObject>();
+    private Dictionary<Hero, bool> heroStatsReady = new Dictionary<Hero, bool>();
+    #endregion
+
+    #region Player Data Tracking
     private Dictionary<PlayerRef, PlayerSelectionData.CharacterType> playerCharacters = new Dictionary<PlayerRef, PlayerSelectionData.CharacterType>();
-
-    // Dictionary เพื่อเก็บ NetworkPlayerManager ของแต่ละ player
     private Dictionary<PlayerRef, NetworkPlayerManager> playerManagers = new Dictionary<PlayerRef, NetworkPlayerManager>();
-
-    // Dictionary เพื่อเก็บ spawned characters ของแต่ละ player
     private Dictionary<PlayerRef, NetworkObject> spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
+    #endregion
+
+    #region Initialization
     private void Awake()
     {
-        // ✅ อย่าหา NetworkRunner ใน Awake เพราะยังไม่ถูกสร้าง
-        // _runner = FindObjectOfType<NetworkRunner>();
+        InitializePrefabDictionary();
 
-        // ✅ สร้าง spawn points อัตโนมัติถ้าไม่มี
         if (autoCreateSpawnPoints && (spawnPoints == null || spawnPoints.Length == 0))
         {
             CreateDefaultSpawnPointsRuntime();
         }
-
-        // ✅ ลบส่วนนี้ออก - จะหา NetworkRunner ใน Update แทน
-        /*
-        if (_runner != null)
-        {
-            _runner.AddCallbacks(this);
-            Debug.Log($"PlayerSpawner registered with NetworkRunner. IsServer: {_runner.IsServer}");
-        }
-        else
-        {
-            Debug.LogError("NetworkRunner not found in the scene!");
-        }
-        */
+      
     }
 
     private void OnEnable()
     {
-        /*_runner = FindObjectOfType<NetworkRunner>();
-        if (_runner != null)
+        // NetworkRunner will be found in Update
+    }
+
+    private void Update()
+    {
+        if (_runner == null)
         {
-            _runner.AddCallbacks(this);
-            Debug.Log($"PlayerSpawner registered with NetworkRunner. IsServer: {_runner.IsServer}");
+            _runner = FindObjectOfType<NetworkRunner>();
+            if (_runner != null)
+            {
+                _runner.AddCallbacks(this);
+                Debug.Log($"[PlayerSpawner] ✅ Registered with NetworkRunner. IsServer: {_runner.IsServer}");
+            }
+        }
+        
+    }
+    private void InitializePrefabDictionary()
+    {
+        prefabDictionary = new Dictionary<PlayerSelectionData.CharacterType, GameObject>();
+
+        if (characterPrefabsArray == null || characterPrefabsArray.Length == 0)
+        {
+            Debug.LogError("[InitializePrefabDictionary] ❌ characterPrefabsArray is empty!");
+            return;
+        }
+
+        Debug.Log($"[InitializePrefabDictionary] 🔍 Processing {characterPrefabsArray.Length} character mappings...");
+
+        for (int i = 0; i < characterPrefabsArray.Length; i++)
+        {
+            var mapping = characterPrefabsArray[i];
+
+            if (mapping.prefab == null)
+            {
+                Debug.LogWarning($"[InitializePrefabDictionary] ⚠️ Slot {i} ({mapping.characterType}): Prefab is NULL!");
+                continue;
+            }
+
+            // ✅ ตรวจสอบ prefab components
+            NetworkObject networkObj = mapping.prefab.GetComponent<NetworkObject>();
+            Hero heroComp = mapping.prefab.GetComponent<Hero>();
+            Character charComp = mapping.prefab.GetComponent<Character>();
+
+            if (networkObj == null || heroComp == null || charComp == null)
+            {
+                Debug.LogError($"[InitializePrefabDictionary] ❌ Slot {i} ({mapping.characterType}): Missing required components!");
+                Debug.LogError($"  - NetworkObject: {(networkObj != null ? "✅" : "❌")}");
+                Debug.LogError($"  - Hero: {(heroComp != null ? "✅" : "❌")}");
+                Debug.LogError($"  - Character: {(charComp != null ? "✅" : "❌")}");
+                continue;
+            }
+
+            // ✅ ตรวจสอบ CharacterStats
+            if (charComp.characterStats == null)
+            {
+                Debug.LogError($"[InitializePrefabDictionary] ❌ Slot {i} ({mapping.characterType}): characterStats is NULL!");
+                continue;
+            }
+
+            // ✅ เพิ่มลง dictionary
+            if (prefabDictionary.ContainsKey(mapping.characterType))
+            {
+                Debug.LogWarning($"[InitializePrefabDictionary] ⚠️ Duplicate key: {mapping.characterType} (overwriting)");
+            }
+
+            prefabDictionary[mapping.characterType] = mapping.prefab;
+            Debug.Log($"[InitializePrefabDictionary] ✅ Slot {i}: {mapping.characterType} → {mapping.prefab.name}");
+        }
+
+        Debug.Log($"[InitializePrefabDictionary] 🎉 Dictionary initialized with {prefabDictionary.Count} characters");
+    }
+    /// <summary>
+    /// ✅ สร้าง Dictionary จาก list เพื่อ fast lookup
+    /// </summary>
+
+    #endregion
+
+    #region Player Join/Leave Callbacks
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+        Debug.Log($"[PlayerSpawner] 🎮 Player joined: {player}, IsServer: {runner.IsServer}");
+
+        _runner = runner;
+
+        if (!runner.IsServer)
+        {
+            Debug.Log($"[PlayerSpawner] Not server - skipping spawn");
+            return;
+        }
+
+        // Single player mode
+        if (runner.GameMode == GameMode.Single)
+        {
+            Debug.Log($"[PlayerSpawner] Single mode - forcing spawn");
+
+            // ✅ ใช้เฉพาะ PersistentPlayerData
+            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            PlayerSelectionData.CharacterType selectedCharacter;
+
+            if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out selectedCharacter))
+            {
+                Debug.Log($"[PlayerSpawner] Using character: {selectedCharacter}");
+            }
+            else
+            {
+                // ❌ ลบการใช้ PlayerSelectionData.GetSelectedCharacter()
+                selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
+                Debug.LogWarning($"[PlayerSpawner] Failed to parse, using default: {selectedCharacter}");
+            }
+
+            SpawnCharacterForPlayer(runner.LocalPlayer, selectedCharacter);
+            return;
+        }
+
+        // Clean up old data
+        CleanupPlayerData(player);
+
+        // Spawn NetworkPlayerManager
+        SpawnPlayerManager(runner, player);
+
+        // Spawn character with delay
+        if (player != runner.LocalPlayer)
+        {
+            StartCoroutine(DelayedSpawn(player));
+
+            if (!spawnedCharacters.ContainsKey(runner.LocalPlayer))
+            {
+                Debug.Log($"[PlayerSpawner] Also spawning host player");
+                StartCoroutine(DelayedSpawn(runner.LocalPlayer));
+            }
         }
         else
         {
-            Debug.LogError("NetworkRunner not found in the scene!");
-        }*/
+            StartCoroutine(DelayedSpawn(player));
+        }
     }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
+    {
+        Debug.Log($"[PlayerSpawner] Player {player} left the game");
+
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            NetworkObject playerObj = spawnedCharacters[player];
+            if (playerObj != null)
+            {
+                Hero hero = playerObj.GetComponent<Hero>();
+                if (hero != null)
+                {
+                    if (heroStatsReady.ContainsKey(hero))
+                    {
+                        heroStatsReady.Remove(hero);
+                    }
+
+                    if (heroWorldUIs.ContainsKey(hero))
+                    {
+                        Destroy(heroWorldUIs[hero]);
+                        heroWorldUIs.Remove(hero);
+                    }
+                }
+            }
+            spawnedCharacters.Remove(player);
+        }
+
+        CleanupPlayerData(player);
+    }
+
+    private void CleanupPlayerData(PlayerRef player)
+    {
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            spawnedCharacters.Remove(player);
+        }
+        if (playerCharacters.ContainsKey(player))
+        {
+            playerCharacters.Remove(player);
+        }
+        if (playerManagers.ContainsKey(player))
+        {
+            playerManagers.Remove(player);
+        }
+    }
+
+    private void SpawnPlayerManager(NetworkRunner runner, PlayerRef player)
+    {
+        if (networkPlayerManagerPrefab != null)
+        {
+            NetworkObject managerObject = runner.Spawn(
+                networkPlayerManagerPrefab,
+                Vector3.zero,
+                Quaternion.identity,
+                player
+            );
+
+            if (managerObject != null)
+            {
+                NetworkPlayerManager manager = managerObject.GetComponent<NetworkPlayerManager>();
+                if (manager != null)
+                {
+                    playerManagers[player] = manager;
+                    Debug.Log($"[PlayerSpawner] NetworkPlayerManager spawned for {player}");
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region Character Spawning
+    IEnumerator DelayedSpawn(PlayerRef player)
+    {
+        Debug.Log($"[DelayedSpawn] ========================================");
+        Debug.Log($"[DelayedSpawn] START for Player {player}");
+        Debug.Log($"[DelayedSpawn] ========================================");
+
+        // ✅ ป้องกัน duplicate spawn
+        if (spawnRequests.Contains(player.ToString()))
+        {
+            Debug.LogWarning($"[DelayedSpawn] ❌ Already spawning {player}");
+            yield break;
+        }
+
+        spawnRequests.Add(player.ToString());
+
+        // ✅ เพิ่ม timeout counter
+        float timeout = 5f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            yield return new WaitForSeconds(0.5f);
+            elapsed += 0.5f;
+
+            // ✅ ตรวจสอบว่า PersistentPlayerData พร้อมหรือยัง
+            if (PersistentPlayerData.Instance != null && PersistentPlayerData.Instance.isDataLoaded)
+            {
+                break;
+            }
+
+            if (elapsed >= timeout)
+            {
+                Debug.LogError($"[DelayedSpawn] ⏰ TIMEOUT waiting for PersistentPlayerData!");
+                spawnRequests.Remove(player.ToString());
+                yield break;
+            }
+        }
+
+        Debug.Log($"[DelayedSpawn] 1️⃣ Getting active character from PersistentPlayerData...");
+
+        // ✅ ดึง character type
+        string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+        Debug.Log($"[DelayedSpawn] 2️⃣ Active character string: '{activeCharacter}'");
+
+        // ✅ Validate character type
+        if (string.IsNullOrEmpty(activeCharacter))
+        {
+            Debug.LogError($"[DelayedSpawn] ❌ Active character is NULL or empty!");
+            activeCharacter = "Assassin";
+        }
+
+        PlayerSelectionData.CharacterType selectedCharacter;
+
+        // ✅ Parse enum
+        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out selectedCharacter))
+        {
+            Debug.Log($"[DelayedSpawn] ✅ Parse SUCCESS: {selectedCharacter} (int: {(int)selectedCharacter})");
+        }
+        else
+        {
+            Debug.LogError($"[DelayedSpawn] ❌ Failed to parse '{activeCharacter}' - using Assassin");
+            selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
+        }
+
+        // ✅ ตรวจสอบ prefab
+        Debug.Log($"[DelayedSpawn] 5️⃣ Checking prefab availability for {selectedCharacter}...");
+
+        if (!IsPrefabAvailable(selectedCharacter))
+        {
+            Debug.LogError($"[DelayedSpawn] ❌ Prefab not available for {selectedCharacter}!");
+            Debug.Log($"[DelayedSpawn] 🔄 Falling back to Assassin...");
+
+            selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
+
+            if (!IsPrefabAvailable(selectedCharacter))
+            {
+                Debug.LogError($"[DelayedSpawn] ❌ CRITICAL: Even Assassin not available!");
+                spawnRequests.Remove(player.ToString());
+                yield break;
+            }
+        }
+
+        Debug.Log($"[DelayedSpawn] 6️⃣ About to spawn: {selectedCharacter}");
+
+        // ✅ Spawn character
+        SpawnCharacterForPlayer(player, selectedCharacter);
+
+        Debug.Log($"[DelayedSpawn] 🏁 END");
+
+        spawnRequests.Remove(player.ToString());
+    }
+
+
+    public void SpawnCharacterForPlayer(PlayerRef player, PlayerSelectionData.CharacterType characterType)
+    {
+        NetworkRunner currentRunner = _runner;
+
+        if (spawnedCharacters.ContainsKey(player))
+        {
+            Debug.LogWarning($"[PlayerSpawner] Player {player} already has a character spawned!");
+            return;
+        }
+
+        if (currentRunner == null)
+        {
+            currentRunner = FindObjectOfType<NetworkRunner>();
+            if (currentRunner == null)
+            {
+                Debug.LogError("[PlayerSpawner] NetworkRunner not found!");
+                return;
+            }
+        }
+
+        if (!currentRunner.IsServer)
+        {
+            return;
+        }
+
+        playerCharacters[player] = characterType;
+
+        // ✅ Generic prefab lookup
+        GameObject prefabToSpawn = GetPrefabForCharacter(characterType);
+
+        if (prefabToSpawn == null)
+        {
+            Debug.LogError($"[PlayerSpawner] ❌ No prefab found for: {characterType}");
+            return;
+        }
+
+        Debug.Log($"[PlayerSpawner] ✅ Spawning {characterType} using prefab: {prefabToSpawn.name}");
+
+        // Validate prefab components
+        if (!ValidatePrefab(prefabToSpawn, characterType))
+        {
+            return;
+        }
+
+        Vector3 spawnPosition = GetSafeSpawnPosition(player);
+
+        try
+        {
+            NetworkObject playerObject = currentRunner.Spawn(
+                prefabToSpawn,
+                spawnPosition,
+                Quaternion.identity,
+                player,
+                (runner, obj) =>
+                {
+                    if (player == runner.LocalPlayer)
+                    {
+                        Debug.Log($"[PlayerSpawner] ✅ Local player spawned as {characterType}");
+                        obj.gameObject.tag = "LocalPlayer";
+                    }
+                    else
+                    {
+                        Debug.Log($"[PlayerSpawner] ✅ Remote player spawned as {characterType}");
+                        obj.gameObject.tag = "RemotePlayer";
+                    }
+                }
+            );
+
+            if (playerObject != null)
+            {
+                spawnedCharacters[player] = playerObject;
+                Debug.Log($"[PlayerSpawner] ✅ Player {player} spawned as {characterType} at {spawnPosition}");
+
+                if (player == currentRunner.LocalPlayer)
+                {
+                    playerObject.gameObject.name = $"LocalPlayer_{characterType}";
+                }
+                else
+                {
+                    playerObject.gameObject.name = $"RemotePlayer_{player}_{characterType}";
+                }
+
+                SetupCombatUI(playerObject);
+            }
+            else
+            {
+                Debug.LogError($"[PlayerSpawner] ❌ Failed to spawn {characterType}! NetworkObject is null!");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PlayerSpawner] ❌ EXCEPTION while spawning {characterType}: {e.Message}");
+            Debug.LogError($"Stack trace: {e.StackTrace}");
+        }
+    }
+
+    /// <summary>
+    /// ✅ Generic prefab getter - no type-specific logic
+    /// </summary>
+    private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType characterType)
+    {
+        Debug.Log($"[GetPrefabForCharacter] ========================================");
+        Debug.Log($"[GetPrefabForCharacter] Looking for: {characterType} (int: {(int)characterType})");
+        Debug.Log($"[GetPrefabForCharacter] Dictionary count: {prefabDictionary.Count}");
+
+        // ✅ แสดง keys ทั้งหมด
+        Debug.Log($"[GetPrefabForCharacter] Dictionary contents:");
+        foreach (var kvp in prefabDictionary)
+        {
+            Debug.Log($"  - {kvp.Key} (int: {(int)kvp.Key}) → {(kvp.Value != null ? kvp.Value.name : "NULL")}");
+        }
+
+        // ✅ ค้นหา prefab
+        if (prefabDictionary.TryGetValue(characterType, out GameObject prefab))
+        {
+            if (prefab == null)
+            {
+                Debug.LogError($"[GetPrefabForCharacter] ❌ Prefab for {characterType} is NULL in dictionary!");
+                return null;
+            }
+
+            Debug.Log($"[GetPrefabForCharacter] ✅ Found prefab: {prefab.name}");
+
+            // ✅ Validate components
+            NetworkObject netObj = prefab.GetComponent<NetworkObject>();
+            Hero heroComp = prefab.GetComponent<Hero>();
+            Character charComp = prefab.GetComponent<Character>();
+
+            Debug.Log($"[GetPrefabForCharacter] Component validation:");
+            Debug.Log($"  - NetworkObject: {(netObj != null ? "✅" : "❌")}");
+            Debug.Log($"  - Hero: {(heroComp != null ? $"✅ ({heroComp.GetType().Name})" : "❌")}");
+            Debug.Log($"  - Character: {(charComp != null ? "✅" : "❌")}");
+
+            if (charComp != null)
+            {
+                Debug.Log($"  - CharacterStats: {(charComp.characterStats != null ? "✅" : "❌")}");
+            }
+
+            Debug.Log($"[GetPrefabForCharacter] ========================================");
+
+            return prefab;
+        }
+
+        Debug.LogError($"[GetPrefabForCharacter] ❌ Character type {characterType} NOT FOUND in dictionary!");
+        Debug.Log($"[GetPrefabForCharacter] ========================================");
+
+        return null;
+    }
+
+    /// <summary>
+    /// ✅ Validate prefab before spawning - generic validation
+    /// </summary>
+    private bool ValidatePrefab(GameObject prefab, PlayerSelectionData.CharacterType characterType)
+    {
+        NetworkObject networkObj = prefab.GetComponent<NetworkObject>();
+        Hero heroComponent = prefab.GetComponent<Hero>();
+
+        if (networkObj == null)
+        {
+            Debug.LogError($"[PlayerSpawner] ❌ {prefab.name} missing NetworkObject component!");
+            return false;
+        }
+
+        if (heroComponent == null)
+        {
+            Debug.LogError($"[PlayerSpawner] ❌ {prefab.name} missing Hero component!");
+            return false;
+        }
+
+        Debug.Log($"[PlayerSpawner] ✅ {characterType} prefab validation passed");
+        return true;
+    }
+
+    private bool IsPrefabAvailable(PlayerSelectionData.CharacterType characterType)
+    {
+        GameObject prefab = GetPrefabForCharacter(characterType);
+
+        if (prefab == null)
+        {
+            Debug.LogError($"[PlayerSpawner] ❌ Prefab not found for {characterType}!");
+            return false;
+        }
+
+        return true;
+    }
+    #endregion
+
+    #region UI Setup
     private void SetupCombatUI(NetworkObject playerObject)
     {
         if (playerObject == null) return;
@@ -87,93 +568,82 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         Hero hero = playerObject.GetComponent<Hero>();
         if (hero == null) return;
 
-        // 🆕 รอ stats โหลดเสร็จก่อน setup UI
         StartCoroutine(SetupCombatUIWithStatsWait(hero, playerObject));
     }
 
     private IEnumerator SetupCombatUIWithStatsWait(Hero hero, NetworkObject playerObject)
     {
-        Debug.Log($"[PlayerSpawner] 🔄 Setting up combat UI for {hero.CharacterName}, waiting for stats...");
+        Debug.Log($"[PlayerSpawner] 🔄 Setting up UI for {hero.CharacterName}...");
 
         yield return new WaitForSeconds(0.5f);
 
-        // รอให้ hero spawn เสร็จ
         while (!hero.IsSpawned)
         {
             yield return null;
         }
 
-        // 🆕 รอให้ stats โหลดเสร็จ (เฉพาะ local player)
         if (hero.HasInputAuthority)
         {
             yield return StartCoroutine(WaitForHeroStatsReady(hero));
         }
 
-        // Setup Screen Space UI (เฉพาะ local player)
         if (hero.HasInputAuthority)
         {
-            Debug.Log($"[PlayerSpawner] 🖥️ Setting up Combat UI for local player: {hero.CharacterName}");
+            Debug.Log($"[PlayerSpawner] 🖥️ Setting up Combat UI for local player");
 
             CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
 
             if (combatUI == null && combatUIManagerPrefab != null)
             {
                 combatUI = Instantiate(combatUIManagerPrefab);
-                Debug.Log("[PlayerSpawner] Created new CombatUIManager from prefab");
+                Debug.Log("[PlayerSpawner] Created new CombatUIManager");
             }
 
             if (combatUI != null)
             {
                 yield return new WaitForEndOfFrame();
                 combatUI.SetLocalHero(hero);
-                Debug.Log($"[PlayerSpawner] ✅ Combat UI setup complete for {hero.CharacterName}");
+                Debug.Log($"[PlayerSpawner] ✅ Combat UI setup complete");
             }
         }
 
-        // 🆕 แจ้งว่า hero พร้อมใช้งานแล้ว (หลัง stats โหลดเสร็จ)
         OnHeroSpawnComplete(hero);
     }
+
     private IEnumerator WaitForHeroStatsReady(Hero hero)
     {
-        Debug.Log($"[PlayerSpawner] ⏳ Waiting for {hero.CharacterName} stats to be ready...");
+        Debug.Log($"[PlayerSpawner] ⏳ Waiting for {hero.CharacterName} stats...");
 
         Character character = hero.GetComponent<Character>();
         if (character == null)
         {
-            Debug.LogError($"[PlayerSpawner] No Character component found on {hero.CharacterName}!");
+            Debug.LogError($"[PlayerSpawner] No Character component!");
             yield break;
         }
 
-        // 🔧 รอให้ PersistentPlayerData โหลดเสร็จก่อน - เพิ่มเวลารอ
         yield return new WaitUntil(() => PersistentPlayerData.Instance != null);
 
-        // 🔧 รอให้ data โหลดเสร็จจริงๆ - เพิ่มเวลาเป็น 45 วินาที
         float dataWaitTime = 0f;
         while (!PersistentPlayerData.Instance.isDataLoaded && dataWaitTime < 45f)
         {
-            yield return new WaitForSeconds(1f); // เปลี่ยนจาก 0.5 เป็น 1 วินาที
+            yield return new WaitForSeconds(1f);
             dataWaitTime += 1f;
 
-            // แสดง progress ทุก 5 วินาที
             if (Mathf.RoundToInt(dataWaitTime) % 5 == 0)
             {
                 Debug.Log($"[PlayerSpawner] Still waiting for data... {dataWaitTime}s");
             }
         }
 
-        // 🆕 ตรวจสอบว่าข้อมูลถูกต้องหรือไม่
         bool hasValidData = PersistentPlayerData.Instance.HasValidData();
         Debug.Log($"[PlayerSpawner] Data loaded: {PersistentPlayerData.Instance.isDataLoaded}, Valid: {hasValidData}");
 
         if (!PersistentPlayerData.Instance.isDataLoaded)
         {
-            Debug.LogError($"[PlayerSpawner] ❌ TIMEOUT waiting for PersistentPlayerData after {dataWaitTime}s!");
-
-            // 🆕 ลองโหลด backup
+            Debug.LogError($"[PlayerSpawner] ❌ TIMEOUT after {dataWaitTime}s!");
             yield return StartCoroutine(TryLoadBackupData());
         }
 
-        // รอให้ Character โหลด stats เสร็จ - เพิ่มเวลาเป็น 45 วินาที
         int maxWaitTime = 45;
         float waitTime = 0f;
 
@@ -184,33 +654,29 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
             if (Mathf.RoundToInt(waitTime) % 5 == 0 && waitTime % 1f < 0.5f)
             {
-                Debug.Log($"[PlayerSpawner] Still waiting for {hero.CharacterName} stats... ({waitTime:F1}s)");
+                Debug.Log($"[PlayerSpawner] Still waiting for stats... ({waitTime:F1}s)");
             }
         }
 
         if (character.IsStatsLoadingComplete())
         {
             heroStatsReady[hero] = true;
-            Debug.Log($"[PlayerSpawner] ✅ {hero.CharacterName} stats ready! Final stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
+            Debug.Log($"[PlayerSpawner] ✅ Stats ready! HP={character.MaxHp}, ATK={character.AttackDamage}");
         }
         else
         {
-            Debug.LogWarning($"[PlayerSpawner] ⚠️ Timeout waiting for {hero.CharacterName} stats after {maxWaitTime}s");
+            Debug.LogWarning($"[PlayerSpawner] ⚠️ Timeout after {maxWaitTime}s");
             heroStatsReady[hero] = false;
-
-            // 🆕 ลองโหลดข้อมูลอีกครั้ง
             yield return StartCoroutine(RetryLoadCharacterData(character));
         }
     }
 
-    // 🆕 เพิ่ม method สำหรับลอง load backup
     private IEnumerator TryLoadBackupData()
     {
         Debug.Log("[PlayerSpawner] 🔄 Trying to load backup data...");
 
         bool backupLoaded = false;
 
-        // ลองให้ PersistentPlayerData โหลด backup
         var loadBackupMethod = typeof(PersistentPlayerData).GetMethod(
             "LoadFromPlayerPrefsBackup",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -229,7 +695,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
         if (backupLoaded)
         {
-            Debug.Log("[PlayerSpawner] ✅ Backup data loaded successfully");
+            Debug.Log("[PlayerSpawner] ✅ Backup data loaded");
             yield return new WaitForSeconds(1f);
         }
         else
@@ -238,8 +704,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-
-    // 🆕 เพิ่ม method สำหรับ retry การโหลด character data
     private IEnumerator RetryLoadCharacterData(Character character)
     {
         Debug.Log("[PlayerSpawner] 🔄 Retrying character data load...");
@@ -248,7 +712,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
         try
         {
-            // ลองโหลดข้อมูลใหม่
             if (PersistentPlayerData.Instance?.HasValidData() == true)
             {
                 var levelManager = character.GetComponent<LevelManager>();
@@ -258,17 +721,15 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
                 }
 
                 PersistentPlayerData.Instance.LoadInventoryData(character);
-
-                
             }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[PlayerSpawner] Retry failed: {e.Message}");
         }
+
         yield return new WaitForSeconds(2f);
 
-        // ตรวจสอบผลลัพธ์
         if (character.MaxHp > 0 && character.AttackDamage > 0)
         {
             heroStatsReady[character.GetComponent<Hero>()] = true;
@@ -276,66 +737,45 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         }
     }
 
-
-
-    private void Update()
-    {
-        // ✅ หา NetworkRunner ใน Update แทน
-        if (_runner == null)
-        {
-            _runner = FindObjectOfType<NetworkRunner>();
-            if (_runner != null)
-            {
-                _runner.AddCallbacks(this);
-                Debug.Log($"PlayerSpawner registered with NetworkRunner. IsServer: {_runner.IsServer}");
-            }
-            // ✅ ลบ Debug.LogError ออก เพราะจะแสดงตลอดก่อนที่ NetworkRunner จะถูกสร้าง
-        }
-    }
     public void OnHeroSpawnComplete(Hero hero)
     {
-        Debug.Log($"[PlayerSpawner] 🎉 Hero spawn complete: {hero.CharacterName}, HasInput: {hero.HasInputAuthority}");
+        Debug.Log($"[PlayerSpawner] 🎉 Hero spawn complete: {hero.CharacterName}");
 
-        // ตรวจสอบว่า stats พร้อมหรือไม่
         bool statsReady = heroStatsReady.ContainsKey(hero) ? heroStatsReady[hero] : false;
-        Debug.Log($"[PlayerSpawner] Stats ready for {hero.CharacterName}: {statsReady}");
+        Debug.Log($"[PlayerSpawner] Stats ready: {statsReady}");
 
-        // Setup UI สำหรับ local player (ถ้า stats พร้อมแล้ว)
         if (hero.HasInputAuthority && statsReady)
         {
             StartCoroutine(EnsureUISetup(hero));
         }
 
-        // สร้าง WorldSpaceUI สำหรับ hero นี้
         StartCoroutine(DelayedWorldUISetup(hero));
 
-        // 🆕 Debug final stats
         Character character = hero.GetComponent<Character>();
         if (character != null)
         {
-            Debug.Log($"[PlayerSpawner] 📊 Final spawned stats for {hero.CharacterName}: HP={character.MaxHp}, ATK={character.AttackDamage}, CriBonus={character.CriticalDamageBonus}, CriBonus{character.CriticalDamageBonus }");
+            Debug.Log($"[PlayerSpawner] 📊 Final stats: HP={character.MaxHp}, ATK={character.AttackDamage}");
         }
     }
+
     private IEnumerator DelayedWorldUISetup(Hero hero)
     {
-        // รอให้ network state พร้อม
         while (!hero.IsNetworkStateReady)
         {
             yield return new WaitForSeconds(0.1f);
         }
 
-        // 🆕 รอให้ stats พร้อม (สำหรับ UI display)
         Character character = hero.GetComponent<Character>();
         if (character != null)
         {
             yield return new WaitUntil(() => character.IsStatsLoadingComplete());
         }
 
-        // รอเพิ่มอีกนิดเพื่อให้แน่ใจ
         yield return new WaitForSeconds(0.2f);
 
         CreateWorldSpaceUIForHero(hero);
     }
+
     private IEnumerator EnsureUISetup(Hero hero)
     {
         yield return new WaitForSeconds(0.1f);
@@ -344,17 +784,17 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         if (combatUI != null && combatUI.localHero == null)
         {
             combatUI.SetLocalHero(hero);
-            Debug.Log("UI setup completed for late-joining player");
+            Debug.Log("[PlayerSpawner] UI setup completed");
         }
     }
+
     public void CreateWorldSpaceUIForHero(Hero hero)
     {
         if (hero == null || worldSpaceUIPrefab == null) return;
 
-        // ตรวจสอบว่าสร้าง UI ไปแล้วหรือยัง
         if (heroWorldUIs.ContainsKey(hero)) return;
 
-        Debug.Log($"Creating WorldSpaceUI for {hero.CharacterName}");
+        Debug.Log($"[PlayerSpawner] Creating WorldSpaceUI for {hero.CharacterName}");
 
         GameObject worldUI = Instantiate(worldSpaceUIPrefab);
         WorldSpaceUI worldSpaceUI = worldUI.GetComponent<WorldSpaceUI>();
@@ -363,358 +803,73 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         {
             worldSpaceUI.Initialize(hero);
             heroWorldUIs[hero] = worldUI;
-            Debug.Log($"WorldSpaceUI created and initialized for {hero.CharacterName}");
+            Debug.Log($"[PlayerSpawner] WorldSpaceUI created");
         }
     }
-    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
-    {
-        Debug.Log($"[SPAWNER] OnPlayerJoined - Player: {player}, IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
-        Debug.LogError($"[MOBILE] Player joined: {player}, IsServer: {runner.IsServer}");
+    #endregion
 
-        _runner = runner;
-
-        if (!runner.IsServer)
-        {
-            Debug.LogError("[MOBILE] Not server - cannot spawn!");
-            return;
-        }
-        if (runner.GameMode == GameMode.Single)
-        {
-            Debug.LogError("[MOBILE] Single mode - forcing spawn");
-            PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
-            SpawnCharacterForPlayer(runner.LocalPlayer, selectedCharacter);
-            return;
-        }
-        // ตรวจสอบและลบข้อมูลเก่าของผู้เล่นนี้ (ถ้ามี)
-        if (spawnedCharacters.ContainsKey(player))
-        {
-            Debug.Log($"Removing old character data for player {player}");
-            spawnedCharacters.Remove(player);
-        }
-        if (playerCharacters.ContainsKey(player))
-        {
-            playerCharacters.Remove(player);
-        }
-        if (playerManagers.ContainsKey(player))
-        {
-            playerManagers.Remove(player);
-        }
-
-        // Spawn NetworkPlayerManager สำหรับ player นี้ก่อน
-        if (networkPlayerManagerPrefab != null)
-        {
-            NetworkObject managerObject = runner.Spawn(
-                networkPlayerManagerPrefab,
-                Vector3.zero,
-                Quaternion.identity,
-                player
-            );
-
-            if (managerObject != null)
-            {
-                NetworkPlayerManager manager = managerObject.GetComponent<NetworkPlayerManager>();
-                if (manager != null)
-                {
-                    playerManagers[player] = manager;
-                    Debug.Log($"NetworkPlayerManager spawned for player {player}");
-                }
-            }
-        }
-
-        // Spawn character
-        if (player != runner.LocalPlayer)
-        {
-            StartCoroutine(DelayedSpawn(player));
-
-            if (!spawnedCharacters.ContainsKey(runner.LocalPlayer))
-            {
-                Debug.Log($"[SPAWNER] Also spawning host player");
-                StartCoroutine(DelayedSpawn(runner.LocalPlayer));
-            }
-        }
-        else
-        {
-            StartCoroutine(DelayedSpawn(player));
-        }
-    }
-    IEnumerator DelayedSpawn(PlayerRef player)
-    {
-        string spawnKey = $"{player}_{Time.time}";
-
-      //  Debug.Log($"[DELAYED SPAWN] Starting for {player}, Key: {spawnKey}");
-
-        // ตรวจสอบว่ามี request ซ้ำหรือไม่
-        if (spawnRequests.Contains(player.ToString()))
-        {
-            Debug.LogWarning($"[DUPLICATE REQUEST] Already spawning {player}");
-            yield break;
-        }
-
-        spawnRequests.Add(player.ToString());
-
-        yield return new WaitForSeconds(0.5f);
-
-        Debug.Log($"[DELAYED SPAWN] Now spawning {player}");
-        PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
-        SpawnCharacterForPlayer(player, selectedCharacter);
-
-        // ลบออกหลัง spawn เสร็จ
-        spawnRequests.Remove(player.ToString());
-    }
-    // เมธอดใหม่สำหรับ spawn ตัวละคร
-    public void SpawnCharacterForPlayer(PlayerRef player, PlayerSelectionData.CharacterType characterType)
-    {
-        // ใช้ runner ที่หาได้ล่าสุด
-        NetworkRunner currentRunner = _runner;
-     //   Debug.Log($"[SPAWN] Attempting to spawn for {player}, Already spawned: {spawnedCharacters.ContainsKey(player)}");
-       // Debug.Log($"[SPAWN] Called for {player}, Stack: {System.Environment.StackTrace}");
-
-        if (spawnedCharacters.ContainsKey(player))
-        {
-            Debug.LogWarning($"Player {player} already has a character spawned!");
-            return;
-        }
-      //  Debug.Log($"[SPAWNER] Spawning for {player}, Runner.LocalPlayer: {_runner.LocalPlayer}, IsServer: {_runner.IsServer}");
-
-        if (currentRunner == null)
-        {
-            currentRunner = FindObjectOfType<NetworkRunner>();
-            if (currentRunner == null)
-            {
-                Debug.LogError("NetworkRunner not found!");
-                return;
-            }
-        }
-
-        if (!currentRunner.IsServer)
-        {
-           // Debug.LogError($"Only server can spawn characters! IsServer: {currentRunner.IsServer}");
-            return;
-        }
-
-        // ตรวจสอบว่า player นี้ spawn ตัวละครไปแล้วหรือยัง
-        if (spawnedCharacters.ContainsKey(player))
-        {
-           // Debug.LogWarning($"Player {player} already has a character spawned!");
-            return;
-        }
-
-        // บันทึกตัวละครที่ player เลือก
-        playerCharacters[player] = characterType;
-
-        // เลือก prefab ตามตัวละครที่เลือก
-        GameObject prefabToSpawn = GetPrefabForCharacter(characterType);
-
-        if (prefabToSpawn == null)
-        {
-            Debug.LogError($"No prefab found for character: {characterType}");
-            return;
-        }
-
-        // สร้างตำแหน่งสุ่มสำหรับ spawn
-        Vector3 spawnPosition = new Vector3(UnityEngine.Random.Range(-5f, 5f), 0, UnityEngine.Random.Range(-5f, 5f));
-
-        // Spawn ตัวละคร
-        NetworkObject playerObject = currentRunner.Spawn(prefabToSpawn, spawnPosition, Quaternion.identity, player, (runner, obj) =>
-        {
-            // ตั้งค่าเฉพาะสำหรับ Local Player
-            if (player == runner.LocalPlayer)
-            {
-                Debug.Log($"Local player spawned as {characterType}");
-                obj.gameObject.tag = "LocalPlayer";
-            }
-            else
-            {
-                Debug.Log($"Remote player spawned as {characterType}");
-                obj.gameObject.tag = "RemotePlayer";
-            }
-        });
-
-        if (playerObject != null)
-        {
-            // บันทึกว่า spawn แล้ว
-            spawnedCharacters[player] = playerObject;
-
-            Debug.Log($"Player {player} spawned successfully as {characterType} at {spawnPosition}");
-
-            // ตั้งชื่อ GameObject ตามตัวละคร
-            if (player == currentRunner.LocalPlayer)
-            {
-                playerObject.gameObject.name = $"LocalPlayer_{characterType}";
-            }
-            else
-            {
-                playerObject.gameObject.name = $"RemotePlayer_{player}_{characterType}";
-            }
-        }
-        else
-        {
-            Debug.LogError($"Failed to spawn player as {characterType}!");
-        }
-        SetupCombatUI(playerObject);
-
-    }
-
-    private GameObject GetPrefabForCharacter(PlayerSelectionData.CharacterType character)
-    {
-        switch (character)
-        {
-            case PlayerSelectionData.CharacterType.BloodKnight:
-                return bloodKnightPrefab;
-            case PlayerSelectionData.CharacterType.Archer:
-                return archerPrefab;
-            case PlayerSelectionData.CharacterType.Assassin:
-                return assassinPrefab;
-            case PlayerSelectionData.CharacterType.IronJuggernaut:
-                return ironJuggernautPrefab;
-            default:
-                Debug.LogWarning($"Unknown character type: {character}, using default");
-                return bloodKnightPrefab;
-        }
-    }
-
-    // เพิ่ม callback สำหรับเมื่อผู้เล่นออกจากเกม
-    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
-    {
-        Debug.Log($"[PlayerSpawner] Player {player} left the game");
-
-        if (spawnedCharacters.ContainsKey(player))
-        {
-            NetworkObject playerObj = spawnedCharacters[player];
-            if (playerObj != null)
-            {
-                Hero hero = playerObj.GetComponent<Hero>();
-                if (hero != null)
-                {
-                    // 🆕 ลบ hero stats tracking
-                    if (heroStatsReady.ContainsKey(hero))
-                    {
-                        heroStatsReady.Remove(hero);
-                    }
-
-                    // ลบ WorldUI
-                    if (heroWorldUIs.ContainsKey(hero))
-                    {
-                        Destroy(heroWorldUIs[hero]);
-                        heroWorldUIs.Remove(hero);
-                    }
-                }
-            }
-            spawnedCharacters.Remove(player);
-        }
-
-        // ลบข้อมูลอื่นๆ
-        if (playerCharacters.ContainsKey(player))
-        {
-            playerCharacters.Remove(player);
-        }
-
-        if (playerManagers.ContainsKey(player))
-        {
-            playerManagers.Remove(player);
-        }
-    }
-    public void CleanupOnGameExit()
-    {
-        Debug.Log("[PlayerSpawner] Cleaning up PlayerSpawner data");
-
-        // Clear ข้อมูลทั้งหมด
-        playerCharacters.Clear();
-        playerManagers.Clear();
-        spawnedCharacters.Clear();
-        spawnRequests.Clear();
-        heroStatsReady.Clear(); // 🆕 เพิ่มบรรทัดนี้
-
-        // Remove callbacks
-        if (_runner != null)
-        {
-            _runner.RemoveCallbacks(this);
-        }
-    }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
-    {
-        Debug.Log($"NetworkRunner shutdown: {shutdownReason}");
-        CleanupOnGameExit();
-    }
+    #region Spawn Position Management
     private Vector3 GetSafeSpawnPosition(PlayerRef player)
     {
-        Debug.Log($"🎯 [SPAWN] Getting safe position for Player {player}...");
+        Debug.Log($"[PlayerSpawner] 🎯 Getting spawn position for Player {player}");
 
-        // วิธีที่ 1: ใช้ spawn points ที่กำหนดไว้
+        // Method 1: Use spawn points
         if (spawnPoints != null && spawnPoints.Length > 0)
         {
-            Debug.Log($"🎯 [SPAWN] Found {spawnPoints.Length} spawn points");
-
-            // กรอง spawn points ที่ไม่เป็น null
             List<Transform> validSpawnPoints = new List<Transform>();
             for (int i = 0; i < spawnPoints.Length; i++)
             {
                 if (spawnPoints[i] != null)
                 {
                     validSpawnPoints.Add(spawnPoints[i]);
-                    Debug.Log($"🎯 [SPAWN] Valid spawn point {i}: {spawnPoints[i].name} at {spawnPoints[i].position}");
-                }
-                else
-                {
-                    Debug.LogWarning($"⚠️ [SPAWN] Spawn point {i} is NULL!");
                 }
             }
 
             if (validSpawnPoints.Count > 0)
             {
-                // เลือก spawn point ตาม player index
                 int spawnIndex = player.PlayerId % validSpawnPoints.Count;
                 Transform selectedSpawnPoint = validSpawnPoints[spawnIndex];
-
                 Vector3 spawnPosition = selectedSpawnPoint.position;
-                Debug.Log($"✅ [SPAWN] Using spawn point {spawnIndex}: {selectedSpawnPoint.name} at {spawnPosition}");
+                Debug.Log($"[PlayerSpawner] ✅ Using spawn point {spawnIndex} at {spawnPosition}");
                 return spawnPosition;
             }
         }
-        else
-        {
-            Debug.LogWarning($"⚠️ [SPAWN] No spawn points available! Array length: {(spawnPoints?.Length ?? 0)}");
-        }
 
-        // วิธีที่ 2: หาตำแหน่งที่ปลอดภัยด้วย Raycast
+        // Method 2: Find safe ground with Raycast
         Vector3 safePosition = FindSafeGroundPosition();
-
         if (safePosition != Vector3.zero)
         {
-            Debug.Log($"✅ [SPAWN] Found safe ground position: {safePosition}");
+            Debug.Log($"[PlayerSpawner] ✅ Found safe ground: {safePosition}");
             return safePosition;
         }
 
-        // วิธีที่ 3: Fallback - ใช้ตำแหน่งเริ่มต้นที่ปลอดภัย
+        // Method 3: Fallback position
         Vector3 fallbackPosition = GetFallbackSpawnPosition(player);
-
-        Debug.Log($"✅ [SPAWN] Using fallback position: {fallbackPosition}");
+        Debug.Log($"[PlayerSpawner] ✅ Using fallback: {fallbackPosition}");
         return fallbackPosition;
     }
 
-    // ✅ เพิ่ม method สำหรับสร้าง spawn points อัตโนมัติตอน runtime
     private void CreateDefaultSpawnPointsRuntime()
     {
-        Debug.Log("🎯 [SPAWN] Creating default spawn points at runtime...");
+        Debug.Log("[PlayerSpawner] 🎯 Creating default spawn points...");
 
         GameObject spawnParent = GameObject.Find("SpawnPoints");
         if (spawnParent == null)
         {
             spawnParent = new GameObject("SpawnPoints");
-            Debug.Log("🎯 [SPAWN] Created SpawnPoints parent object");
         }
 
         Vector3[] defaultPositions = {
-        new Vector3(0, spawnHeight, 0),      // กลาง
-        new Vector3(3, spawnHeight, 0),      // ขวา
-        new Vector3(-3, spawnHeight, 0),     // ซ้าย
-        new Vector3(0, spawnHeight, 3),      // หน้า
-        new Vector3(0, spawnHeight, -3),     // หลัง
-        new Vector3(3, spawnHeight, 3),      // มุมขวาหน้า
-        new Vector3(-3, spawnHeight, 3),     // มุมซ้ายหน้า
-        new Vector3(3, spawnHeight, -3),     // มุมขวาหลัง
-        new Vector3(-3, spawnHeight, -3)     // มุมซ้ายหลัง
-    };
+            new Vector3(0, spawnHeight, 0),
+            new Vector3(3, spawnHeight, 0),
+            new Vector3(-3, spawnHeight, 0),
+            new Vector3(0, spawnHeight, 3),
+            new Vector3(0, spawnHeight, -3),
+            new Vector3(3, spawnHeight, 3),
+            new Vector3(-3, spawnHeight, 3),
+            new Vector3(3, spawnHeight, -3),
+            new Vector3(-3, spawnHeight, -3)
+        };
 
         spawnPoints = new Transform[defaultPositions.Length];
 
@@ -724,74 +879,74 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             spawnPoint.transform.parent = spawnParent.transform;
             spawnPoint.transform.position = defaultPositions[i];
             spawnPoints[i] = spawnPoint.transform;
-
-            Debug.Log($"🎯 [SPAWN] Created spawn point {i} at {defaultPositions[i]}");
         }
 
-        Debug.Log($"✅ [SPAWN] Created {defaultPositions.Length} runtime spawn points");
+        Debug.Log($"[PlayerSpawner] ✅ Created {defaultPositions.Length} spawn points");
     }
 
-    // ✅ ปรับปรุง fallback position ให้ดีกว่า
     private Vector3 GetFallbackSpawnPosition(PlayerRef player)
     {
-        Debug.Log($"🎯 [SPAWN] Calculating fallback position for Player {player}...");
-
-        // สร้างตำแหน่งแบบกระจาย 3x3 grid
         int playerIndex = player.PlayerId;
         int gridSize = 3;
         int x = playerIndex % gridSize;
         int z = (playerIndex / gridSize) % gridSize;
 
         Vector3 fallbackPosition = new Vector3(
-            (x - 1) * 4f, // -4, 0, 4
+            (x - 1) * 4f,
             spawnHeight,
-            (z - 1) * 4f  // -4, 0, 4
+            (z - 1) * 4f
         );
 
-        Debug.Log($"🎯 [SPAWN] Fallback position for Player {playerIndex}: Grid({x},{z}) = {fallbackPosition}");
         return fallbackPosition;
     }
 
-    // ✅ ปรับปรุง FindSafeGroundPosition ให้มี debug
     private Vector3 FindSafeGroundPosition()
     {
-        Debug.Log($"🎯 [SPAWN] Searching for safe ground position...");
-
         int maxAttempts = 10;
 
         for (int i = 0; i < maxAttempts; i++)
         {
-            // สุ่มตำแหน่ง X, Z
             float x = UnityEngine.Random.Range(-8f, 8f);
             float z = UnityEngine.Random.Range(-8f, 8f);
-
-            // เริ่มต้นจากจุดสูง
             Vector3 rayStart = new Vector3(x, 20f, z);
 
-            Debug.Log($"🎯 [SPAWN] Attempt {i + 1}: Raycasting from {rayStart}...");
-
-            // ยิง Raycast ลงไปหาพื้น
             if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, 25f, groundLayerMask))
             {
-                // พบพื้น - spawn สูงกว่าพื้นนิดหน่อย
                 Vector3 groundPosition = hit.point;
-                groundPosition.y += 1f; // เพิ่มความสูง 1 เมตร
-
-                Debug.Log($"✅ [SPAWN] Found ground at attempt {i + 1}: {groundPosition}");
+                groundPosition.y += 1f;
                 return groundPosition;
-            }
-            else
-            {
-                Debug.Log($"❌ [SPAWN] Attempt {i + 1}: No ground found");
             }
         }
 
-        // ไม่พบพื้นที่ปลอดภัย
-        Debug.LogWarning("⚠️ [SPAWN] Could not find safe ground position after all attempts");
         return Vector3.zero;
     }
+    #endregion
 
-    // ✅ เพิ่ม method สำหรับ debug spawn points ใน Scene View
+    #region Cleanup
+    public void CleanupOnGameExit()
+    {
+        Debug.Log("[PlayerSpawner] Cleaning up...");
+
+        playerCharacters.Clear();
+        playerManagers.Clear();
+        spawnedCharacters.Clear();
+        spawnRequests.Clear();
+        heroStatsReady.Clear();
+
+        if (_runner != null)
+        {
+            _runner.RemoveCallbacks(this);
+        }
+    }
+
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
+    {
+        Debug.Log($"[PlayerSpawner] Shutdown: {shutdownReason}");
+        CleanupOnGameExit();
+    }
+    #endregion
+
+    #region Debug Visualization
     private void OnDrawGizmos()
     {
         if (!showSpawnPointDebug) return;
@@ -802,15 +957,12 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             {
                 if (spawnPoints[i] != null)
                 {
-                    // วาด spawn point เป็นทรงกลมสีเขียว
                     Gizmos.color = Color.green;
                     Gizmos.DrawWireSphere(spawnPoints[i].position, 0.5f);
 
-                    // วาดเลขเพื่อบอก index
                     Gizmos.color = Color.yellow;
                     Gizmos.DrawRay(spawnPoints[i].position, Vector3.up * 2f);
 
-                    // วาดชื่อ (ถ้าต้องการ)
 #if UNITY_EDITOR
                     UnityEditor.Handles.Label(spawnPoints[i].position + Vector3.up * 2.5f, $"Spawn {i}");
 #endif
@@ -818,55 +970,13 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        // วาดพื้นที่ที่ใช้ Raycast หาพื้น
         Gizmos.color = Color.blue;
         Gizmos.DrawWireCube(Vector3.zero, new Vector3(16f, 0.1f, 16f));
     }
+    #endregion
 
-    // ✅ เพิ่ม Inspector Button สำหรับ debug
-    [ContextMenu("🔍 Debug Spawn Points")]
-    private void DebugSpawnPoints()
-    {
-        Debug.Log("=== SPAWN POINTS DEBUG ===");
-        Debug.Log($"Array length: {(spawnPoints?.Length ?? 0)}");
-        Debug.Log($"Auto create: {autoCreateSpawnPoints}");
-        Debug.Log($"Spawn height: {spawnHeight}");
 
-        if (spawnPoints != null)
-        {
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                if (spawnPoints[i] != null)
-                {
-                    Debug.Log($"Spawn Point {i}: {spawnPoints[i].name} at {spawnPoints[i].position}");
-                }
-                else
-                {
-                    Debug.LogWarning($"Spawn Point {i}: NULL");
-                }
-            }
-        }
-
-        Debug.Log("========================");
-    }
-
-    [ContextMenu("🎯 Test Spawn Positions")]
-    private void TestSpawnPositions()
-    {
-        Debug.Log("=== TESTING SPAWN POSITIONS ===");
-
-        for (int i = 0; i < 5; i++)
-        {
-            // สร้าง fake PlayerRef เพื่อทดสอบ
-            var fakePlayer = PlayerRef.FromIndex(i);
-            Vector3 testPosition = GetSafeSpawnPosition(fakePlayer);
-            Debug.Log($"Player {i} would spawn at: {testPosition}");
-        }
-
-        Debug.Log("==============================");
-    }
-
-    // เมธอดที่จำเป็นต้องมีสำหรับ INetworkRunnerCallbacks
+    #region INetworkRunnerCallbacks - Required Methods
     public void OnInput(NetworkRunner runner, NetworkInput input) { }
     public void OnDisconnectedFromServer(NetworkRunner runner) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
@@ -885,4 +995,5 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ArraySegment<byte> data) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+    #endregion
 }

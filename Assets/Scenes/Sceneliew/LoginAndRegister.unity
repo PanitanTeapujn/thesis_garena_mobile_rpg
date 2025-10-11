@@ -395,6 +395,7 @@ MonoBehaviour:
     lastLoginDate: 2025-07-01 12:01:09
     currentActiveCharacter: Assassin
     playerLevel: 1
+    maxlevel: 100
     playerExp: 0
     playerExpToNext: 100
     playerLevelGoldReward: 0
@@ -422,7 +423,6 @@ MonoBehaviour:
       gridHeight: 4
       lastSaveTime: 2025-07-01 18:29:29
       totalItemCount: 0
-    playerLevelSettings: {fileID: 0}
     hasInventoryData: 0
     inventoryLastSaveTime: 2025-07-01 18:29:29
     totalSharedItems: 0
@@ -433,11 +433,14 @@ MonoBehaviour:
       maxGems: 999999
       lastUpdateTime: 2025-07-11 18:25:23
       totalTransactions: 0
+    dailyQuests: []
+    hasDailyQuestData: 0
+    questLastUpdateTime: 2025-10-11 21:26:30
+    totalQuestsCompleted: 0
+    totalRewardsClaimed: 0
     hasCurrencyData: 0
     currencyLastSaveTime: 2025-07-11 18:25:23
   isDataLoaded: 0
-  playerLevelSettings: {fileID: 11400000, guid: c7d18e87a37518143928cb1c9156d252,
-    type: 2}
 --- !u!4 &140433958
 Transform:
   m_ObjectHideFlags: 0

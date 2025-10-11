@@ -216,12 +216,13 @@ public class FirebaseLoginManager : MonoBehaviour
             string playerName = nameInput.text.Trim();
             PlayerPrefs.SetString("PlayerName", playerName);
             PlayerPrefs.SetString("PlayerId", user.UserId);
-            PlayerPrefs.SetInt("IsFirstTime", 1); // ✅ ทำเครื่องหมายว่าเป็นผู้เล่นใหม่
+            PlayerPrefs.SetInt("IsFirstTime", 1);
 
-            // Create Firebase data in background
-            StartCoroutine(CreateFirebaseDataAsync());
+            // ❌ ลบบรรทัดนี้ออก - ไม่ต้องสร้าง Firebase data ตอน Register
+            // StartCoroutine(CreateFirebaseDataAsync());
 
-            // ✅ ไปหน้าเลือกตัวละครสำหรับผู้เล่นใหม่
+            // ✅ ไปหน้าเลือกตัวละครทันที - จะสร้าง Firebase data ภายหลัง
+            Debug.Log("[FirebaseLoginManager] Skipping Firebase creation, going to CharacterSelection");
             SceneManager.LoadScene("CharacterSelection");
         }
     }
@@ -241,7 +242,7 @@ public class FirebaseLoginManager : MonoBehaviour
         string savedCharacter = PlayerPrefs.GetString("LastCharacterSelected", "Assassin");
         if (Enum.TryParse<PlayerSelectionData.CharacterType>(savedCharacter, out var charType))
         {
-            PlayerSelectionData.SaveCharacterSelection(charType);
+            //PlayerSelectionData.SaveCharacterSelection(charType);
         }
 
         Debug.Log($"✅ Quick setup completed for {playerName} with character {savedCharacter}");
@@ -253,23 +254,22 @@ public class FirebaseLoginManager : MonoBehaviour
     {
         Debug.Log("🔄 Creating new player data in Firebase...");
 
+        // ✅ ดึงตัวละครที่เลือกจาก PlayerPrefs (ตั้งไว้ตอน Register)
+        string selectedCharacterType = PlayerPrefs.GetString("SelectedCharacter", "Assassin");
+
+        Debug.Log($"[FirebaseLoginManager] Selected character for new player: {selectedCharacterType}");
+
         // สร้าง MultiCharacterPlayerData ที่ถูกต้อง
         MultiCharacterPlayerData newPlayerData = new MultiCharacterPlayerData();
         newPlayerData.playerName = nameInput.text.Trim();
-        newPlayerData.currentActiveCharacter = "Assassin";
+        newPlayerData.currentActiveCharacter = selectedCharacterType; // ✅ ใช้ที่เลือก
         newPlayerData.registrationDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newPlayerData.lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // ตรวจสอบว่า Assassin data ถูกสร้างแล้ว
-        CharacterProgressData assassinData = newPlayerData.GetActiveCharacterData();
-        if (assassinData != null)
-        {
-            Debug.Log($"✅ Assassin data created: Level {assassinData.currentLevel}, HP {assassinData.totalMaxHp}, ATK {assassinData.totalAttackDamage}, CriDamage{assassinData.totalCriticalDamageBonus}");
-        }
-        else
-        {
-            Debug.LogError("❌ Failed to create Assassin data!");
-        }
+        // ✅ สร้างเฉพาะตัวละครที่เลือก
+        CharacterProgressData selectedCharacterData = newPlayerData.GetOrCreateCharacterData(selectedCharacterType);
+
+        Debug.Log($"✅ Created character data for {selectedCharacterType}: Level {selectedCharacterData.currentLevel}, HP {selectedCharacterData.totalMaxHp}, ATK {selectedCharacterData.totalAttackDamage}");
 
         // Save to PersistentPlayerData
         PersistentPlayerData.Instance.multiCharacterData = newPlayerData;
@@ -277,22 +277,18 @@ public class FirebaseLoginManager : MonoBehaviour
 
         Debug.Log($"🔄 Saving to Firebase for user: {user.UserId}");
 
-        // แบบที่ 1: ใช้ SetValueAsync แทน SetRawJsonValueAsync
         var playerRef = databaseReference.Child("players").Child(user.UserId);
 
         // สร้าง Dictionary สำหรับ Firebase
         var playerDataDict = new Dictionary<string, object>
-        {
-            {"playerName", newPlayerData.playerName},
-            {"currentActiveCharacter", newPlayerData.currentActiveCharacter},
-            {"registrationDate", newPlayerData.registrationDate},
-            {"lastLoginDate", newPlayerData.lastLoginDate},
-            {"friends", new List<string>()},
-            {"pendingFriendRequests", new Dictionary<string, string>()}
-        };
-
-        // Save character data
-
+    {
+        {"playerName", newPlayerData.playerName},
+        {"currentActiveCharacter", newPlayerData.currentActiveCharacter},
+        {"registrationDate", newPlayerData.registrationDate},
+        {"lastLoginDate", newPlayerData.lastLoginDate},
+        {"friends", new List<string>()},
+        {"pendingFriendRequests", new Dictionary<string, string>()}
+    };
 
         var task = playerRef.SetValueAsync(playerDataDict);
         yield return new WaitUntil(() => task.IsCompleted);

@@ -141,12 +141,10 @@ public class CharacterSelectionManager : MonoBehaviour
 
         if (comingFromLobby)
         {
-            // ✅ ถ้ามาจาก Lobby ใช้ชื่อที่มีอยู่แล้ว
             playerName = PersistentPlayerData.Instance.GetPlayerName();
         }
         else
         {
-            // ตรวจสอบชื่อสำหรับผู้เล่นใหม่
             playerName = playerNameInput.text.Trim();
 
             if (string.IsNullOrEmpty(playerName))
@@ -162,25 +160,25 @@ public class CharacterSelectionManager : MonoBehaviour
             }
         }
 
-        // แสดง loading
         ShowLoading(true);
 
-        // บันทึกข้อมูลใน PlayerPrefs
         PlayerPrefs.SetString("PlayerName", playerName);
-        PlayerSelectionData.SaveCharacterSelection(selectedCharacter);
+
+        // ✅ บันทึกแค่ใน PersistentPlayerData อย่างเดียว - ลบ PlayerPrefs.SetString("SelectedCharacter")
+        // PlayerPrefs.SetString("SelectedCharacter", selectedCharacter.ToString()); // ❌ ลบบรรทัดนี้
+        // PlayerSelectionData.SaveCharacterSelection(selectedCharacter); // ❌ ลบบรรทัดนี้
+
+        Debug.Log($"[CharacterSelection] ✅ Confirmed selection: {selectedCharacter}");
 
         if (comingFromLobby)
         {
-            // ✅ ถ้ามาจาก Lobby - ใช้ Multi-Character System
             yield return StartCoroutine(HandleCharacterSwitchFromLobby(playerName));
         }
         else
         {
-            // ✅ ผู้เล่นใหม่ - สร้าง Multi-Character Data
             yield return StartCoroutine(CreateNewMultiCharacterPlayer(playerName));
         }
 
-        // ซ่อน loading
         ShowLoading(false);
     }
 
@@ -218,36 +216,28 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         Debug.Log($"[CharacterSelection] Creating new multi-character player: {playerName}");
 
-        // ✅ สร้าง MultiCharacterPlayerData ใหม่
+        // ✅ สร้าง MultiCharacterPlayerData ใหม่ (ไม่มี default character)
         MultiCharacterPlayerData newMultiCharacterData = new MultiCharacterPlayerData();
         newMultiCharacterData.playerName = playerName;
-        newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString();
+        newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString(); // ✅ ใช้ที่เลือกจริง
         newMultiCharacterData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newMultiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // ถ้าเลือก Assassin ใช้ default ที่มีอยู่แล้ว, ถ้าไม่ใช่ให้สร้างใหม่
-        if (selectedCharacter.ToString() != "Assassin")
-        {
-            // เพิ่มตัวละครที่เลือกใหม่
-            CharacterProgressData newCharacterData = newMultiCharacterData.GetOrCreateCharacterData(selectedCharacter.ToString());
+        // ✅ สร้างเฉพาะตัวละครที่เลือก
+        Debug.Log($"[CharacterSelection] Creating character: {selectedCharacter}");
 
-            // Apply stats from ScriptableObject
-            CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
-            if (characterStats != null)
-            {
-                ApplyStatsFromScriptableObject(newCharacterData, characterStats);
-                Debug.Log($"✅ Applied ScriptableObject stats for {selectedCharacter}");
-            }
+        CharacterProgressData newCharacterData = newMultiCharacterData.GetOrCreateCharacterData(selectedCharacter.ToString());
+
+        // Apply stats from ScriptableObject
+        CharacterStats characterStats = GetCharacterStatsForCharacter(selectedCharacter);
+        if (characterStats != null)
+        {
+            ApplyStatsFromScriptableObject(newCharacterData, characterStats);
+            Debug.Log($"✅ Applied ScriptableObject stats for {selectedCharacter}");
         }
         else
         {
-            // ใช้ default Assassin และ apply stats
-            CharacterProgressData assassinData = newMultiCharacterData.GetActiveCharacterData();
-            CharacterStats assassinStats = GetCharacterStatsForCharacter(PlayerSelectionData.CharacterType.Assassin);
-            if (assassinStats != null)
-            {
-                ApplyStatsFromScriptableObject(assassinData, assassinStats);
-            }
+            Debug.LogWarning($"⚠️ Could not load stats for {selectedCharacter}, using defaults");
         }
 
         // Set ใน PersistentPlayerData

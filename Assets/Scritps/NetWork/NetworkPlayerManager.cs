@@ -38,9 +38,9 @@ public class NetworkPlayerManager : NetworkBehaviour
         // ส่งข้อมูลตัวละครที่เลือกไปให้ Host
         hasRequestedSpawn = true; // ตั้ง flag ก่อนส่ง
 
-        PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
+      /*  PlayerSelectionData.CharacterType selectedCharacter = PlayerSelectionData.GetSelectedCharacter();
         Debug.Log($"Client sending character selection to server: {selectedCharacter}");
-        RPC_RequestCharacterSpawn((int)selectedCharacter);
+        RPC_RequestCharacterSpawn((int)selectedCharacter);*/
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -84,14 +84,14 @@ public class NetworkPlayerManager : NetworkBehaviour
         }
     }
 
-    public static PlayerSelectionData.CharacterType GetLocalPlayerCharacter()
+   /* public static PlayerSelectionData.CharacterType GetLocalPlayerCharacter()
     {
         if (localInstance != null)
         {
             return (PlayerSelectionData.CharacterType)localInstance.SelectedCharacterType;
         }
         return PlayerSelectionData.GetSelectedCharacter();
-    }
+    }*/
 
     
 }

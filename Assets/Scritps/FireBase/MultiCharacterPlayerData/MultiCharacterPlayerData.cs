@@ -1230,7 +1230,7 @@ public class MultiCharacterPlayerData
         InitializePlayerLevelSystem();
         InitializeDailyQuestSystem();
         // ✅ เปลี่ยนจาก InitializeDefaultCharacter() เป็น CreateEmptyDefaultCharacter()
-        CreateEmptyDefaultCharacter();
+        
         InitializeStageProgressSystem();
     }
     private void CreateEmptyDefaultCharacter()

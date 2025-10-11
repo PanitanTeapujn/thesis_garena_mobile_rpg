@@ -648,54 +648,7 @@ public class Inventory : NetworkBehaviour
         return addSuccess;
     }
 
-    private void ForceCreateInventoryGridIfNeeded()
-    {
-        // หา InventoryGridManager
-        InventoryGridManager gridManager = FindObjectOfType<InventoryGridManager>();
-
-        if (gridManager != null)
-        {
-            // ถ้า gridManager มีแต่ยังไม่มี slots
-            if (gridManager.AllSlots.Count == 0)
-            {
-                Debug.Log("[Inventory] Requesting inventory grid creation...");
-
-                // Set character ถ้ายังไม่ได้ set
-                if (gridManager.OwnerCharacter == null)
-                {
-                    gridManager.SetOwnerCharacter(character);
-                }
-
-                // ✅ เพิ่มการ force update ทันที
-                gridManager.ForceUpdateFromCharacter();
-
-                // รอ 1 frame แล้วตรวจสอบอีกครั้ง
-                StartCoroutine(VerifyGridCreation(gridManager));
-            }
-            else
-            {
-                Debug.Log("[Inventory] Grid already exists, updating...");
-                gridManager.ForceUpdateFromCharacter();
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[Inventory] No InventoryGridManager found! Requesting setup...");
-
-            // หา CombatUIManager และ setup grid
-            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
-            if (uiManager != null)
-            {
-                uiManager.ForceSetupInventoryGrid();
-                // รอแล้วลองอีกครั้ง
-                StartCoroutine(RetryForceCreateGrid());
-            }
-            else
-            {
-                Debug.LogError("[Inventory] No CombatUIManager found!");
-            }
-        }
-    }
+    
     private void EnsureGridIsReady()
     {
         if (isGridReady) return;

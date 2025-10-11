@@ -342,45 +342,7 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log("[InventoryGrid] Force refreshed canvas for slot creation");
     }
 
-    private GameObject GetInventoryPanel()
-    {
-        // หาจาก CombatUIManager
-        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
-        if (uiManager != null && uiManager.inventoryPanel != null)
-        {
-            return uiManager.inventoryPanel;
-        }
-
-        // หาจาก parent hierarchy
-        Transform current = transform.parent;
-        while (current != null)
-        {
-            if (current.name.ToLower().Contains("inventory"))
-            {
-                return current.gameObject;
-            }
-            current = current.parent;
-        }
-
-        return null;
-    }
-
-    private IEnumerator DelayedDeactivatePanel(GameObject panel)
-    {
-        // รอ 2 frames เพื่อให้ slots สร้างเสร็จ
-        yield return null;
-        yield return null;
-
-        // ตรวจสอบว่า user ยังไม่ได้เปิด panel เอง
-        CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
-        bool userOpenedPanel = uiManager != null && uiManager.IsInventoryOpen();
-
-        if (!userOpenedPanel)
-        {
-            panel.SetActive(false);
-            Debug.Log("[InventoryGrid] Deactivated inventory panel after grid creation");
-        }
-    }
+   
     private void CreateSlot(int slotIndex)
     {
         GameObject slotObj;
@@ -482,18 +444,7 @@ public class InventoryGridManager : MonoBehaviour
             slot.SetEmptyState();
         }
     }
-    private void EnsureSlotIsReady(InventorySlot slot)
-    {
-        // ตรวจสอบว่า components ครบ
-        if (slot.slotBackground == null || slot.itemIcon == null || slot.slotButton == null)
-        {
-            Debug.LogWarning($"[InventoryGrid] Slot {slot.SlotIndex} missing components, re-setup");
-            slot.ForceSetupComponents();
-        }
-
-        // Force layout update
-        LayoutRebuilder.ForceRebuildLayoutImmediate(slot.GetComponent<RectTransform>());
-    }
+   
     private GameObject CreateSlotFromScratch()
     {
         // สร้าง slot object
