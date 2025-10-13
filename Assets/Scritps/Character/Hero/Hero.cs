@@ -107,7 +107,87 @@
             SceneManager.LoadScene("LoseScene");
         }
     }
+    // ใน Hero.cs ต้องมี methods เหล่านี้:
 
+    public bool CanUseSkill1()
+    {
+        return Time.time >= nextSkill1Time && CurrentMana >= GetSkill1ManaCost();
+    }
+
+    public bool CanUseSkill2()
+    {
+        return Time.time >= nextSkill2Time && CurrentMana >= GetSkill2ManaCost();
+    }
+
+    public bool CanUseSkill3()
+    {
+        return Time.time >= nextSkill3Time && CurrentMana >= GetSkill3ManaCost();
+    }
+
+    public bool CanUseSkill4()
+    {
+        return Time.time >= nextSkill4Time && CurrentMana >= GetSkill4ManaCost();
+    }
+
+    protected virtual int GetSkill1ManaCost() { return 15; }
+    protected virtual int GetSkill2ManaCost() { return 20; }
+    protected virtual int GetSkill3ManaCost() { return 25; }
+    protected virtual int GetSkill4ManaCost() { return 45; }
+
+    // 🆕 Public wrappers สำหรับ AutoFarm (ชื่อต่างกัน)
+    public int GetSkill1Cost() { return GetSkill1ManaCost(); }
+    public int GetSkill2Cost() { return GetSkill2ManaCost(); }
+    public int GetSkill3Cost() { return GetSkill3ManaCost(); }
+    public int GetSkill4Cost() { return GetSkill4ManaCost(); }
+    // เพิ่มใน Hero.cs
+
+    public float GetNextSkill1Time() { return nextSkill1Time; }
+    public float GetNextSkill2Time() { return nextSkill2Time; }
+    public float GetNextSkill3Time() { return nextSkill3Time; }
+    public float GetNextSkill4Time() { return nextSkill4Time; }
+    // 🆕 Public method สำหรับใช้ Skill จากภายนอก
+    public void UseSkill1()
+    {
+        if (CanUseSkill1())
+        {
+            TryUseSkill1();
+        }
+    }
+
+    public void UseSkill2()
+    {
+        if (CanUseSkill2())
+        {
+            TryUseSkill2();
+        }
+    }
+
+    public void UseSkill3()
+    {
+        if (CanUseSkill3())
+        {
+            TryUseSkill3();
+        }
+    }
+
+    public void UseSkill4()
+    {
+        if (CanUseSkill4())
+        {
+            TryUseSkill4();
+        }
+    }
+
+    public float GetNextAttackTime()
+    {
+        return nextAttackTime;
+    }
+
+    // 🆕 เพิ่ม method สำหรับดึง attack damages
+    public (int physicalDamage, int magicDamage) GetAttackDamages()
+    {
+        return base.GetAttackDamages();
+    }
     // ========== Level System Event Handlers ==========
     private void HandleLevelUp(Character character, int newLevel)
     {
@@ -660,7 +740,7 @@
             NetworkedCurrentMana = newMana;
             Debug.Log($"Health/Mana synced via RPC: HP={newHp}, Mana={newMana} for {CharacterName}");
         }
-    protected virtual void TryUseSkill1()
+    public virtual void TryUseSkill1()
     {
         Debug.Log($"=== SKILL 1 EXECUTED at {Time.time:F2} ===");
         Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, LayerMask.GetMask("Enemy"));
@@ -682,16 +762,16 @@
         }
     }
 
-    protected virtual void TryUseSkill2()
+    public virtual void TryUseSkill2()
         {
          
         }
 
-        protected virtual void TryUseSkill3()
+    public virtual void TryUseSkill3()
         {
         }
 
-        protected virtual void TryUseSkill4()
+        public virtual void TryUseSkill4()
         {
         }
     public  void UseMana(int amount)
@@ -729,6 +809,19 @@
 
     public virtual void TryAttack()
     {
+        Debug.Log($"[Hero] TryAttack called! HasInputAuthority: {HasInputAuthority}, IsSpawned: {IsSpawned}");
+
+        if (!HasInputAuthority || !IsSpawned)
+        {
+            Debug.LogWarning("[Hero] ❌ Cannot attack - no authority or not spawned");
+            return;
+        }
+
+        if (Time.time < nextAttackTime)
+        {
+            Debug.Log($"[Hero] ⏱️ Attack on cooldown: {nextAttackTime - Time.time:F1}s remaining");
+            return;
+        }
         if (!HasInputAuthority || !IsSpawned) return;
 
         if (Time.time < nextAttackTime) return;

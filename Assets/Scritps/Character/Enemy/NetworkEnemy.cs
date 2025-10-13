@@ -90,6 +90,10 @@ public class NetworkEnemy : Character
     [Header("Enemy Settings")]
     public float detectRange = 10f;
     public float attackCheckInterval = 0.5f;
+    [Header("🎯 Dummy Settings")]
+    [Networked] public bool IsDummy { get; set; }
+    [Networked] public int DummyLevel { get; set; }
+    public bool isLobbyDummy = false; // ตั้งค่าใน Inspector
 
     [Networked] public EnemyState CurrentState { get; set; }
     [Networked] public float StateTimer { get; set; }
@@ -152,6 +156,11 @@ public class NetworkEnemy : Character
     protected override void Start()
     {
         base.Start();
+        if (isLobbyDummy && HasStateAuthority)
+        {
+            IsDummy = true;
+            InitializeDummySystem();
+        }
         Debug.Log($"Enemy Start - HasStateAuthority: {HasStateAuthority}");
         if (dropManager == null)
             dropManager = GetComponent<EnemyDropManager>();
@@ -172,18 +181,7 @@ public class NetworkEnemy : Character
             rb.mass = 5f;   // ลด mass เพื่อให้เคลื่อนที่ได้ง่ายขึ้น
         }
 
-        if (showDebugInfo)
-        {
-            Debug.Log($"=== Enemy Movement Settings ===");
-            Debug.Log($"minDistanceToPlayer: {minDistanceToPlayer}");
-            Debug.Log($"enemySpacing: {enemySpacing}");
-            Debug.Log($"useCircling: {useCircling}");
-            Debug.Log($"circlingSpeed: {circlingSpeed}");
-            Debug.Log($"patrolRange: {patrolRange}");
-            Debug.Log($"patrolSpeed: {patrolSpeed}");
-            Debug.Log($"patrolWaitTime: {minPatrolWaitTime}-{maxPatrolWaitTime}s (random)");
-            Debug.Log($"===============================");
-        }
+       
 
         LevelManager enemyLevel = GetComponent<LevelManager>();
         if (enemyLevel != null && HasStateAuthority)
@@ -199,6 +197,32 @@ public class NetworkEnemy : Character
     }
 
     // ใน NetworkEnemy.cs - override InitializeStats เพื่อไม่ให้เรียก equipment methods
+    private void InitializeDummySystem()
+    {
+        if (!IsDummy) return;
+
+        DummyLevel = PlayerPrefs.GetInt("DummyLevel", 1);
+
+        int levelMultiplier = DummyLevel;
+        MaxHp = 500 + (levelMultiplier * 1000);
+        CurrentHp = MaxHp;
+        Armor = levelMultiplier * 10;
+
+        MoveSpeed = 0f;
+        detectRange = 0f;
+
+        // 🔧 ปิดการชนกับ Player
+        Collider col = GetComponent<Collider>();
+        if (col != null)
+        {
+            col.isTrigger = true; // เปลี่ยนเป็น trigger เพื่อไม่ให้ผลักกัน
+        }
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"[Dummy] Initialized Level {DummyLevel} Dummy - HP: {MaxHp}, Defense: {Armor}");
+        }
+    }
 
     protected override void InitializeStats()
     {
@@ -348,6 +372,8 @@ public class NetworkEnemy : Character
     // ========== 🎯 Improved Movement System ==========
     protected virtual void ImprovedMoveTowardsTarget()
     {
+        if (IsDummy) return;
+
         // อัพเดท State Timer
         StateTimer += Runner.DeltaTime;
 
@@ -774,6 +800,8 @@ public class NetworkEnemy : Character
 
     protected virtual void TryAttackTarget()
     {
+        if (IsDummy) return;
+
         if (targetTransform == null) return;
 
         float distance = Vector3.Distance(transform.position, targetTransform.position);
@@ -934,32 +962,37 @@ public class NetworkEnemy : Character
         Debug.Log($"Enemy {name} died!");
         IsDead = true;
 
-        // 🆕 ทำ drops และ session kill counting ทันทีเมื่อตาย
         if (HasStateAuthority)
         {
+            // 🆕 ถ้าเป็น Dummy ให้จัดการแบบพิเศษ
+            if (IsDummy)
+            {
+                HandleDummyDeath();
+                return; // ออกก่อน ไม่ทำ drop อื่นๆ
+            }
+
+            // Enemy ปกติ - โค้ดเดิม...
             DailyQuestTracker.AddEnemyKill();
 
-            // 1. Currency drops (เงิน + เพชร)
+            // Currency drops
             EnemyDropManager currencyDropManager = GetComponent<EnemyDropManager>();
             if (currencyDropManager != null)
             {
                 currencyDropManager.TriggerDrops();
             }
 
-            // 2. Item drops
+            // Item drops
             ItemDropManager itemDropManager = GetComponent<ItemDropManager>();
             if (itemDropManager != null)
             {
                 itemDropManager.TriggerItemDrops();
             }
 
-            // 3. Experience drops
+            // Experience drops
             DropExpToNearbyHeroes();
 
-            // 🆕 4. บอก EnemySpawner ว่า enemy ตัวนี้ตายแล้ว (สำหรับ session kills)
+            // Notify spawner
             NotifySpawnerOfDeath();
-
-            // 5. Global kill tracking
         }
 
         // Death visual effects...
@@ -977,9 +1010,80 @@ public class NetworkEnemy : Character
         {
             statusManager.ClearAllStatusEffects();
         }
+
         StageRewardTracker.AddEnemyKill();
 
         StartCoroutine(DestroyAfterDelay());
+    }
+    private void HandleDummyDeath()
+    {
+        Debug.Log($"[Dummy] Level {DummyLevel} Dummy defeated!");
+
+        // ให้ Gold ตาม Level
+        int goldReward = CalculateDummyGoldReward();
+        GiveDummyGoldToNearbyHeroes(goldReward);
+
+        // เพิ่ม Dummy Level
+        DummyLevel++;
+        PlayerPrefs.SetInt("DummyLevel", DummyLevel);
+        PlayerPrefs.Save();
+
+        Debug.Log($"[Dummy] Next dummy will be Level {DummyLevel}");
+
+        // Despawn และ Respawn Dummy ใหม่
+        StartCoroutine(RespawnDummy());
+    }
+
+    // 🆕 คำนวณ Gold ที่ Dummy ให้
+    private int CalculateDummyGoldReward()
+    {
+        int baseReward = 50;
+        int levelBonus = DummyLevel * 50;
+        return baseReward + levelBonus;
+    }
+
+    // 🆕 ให้ Gold แก่ Hero ที่อยู่ใกล้
+    private void GiveDummyGoldToNearbyHeroes(int goldAmount)
+    {
+        Collider[] heroColliders = Physics.OverlapSphere(transform.position, 15f, LayerMask.GetMask("Player"));
+
+        foreach (Collider col in heroColliders)
+        {
+            Hero hero = col.GetComponent<Hero>();
+            if (hero != null && hero.IsSpawned)
+            {
+                CurrencyManager currencyManager = hero.GetComponent<CurrencyManager>();
+                if (currencyManager != null)
+                {
+                    currencyManager.AddGold(goldAmount, true);
+                    Debug.Log($"[Dummy] Gave {goldAmount} gold to {hero.CharacterName}");
+                }
+            }
+        }
+    }
+
+    // 🆕 Respawn Dummy ใหม่
+    private IEnumerator RespawnDummy()
+    {
+        yield return new WaitForSeconds(2f);
+
+        if (HasStateAuthority && Object != null)
+        {
+            // เก็บตำแหน่งเดิม
+            Vector3 spawnPosition = transform.position;
+
+            // Despawn Dummy เก่า
+            Runner.Despawn(Object);
+
+            // หา EnemySpawner และสั่ง spawn Dummy ใหม่
+            yield return new WaitForSeconds(0.5f);
+
+            EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
+            if (spawner != null)
+            {
+                spawner.SpawnDummyAtPosition(spawnPosition);
+            }
+        }
     }
 
     // 🆕 Method ใหม่สำหรับแจ้ง EnemySpawner

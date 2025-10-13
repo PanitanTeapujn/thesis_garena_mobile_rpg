@@ -168,9 +168,22 @@ public class EnemySpawner : NetworkBehaviour
     private Queue<Vector3> pendingSpawnPositions = new Queue<Vector3>();
     private Queue<EnemySpawnData> pendingSpawnEnemies = new Queue<EnemySpawnData>();
 
+    [Header("🎯 Lobby Dummy System")]
+    public NetworkEnemy dummyPrefab; // ลาก Dummy Prefab มาใส่
+    public Transform dummySpawnPoint; // ตำแหน่ง spawn Dummy
+    public bool isLobbyScene = false; // เช็คว่าเป็น Lobby หรือไม่
+
     private void Start()
     {
         // โค้ดเดิม...
+        string sceneName = SceneManager.GetActiveScene().name;
+        isLobbyScene = sceneName.ToLower().Contains("lobby");
+
+        if (isLobbyScene && HasStateAuthority)
+        {
+            Debug.Log("[EnemySpawner] Lobby scene detected - spawning Dummy");
+            StartCoroutine(SpawnLobbyDummy());
+        }
         if (Runner == null)
         {
             var networkRunner = FindObjectOfType<NetworkRunner>();
@@ -237,6 +250,57 @@ public class EnemySpawner : NetworkBehaviour
 
         Debug.Log($"🎯 [FINAL] Stage: {currentStageName}, Required: {requiredKillsForStage}, Session: {currentSessionKills}");
 
+    }
+    private IEnumerator SpawnLobbyDummy()
+    {
+        // รอให้ loading เสร็จ
+        while (!isLoadingComplete)
+        {
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        // รอเพิ่มอีกนิด
+        yield return new WaitForSeconds(1f);
+
+        if (dummyPrefab != null && dummySpawnPoint != null)
+        {
+            SpawnDummyAtPosition(dummySpawnPoint.position);
+        }
+        else
+        {
+            Debug.LogError("[EnemySpawner] Dummy prefab or spawn point not set!");
+        }
+    }
+
+    // 🆕 Spawn Dummy ที่ตำแหน่งที่กำหนด
+    public void SpawnDummyAtPosition(Vector3 position)
+    {
+        if (!HasStateAuthority || dummyPrefab == null) return;
+
+        Debug.Log($"[EnemySpawner] Spawning Dummy at {position}");
+
+        NetworkEnemy dummy = Runner.Spawn(dummyPrefab, position, Quaternion.identity, PlayerRef.None);
+
+        if (dummy != null)
+        {
+            // ตั้งค่าให้เป็น Dummy
+            dummy.isLobbyDummy = true;
+
+            Debug.Log($"[EnemySpawner] Dummy spawned successfully at Level {PlayerPrefs.GetInt("DummyLevel", 1)}");
+        }
+        else
+        {
+            Debug.LogError("[EnemySpawner] Failed to spawn Dummy!");
+        }
+    }
+
+    // 🆕 Reset Dummy Level (สำหรับ debug)
+    [ContextMenu("Reset Dummy Level")]
+    public void ResetDummyLevel()
+    {
+        PlayerPrefs.SetInt("DummyLevel", 1);
+        PlayerPrefs.Save();
+        Debug.Log("[EnemySpawner] Dummy Level reset to 1");
     }
     private void InitializeLoadingSystem()
     {

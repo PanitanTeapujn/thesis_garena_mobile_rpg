@@ -13,11 +13,11 @@ GameObject:
   - component: {fileID: 1553336482753763871}
   - component: {fileID: 3046474799503590416}
   - component: {fileID: 1153582897584543797}
-  - component: {fileID: 2102208964661930907}
   - component: {fileID: -7581183126895598035}
   - component: {fileID: 2866443350649548657}
   - component: {fileID: 4927847923645176864}
   - component: {fileID: 4266108146747291927}
+  - component: {fileID: 2926414130990135442}
   m_Layer: 7
   m_Name: Dummy
   m_TagString: Enemy
@@ -141,7 +141,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 8.62, y: 15.38, z: 0.2}
+  m_Size: {x: 6.11, y: 13.04, z: 1.36}
   m_Center: {x: -0.2, y: 0.3, z: 0}
 --- !u!114 &1153582897584543797
 MonoBehaviour:
@@ -160,110 +160,12 @@ MonoBehaviour:
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 2102208964661930907}
   - {fileID: -7581183126895598035}
   - {fileID: 2866443350649548657}
   - {fileID: 4927847923645176864}
   - {fileID: 4266108146747291927}
+  - {fileID: 2926414130990135442}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &2102208964661930907
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8670071803579099242}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: feac6e8f6808d0346bfb478d061467d3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  characterStats: {fileID: 11400000, guid: 3ba66fc5591299a45820b7a983577e73, type: 2}
-  characterName: 
-  currentHp: 0
-  maxHp: 0
-  currentMana: 0
-  maxMana: 0
-  attackDamage: 0
-  magicDamage: 0
-  armor: 0
-  moveSpeed: 0
-  attackRange: 0
-  attackCooldown: 0
-  criticalChance: 5
-  criticalDamageBonus: 0
-  hitRate: 0
-  evasionRate: 0
-  attackSpeed: 0
-  reductionCoolDown: 0
-  lifeSteal: 0
-  ampDamage: 0
-  magicArmor: 0
-  manaRegen: 0
-  healthRegen: 0
-  _NetworkedMagicArmor: 0
-  _NetworkedManaRegen: 0
-  _NetworkedHealthRegen: 0
-  attackType: 0
-  _NetworkedCurrentHp: 0
-  _NetworkedMaxHp: 0
-  _NetworkedCurrentMana: 0
-  _NetworkedMaxMana: 0
-  _IsNetworkStateReady: 0
-  _IsStatsReady: 0
-  _NetworkedLifeSteal: 0
-  isStatsLoaded: 0
-  isSpawnComplete: 0
-  baseHealthRegenPerSecond: 0.2
-  baseManaRegenPerSecond: 0.5
-  maxHealthRegenPerTick: 50
-  maxManaRegenPerTick: 100
-  rb: {fileID: 0}
-  characterEquippedItems: []
-  potionSlots: []
-  potionStackCounts: 
-  potionCooldown: 1
-  enableAutoFixInventory: 1
-  autoFixCompleted: 0
-  autoFixDelay: 3
-  _IsDead:
-    _value: 0
-  _NetworkedPosition: {x: 0, y: 0, z: 0}
-  _NetworkedVelocity: {x: 0, y: 0, z: 0}
-  _NetworkedScale: {x: 0, y: 0, z: 0}
-  _PatrolCenter: {x: 0, y: 0, z: 0}
-  _PatrolTarget: {x: 0, y: 0, z: 0}
-  _PatrolWaitTimer: 0
-  detectRange: 10
-  attackCheckInterval: 0.5
-  _CurrentState: 0
-  _StateTimer: 0
-  backOffDistance: 3
-  backOffTime: 1
-  positionTime: 0.5
-  rushSpeed: 3
-  patrolRange: 40
-  patrolSpeed: 1
-  minPatrolWaitTime: 0
-  maxPatrolWaitTime: 10
-  patrolTargetRadius: 7
-  returnToCenter: 0
-  maxPatrolTime: 30
-  individualPatrolWaitTime: 0
-  minDistanceToPlayer: 1
-  enemySpacing: 2
-  enemyLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  useCircling: 1
-  circlingSpeed: 0.5
-  isCollidingWithPlayer: 0
-  showDebugInfo: 0
-  showPatrolGizmos: 0
-  collisionDamageCooldown: 2
-  collisionDamageMultiplier: 0.5
-  dropManager: {fileID: 0}
-  ItemDrop: {fileID: 0}
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -413,3 +315,104 @@ MonoBehaviour:
   _CurrentExp: 0
   _ExpToNextLevel: 100
   _IsInitialized: 0
+--- !u!114 &2926414130990135442
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: feac6e8f6808d0346bfb478d061467d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterStats: {fileID: 11400000, guid: 3ba66fc5591299a45820b7a983577e73, type: 2}
+  characterName: 
+  currentHp: 0
+  maxHp: 0
+  currentMana: 0
+  maxMana: 0
+  attackDamage: 0
+  magicDamage: 0
+  armor: 0
+  moveSpeed: 0
+  attackRange: 0
+  attackCooldown: 0
+  criticalChance: 0
+  criticalDamageBonus: 0
+  hitRate: 0
+  evasionRate: 0
+  attackSpeed: 0
+  reductionCoolDown: 0
+  lifeSteal: 0
+  ampDamage: 0
+  magicArmor: 0
+  manaRegen: 0
+  healthRegen: 0
+  _NetworkedMagicArmor: 0
+  _NetworkedManaRegen: 0
+  _NetworkedHealthRegen: 0
+  attackType: 0
+  _NetworkedCurrentHp: 0
+  _NetworkedMaxHp: 0
+  _NetworkedCurrentMana: 0
+  _NetworkedMaxMana: 0
+  _IsNetworkStateReady: 0
+  _IsStatsReady: 0
+  _NetworkedLifeSteal: 0
+  isStatsLoaded: 0
+  isSpawnComplete: 0
+  baseHealthRegenPerSecond: 0.2
+  baseManaRegenPerSecond: 0.5
+  maxHealthRegenPerTick: 50
+  maxManaRegenPerTick: 100
+  rb: {fileID: 0}
+  characterEquippedItems: []
+  potionSlots: []
+  potionStackCounts: 
+  potionCooldown: 1
+  enableAutoFixInventory: 1
+  autoFixCompleted: 0
+  autoFixDelay: 3
+  _IsDead:
+    _value: 0
+  _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedScale: {x: 0, y: 0, z: 0}
+  _PatrolCenter: {x: 0, y: 0, z: 0}
+  _PatrolTarget: {x: 0, y: 0, z: 0}
+  _PatrolWaitTimer: 0
+  detectRange: 10
+  attackCheckInterval: 0.5
+  _IsDummy: 1
+  _DummyLevel: 0
+  isLobbyDummy: 0
+  _CurrentState: 0
+  _StateTimer: 0
+  backOffDistance: 3
+  backOffTime: 1
+  positionTime: 0.5
+  rushSpeed: 3
+  patrolRange: 8
+  patrolSpeed: 0.5
+  minPatrolWaitTime: 1
+  maxPatrolWaitTime: 4
+  patrolTargetRadius: 1
+  returnToCenter: 1
+  maxPatrolTime: 30
+  individualPatrolWaitTime: 0
+  minDistanceToPlayer: 1
+  enemySpacing: 2
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  useCircling: 1
+  circlingSpeed: 0.5
+  isCollidingWithPlayer: 0
+  showDebugInfo: 0
+  showPatrolGizmos: 1
+  collisionDamageCooldown: 2
+  collisionDamageMultiplier: 0.5
+  dropManager: {fileID: 0}
+  ItemDrop: {fileID: 0}

@@ -318,7 +318,7 @@ public class BloodKnight : Hero
 
     #region Skill 1: Blood Edge
 
-    protected override void TryUseSkill1()
+    public override void TryUseSkill1()
     {
         if (!CanUseSkill(skill1ManaCost)) return;
 
@@ -379,7 +379,7 @@ public class BloodKnight : Hero
 
     #region Skill 2: Crimson Lance
 
-    protected override void TryUseSkill2()
+    public override void TryUseSkill2()
     {
         if (!CanUseSkill(skill2ManaCost)) return;
 
@@ -551,7 +551,7 @@ public class BloodKnight : Hero
 
     #region Skill 3: Blood Pool
 
-    protected override void TryUseSkill3()
+    public override void TryUseSkill3()
     {
         if (!CanUseSkill(skill3ManaCost)) return;
 
@@ -691,7 +691,7 @@ public class BloodKnight : Hero
 
     #region Skill 4: Rite of the Blood Moon (Ultimate)
 
-    protected override void TryUseSkill4()
+    public override void TryUseSkill4()
     {
         if (!CanUseSkill(skill4ManaCost)) return;
 

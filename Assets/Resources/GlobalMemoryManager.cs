@@ -372,7 +372,7 @@ public class GlobalMemoryManager : MonoBehaviour
             // รอทุก 100 textures
             if (processedCount % 100 == 0)
             {
-                Debug.Log($"🔄 Analyzed {processedCount}/{allTextures.Length} textures...");
+               // Debug.Log($"🔄 Analyzed {processedCount}/{allTextures.Length} textures...");
                 yield return null;
             }
         }

@@ -82,7 +82,38 @@ public class CombatManager : NetworkBehaviour
             DamageTextManager.Instance?.ShowDamageText(position, damage, damageType, isCritical, isHeal);
         }
     }
+    public virtual void TakeDamageFromDummyAttack(int physicalDamage, int magicDamage, Character attacker)
+    {
+        if (!HasStateAuthority && !HasInputAuthority) return;
 
+        // Dummy ไม่มี armor - รับดาเมจเต็ม
+        int totalDamage = physicalDamage + magicDamage;
+
+        Debug.Log($"[Dummy Attack] {attacker?.CharacterName ?? "Unknown"} -> {character.CharacterName}: {totalDamage}");
+
+        // Apply damage
+        int oldHp = character.CurrentHp;
+        character.CurrentHp -= totalDamage;
+        character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
+
+        // Sync network state
+        SyncHealthUpdate();
+
+        // แสดง Damage Text
+        if (HasStateAuthority)
+        {
+            Vector3 textPosition = character.transform.position + Vector3.up * 2f;
+            RPC_ShowDamageText(textPosition, totalDamage, DamageType.Normal, false, false, false);
+        }
+
+        OnDamageTaken?.Invoke(character, totalDamage, DamageType.Normal, false);
+
+        // Check death
+        if (character.CurrentHp <= 0)
+        {
+            HandleDeath();
+        }
+    }
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowStatusDamageText(Vector3 position, int damage, StatusEffectType effectType)
     {

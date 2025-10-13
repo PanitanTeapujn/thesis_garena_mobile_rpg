@@ -25,6 +25,7 @@ GameObject:
   - component: {fileID: 7879108841059391564}
   - component: {fileID: 8495117773791159641}
   - component: {fileID: 9102345898415108698}
+  - component: {fileID: 3992294486681207689}
   m_Layer: 0
   m_Name: BloodKinght
   m_TagString: Untagged
@@ -277,6 +278,7 @@ MonoBehaviour:
   - {fileID: -8751258009350208809}
   - {fileID: -3825184318640640397}
   - {fileID: 7879108841059391564}
+  - {fileID: 3992294486681207689}
   ForceRemoteRenderTimeframe: 0
 --- !u!95 &4280874761140606614
 Animator:
@@ -665,3 +667,23 @@ MonoBehaviour:
   useSameSprite: 1
   customShadowSprite: {fileID: 0}
   shadowMaterial: {fileID: 0}
+--- !u!114 &3992294486681207689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4563048088530559923}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: daff66c4b1a27d645946f6bf615e4bfe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  idleTimeToStart: 5
+  detectionRange: 20
+  attackRangeBuffer: 2.5
+  autoAttackInterval: 1.5
+  skillCheckInterval: 2
+  useSkillsAutomatically: 1
+  skillPriority: 01000000020000000300000004000000
+  showDebugLogs: 1

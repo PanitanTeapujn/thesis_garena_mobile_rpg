@@ -10,7 +10,10 @@ public class Assassin : Hero
     [SerializeField] private int skill2ManaCost = 20;
     [SerializeField] private int skill3ManaCost = 25;
     [SerializeField] private int skill4ManaCost = 45;
-
+    protected override int GetSkill1ManaCost() { return skill1ManaCost; }
+    protected override int GetSkill2ManaCost() { return skill2ManaCost; }
+    protected override int GetSkill3ManaCost() { return skill3ManaCost; }
+    protected override int GetSkill4ManaCost() { return skill4ManaCost; }
     [Header("🎯 Skill Parameters")]
     public float dashDistance = 8f;
     public float dashSpeed = 20f;
@@ -56,7 +59,7 @@ public class Assassin : Hero
     }
 
     // ========== 💚 Skill 1: Poison Infusion ==========
-    protected override void TryUseSkill1()
+    public override void TryUseSkill1()
     {
         if (!CanUseSkill(skill1ManaCost)) return;
 
@@ -81,7 +84,7 @@ public class Assassin : Hero
     }
 
     // ========== 🌫️ Skill 2: Toxic Dash - FIXED ==========
-    protected override void TryUseSkill2()
+    public override void TryUseSkill2()
     {
         if (!CanUseSkill(skill2ManaCost)) return;
         if (HasStatusEffect(StatusEffectType.Stun)) return;
@@ -266,7 +269,7 @@ public class Assassin : Hero
 
 
     // ========== 💣 Skill 3: Shadow Assassination - FIXED ==========
-    protected override void TryUseSkill3()
+    public override void TryUseSkill3()
     {
         if (!CanUseSkill(skill3ManaCost)) return;
 
@@ -437,7 +440,7 @@ public class Assassin : Hero
     }
 
     // ========== ☠️ Skill 4: Plague Outbreak (Ultimate) ==========
-    protected override void TryUseSkill4()
+    public override void TryUseSkill4()
     {
         if (!CanUseSkill(skill4ManaCost)) return;
 
