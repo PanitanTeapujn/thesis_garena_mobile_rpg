@@ -1216,7 +1216,12 @@ public class MultiCharacterPlayerData
 
     #endregion
     #region Constructor and Initialization Constructor และฟังก์ชันสร้างตัวละครเริ่มต้น
+    [Header("🎯 Training Dummy System")]
+    public TrainingDummyData trainingDummy = new TrainingDummyData();
 
+    [Header("🔍 Training Dummy Debug Info")]
+    public bool hasTrainingDummyData = false;
+    public string dummyLastUpdateTime = "";
     public MultiCharacterPlayerData()
     {
         playerName = "";
@@ -1230,8 +1235,52 @@ public class MultiCharacterPlayerData
         InitializePlayerLevelSystem();
         InitializeDailyQuestSystem();
         // ✅ เปลี่ยนจาก InitializeDefaultCharacter() เป็น CreateEmptyDefaultCharacter()
-        
+        InitializeTrainingDummySystem();
+
         InitializeStageProgressSystem();
+    }
+    public void InitializeTrainingDummySystem()
+    {
+        trainingDummy = new TrainingDummyData();
+        hasTrainingDummyData = false;
+        dummyLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log("✅ Training Dummy system initialized");
+    }
+
+    public void UpdateTrainingDummyDebugInfo()
+    {
+        if (trainingDummy != null)
+        {
+            dummyLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            hasTrainingDummyData = true;
+            trainingDummy.UpdateDebugInfo();
+        }
+    }
+
+    public bool HasTrainingDummyData()
+    {
+        return hasTrainingDummyData && trainingDummy != null;
+    }
+
+    // 🆕 เช็คและรีเซ็ต Dummy ถ้าเป็นวันใหม่
+    public void CheckAndResetDummyIfNewDay()
+    {
+        if (trainingDummy == null)
+        {
+            InitializeTrainingDummySystem();
+            return;
+        }
+
+        if (trainingDummy.ShouldResetToday())
+        {
+            Debug.Log("[TrainingDummy] 🆕 New day detected! Resetting dummy to level 1...");
+            trainingDummy.ResetDailyProgress();
+            UpdateTrainingDummyDebugInfo();
+
+            // บันทึกลง Firebase ทันที
+            PersistentPlayerData.Instance?.SavePlayerDataAsync();
+        }
     }
     private void CreateEmptyDefaultCharacter()
     {
@@ -2089,3 +2138,68 @@ public class PlayerLevelUpResult
         return goldReward > 0 || gemsReward > 0;
     }
 }
+#region 🎯 Training Dummy System
+[System.Serializable]
+public class TrainingDummyData
+{
+    [Header("Dummy Progress")]
+    public int currentLevel = 1;
+    public int maxLevel = 100;
+
+    [Header("Last Reset Info")]
+    public string lastResetDate = "";        // วันที่รีเซ็ตล่าสุด (yyyy-MM-dd)
+    public string lastUpdateTime = "";       // เวลาที่อัปเดตล่าสุด
+
+    [Header("Debug Info")]
+    public int totalLevelUpsToday = 0;       // จำนวนครั้งที่เลเวลอัพในวันนี้
+    public int totalLifetimeLevelUps = 0;    // จำนวนครั้งที่เลเวลอัพทั้งหมด
+
+    public TrainingDummyData()
+    {
+        currentLevel = 1;
+        maxLevel = 100;
+        lastResetDate = System.DateTime.Now.ToString("yyyy-MM-dd");
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        totalLevelUpsToday = 0;
+        totalLifetimeLevelUps = 0;
+    }
+
+    public bool ShouldResetToday()
+    {
+        string today = System.DateTime.Now.ToString("yyyy-MM-dd");
+        return lastResetDate != today;
+    }
+
+    public void ResetDailyProgress()
+    {
+        currentLevel = 1;
+        totalLevelUpsToday = 0;
+        lastResetDate = System.DateTime.Now.ToString("yyyy-MM-dd");
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[TrainingDummy] 🔄 Reset to Level 1 for new day: {lastResetDate}");
+    }
+
+    public bool CanLevelUp()
+    {
+        return currentLevel < maxLevel;
+    }
+
+    public void LevelUp()
+    {
+        if (!CanLevelUp()) return;
+
+        currentLevel++;
+        totalLevelUpsToday++;
+        totalLifetimeLevelUps++;
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log($"[TrainingDummy] ⬆️ Leveled up to {currentLevel}");
+    }
+
+    public void UpdateDebugInfo()
+    {
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+}
+#endregion

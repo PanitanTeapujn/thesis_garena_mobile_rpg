@@ -189,11 +189,6 @@ public class PersistentPlayerData : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             yield return null;
-
-            if (Mathf.RoundToInt(elapsed) % 5 == 0 && elapsed % 1f < 0.1f)
-            {
-                Debug.Log($"[PersistentPlayerData] Still loading... {elapsed:F1}s");
-            }
         }
 
         if (task.IsCompleted && task.Exception == null && task.Result.Exists)
@@ -210,35 +205,21 @@ public class PersistentPlayerData : MonoBehaviour
                     if (IsValidPlayerData(tempData))
                     {
                         multiCharacterData = tempData;
-                       
-                        // ✅ โหลด character stats หลังจาก deserialize JSON
                         multiCharacterData.LoadCharacterStatsFromResources();
+
+                        // ✅ เช็คและรีเซ็ต Training Dummy ถ้าเป็นวันใหม่
+                        multiCharacterData.CheckAndResetDummyIfNewDay();
 
                         isDataLoaded = true;
                         loaded = true;
 
-                        // ✅ เคลียร์ PlayerPrefs เก่าเฉพาะเมื่อโหลดข้อมูลใหม่จาก Firebase สำเร็จ
-
                         SaveCompleteBackupToPlayerPrefs();
-
-                       
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[PersistentPlayerData] Invalid data structure from Firebase");
-                        loaded = false;
                     }
                 }
                 catch (System.Exception e)
                 {
                     Debug.LogError($"[PersistentPlayerData] Failed to parse Firebase data: {e.Message}");
-                    loaded = false;
                 }
-            }
-            else
-            {
-                Debug.LogWarning($"[PersistentPlayerData] JSON too small ({json?.Length ?? 0} chars) from Firebase");
-                loaded = false;
             }
 
             if (loaded)
@@ -246,20 +227,212 @@ public class PersistentPlayerData : MonoBehaviour
                 LoadCurrencyData();
             }
         }
-        else if (elapsed >= timeout)
-        {
-            Debug.LogError("[PersistentPlayerData] ⚠️ TIMEOUT! Trying backup before creating new...");
-        }
-        else
-        {
-            Debug.Log("[PersistentPlayerData] No Firebase data found, checking backup...");
-        }
 
         RegisterPlayerInDirectory();
     }
+    // เพิ่มใน PersistentPlayerData.cs
 
+    /// <summary>
+    /// บันทึก Training Dummy แบบ sync (รอให้เสร็จ)
+    /// </summary>
+    /// 
+    public void SaveAndReloadDummyData()
+    {
+        if (multiCharacterData?.trainingDummy == null)
+        {
+            Debug.LogError("[SaveAndReloadDummyData] Cannot save - data is null!");
+            return;
+        }
+
+        try
+        {
+            int levelBeforeSave = multiCharacterData.trainingDummy.currentLevel;
+
+            Debug.Log($"[SaveAndReloadDummyData] 💾 Saving Dummy Level {levelBeforeSave}...");
+
+            // บันทึกลง Firebase
+            multiCharacterData.UpdateTrainingDummyDebugInfo();
+
+            StartCoroutine(SaveAndVerifyDummyData(levelBeforeSave));
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SaveAndReloadDummyData] ❌ Error: {e.Message}");
+        }
+    }
+
+    // ✅ Coroutine สำหรับ save และ verify
+    private IEnumerator SaveAndVerifyDummyData(int expectedLevel)
+    {
+        if (auth?.CurrentUser == null || multiCharacterData == null)
+        {
+            Debug.LogError("[SaveAndVerifyDummyData] Cannot save - no auth or data");
+            yield break;
+        }
+
+        // บันทึกลง Firebase
+        string json = JsonUtility.ToJson(multiCharacterData, true);
+        var saveTask = databaseReference.Child("players").Child(auth.CurrentUser.UserId).SetRawJsonValueAsync(json);
+
+        // รอให้ save เสร็จ
+        while (!saveTask.IsCompleted)
+        {
+            yield return null;
+        }
+
+        if (saveTask.Exception != null)
+        {
+            Debug.LogError($"[SaveAndVerifyDummyData] ❌ Save failed: {saveTask.Exception.Message}");
+            yield break;
+        }
+
+        Debug.Log($"[SaveAndVerifyDummyData] ✅ Save completed");
+
+        // รอ 0.5 วินาที
+        yield return new WaitForSeconds(0.5f);
+
+        // ✅ อ่านข้อมูลกลับมาจาก Firebase เพื่อ verify
+        var readTask = databaseReference.Child("players").Child(auth.CurrentUser.UserId).GetValueAsync();
+
+        while (!readTask.IsCompleted)
+        {
+            yield return null;
+        }
+
+        if (readTask.Exception != null || !readTask.Result.Exists)
+        {
+            Debug.LogError("[SaveAndVerifyDummyData] ❌ Failed to read back data");
+            yield break;
+        }
+
+        // ✅ Parse JSON และอัพเดท multiCharacterData
+        string readJson = readTask.Result.GetRawJsonValue();
+        var reloadedData = JsonUtility.FromJson<MultiCharacterPlayerData>(readJson);
+
+        if (reloadedData?.trainingDummy != null)
+        {
+            int reloadedLevel = reloadedData.trainingDummy.currentLevel;
+
+            Debug.Log($"[SaveAndVerifyDummyData] 🔍 Verification:");
+            Debug.Log($"  Expected: {expectedLevel}");
+            Debug.Log($"  Reloaded: {reloadedLevel}");
+
+            if (reloadedLevel == expectedLevel)
+            {
+                // ✅ อัพเดท multiCharacterData ใน memory
+                multiCharacterData.trainingDummy = reloadedData.trainingDummy;
+                Debug.Log($"[SaveAndVerifyDummyData] ✅ Data synced successfully!");
+            }
+            else
+            {
+                Debug.LogError($"[SaveAndVerifyDummyData] ❌ Level mismatch!");
+            }
+        }
+    }
+    public void SaveTrainingDummySync()
+    {
+        if (multiCharacterData?.trainingDummy == null)
+        {
+            Debug.LogError("[PersistentPlayerData] Cannot save dummy - data is null!");
+            return;
+        }
+
+        try
+        {
+            Debug.Log($"[PersistentPlayerData] 💾 Saving Dummy Level {multiCharacterData.trainingDummy.currentLevel} (SYNC)...");
+
+            // อัปเดต debug info
+            multiCharacterData.UpdateTrainingDummyDebugInfo();
+
+            // บันทึกลง Firebase
+            StartCoroutine(SaveDummyDataSync());
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error saving dummy sync: {e.Message}");
+        }
+    }
+
+    // ✅ Coroutine สำหรับ save แบบ sync
+    private IEnumerator SaveDummyDataSync()
+    {
+        if (auth?.CurrentUser == null || multiCharacterData == null)
+        {
+            Debug.LogError("[SaveDummyDataSync] Cannot save - no auth or data");
+            yield break;
+        }
+
+        string json = JsonUtility.ToJson(multiCharacterData, true);
+        var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).SetRawJsonValueAsync(json);
+
+        // รอให้ save เสร็จ
+        while (!task.IsCompleted)
+        {
+            yield return null;
+        }
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"[SaveDummyDataSync] ❌ Save failed: {task.Exception.Message}");
+        }
+        else
+        {
+            Debug.Log($"[SaveDummyDataSync] ✅ Dummy data saved successfully!");
+        }
+    }
+    // เพิ่มใน PersistentPlayerData.cs
+
+    /// <summary>
+    /// บันทึกข้อมูล Training Dummy
+    /// </summary>
+    public void SaveTrainingDummyData()
+    {
+        if (multiCharacterData == null) return;
+
+        try
+        {
+            Debug.Log($"[PersistentPlayerData] 💾 Saving Training Dummy Level {multiCharacterData.trainingDummy.currentLevel}");
+
+            multiCharacterData.UpdateTrainingDummyDebugInfo();
+            SavePlayerDataAsync();
+
+            Debug.Log("[PersistentPlayerData] ✅ Training Dummy data saved");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error saving dummy data: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    /// โหลดข้อมูล Training Dummy
+    /// </summary>
+    public void LoadTrainingDummyData()
+    {
+        if (multiCharacterData == null) return;
+
+        try
+        {
+            Debug.Log("[PersistentPlayerData] 📥 Loading Training Dummy data...");
+
+            if (multiCharacterData.trainingDummy == null)
+            {
+                multiCharacterData.InitializeTrainingDummySystem();
+            }
+
+            // เช็คและรีเซ็ตถ้าเป็นวันใหม่
+            multiCharacterData.CheckAndResetDummyIfNewDay();
+
+            Debug.Log($"[PersistentPlayerData] ✅ Training Dummy Level: {multiCharacterData.trainingDummy.currentLevel}");
+            Debug.Log($"[PersistentPlayerData] Last reset: {multiCharacterData.trainingDummy.lastResetDate}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error loading dummy data: {e.Message}");
+        }
+    }
     // 🆕 เพิ่ม method สำหรับเคลียร์ PlayerPrefs เก่า
-    
+
     // 🆕 เพิ่ม method สำหรับ validate ข้อมูล
     private bool IsValidPlayerData(MultiCharacterPlayerData data)
     {

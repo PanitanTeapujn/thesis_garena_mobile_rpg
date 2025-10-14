@@ -718,7 +718,7 @@ GameObject:
   - component: {fileID: 8346062983495084271}
   - component: {fileID: 2141450393596204200}
   m_Layer: 0
-  m_Name: 'WorldSpaceUI '
+  m_Name: WorldSpaceUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -142,6 +142,8 @@ public class EnemySpawner : NetworkBehaviour
     private bool isLoadingComplete = false;
     private LoadingPanelManager loadingPanelManager;
     private float loadingStartTime;
+    private float lastDummyCheckTime = 0f;
+    private const float DUMMY_CHECK_INTERVAL = 10f; // เช็คทุก 2 วินาที
 
     public int currentSessionKills { get; private set; } = 0; // เปลี่ยนเป็น property
     private int requiredKillsForStage ;
@@ -172,6 +174,9 @@ public class EnemySpawner : NetworkBehaviour
     public NetworkEnemy dummyPrefab; // ลาก Dummy Prefab มาใส่
     public Transform dummySpawnPoint; // ตำแหน่ง spawn Dummy
     public bool isLobbyScene = false; // เช็คว่าเป็น Lobby หรือไม่
+    private NetworkEnemy currentDummyInstance;        // ✅ เพิ่มตัวแปรนี้
+    private bool hasDummySpawned = false;             // ✅ เพิ่มตัวแปรนี้
+    private float dummyCheckInterval = 2f;            // ตรวจสอบทุก 2 วินาที
 
     private void Start()
     {
@@ -262,11 +267,26 @@ public class EnemySpawner : NetworkBehaviour
         // รอเพิ่มอีกนิด
         yield return new WaitForSeconds(1f);
 
-        if (dummyPrefab != null && dummySpawnPoint != null)
+        // ✅ เช็คว่ามี Dummy อยู่แล้วหรือไม่ก่อน spawn
+        NetworkEnemy[] existingEnemies = FindObjectsOfType<NetworkEnemy>();
+        bool hasExistingDummy = false;
+
+        foreach (NetworkEnemy enemy in existingEnemies)
+        {
+            if (enemy != null && enemy.isLobbyDummy && !enemy.IsDead)
+            {
+                hasExistingDummy = true;
+                Debug.Log("[EnemySpawner] Dummy already exists - skipping spawn");
+                break;
+            }
+        }
+
+        // Spawn เฉพาะเมื่อไม่มี Dummy
+        if (!hasExistingDummy && dummyPrefab != null && dummySpawnPoint != null)
         {
             SpawnDummyAtPosition(dummySpawnPoint.position);
         }
-        else
+        else if (dummyPrefab == null || dummySpawnPoint == null)
         {
             Debug.LogError("[EnemySpawner] Dummy prefab or spawn point not set!");
         }
@@ -275,22 +295,119 @@ public class EnemySpawner : NetworkBehaviour
     // 🆕 Spawn Dummy ที่ตำแหน่งที่กำหนด
     public void SpawnDummyAtPosition(Vector3 position)
     {
-        if (!HasStateAuthority || dummyPrefab == null) return;
+        if (!HasStateAuthority) return;
 
-        Debug.Log($"[EnemySpawner] Spawning Dummy at {position}");
-
-        NetworkEnemy dummy = Runner.Spawn(dummyPrefab, position, Quaternion.identity, PlayerRef.None);
-
-        if (dummy != null)
+        try
         {
-            // ตั้งค่าให้เป็น Dummy
-            dummy.isLobbyDummy = true;
+            Debug.Log($"[EnemySpawner] 🎯 Spawning Dummy at {position}...");
 
-            Debug.Log($"[EnemySpawner] Dummy spawned successfully at Level {PlayerPrefs.GetInt("DummyLevel", 1)}");
+            // ✅ โหลด level ล่าสุดจาก Firebase
+            int dummyLevel = LoadDummyLevelFromFirebase();
+
+            Debug.Log($"[EnemySpawner] 📥 Current Firebase level: {dummyLevel}");
+
+            // Spawn Dummy
+            var spawnedObject = Runner.Spawn(
+                dummyPrefab,
+                position,
+                Quaternion.identity,
+                PlayerRef.None
+            );
+
+            if (spawnedObject != null)
+            {
+                var enemy = spawnedObject.GetComponent<NetworkEnemy>();
+                if (enemy != null)
+                {
+                    enemy.IsDummy = true;
+                    enemy.DummyLevel = dummyLevel;
+                    enemy.isLobbyDummy = true;
+
+                    currentDummyInstance = enemy;
+                    hasDummySpawned = true;
+
+                    Debug.Log($"[EnemySpawner] ✅ Dummy spawned at Level {dummyLevel}");
+                }
+            }
         }
-        else
+        catch (System.Exception e)
         {
-            Debug.LogError("[EnemySpawner] Failed to spawn Dummy!");
+            Debug.LogError($"[EnemySpawner] ❌ Error spawning Dummy: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม coroutine สำหรับ spawn หลัง clear
+    private IEnumerator SpawnDummyAfterClear(Vector3 position, int dummyLevel)
+    {
+        yield return new WaitForSeconds(0.3f);
+
+        try
+        {
+            // Spawn Dummy
+            var spawnedObject = Runner.Spawn(
+                dummyPrefab,
+                position,
+                Quaternion.identity,
+                PlayerRef.None
+            );
+
+            if (spawnedObject != null)
+            {
+                var enemy = spawnedObject.GetComponent<NetworkEnemy>();
+                if (enemy != null)
+                {
+                    // ✅ ตั้งค่า Dummy properties
+                    enemy.IsDummy = true;
+                    enemy.DummyLevel = dummyLevel;
+                    enemy.isLobbyDummy = true;
+
+                    currentDummyInstance = enemy;
+                    hasDummySpawned = true;
+
+                    Debug.Log($"[EnemySpawner] ✅ Dummy spawned at Level {dummyLevel}");
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[EnemySpawner] ❌ Error in SpawnDummyAfterClear: {e.Message}");
+        }
+    }
+    // ✅ เพิ่ม method สำหรับโหลด Dummy Level จาก Firebase
+    private int LoadDummyLevelFromFirebase()
+    {
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+
+            if (persistentData?.multiCharacterData == null)
+            {
+                Debug.LogWarning("[EnemySpawner] Firebase data not ready, using level 1");
+                return 1;
+            }
+
+            // ✅ เช็คและรีเซ็ตถ้าเป็นวันใหม่
+            persistentData.multiCharacterData.CheckAndResetDummyIfNewDay();
+
+            // ✅ โหลด level จาก Firebase
+            int level = persistentData.multiCharacterData.trainingDummy.currentLevel;
+
+            // ✅ Log ข้อมูลทั้งหมดเพื่อ debug
+            Debug.Log($"╔════════════════════════════════════╗");
+            Debug.Log($"║  📥 Loading Dummy Level from Firebase");
+            Debug.Log($"╠════════════════════════════════════╣");
+            Debug.Log($"║  Current Level: {level}");
+            Debug.Log($"║  Last Reset: {persistentData.multiCharacterData.trainingDummy.lastResetDate}");
+            Debug.Log($"║  Last Update: {persistentData.multiCharacterData.trainingDummy.lastUpdateTime}");
+            Debug.Log($"║  Total Level Ups: {persistentData.multiCharacterData.trainingDummy.totalLevelUpsToday}");
+            Debug.Log($"╚════════════════════════════════════╝");
+
+            return level;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[EnemySpawner] ❌ Error loading level: {e.Message}");
+            return 1;
         }
     }
 
@@ -450,6 +567,11 @@ public class EnemySpawner : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         if (Runner == null || !Runner.IsServer) return;
+        if (isLobbyScene && Time.time - lastDummyCheckTime >= DUMMY_CHECK_INTERVAL)
+        {
+            lastDummyCheckTime = Time.time;
+            CheckAndSpawnDummyIfNeeded();
+        }
 
         // 🆕 เช็คว่า loading เสร็จหรือยัง
         if (waitForLoadingComplete && !isLoadingComplete)
@@ -524,6 +646,53 @@ public class EnemySpawner : NetworkBehaviour
             HandleNormalSpawning();
         }
     }
+    // ✅ Method สำหรับตรวจสอบและ spawn Dummy
+    private void CheckAndSpawnDummyIfNeeded()
+    {
+        if (!HasStateAuthority) return;
+
+        // ✅ หา Dummy ที่มีอยู่ใน scene
+        NetworkEnemy[] allEnemies = FindObjectsOfType<NetworkEnemy>();
+        NetworkEnemy existingDummy = null;
+
+        foreach (NetworkEnemy enemy in allEnemies)
+        {
+            if (enemy != null && enemy.IsDummy && !enemy.IsDead)
+            {
+                existingDummy = enemy;
+                break;
+            }
+        }
+
+        // ✅ ถ้าไม่มี Dummy ให้ spawn ใหม่
+        if (existingDummy == null)
+        {
+            Debug.Log("[EnemySpawner] 🎯 No Dummy found in lobby, spawning new one...");
+            SpawnDummy();
+        }
+        else
+        {
+            // อัพเดท reference
+            currentDummyInstance = existingDummy;
+        }
+    }
+    private void SpawnDummy()
+    {
+        if (dummyPrefab == null)
+        {
+            Debug.LogError("[EnemySpawner] ❌ Dummy prefab is not assigned!");
+            return;
+        }
+
+        Vector3 spawnPosition = dummySpawnPoint != null
+            ? dummySpawnPoint.position
+            : transform.position + Vector3.forward * 5f;
+
+        SpawnDummyAtPosition(spawnPosition);
+    }
+
+    // ✅ Method สำหรับ spawn Dummy ที่ตำแหน่งที่กำหนด
+
     public void ForceStartSpawning()
     {
         if (showLoadingDebug)
@@ -2137,5 +2306,57 @@ public class EnemySpawner : NetworkBehaviour
         // วาดรัศมี spawn ปกติ
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, spawnRadius);
+    }
+    public void RespawnDummy()
+    {
+        if (!HasStateAuthority) return;
+
+        Debug.Log("[EnemySpawner] 🔄 Respawning Dummy...");
+
+        // ลบ Dummy เก่าถ้ามี
+        if (currentDummyInstance != null)
+        {
+            Runner.Despawn(currentDummyInstance.Object);
+            currentDummyInstance = null;
+        }
+
+        hasDummySpawned = false;
+        SpawnDummy();
+    }
+
+    // ✅ เพิ่ม method สำหรับ debug
+    [ContextMenu("Debug: Force Spawn Dummy")]
+    private void DebugForceSpawnDummy()
+    {
+        if (!HasStateAuthority)
+        {
+            Debug.LogWarning("[EnemySpawner] ⚠️ Only host can spawn Dummy!");
+            return;
+        }
+
+        Debug.Log("[EnemySpawner] 🔧 Force spawning Dummy...");
+        RespawnDummy();
+    }
+
+    [ContextMenu("Debug: Check Dummy Status")]
+    private void DebugCheckDummyStatus()
+    {
+        Debug.Log("=== DUMMY STATUS ===");
+        Debug.Log($"Has Dummy Spawned: {hasDummySpawned}");
+        Debug.Log($"Current Dummy Instance: {(currentDummyInstance != null ? "Exists" : "NULL")}");
+
+        if (currentDummyInstance != null)
+        {
+            Debug.Log($"Dummy Level: {currentDummyInstance.DummyLevel}");
+            Debug.Log($"Dummy HP: {currentDummyInstance.CurrentHp}/{currentDummyInstance.MaxHp}");
+            Debug.Log($"Dummy Is Dead: {currentDummyInstance.IsDead}");
+        }
+
+        var persistentData = PersistentPlayerData.Instance;
+        if (persistentData?.multiCharacterData?.trainingDummy != null)
+        {
+            Debug.Log($"Firebase Dummy Level: {persistentData.multiCharacterData.trainingDummy.currentLevel}");
+        }
+        Debug.Log("==================");
     }
 }

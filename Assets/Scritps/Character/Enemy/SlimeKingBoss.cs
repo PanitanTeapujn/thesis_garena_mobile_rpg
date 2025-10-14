@@ -1171,8 +1171,10 @@ public class SlimeKingBoss : NetworkEnemy
         // TODO: Implement Boss Health Bar UI
     }
 
-    protected override void OnDestroy()
+    protected virtual void OnDestroy()
     {
+        base.OnDestroy();
+
         // ทำลาย minions ทั้งหมด
         foreach (GameObject minion in activeMinions)
         {
@@ -1184,22 +1186,10 @@ public class SlimeKingBoss : NetworkEnemy
         if (bossAICoroutine != null)
             StopCoroutine(bossAICoroutine);
 
-        base.OnDestroy();
     }
 
     // Debug Gizmos
-    private void OnDrawGizmosSelected()
-    {
-        base.OnDrawGizmosSelected();
-
-        // วาดรัศมีโจมตีพื้นที่
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, multiAttackRadius);
-
-        // วาดรัศมี ground slam
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, multiAttackRadius);
-    }
+   
 }
 
 // ===== Supporting Classes =====

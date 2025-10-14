@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
+using UnityEngine.UI;
+
 [System.Serializable]
 public class SpecificItemDrop
 {
@@ -90,9 +92,12 @@ public class NetworkEnemy : Character
     [Header("Enemy Settings")]
     public float detectRange = 10f;
     public float attackCheckInterval = 0.5f;
-    [Header("🎯 Dummy Settings")]
-    [Networked] public bool IsDummy { get; set; }
-    [Networked] public int DummyLevel { get; set; }
+
+    [Header("🎯 Dummy System (Firebase-based)")]
+    public bool IsDummy = false;
+    public int DummyLevel = 1;                    // อ่านจาก Firebase
+    private PersistentPlayerData persistentData;  // Reference to Firebase data
+
     public bool isLobbyDummy = false; // ตั้งค่าใน Inspector
 
     [Networked] public EnemyState CurrentState { get; set; }
@@ -132,9 +137,16 @@ public class NetworkEnemy : Character
     public bool showPatrolGizmos = true;     // 🆕 แสดง patrol area ใน Scene view
 
 
-   
 
-    
+    [Header("🎯 Dummy UI")]
+    public GameObject dummyUIPrefab; // ลาก WorldSpaceUI prefab มาใส่
+    private GameObject dummyUIInstance;
+
+    [Header("🎯 Dummy Debuff System")]
+    public float dummyDebuffCooldown = 8f;  // cooldown การใส่ debuff
+    private float nextDummyDebuffTime = 0f;
+    private float dummyDebuffCheckInterval = 2f;  // ตรวจสอบทุก 2 วินาที
+    private float lastDummyDebuffCheckTime = 0f;
 
     [Header("💥 Proximity Damage")]
     public float collisionDamageCooldown = 2.0f;
@@ -150,12 +162,42 @@ public class NetworkEnemy : Character
     public EnemyDropManager dropManager;
     public ItemDropManager ItemDrop;
     // Check if properly spawned
+    [Header("🧹 Pickup Text Cleanup")]
+    private float nextPickupCleanupTime = 0f;
+    private const float PICKUP_CLEANUP_INTERVAL = 10f;
+
+   
     public bool IsSpawned => Object != null && Object.IsValid;
 
     // ========== Unity Lifecycle ==========
+    private void Awake()
+    {
+        base.Awake();
+
+        // เช็คว่าเป็น Dummy หรือไม่
+        if (IsDummy)
+        {
+            persistentData = PersistentPlayerData.Instance;
+        }
+    }
     protected override void Start()
     {
         base.Start();
+        if (IsDummy)
+        {
+            persistentData = PersistentPlayerData.Instance;
+
+            // โหลด level จาก Firebase ถ้ายังไม่มี
+            if (DummyLevel <= 0)
+            {
+                LoadDummyLevelFromFirebase();
+            }
+
+            InitializeDummySystem();
+
+            Debug.Log($"[Dummy] Started at Level {DummyLevel}");
+        }
+
         if (isLobbyDummy && HasStateAuthority)
         {
             IsDummy = true;
@@ -195,19 +237,145 @@ public class NetworkEnemy : Character
             Debug.Log($"Enemy {CharacterName} spawned at level {randomLevel}");
         }
     }
+    protected void Update()
+    {
+        // อัพเดท Dummy UI
+        if (IsDummy && dummyUIInstance != null)
+        {
+            UpdateDummyUIPositionAndRotation();
+            //UpdateDummyLevelText();
+        }
 
+        // ✅ Cleanup pickup texts ทุก 10 วินาที
+        if (IsDummy && Time.time >= nextPickupCleanupTime)
+        {
+            nextPickupCleanupTime = Time.time + PICKUP_CLEANUP_INTERVAL;
+            CleanupOldPickupTexts();
+        }
+    }
+    private void CleanupOldPickupTexts()
+    {
+        Canvas pickupCanvas = FindPickupCanvas();
+        if (pickupCanvas == null) return;
+
+        Transform[] children = pickupCanvas.GetComponentsInChildren<Transform>();
+        int cleanedCount = 0;
+
+        foreach (Transform child in children)
+        {
+            if (child.name.Contains("PickupText"))
+            {
+                // ถ้า text ยังมี CanvasGroup ที่ alpha = 0 แสดงว่า fade จบแล้ว
+                CanvasGroup canvasGroup = child.GetComponent<CanvasGroup>();
+                if (canvasGroup != null && canvasGroup.alpha <= 0.01f)
+                {
+                    Destroy(child.gameObject);
+                    cleanedCount++;
+                }
+            }
+        }
+
+        if (cleanedCount > 0)
+        {
+            Debug.Log($"[CleanupOldPickupTexts] 🧹 Cleaned up {cleanedCount} old pickup texts");
+        }
+    }
     // ใน NetworkEnemy.cs - override InitializeStats เพื่อไม่ให้เรียก equipment methods
+    private void LoadDummyLevelFromFirebase()
+    {
+        if (persistentData?.multiCharacterData == null)
+        {
+            Debug.LogWarning("[Dummy] Firebase data not ready, using default level 1");
+            DummyLevel = 1;
+            return;
+        }
+
+        // เช็คและรีเซ็ตถ้าเป็นวันใหม่
+        persistentData.multiCharacterData.CheckAndResetDummyIfNewDay();
+
+        // โหลด level จาก Firebase
+        DummyLevel = persistentData.multiCharacterData.trainingDummy.currentLevel;
+
+        Debug.Log($"[Dummy] 📥 Loaded level {DummyLevel} from Firebase (Last reset: {persistentData.multiCharacterData.trainingDummy.lastResetDate})");
+    }
+    public void LevelUpDummy()
+    {
+        if (!IsDummy) return;
+
+        if (persistentData?.multiCharacterData?.trainingDummy == null)
+        {
+            Debug.LogError("[Dummy] Cannot level up - Firebase data not available!");
+            return;
+        }
+
+        var dummyData = persistentData.multiCharacterData.trainingDummy;
+
+        if (!dummyData.CanLevelUp())
+        {
+            Debug.LogWarning($"[Dummy] Already at max level ({dummyData.maxLevel})");
+            return;
+        }
+
+        // Level up
+        int oldLevel = DummyLevel;
+        dummyData.LevelUp();
+        DummyLevel = dummyData.currentLevel;
+
+        // อัปเดต stats
+        InitializeDummySystem();
+
+        // บันทึกลง Firebase
+        persistentData.multiCharacterData.UpdateTrainingDummyDebugInfo();
+        persistentData.SavePlayerDataAsync();
+
+        // แสดง UI notification
+        RPC_ShowLevelUpNotification(oldLevel, DummyLevel);
+
+        Debug.Log($"[Dummy] ⬆️ Leveled up from {oldLevel} to {DummyLevel}");
+        Debug.Log($"[Dummy] New stats - HP: {MaxHp}, Armor: {Armor}, Magic Armor: {MagicArmor}");
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowLevelUpNotification(int oldLevel, int newLevel)
+    {
+        // แสดง floating text
+        Vector3 textPosition = transform.position + Vector3.up * 3f;
+        string message = $"DUMMY LEVEL UP!\n{oldLevel} → {newLevel}";
+
+        // ใช้ DamageTextManager หรือ Notification system
+        Debug.Log($"💥 {message}");
+    }
+
+
     private void InitializeDummySystem()
     {
         if (!IsDummy) return;
 
-        DummyLevel = PlayerPrefs.GetInt("DummyLevel", 1);
+        // ✅ โหลด level จาก Firebase ถ้ายังไม่มี
+        if (persistentData?.multiCharacterData?.trainingDummy != null)
+        {
+            persistentData.multiCharacterData.CheckAndResetDummyIfNewDay();
+            DummyLevel = persistentData.multiCharacterData.trainingDummy.currentLevel;
+            Debug.Log($"[Dummy] Loaded level {DummyLevel} from Firebase");
+        }
 
         int levelMultiplier = DummyLevel;
+
+        // 🎯 Base Stats (ขึ้นตาม level)
         MaxHp = 500 + (levelMultiplier * 1000);
         CurrentHp = MaxHp;
-        Armor = levelMultiplier * 10;
 
+        // 🛡️ Armor Stats
+        Armor = 10 + (levelMultiplier * 10);
+        MagicArmor = 5 + (levelMultiplier * 8);
+
+        // 🎯 Combat Stats
+        EvasionRate = Mathf.Min(5f + (levelMultiplier * 2f), 40f);
+        HitRate = 90f;
+
+        // ❤️ Regeneration Stats
+        HealthRegen = 0.2f + (levelMultiplier * 0.5f);
+
+        // 🚫 Dummy ไม่เคลื่อนที่
         MoveSpeed = 0f;
         detectRange = 0f;
 
@@ -215,15 +383,110 @@ public class NetworkEnemy : Character
         Collider col = GetComponent<Collider>();
         if (col != null)
         {
-            col.isTrigger = true; // เปลี่ยนเป็น trigger เพื่อไม่ให้ผลักกัน
+            col.isTrigger = true;
         }
 
-        if (showDebugInfo)
+        // ✅ สร้าง UI ใหม่เสมอ (ลบของเก่าก่อน)
+        if (dummyUIInstance != null)
         {
-            Debug.Log($"[Dummy] Initialized Level {DummyLevel} Dummy - HP: {MaxHp}, Defense: {Armor}");
+            Destroy(dummyUIInstance);
+            dummyUIInstance = null;
+        }
+
+        CreateDummyUI();
+
+        Debug.Log($"╔═══════════════════════════════════════╗");
+        Debug.Log($"║  🎯 Level {DummyLevel} Training Dummy Stats  ║");
+        Debug.Log($"╠═══════════════════════════════════════╣");
+        Debug.Log($"║  HP: {MaxHp:N0}                       ");
+        Debug.Log($"║  Physical Armor: {Armor}              ");
+        Debug.Log($"║  Magic Armor: {MagicArmor}            ");
+        Debug.Log($"║  Evasion Rate: {EvasionRate}%         ");
+        Debug.Log($"║  HP Regen: {HealthRegen}/s            ");
+        Debug.Log($"╚═══════════════════════════════════════╝");
+    }
+    private void CreateDummyUI()
+    {
+        if (!IsDummy)
+        {
+            Debug.LogWarning("[Dummy] Not a dummy, skipping UI creation");
+            return;
+        }
+
+        // ลบ UI เก่าถ้ามี
+        if (dummyUIInstance != null)
+        {
+            Destroy(dummyUIInstance);
+            dummyUIInstance = null;
+        }
+
+        // ถ้าไม่มี prefab ให้สร้างแบบ manual
+        if (dummyUIPrefab == null)
+        {
+            Debug.LogWarning("[Dummy] No UI Prefab! Creating simple UI...");
+            return;
+        }
+
+        try
+        {
+            // สร้าง UI instance
+            dummyUIInstance = Instantiate(dummyUIPrefab, transform.position + Vector3.up * 3.5f, Quaternion.identity);
+            dummyUIInstance.transform.SetParent(null); // ไม่ parent กับ Dummy
+
+            // หา WorldSpaceUI component
+            WorldSpaceUI uiComponent = dummyUIInstance.GetComponent<WorldSpaceUI>();
+
+            if (uiComponent != null)
+            {
+                uiComponent.offset = new Vector3(0, 3.5f, 0);
+                uiComponent.showLevelInName = true;
+                InitializeDummyWorldSpaceUI(uiComponent);
+            }
+            else
+            {
+                Debug.LogWarning("[Dummy] WorldSpaceUI component not found, creating simple UI...");
+                Destroy(dummyUIInstance);
+                
+            }
+
+            Debug.Log($"[Dummy] ✅ UI created for Level {DummyLevel} Dummy");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Dummy] Error creating UI: {e.Message}");
+            
         }
     }
 
+    // ✅ เพิ่ม method สำหรับ initialize UI ของ Dummy
+    private void InitializeDummyWorldSpaceUI(WorldSpaceUI ui)
+    {
+        // เก็บ reference ไว้
+        dummyUIInstance = ui.gameObject;
+
+        // ตั้งค่า UI elements
+        if (ui.playerNameText3D != null)
+        {
+            ui.playerNameText3D.text = $"[Lv.{DummyLevel}] Training Dummy";
+            ui.playerNameText3D.color = Color.cyan; // สีพิเศษสำหรับ Dummy
+            ui.playerNameText3D.fontSize = 8; // ขนาดใหญ่ขึ้น
+        }
+
+        if (ui.levelText3D != null)
+        {
+            ui.levelText3D.text = $"Level {DummyLevel}";
+            ui.levelText3D.color = Color.yellow;
+        }
+
+        // ซ่อน HP/Mana bars (Dummy ไม่ต้องแสดง)
+        if (ui.healthBar != null)
+            ui.healthBar.gameObject.SetActive(false);
+
+        if (ui.manaBar != null)
+            ui.manaBar.gameObject.SetActive(false);
+
+        Debug.Log($"[Dummy] UI created for Level {DummyLevel} Dummy");
+    }
     protected override void InitializeStats()
     {
         if (characterStats != null)
@@ -252,7 +515,52 @@ public class NetworkEnemy : Character
             Debug.Log($"[NetworkEnemy] Stats initialized for {CharacterName} (no equipment)");
         }
     }
+   
+    private void UpdateDummyUIPositionAndRotation()
+    {
+        if (dummyUIInstance == null) return;
 
+        try
+        {
+            // ตั้งตำแหน่ง UI ให้อยู่เหนือ Dummy
+            Vector3 uiPosition = transform.position + Vector3.up * 3.5f;
+            dummyUIInstance.transform.position = uiPosition;
+
+            // หมุนหน้า UI ไปทางกล้อง
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                dummyUIInstance.transform.LookAt(
+                    dummyUIInstance.transform.position + mainCamera.transform.rotation * Vector3.forward,
+                    mainCamera.transform.rotation * Vector3.up
+                );
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[Dummy] Error updating UI: {e.Message}");
+        }
+    }
+
+    // ✅ อัพเดทตำแหน่ง UI ให้ตาม Dummy
+    private void UpdateDummyUIPosition()
+    {
+        if (dummyUIInstance == null) return;
+
+        // ตั้งตำแหน่ง UI ให้อยู่เหนือ Dummy
+        Vector3 uiPosition = transform.position + new Vector3(0, 3.5f, 0);
+        dummyUIInstance.transform.position = uiPosition;
+
+        // หมุนหน้า UI ไปทางกล้อง
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null)
+        {
+            dummyUIInstance.transform.LookAt(
+                dummyUIInstance.transform.position + mainCamera.transform.rotation * Vector3.forward,
+                mainCamera.transform.rotation * Vector3.up
+            );
+        }
+    }
     // Called when spawned by Fusion
     public override void Spawned()
     {
@@ -290,21 +598,26 @@ public class NetworkEnemy : Character
     // ========== Network Update ==========
     public override void FixedUpdateNetwork()
     {
-        // เรียก base.FixedUpdateNetwork() ก่อนเพื่อให้ระบบ poison ทำงาน
         base.FixedUpdateNetwork();
 
-        // Safety check
         if (!IsSpawned) return;
 
-        // Server/Host controls enemies
         if (HasStateAuthority)
         {
             if (!IsDead)
             {
-                // 🔧 ใช้ระบบ AI ใหม่ที่ปรับปรุงแล้ว
-                FindNearestPlayer();
-                ImprovedMoveTowardsTarget();
-                TryAttackTarget();
+                // 🎯 Dummy ปล่อย Debuff
+                if (IsDummy)
+                {
+                    CheckAndApplyDummyDebuffs();
+                }
+                else
+                {
+                    // AI ปกติ
+                    FindNearestPlayer();
+                    ImprovedMoveTowardsTarget();
+                    TryAttackTarget();
+                }
 
                 // Check death
                 if (CurrentHp <= 0 && !IsDead)
@@ -316,21 +629,255 @@ public class NetworkEnemy : Character
 
             // อัพเดท Network Properties
             NetworkedPosition = transform.position;
-            NetworkedScale = transform.localScale; // sync scale สำหรับ flip
+            NetworkedScale = transform.localScale;
             if (rb != null)
             {
                 NetworkedVelocity = rb.linearVelocity;
             }
         }
-        // Remote clients - apply network state
         else
         {
             ApplyNetworkState();
         }
     }
+    private void CheckAndApplyDummyDebuffs()
+    {
+        // ตรวจสอบทุก 2 วินาที
+        if (Time.time - lastDummyDebuffCheckTime < dummyDebuffCheckInterval)
+            return;
 
+        lastDummyDebuffCheckTime = Time.time;
+
+        // เช็ค cooldown
+        if (Time.time < nextDummyDebuffTime)
+            return;
+
+        // หาผู้เล่นในระยะ 10 เมตร
+        Collider[] heroColliders = Physics.OverlapSphere(transform.position, 10f, LayerMask.GetMask("Player"));
+
+        if (heroColliders.Length == 0)
+            return;
+
+        // เลือกผู้เล่นสุ่ม
+        Collider targetCollider = heroColliders[Random.Range(0, heroColliders.Length)];
+        Hero targetHero = targetCollider.GetComponent<Hero>();
+
+        if (targetHero != null && targetHero.IsSpawned)
+        {
+            // ใส่ Debuff ตาม Dummy Level
+            ApplyDummyDebuff(targetHero);
+            nextDummyDebuffTime = Time.time + dummyDebuffCooldown;
+        }
+    }
+
+    // ✅ เพิ่ม method ใหม่: ใส่ Debuff ตาม Level
+    private void ApplyDummyDebuff(Hero targetHero)
+    {
+        // คำนวณ debuff stats ตาม level
+        int level = DummyLevel;
+
+        // โอกาสใส่ debuff (เพิ่มตาม level)
+        float debuffChance = Mathf.Min(30f + (level * 3f), 70f); // 30-70%
+
+        if (Random.Range(0f, 100f) > debuffChance)
+        {
+            Debug.Log($"[Dummy] Level {level} debuff missed! (Chance: {debuffChance}%)");
+            return;
+        }
+
+        // สุ่ม debuff แบบถ่วงน้ำหนักตาม level
+        StatusEffectType debuffType = SelectDummyDebuff(level);
+
+        // คำนวณค่า debuff
+        float duration = CalculateDebuffDuration(level);
+        float amount = CalculateDebuffAmount(level, debuffType);
+
+        // ใส่ debuff
+        ApplyDebuffToHero(targetHero, debuffType, duration, amount);
+    }
+
+    // ✅ เลือก Debuff ตาม Level
+    private StatusEffectType SelectDummyDebuff(int level)
+    {
+        // Level 1-5: Blind เท่านั้น
+        if (level <= 5)
+        {
+            return StatusEffectType.Blind;
+        }
+
+        // Level 6-10: Blind (60%) หรือ Weakness (40%)
+        if (level <= 10)
+        {
+            return Random.Range(0f, 100f) < 60f ? StatusEffectType.Blind : StatusEffectType.Weakness;
+        }
+
+        // Level 11-20: Blind (40%), Weakness (30%), Stun (30%)
+        if (level <= 20)
+        {
+            float roll = Random.Range(0f, 100f);
+            if (roll < 40f) return StatusEffectType.Blind;
+            if (roll < 70f) return StatusEffectType.Weakness;
+            return StatusEffectType.Stun;
+        }
+
+        // Level 21-30: เท่ากันหมด + Armor Break
+        if (level <= 30)
+        {
+            float roll = Random.Range(0f, 100f);
+            if (roll < 25f) return StatusEffectType.Blind;
+            if (roll < 50f) return StatusEffectType.Weakness;
+            if (roll < 75f) return StatusEffectType.Stun;
+            return StatusEffectType.ArmorBreak;
+        }
+
+        // Level 31+: ทุก debuff (weighted random)
+        float highRoll = Random.Range(0f, 100f);
+        if (highRoll < 20f) return StatusEffectType.Blind;
+        if (highRoll < 40f) return StatusEffectType.Weakness;
+        if (highRoll < 60f) return StatusEffectType.Stun;
+        if (highRoll < 80f) return StatusEffectType.ArmorBreak;
+        return StatusEffectType.Freeze; // Level สูงมาก ใส่ Freeze ได้
+    }
+
+    // ✅ คำนวณระยะเวลา Debuff
+    private float CalculateDebuffDuration(int level)
+    {
+        // Base duration: 2-6 วินาที ขึ้นตาม level
+        float baseDuration = 2f + (level * 0.15f);
+
+        // Cap ที่ 8 วินาที
+        return Mathf.Min(baseDuration, 8f);
+    }
+
+    // ✅ คำนวณความแรงของ Debuff
+    private float CalculateDebuffAmount(int level, StatusEffectType debuffType)
+    {
+        float baseAmount = 0f;
+
+        switch (debuffType)
+        {
+            case StatusEffectType.Blind:
+                // 40-80% hit/crit reduction
+                baseAmount = 0.4f + (level * 0.015f);
+                return Mathf.Min(baseAmount, 0.85f);
+
+            case StatusEffectType.Weakness:
+                // 20-60% attack reduction
+                baseAmount = 0.2f + (level * 0.015f);
+                return Mathf.Min(baseAmount, 0.65f);
+
+            case StatusEffectType.ArmorBreak:
+                // 30-70% armor reduction
+                baseAmount = 0.3f + (level * 0.015f);
+                return Mathf.Min(baseAmount, 0.75f);
+
+            case StatusEffectType.Stun:
+            case StatusEffectType.Freeze:
+                // Duration เท่านั้น ไม่มี amount
+                return 0f;
+
+            default:
+                return 0.5f;
+        }
+    }
+
+    // ✅ ใส่ Debuff ให้ Hero
+    private void ApplyDebuffToHero(Hero hero, StatusEffectType debuffType, float duration, float amount)
+    {
+        StatusEffectManager statusManager = hero.GetComponent<StatusEffectManager>();
+        if (statusManager == null) return;
+
+        switch (debuffType)
+        {
+            case StatusEffectType.Blind:
+                statusManager.ApplyBlind(duration, amount);
+                Debug.Log($"[Dummy Lv.{DummyLevel}] ⚫ Blinded {hero.CharacterName} for {duration:F1}s ({amount * 100}% reduction)");
+                break;
+
+            case StatusEffectType.Weakness:
+                statusManager.ApplyWeakness(duration, amount);
+                Debug.Log($"[Dummy Lv.{DummyLevel}] 💪 Weakened {hero.CharacterName} for {duration:F1}s ({amount * 100}% reduction)");
+                break;
+
+            case StatusEffectType.Stun:
+                statusManager.ApplyStun(duration);
+                Debug.Log($"[Dummy Lv.{DummyLevel}] ⚡ Stunned {hero.CharacterName} for {duration:F1}s");
+                break;
+
+            case StatusEffectType.ArmorBreak:
+                statusManager.ApplyArmorBreak(duration, amount);
+                Debug.Log($"[Dummy Lv.{DummyLevel}] 🛡️ Broke {hero.CharacterName}'s armor for {duration:F1}s ({amount * 100}% reduction)");
+                break;
+
+            case StatusEffectType.Freeze:
+                statusManager.ApplyFreeze(duration);
+                Debug.Log($"[Dummy Lv.{DummyLevel}] ❄️ Froze {hero.CharacterName} for {duration:F1}s");
+                break;
+        }
+
+        // แสดง floating text
+        RPC_ShowDebuffText(hero.transform.position, debuffType, duration);
+    }
+
+    // ✅ แสดง Debuff Text
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowDebuffText(Vector3 position, StatusEffectType debuffType, float duration)
+    {
+        string debuffText = GetDebuffDisplayText(debuffType, duration);
+        Color debuffColor = GetDebuffColor(debuffType);
+
+        // ใช้ DamageTextManager หรือสร้าง text แยก
+        // DamageTextManager.ShowCustomText(position + Vector3.up * 3f, debuffText, debuffColor);
+
+        Debug.Log($"💥 {debuffText}");
+    }
+    private string GetDebuffDisplayText(StatusEffectType debuffType, float duration)
+    {
+        switch (debuffType)
+        {
+            case StatusEffectType.Blind: return $"⚫ BLIND! ({duration:F1}s)";
+            case StatusEffectType.Weakness: return $"💪 WEAK! ({duration:F1}s)";
+            case StatusEffectType.Stun: return $"⚡ STUNNED! ({duration:F1}s)";
+            case StatusEffectType.ArmorBreak: return $"🛡️ ARMOR BREAK! ({duration:F1}s)";
+            case StatusEffectType.Freeze: return $"❄️ FROZEN! ({duration:F1}s)";
+            default: return "DEBUFF!";
+        }
+    }
+
+    // ✅ Helper: สี Debuff
+    private Color GetDebuffColor(StatusEffectType debuffType)
+    {
+        switch (debuffType)
+        {
+            case StatusEffectType.Blind: return new Color(0.3f, 0.3f, 0.3f); // เทา
+            case StatusEffectType.Weakness: return new Color(0.6f, 0.3f, 0.6f); // ม่วง
+            case StatusEffectType.Stun: return Color.yellow;
+            case StatusEffectType.ArmorBreak: return new Color(1f, 0.5f, 0f); // ส้ม
+            case StatusEffectType.Freeze: return Color.cyan;
+            default: return Color.white;
+        }
+    }
     protected virtual void OnDestroy()
     {
+        if (IsDummy)
+        {
+            // ทำลาย UI
+            if (dummyUIInstance != null)
+            {
+                try
+                {
+                    Destroy(dummyUIInstance);
+                    dummyUIInstance = null;
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[Dummy] Error destroying UI: {e.Message}");
+                }
+            }
+
+            // ✅ Cleanup pickup texts
+            CleanupAllPickupTexts();
+        }
     }
 
     // ========== 🆕 Patrol System ==========
@@ -839,37 +1386,7 @@ public class NetworkEnemy : Character
     }
 
     // ========== 🎨 Debug Visualization ==========
-    protected void OnDrawGizmosSelected()
-    {
-        if (!showPatrolGizmos) return;
-
-        // วาดพื้นที่ patrol
-        Gizmos.color = Color.green;
-        Gizmos.DrawWireSphere(HasStateAuthority ? PatrolCenter : transform.position, patrolRange);
-
-        // วาดจุดกลาง patrol
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(HasStateAuthority ? PatrolCenter : transform.position, 0.5f);
-
-        // วาดจุดหมาย patrol ปัจจุบัน
-        if (HasStateAuthority && CurrentState == EnemyState.Patrolling)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(PatrolTarget, patrolTargetRadius);
-
-            // วาดเส้นไปยังจุดหมาย
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine(transform.position, PatrolTarget);
-        }
-
-        // วาดระยะ detect
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, detectRange);
-
-        // วาดระยะโจมตี
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, AttackRange);
-    }
+   
 
     #region // ========== Combat RPCs ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -1015,24 +1532,142 @@ public class NetworkEnemy : Character
 
         StartCoroutine(DestroyAfterDelay());
     }
+    // แก้ไขใน NetworkEnemy.cs
+
     private void HandleDummyDeath()
     {
         Debug.Log($"[Dummy] Level {DummyLevel} Dummy defeated!");
 
-        // ให้ Gold ตาม Level
+        // ✅ 1. ให้ Gold
         int goldReward = CalculateDummyGoldReward();
         GiveDummyGoldToNearbyHeroes(goldReward);
 
-        // เพิ่ม Dummy Level
-        DummyLevel++;
-        PlayerPrefs.SetInt("DummyLevel", DummyLevel);
-        PlayerPrefs.Save();
+        // ✅ 2. Level Up และบันทึกลง Firebase
+        if (persistentData?.multiCharacterData?.trainingDummy != null)
+        {
+            var dummyData = persistentData.multiCharacterData.trainingDummy;
 
-        Debug.Log($"[Dummy] Next dummy will be Level {DummyLevel}");
+            if (dummyData.CanLevelUp())
+            {
+                int oldLevel = DummyLevel;
+                dummyData.LevelUp();
+                DummyLevel = dummyData.currentLevel;
 
-        // Despawn และ Respawn Dummy ใหม่
-        StartCoroutine(RespawnDummy());
+                Debug.Log($"[Dummy] ⬆️ Leveled up from {oldLevel} to {DummyLevel}");
+
+                // ✅ บันทึกและ reload ข้อมูล
+                persistentData.SaveAndReloadDummyData();
+            }
+        }
+
+        // ✅ 3. ลบ UI
+        if (dummyUIInstance != null)
+        {
+            Destroy(dummyUIInstance);
+            dummyUIInstance = null;
+        }
+
+        // ✅ 4. Despawn (EnemySpawner จะ spawn ใหม่เอง)
+        if (HasStateAuthority && Object != null)
+        {
+            Debug.Log("[Dummy] 💀 Despawning...");
+            Runner.Despawn(Object);
+        }
     }
+
+    // ✅ เพิ่ม coroutine สำหรับ force save
+    private IEnumerator ForceSaveDummyLevel()
+    {
+        Debug.Log("[Dummy] 💾 Force saving level to Firebase...");
+
+        // บันทึกลง Firebase
+        persistentData.SavePlayerDataAsync();
+
+        // รอ 1 วินาทีให้ Firebase save เสร็จ
+        yield return new WaitForSeconds(1f);
+
+        Debug.Log($"[Dummy] ✅ Level {DummyLevel} saved to Firebase");
+
+        // ✅ Verify save โดยอ่านกลับมา
+        if (persistentData?.multiCharacterData?.trainingDummy != null)
+        {
+            int savedLevel = persistentData.multiCharacterData.trainingDummy.currentLevel;
+            Debug.Log($"[Dummy] 🔍 Verified Firebase level: {savedLevel}");
+        }
+    }
+
+    // ✅ เพิ่ม method สำหรับ respawn ทันที
+    private IEnumerator ImmediateRespawnDummy()
+    {
+        Debug.Log("[Dummy] 🔄 Starting immediate respawn...");
+
+        // รอ 2 วินาทีให้ save เสร็จ
+        yield return new WaitForSeconds(2f);
+
+        if (!HasStateAuthority || Object == null)
+        {
+            Debug.LogWarning("[Dummy] Cannot respawn - no authority");
+            yield break;
+        }
+
+        // เก็บตำแหน่งเดิม
+        Vector3 spawnPosition = transform.position;
+
+        Debug.Log($"[Dummy] 💀 Despawning old dummy...");
+
+        // Despawn Dummy เก่า
+        Runner.Despawn(Object);
+
+        // รอให้ despawn เสร็จ
+        yield return new WaitForSeconds(0.5f);
+
+        // ✅ หา EnemySpawner และ spawn ใหม่ทันที
+        EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
+        if (spawner != null)
+        {
+            Debug.Log($"[Dummy] 🎯 Spawning new Level {DummyLevel} dummy immediately...");
+            spawner.SpawnDummyAtPosition(spawnPosition);
+        }
+        else
+        {
+            Debug.LogError("[Dummy] ❌ EnemySpawner not found!");
+        }
+    }
+    private IEnumerator RespawnDummyAfterDeath()
+    {
+        Debug.Log("[Dummy] ⏳ Waiting 3 seconds before respawn...");
+        yield return new WaitForSeconds(3f);
+
+        if (!HasStateAuthority || Object == null)
+        {
+            Debug.LogWarning("[Dummy] Cannot respawn - no authority or object is null");
+            yield break;
+        }
+
+        // เก็บตำแหน่งเดิม
+        Vector3 spawnPosition = transform.position;
+
+        Debug.Log($"[Dummy] 🔄 Despawning old dummy at {spawnPosition}...");
+
+        // Despawn Dummy เก่า
+        Runner.Despawn(Object);
+
+        // รอให้ despawn เสร็จ
+        yield return new WaitForSeconds(0.5f);
+
+        // หา EnemySpawner และสั่ง spawn Dummy ใหม่
+        EnemySpawner spawner = FindObjectOfType<EnemySpawner>();
+        if (spawner != null)
+        {
+            Debug.Log($"[Dummy] 🎯 Spawning new Level {DummyLevel} dummy at {spawnPosition}...");
+            spawner.SpawnDummyAtPosition(spawnPosition);
+        }
+        else
+        {
+            Debug.LogError("[Dummy] ❌ EnemySpawner not found!");
+        }
+    }
+
 
     // 🆕 คำนวณ Gold ที่ Dummy ให้
     private int CalculateDummyGoldReward()
@@ -1043,6 +1678,7 @@ public class NetworkEnemy : Character
     }
 
     // 🆕 ให้ Gold แก่ Hero ที่อยู่ใกล้
+    // ✅ แก้ไข: ให้ Gold แก่ Hero ที่อยู่ใกล้พร้อมแสดง pickup text
     private void GiveDummyGoldToNearbyHeroes(int goldAmount)
     {
         Collider[] heroColliders = Physics.OverlapSphere(transform.position, 15f, LayerMask.GetMask("Player"));
@@ -1060,8 +1696,302 @@ public class NetworkEnemy : Character
                 }
             }
         }
+
+        // ✅ เรียก RPC แบบ broadcast ให้ทุกคนแสดง UI
+        RPC_ShowDummyGoldPickupBroadcast(transform.position, goldAmount);
+    }
+    // ✅ RPC แบบ broadcast - ทุกคนจะเห็น
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowDummyGoldPickupBroadcast(Vector3 position, int amount)
+    {
+        Debug.Log($"[RPC_ShowDummyGoldPickupBroadcast] Showing pickup at {position} for {amount} gold");
+
+        try
+        {
+            // สร้าง pickup text แบบง่าย
+            CreateSimpleGoldPickupText(position, amount);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[RPC_ShowDummyGoldPickupBroadcast] Error: {e.Message}");
+        }
+    }
+    private void CreateSimpleGoldPickupText(Vector3 worldPosition, int amount)
+    {
+        // หา canvas หรือสร้างใหม่
+        Canvas canvas = FindOrCreatePickupCanvas();
+        if (canvas == null) return;
+
+        // สร้าง text object
+        GameObject textObj = new GameObject("GoldPickupText");
+        textObj.transform.SetParent(canvas.transform, false);
+
+        // RectTransform
+        RectTransform rect = textObj.AddComponent<RectTransform>();
+        rect.sizeDelta = new Vector2(400, 100);
+
+        // TextMeshPro
+        TMPro.TextMeshProUGUI text = textObj.AddComponent<TMPro.TextMeshProUGUI>();
+        text.text = $"💰 +{amount:N0} Gold";
+        text.fontSize = 56;
+        text.fontStyle = TMPro.FontStyles.Bold;
+        text.color = Color.yellow;
+        text.alignment = TMPro.TextAlignmentOptions.Center;
+        text.outlineWidth = 0.3f;
+        text.outlineColor = Color.black;
+
+        // Convert world to screen position
+        Camera cam = Camera.main;
+        if (cam != null)
+        {
+            Vector3 screenPos = cam.WorldToScreenPoint(worldPosition + Vector3.up * 3f);
+            rect.position = screenPos;
+        }
+
+        // CanvasGroup for fading
+        CanvasGroup group = textObj.AddComponent<CanvasGroup>();
+        group.alpha = 1f;
+
+        Debug.Log($"[CreateSimpleGoldPickupText] Created text at {rect.position}");
+
+        // Animate
+        StartCoroutine(SimplePickupTextAnimation(textObj, rect, group));
     }
 
+    // ✅ Animation แบบง่าย
+    private IEnumerator SimplePickupTextAnimation(GameObject obj, RectTransform rect, CanvasGroup group)
+    {
+        if (obj == null || rect == null || group == null) yield break;
+
+        Vector3 startPos = rect.position;
+        float duration = 2f;
+        float elapsed = 0f;
+
+        while (elapsed < duration && obj != null)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+
+            // ขยับขึ้น
+            rect.position = startPos + Vector3.up * (t * 100f);
+
+            // Fade out
+            group.alpha = 1f - t;
+
+            yield return null;
+        }
+
+        if (obj != null)
+        {
+            Debug.Log("[SimplePickupTextAnimation] Destroying text");
+            Destroy(obj);
+        }
+    }
+    private Canvas FindOrCreatePickupCanvas()
+    {
+        // หา canvas ที่มีอยู่
+        Canvas[] canvases = FindObjectsOfType<Canvas>();
+        foreach (Canvas c in canvases)
+        {
+            if (c.name == "PickupCanvas" && c.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return c;
+            }
+        }
+
+        // สร้างใหม่
+        GameObject canvasObj = new GameObject("PickupCanvas");
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000; // อยู่ข้างบนสุด
+
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+        Debug.Log("[FindOrCreatePickupCanvas] Created new canvas");
+
+        return canvas;
+    }
+
+    // ✅ เพิ่ม RPC method ใหม่ (เหมือน EnemyDropManager แต่ไม่ต้องใช้ dropManager)
+    private void ShowDummyPickupMessage(string message, Color color, Vector3 position)
+    {
+        try
+        {
+            // หา หรือสร้าง pickup canvas
+            Canvas pickupCanvas = FindPickupCanvas();
+            if (pickupCanvas == null)
+            {
+                pickupCanvas = CreatePickupCanvas();
+            }
+
+            if (pickupCanvas == null)
+            {
+                Debug.LogError("[ShowDummyPickupMessage] Failed to create canvas!");
+                return;
+            }
+
+            // สร้าง text object
+            GameObject textObj = new GameObject("DummyPickupText");
+            textObj.transform.SetParent(pickupCanvas.transform, false);
+
+            // Add RectTransform for UI
+            RectTransform rectTransform = textObj.AddComponent<RectTransform>();
+            rectTransform.sizeDelta = new Vector2(400, 80);
+
+            // Add Text component (ใช้ TextMeshPro ถ้ามี)
+            TMPro.TextMeshProUGUI tmpText = textObj.AddComponent<TMPro.TextMeshProUGUI>();
+            if (tmpText != null)
+            {
+                tmpText.text = message;
+                tmpText.color = color;
+                tmpText.fontSize = 48; // ใหญ่มาก
+                tmpText.alignment = TMPro.TextAlignmentOptions.Center;
+                tmpText.fontStyle = TMPro.FontStyles.Bold;
+                tmpText.outlineWidth = 0.3f;
+                tmpText.outlineColor = Color.black;
+            }
+
+            // Convert world position to screen position
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                Vector3 worldPos = position + Vector3.up * 3f;
+                Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos);
+                rectTransform.position = screenPos;
+            }
+
+            // Add CanvasGroup for fade animation
+            CanvasGroup canvasGroup = textObj.AddComponent<CanvasGroup>();
+            canvasGroup.alpha = 1f;
+
+            Debug.Log($"[ShowDummyPickupMessage] ✅ Created pickup text: {message}");
+
+            // ✅ Start animation coroutine
+            StartCoroutine(AnimateDummyPickupText(textObj, rectTransform, canvasGroup));
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShowDummyPickupMessage] ❌ Error: {e.Message}");
+        }
+    }
+
+    // ✅ เพิ่ม method แสดง pickup text (คัดลอกมาจาก EnemyDropManager)
+  
+    public static void CleanupAllPickupTexts()
+    {
+        Canvas[] canvases = FindObjectsOfType<Canvas>();
+
+        foreach (Canvas canvas in canvases)
+        {
+            if (canvas.name == "PickupCanvas")
+            {
+                // หา pickup texts ทั้งหมด
+                Transform[] children = canvas.GetComponentsInChildren<Transform>();
+
+                foreach (Transform child in children)
+                {
+                    if (child.name.Contains("PickupText"))
+                    {
+                        Destroy(child.gameObject);
+                    }
+                }
+
+                Debug.Log($"[CleanupAllPickupTexts] Cleaned up pickup texts from {canvas.name}");
+            }
+        }
+    }
+
+    // ✅ Animation coroutine (คัดลอกมาจาก EnemyDropManager)
+    private System.Collections.IEnumerator AnimateDummyPickupText(GameObject textObj, RectTransform rectTransform, CanvasGroup canvasGroup)
+    {
+        if (textObj == null || rectTransform == null || canvasGroup == null)
+        {
+            Debug.LogError("[AnimateDummyPickupText] One or more components are null!");
+            yield break;
+        }
+
+        Debug.Log($"[AnimateDummyPickupText] Starting animation...");
+
+        Vector3 startPos = rectTransform.position;
+        Vector3 endPos = startPos + Vector3.up * 150f;
+
+        float totalDuration = 2.5f;
+        float displayDuration = 0.8f;
+        float fadeDuration = 1.7f;
+
+        // Phase 1: แสดงเต็มที่
+        yield return new WaitForSeconds(displayDuration);
+
+        Debug.Log($"[AnimateDummyPickupText] Starting fade...");
+
+        // Phase 2: Fade out
+        float fadeStartTime = Time.time;
+
+        while (Time.time - fadeStartTime < fadeDuration)
+        {
+            if (textObj == null || rectTransform == null || canvasGroup == null)
+            {
+                Debug.LogWarning("[AnimateDummyPickupText] Object destroyed during animation!");
+                break;
+            }
+
+            float progress = (Time.time - fadeStartTime) / fadeDuration;
+            rectTransform.position = Vector3.Lerp(startPos, endPos, progress);
+            canvasGroup.alpha = 1f - progress;
+
+            yield return null;
+        }
+
+        // Phase 3: Destroy
+        if (textObj != null)
+        {
+            Debug.Log($"[AnimateDummyPickupText] Animation complete, destroying...");
+            Destroy(textObj);
+        }
+    }
+
+    // ✅ Helper methods (คัดลอกมาจาก EnemyDropManager)
+    private Canvas FindPickupCanvas()
+    {
+        Canvas[] canvases = FindObjectsOfType<Canvas>();
+        foreach (Canvas canvas in canvases)
+        {
+            if (canvas.name == "PickupCanvas") return canvas;
+        }
+        return null;
+    }
+
+    private Canvas CreatePickupCanvas()
+    {
+        // ✅ เช็คว่ามี canvas เก่าอยู่หรือไม่
+        Canvas existingCanvas = FindPickupCanvas();
+        if (existingCanvas != null)
+        {
+            return existingCanvas;
+        }
+
+        GameObject canvasObj = new GameObject("PickupCanvas");
+
+        Canvas canvas = canvasObj.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100;
+
+        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+        Debug.Log("[CreatePickupCanvas] ✅ Created new PickupCanvas");
+
+        return canvas;
+    }
+
+   
     // 🆕 Respawn Dummy ใหม่
     private IEnumerator RespawnDummy()
     {
@@ -1268,5 +2198,82 @@ public class NetworkEnemy : Character
                 Debug.Log($"Enemy collision damage: {damage} to {hero.CharacterName}");
             }
         }
+    }
+
+    // เพิ่มใน NetworkEnemy.cs
+
+    [ContextMenu("Debug: Show Current Dummy Level")]
+    private void DebugShowDummyLevel()
+    {
+        if (!IsDummy)
+        {
+            Debug.Log("❌ This is not a Dummy!");
+            return;
+        }
+
+        Debug.Log("=== DUMMY LEVEL DEBUG ===");
+        Debug.Log($"Current Level: {DummyLevel}");
+
+        var persistentData = PersistentPlayerData.Instance;
+        if (persistentData?.multiCharacterData?.trainingDummy != null)
+        {
+            var dummyData = persistentData.multiCharacterData.trainingDummy;
+            Debug.Log($"Firebase Level: {dummyData.currentLevel}");
+            Debug.Log($"Last Reset Date: {dummyData.lastResetDate}");
+            Debug.Log($"Today's Date: {System.DateTime.Now.ToString("yyyy-MM-dd")}");
+            Debug.Log($"Should Reset: {dummyData.ShouldResetToday()}");
+        }
+        else
+        {
+            Debug.Log("❌ Firebase data not available!");
+        }
+        Debug.Log("========================");
+    }
+
+    [ContextMenu("Debug: Force Reset Dummy to Level 1")]
+    private void DebugForceResetDummy()
+    {
+        if (!IsDummy)
+        {
+            Debug.Log("❌ This is not a Dummy!");
+            return;
+        }
+
+        var persistentData = PersistentPlayerData.Instance;
+        if (persistentData?.multiCharacterData?.trainingDummy == null)
+        {
+            Debug.LogError("❌ Firebase data not available!");
+            return;
+        }
+
+        Debug.Log("[DEBUG] 🔄 Force resetting Dummy to Level 1...");
+
+        persistentData.multiCharacterData.trainingDummy.ResetDailyProgress();
+        persistentData.multiCharacterData.UpdateTrainingDummyDebugInfo();
+        persistentData.SavePlayerDataAsync();
+
+        DummyLevel = 1;
+        InitializeDummySystem();
+
+        Debug.Log("[DEBUG] ✅ Dummy reset to Level 1 complete!");
+    }
+    [ContextMenu("Debug: Show Dummy Status")]
+    private void DebugShowDummyStatus()
+    {
+        if (!IsDummy) return;
+
+        Debug.Log("=== DUMMY STATUS ===");
+        Debug.Log($"Current Level: {DummyLevel}");
+        Debug.Log($"HP: {CurrentHp}/{MaxHp}");
+        Debug.Log($"Is Dead: {IsDead}");
+
+        if (persistentData?.multiCharacterData?.trainingDummy != null)
+        {
+            var data = persistentData.multiCharacterData.trainingDummy;
+            Debug.Log($"Firebase Level: {data.currentLevel}");
+            Debug.Log($"Last Update: {data.lastUpdateTime}");
+        }
+
+        Debug.Log("===================");
     }
 }

@@ -311,7 +311,7 @@ public class FireSlime : NetworkEnemy
             Destroy(lightObj);
     }
 
-    protected override void OnDestroy()
+    protected virtual  void OnDestroy()
     {
         // ทำลายพื้นที่ร้อนทั้งหมด
         foreach (GameObject heatZone in activeHeatZones)
@@ -328,16 +328,5 @@ public class FireSlime : NetworkEnemy
     }
 
     // Debug Gizmos
-    private void OnDrawGizmosSelected()
-    {
-        base.OnDrawGizmosSelected();
-
-        // วาดรัศมี burn
-        Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, burnRadius);
-
-        // วาดรัศมีระเบิด
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, explodeRadius);
-    }
+  
 }

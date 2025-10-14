@@ -412,6 +412,8 @@ MonoBehaviour:
   isCollidingWithPlayer: 0
   showDebugInfo: 0
   showPatrolGizmos: 1
+  dummyUIPrefab: {fileID: 4192131042866125905, guid: 1f3d86d5b7852074cbc231c30a4b8165,
+    type: 3}
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: 0}

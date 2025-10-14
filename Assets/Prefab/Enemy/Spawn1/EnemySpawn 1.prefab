@@ -205,6 +205,12 @@ MonoBehaviour:
   stageCompleteUI: {fileID: 0}
   destroyRemainingEnemiesOnStageComplete: 1
   destroyDelay: 1
+  waitForLoadingComplete: 1
+  maxLoadingWaitTime: 30
+  showLoadingDebug: 1
+  dummyPrefab: {fileID: 0}
+  dummySpawnPoint: {fileID: 0}
+  isLobbyScene: 0
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0
