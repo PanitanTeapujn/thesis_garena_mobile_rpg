@@ -278,23 +278,22 @@ public class ItemDropManager : NetworkBehaviour
             Character character = playerObject.GetComponent<Character>();
             if (character != null)
             {
-                // หา EnemyDropManager เพื่อใช้ ShowPickupMessage
-                EnemyDropManager dropManager = GetComponent<EnemyDropManager>();
-                if (dropManager != null)
-                {
-                    dropManager.ShowPickupMessage(message, color, character.transform.position);
-                }
-                else
-                {
-                    Debug.Log($"💝 {character.CharacterName} received: {message}");
-                }
+                // ✅ ใช้ static method ของ DamageTextManager
+                DamageTextManager.ShowCustomText(
+                    character.transform.position,
+                    message,
+                    color,
+                    1.2f // ขนาด font ใหญ่กว่าปกติเล็กน้อย
+                );
+
+                Debug.Log($"💝 {character.CharacterName} received: {message}");
             }
         }
     }
     #endregion
 
     #region Debug & Testing
-   
+
     #endregion
 }
 

@@ -257,7 +257,10 @@ public class CombatManager : NetworkBehaviour
 
         // Fire damage event สำหรับ visual flash
         OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
-
+        if (attacker != null)
+        {
+            TryDropGoldFromDummy(totalDamage, attacker);
+        }
         // Check death
         if (character.CurrentHp <= 0)
         {
@@ -731,7 +734,153 @@ public class CombatManager : NetworkBehaviour
         return (float)character.CurrentHp / character.MaxHp;
     }
     #endregion
+    #region Dummy Gold Drop System
 
+    [Header("🎯 Dummy Gold Drop Settings")]
+    [Tooltip("โอกาสพื้นฐานในการดรอปเงินจาก Dummy (%)")]
+    public float dummyBaseDropChance = 15f; // 15% base chance
+
+    [Tooltip("โอกาสเพิ่มต่อดาเมจ 1000 (%)")]
+    public float dummyDropChancePerKDamage = 0.5f; // +0.5% ต่อ 1000 damage
+
+    [Tooltip("โอกาสดรอปสูงสุด (%)")]
+    public float dummyMaxDropChance = 50f; // สูงสุด 50%
+
+    [Tooltip("จำนวนเงินพื้นฐาน")]
+    public int dummyBaseGoldAmount = 10;
+
+    [Tooltip("เงินเพิ่มต่อดาเมจ 10000")]
+    public float dummyGoldPerTenKDamage = 5f; // +5 gold ต่อ 10k damage
+
+    [Tooltip("จำนวนเงินสูงสุดต่อครั้ง")]
+    public int dummyMaxGoldPerHit = 500; // สูงสุด 500 gold ต่อครั้ง
+
+    [Tooltip("เวลาคูลดาวน์ระหว่างการดรอปเงิน (วินาที)")]
+    public float dummyGoldDropCooldown = 2f; // ดรอปได้ทุก 2 วินาที
+
+    private float lastDummyGoldDropTime = 0f;
+
+    /// <summary>
+    /// ตรวจสอบและดรอปเงินจาก Dummy
+    /// เรียกจาก TakeDamageFromAttacker เมื่อโจมตี Dummy
+    /// </summary>
+    private void TryDropGoldFromDummy(int totalDamage, Character attacker)
+    {
+        // เช็คว่าเป็น Dummy หรือไม่
+        NetworkEnemy enemy = character as NetworkEnemy;
+        if (enemy == null || !enemy.IsDummy) return;
+
+        // เช็ค cooldown
+        if (Time.time - lastDummyGoldDropTime < dummyGoldDropCooldown) return;
+
+        // คำนวณโอกาสดรอป (ยิ่งดาเมจเยอะ โอกาสยิ่งสูง)
+        float dropChance = CalculateDummyDropChance(totalDamage);
+
+        // สุ่มว่าจะดรอปหรือไม่
+        float roll = UnityEngine.Random.Range(0f, 100f);
+
+        if (roll <= dropChance)
+        {
+            // คำนวณจำนวนเงินที่ดรอป
+            int goldAmount = CalculateDummyGoldAmount(totalDamage);
+
+            // ดรอปเงินให้ attacker
+            DropGoldToDummyAttacker(attacker, goldAmount, totalDamage, dropChance);
+
+            // อัพเดทเวลา
+            lastDummyGoldDropTime = Time.time;
+
+            Debug.Log($"[Dummy Gold Drop] ✅ Dropped {goldAmount} gold! (Damage: {totalDamage}, Chance: {dropChance:F1}%)");
+        }
+        else
+        {
+            Debug.Log($"[Dummy Gold Drop] ❌ No drop (Roll: {roll:F1}% > {dropChance:F1}%)");
+        }
+    }
+
+    /// <summary>
+    /// คำนวณโอกาสดรอปตามดาเมจ
+    /// </summary>
+    private float CalculateDummyDropChance(int damage)
+    {
+        // Base chance
+        float chance = dummyBaseDropChance;
+
+        // เพิ่มโอกาสตามดาเมจ (แบบ linear scaling)
+        float damageInK = damage / 1000f;
+        chance += damageInK * dummyDropChancePerKDamage;
+
+        // จำกัดไม่ให้เกิน max
+        chance = Mathf.Min(chance, dummyMaxDropChance);
+
+        return chance;
+    }
+
+    /// <summary>
+    /// คำนวณจำนวนเงินที่ดรอปตามดาเมจ
+    /// ใช้ Logarithmic scaling เพื่อป้องกันเงินเฟ้อ
+    /// </summary>
+    private int CalculateDummyGoldAmount(int damage)
+    {
+        // Base amount
+        float goldAmount = dummyBaseGoldAmount;
+
+        // เพิ่มเงินแบบ logarithmic (ยิ่งดาเมจสูง เงินเพิ่มช้าลง)
+        if (damage > 1000)
+        {
+            float damageInTenK = damage / 10000f;
+
+            // ใช้ log scaling เพื่อลดการเติบโตของเงิน
+            float scaledGold = Mathf.Log10(1 + damageInTenK) * dummyGoldPerTenKDamage * 10f;
+            goldAmount += scaledGold;
+        }
+
+        // จำกัดไม่ให้เกิน max
+        goldAmount = Mathf.Min(goldAmount, dummyMaxGoldPerHit);
+
+        // เพิ่มความสุ่ม ±10%
+        float randomFactor = UnityEngine.Random.Range(0.9f, 1.1f);
+        goldAmount *= randomFactor;
+
+        return Mathf.RoundToInt(goldAmount);
+    }
+
+    /// <summary>
+    /// ดรอปเงินให้ผู้โจมตี Dummy
+    /// </summary>
+    private void DropGoldToDummyAttacker(Character attacker, int goldAmount, int damage, float dropChance)
+    {
+        // หา CurrencyManager
+        CurrencyManager currencyManager = attacker.GetComponent<CurrencyManager>();
+        if (currencyManager != null)
+        {
+            // เพิ่มเงิน
+            currencyManager.AddGold(goldAmount, false); // ไม่ save ทันที เพื่อ performance
+
+            // แสดง text
+            if (HasStateAuthority)
+            {
+                RPC_ShowDummyGoldDrop(attacker.transform.position, goldAmount, damage, dropChance);
+            }
+
+            Debug.Log($"[Dummy Gold] 💰 {attacker.CharacterName} gained {goldAmount} gold from {damage} damage!");
+        }
+    }
+
+    /// <summary>
+    /// แสดง Gold Drop text
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowDummyGoldDrop(Vector3 position, int goldAmount, int damage, float dropChance)
+    {
+        // ใช้ DamageTextManager แสดงเงิน
+        DamageTextManager.ShowGoldPickup(position, goldAmount);
+
+        // Optional: แสดง particle effect หรือ sound
+        Debug.Log($"💰 Gold Drop: {goldAmount} (from {damage} dmg, {dropChance:F1}% chance)");
+    }
+
+    #endregion
     #region Debug Methods - Methods สำหรับ Debug และทดสอบระบบ Combat
 
     #endregion

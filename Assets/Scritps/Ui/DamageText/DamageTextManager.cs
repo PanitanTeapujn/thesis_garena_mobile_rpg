@@ -1,7 +1,11 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
-
+public enum CurrencyDisplayType
+{
+    Gold,
+    Gems
+}
 public class DamageTextManager : MonoBehaviour
 {
     public static DamageTextManager Instance { get; private set; }
@@ -352,7 +356,99 @@ public class DamageTextManager : MonoBehaviour
     }
 
     #endregion
+    #region Currency Display Methods
 
+    /// <summary>
+    /// แสดง Gold pickup text
+    /// </summary>
+    public static void ShowGoldPickup(Vector3 position, long amount)
+    {
+        if (Instance == null) return;
+
+        Instance.ShowCurrencyText(position, amount, CurrencyDisplayType.Gold);
+    }
+
+    /// <summary>
+    /// แสดง Gems pickup text
+    /// </summary>
+    public static void ShowGemsPickup(Vector3 position, int amount)
+    {
+        if (Instance == null) return;
+
+        Instance.ShowCurrencyText(position, amount, CurrencyDisplayType.Gems);
+    }
+
+    private void ShowCurrencyText(Vector3 position, long amount, CurrencyDisplayType currencyType)
+    {
+        // Performance checks
+        if (!ShouldShowDamageText(position)) return;
+
+        DamageText damageText = GetDamageText();
+        if (damageText == null) return;
+
+        // Add to active list
+        activeDamageTexts.Add(damageText);
+
+        // Initialize as currency text
+        Vector3 adjustedPosition = position + Vector3.up * 2.5f; // แสดงสูงกว่า damage เล็กน้อย
+        damageText.InitializeAsCurrency(adjustedPosition, amount, currencyType);
+
+        textDisplayedThisFrame++;
+
+        Debug.Log($"💰 Currency text shown: {amount} {currencyType} at {position}");
+    }
+
+    #endregion
+    #region Public Pool Access
+    /// <summary>
+    /// Get damage text from pool (for external use)
+    /// </summary>
+    public DamageText GetDamageTextPublic()
+    {
+        return GetDamageText();
+    }
+
+    /// <summary>
+    /// Add to active list (for external use)
+    /// </summary>
+    public void AddToActiveList(DamageText damageText)
+    {
+        if (damageText != null && !activeDamageTexts.Contains(damageText))
+        {
+            activeDamageTexts.Add(damageText);
+        }
+    }
+
+    /// <summary>
+    /// แสดง custom text (สำหรับ items และอื่นๆ)
+    /// </summary>
+    public static void ShowCustomText(Vector3 position, string message, Color color, float fontSize = 1f)
+    {
+        if (Instance == null) return;
+
+        Instance.ShowCustomTextInternal(position, message, color, fontSize);
+    }
+
+    private void ShowCustomTextInternal(Vector3 position, string message, Color color, float fontSize)
+    {
+        // Performance checks
+        if (!ShouldShowDamageText(position)) return;
+
+        DamageText damageText = GetDamageText();
+        if (damageText == null) return;
+
+        // Add to active list
+        activeDamageTexts.Add(damageText);
+
+        // Initialize as custom text
+        Vector3 adjustedPosition = position + Vector3.up * 2.5f;
+        damageText.InitializeAsCustomText(adjustedPosition, message, color, fontSize);
+
+        textDisplayedThisFrame++;
+
+        Debug.Log($"📝 Custom text shown: {message} at {position}");
+    }
+    #endregion
     #region Debug Methods
 
     [ContextMenu("Test Damage Text")]

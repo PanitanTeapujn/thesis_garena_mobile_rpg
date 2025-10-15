@@ -250,36 +250,9 @@ public class NetworkEnemy : Character
         if (IsDummy && Time.time >= nextPickupCleanupTime)
         {
             nextPickupCleanupTime = Time.time + PICKUP_CLEANUP_INTERVAL;
-            CleanupOldPickupTexts();
         }
     }
-    private void CleanupOldPickupTexts()
-    {
-        Canvas pickupCanvas = FindPickupCanvas();
-        if (pickupCanvas == null) return;
-
-        Transform[] children = pickupCanvas.GetComponentsInChildren<Transform>();
-        int cleanedCount = 0;
-
-        foreach (Transform child in children)
-        {
-            if (child.name.Contains("PickupText"))
-            {
-                // ถ้า text ยังมี CanvasGroup ที่ alpha = 0 แสดงว่า fade จบแล้ว
-                CanvasGroup canvasGroup = child.GetComponent<CanvasGroup>();
-                if (canvasGroup != null && canvasGroup.alpha <= 0.01f)
-                {
-                    Destroy(child.gameObject);
-                    cleanedCount++;
-                }
-            }
-        }
-
-        if (cleanedCount > 0)
-        {
-            Debug.Log($"[CleanupOldPickupTexts] 🧹 Cleaned up {cleanedCount} old pickup texts");
-        }
-    }
+  
     // ใน NetworkEnemy.cs - override InitializeStats เพื่อไม่ให้เรียก equipment methods
     private void LoadDummyLevelFromFirebase()
     {
@@ -1706,178 +1679,17 @@ public class NetworkEnemy : Character
     {
         Debug.Log($"[RPC_ShowDummyGoldPickupBroadcast] Showing pickup at {position} for {amount} gold");
 
-        try
-        {
-            // สร้าง pickup text แบบง่าย
-            CreateSimpleGoldPickupText(position, amount);
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[RPC_ShowDummyGoldPickupBroadcast] Error: {e.Message}");
-        }
+        // ✅ ใช้ DamageTextManager แทน
+        DamageTextManager.ShowGoldPickup(position, amount);
     }
-    private void CreateSimpleGoldPickupText(Vector3 worldPosition, int amount)
-    {
-        // หา canvas หรือสร้างใหม่
-        Canvas canvas = FindOrCreatePickupCanvas();
-        if (canvas == null) return;
-
-        // สร้าง text object
-        GameObject textObj = new GameObject("GoldPickupText");
-        textObj.transform.SetParent(canvas.transform, false);
-
-        // RectTransform
-        RectTransform rect = textObj.AddComponent<RectTransform>();
-        rect.sizeDelta = new Vector2(400, 100);
-
-        // TextMeshPro
-        TMPro.TextMeshProUGUI text = textObj.AddComponent<TMPro.TextMeshProUGUI>();
-        text.text = $"💰 +{amount:N0} Gold";
-        text.fontSize = 56;
-        text.fontStyle = TMPro.FontStyles.Bold;
-        text.color = Color.yellow;
-        text.alignment = TMPro.TextAlignmentOptions.Center;
-        text.outlineWidth = 0.3f;
-        text.outlineColor = Color.black;
-
-        // Convert world to screen position
-        Camera cam = Camera.main;
-        if (cam != null)
-        {
-            Vector3 screenPos = cam.WorldToScreenPoint(worldPosition + Vector3.up * 3f);
-            rect.position = screenPos;
-        }
-
-        // CanvasGroup for fading
-        CanvasGroup group = textObj.AddComponent<CanvasGroup>();
-        group.alpha = 1f;
-
-        Debug.Log($"[CreateSimpleGoldPickupText] Created text at {rect.position}");
-
-        // Animate
-        StartCoroutine(SimplePickupTextAnimation(textObj, rect, group));
-    }
+  
 
     // ✅ Animation แบบง่าย
-    private IEnumerator SimplePickupTextAnimation(GameObject obj, RectTransform rect, CanvasGroup group)
-    {
-        if (obj == null || rect == null || group == null) yield break;
-
-        Vector3 startPos = rect.position;
-        float duration = 2f;
-        float elapsed = 0f;
-
-        while (elapsed < duration && obj != null)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-
-            // ขยับขึ้น
-            rect.position = startPos + Vector3.up * (t * 100f);
-
-            // Fade out
-            group.alpha = 1f - t;
-
-            yield return null;
-        }
-
-        if (obj != null)
-        {
-            Debug.Log("[SimplePickupTextAnimation] Destroying text");
-            Destroy(obj);
-        }
-    }
-    private Canvas FindOrCreatePickupCanvas()
-    {
-        // หา canvas ที่มีอยู่
-        Canvas[] canvases = FindObjectsOfType<Canvas>();
-        foreach (Canvas c in canvases)
-        {
-            if (c.name == "PickupCanvas" && c.renderMode == RenderMode.ScreenSpaceOverlay)
-            {
-                return c;
-            }
-        }
-
-        // สร้างใหม่
-        GameObject canvasObj = new GameObject("PickupCanvas");
-        Canvas canvas = canvasObj.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 1000; // อยู่ข้างบนสุด
-
-        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
-
-        canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-
-        Debug.Log("[FindOrCreatePickupCanvas] Created new canvas");
-
-        return canvas;
-    }
+   
+  
 
     // ✅ เพิ่ม RPC method ใหม่ (เหมือน EnemyDropManager แต่ไม่ต้องใช้ dropManager)
-    private void ShowDummyPickupMessage(string message, Color color, Vector3 position)
-    {
-        try
-        {
-            // หา หรือสร้าง pickup canvas
-            Canvas pickupCanvas = FindPickupCanvas();
-            if (pickupCanvas == null)
-            {
-                pickupCanvas = CreatePickupCanvas();
-            }
-
-            if (pickupCanvas == null)
-            {
-                Debug.LogError("[ShowDummyPickupMessage] Failed to create canvas!");
-                return;
-            }
-
-            // สร้าง text object
-            GameObject textObj = new GameObject("DummyPickupText");
-            textObj.transform.SetParent(pickupCanvas.transform, false);
-
-            // Add RectTransform for UI
-            RectTransform rectTransform = textObj.AddComponent<RectTransform>();
-            rectTransform.sizeDelta = new Vector2(400, 80);
-
-            // Add Text component (ใช้ TextMeshPro ถ้ามี)
-            TMPro.TextMeshProUGUI tmpText = textObj.AddComponent<TMPro.TextMeshProUGUI>();
-            if (tmpText != null)
-            {
-                tmpText.text = message;
-                tmpText.color = color;
-                tmpText.fontSize = 48; // ใหญ่มาก
-                tmpText.alignment = TMPro.TextAlignmentOptions.Center;
-                tmpText.fontStyle = TMPro.FontStyles.Bold;
-                tmpText.outlineWidth = 0.3f;
-                tmpText.outlineColor = Color.black;
-            }
-
-            // Convert world position to screen position
-            Camera mainCamera = Camera.main;
-            if (mainCamera != null)
-            {
-                Vector3 worldPos = position + Vector3.up * 3f;
-                Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos);
-                rectTransform.position = screenPos;
-            }
-
-            // Add CanvasGroup for fade animation
-            CanvasGroup canvasGroup = textObj.AddComponent<CanvasGroup>();
-            canvasGroup.alpha = 1f;
-
-            Debug.Log($"[ShowDummyPickupMessage] ✅ Created pickup text: {message}");
-
-            // ✅ Start animation coroutine
-            StartCoroutine(AnimateDummyPickupText(textObj, rectTransform, canvasGroup));
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[ShowDummyPickupMessage] ❌ Error: {e.Message}");
-        }
-    }
+   
 
     // ✅ เพิ่ม method แสดง pickup text (คัดลอกมาจาก EnemyDropManager)
   
@@ -1906,90 +1718,11 @@ public class NetworkEnemy : Character
     }
 
     // ✅ Animation coroutine (คัดลอกมาจาก EnemyDropManager)
-    private System.Collections.IEnumerator AnimateDummyPickupText(GameObject textObj, RectTransform rectTransform, CanvasGroup canvasGroup)
-    {
-        if (textObj == null || rectTransform == null || canvasGroup == null)
-        {
-            Debug.LogError("[AnimateDummyPickupText] One or more components are null!");
-            yield break;
-        }
-
-        Debug.Log($"[AnimateDummyPickupText] Starting animation...");
-
-        Vector3 startPos = rectTransform.position;
-        Vector3 endPos = startPos + Vector3.up * 150f;
-
-        float totalDuration = 2.5f;
-        float displayDuration = 0.8f;
-        float fadeDuration = 1.7f;
-
-        // Phase 1: แสดงเต็มที่
-        yield return new WaitForSeconds(displayDuration);
-
-        Debug.Log($"[AnimateDummyPickupText] Starting fade...");
-
-        // Phase 2: Fade out
-        float fadeStartTime = Time.time;
-
-        while (Time.time - fadeStartTime < fadeDuration)
-        {
-            if (textObj == null || rectTransform == null || canvasGroup == null)
-            {
-                Debug.LogWarning("[AnimateDummyPickupText] Object destroyed during animation!");
-                break;
-            }
-
-            float progress = (Time.time - fadeStartTime) / fadeDuration;
-            rectTransform.position = Vector3.Lerp(startPos, endPos, progress);
-            canvasGroup.alpha = 1f - progress;
-
-            yield return null;
-        }
-
-        // Phase 3: Destroy
-        if (textObj != null)
-        {
-            Debug.Log($"[AnimateDummyPickupText] Animation complete, destroying...");
-            Destroy(textObj);
-        }
-    }
+   
 
     // ✅ Helper methods (คัดลอกมาจาก EnemyDropManager)
-    private Canvas FindPickupCanvas()
-    {
-        Canvas[] canvases = FindObjectsOfType<Canvas>();
-        foreach (Canvas canvas in canvases)
-        {
-            if (canvas.name == "PickupCanvas") return canvas;
-        }
-        return null;
-    }
-
-    private Canvas CreatePickupCanvas()
-    {
-        // ✅ เช็คว่ามี canvas เก่าอยู่หรือไม่
-        Canvas existingCanvas = FindPickupCanvas();
-        if (existingCanvas != null)
-        {
-            return existingCanvas;
-        }
-
-        GameObject canvasObj = new GameObject("PickupCanvas");
-
-        Canvas canvas = canvasObj.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 100;
-
-        CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
-
-        canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-
-        Debug.Log("[CreatePickupCanvas] ✅ Created new PickupCanvas");
-
-        return canvas;
-    }
+   
+   
 
    
     // 🆕 Respawn Dummy ใหม่
@@ -2202,78 +1935,5 @@ public class NetworkEnemy : Character
 
     // เพิ่มใน NetworkEnemy.cs
 
-    [ContextMenu("Debug: Show Current Dummy Level")]
-    private void DebugShowDummyLevel()
-    {
-        if (!IsDummy)
-        {
-            Debug.Log("❌ This is not a Dummy!");
-            return;
-        }
-
-        Debug.Log("=== DUMMY LEVEL DEBUG ===");
-        Debug.Log($"Current Level: {DummyLevel}");
-
-        var persistentData = PersistentPlayerData.Instance;
-        if (persistentData?.multiCharacterData?.trainingDummy != null)
-        {
-            var dummyData = persistentData.multiCharacterData.trainingDummy;
-            Debug.Log($"Firebase Level: {dummyData.currentLevel}");
-            Debug.Log($"Last Reset Date: {dummyData.lastResetDate}");
-            Debug.Log($"Today's Date: {System.DateTime.Now.ToString("yyyy-MM-dd")}");
-            Debug.Log($"Should Reset: {dummyData.ShouldResetToday()}");
-        }
-        else
-        {
-            Debug.Log("❌ Firebase data not available!");
-        }
-        Debug.Log("========================");
-    }
-
-    [ContextMenu("Debug: Force Reset Dummy to Level 1")]
-    private void DebugForceResetDummy()
-    {
-        if (!IsDummy)
-        {
-            Debug.Log("❌ This is not a Dummy!");
-            return;
-        }
-
-        var persistentData = PersistentPlayerData.Instance;
-        if (persistentData?.multiCharacterData?.trainingDummy == null)
-        {
-            Debug.LogError("❌ Firebase data not available!");
-            return;
-        }
-
-        Debug.Log("[DEBUG] 🔄 Force resetting Dummy to Level 1...");
-
-        persistentData.multiCharacterData.trainingDummy.ResetDailyProgress();
-        persistentData.multiCharacterData.UpdateTrainingDummyDebugInfo();
-        persistentData.SavePlayerDataAsync();
-
-        DummyLevel = 1;
-        InitializeDummySystem();
-
-        Debug.Log("[DEBUG] ✅ Dummy reset to Level 1 complete!");
-    }
-    [ContextMenu("Debug: Show Dummy Status")]
-    private void DebugShowDummyStatus()
-    {
-        if (!IsDummy) return;
-
-        Debug.Log("=== DUMMY STATUS ===");
-        Debug.Log($"Current Level: {DummyLevel}");
-        Debug.Log($"HP: {CurrentHp}/{MaxHp}");
-        Debug.Log($"Is Dead: {IsDead}");
-
-        if (persistentData?.multiCharacterData?.trainingDummy != null)
-        {
-            var data = persistentData.multiCharacterData.trainingDummy;
-            Debug.Log($"Firebase Level: {data.currentLevel}");
-            Debug.Log($"Last Update: {data.lastUpdateTime}");
-        }
-
-        Debug.Log("===================");
-    }
+   
 }

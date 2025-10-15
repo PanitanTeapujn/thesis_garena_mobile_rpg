@@ -308,4 +308,114 @@ public class DamageText : MonoBehaviour
             ReturnToPool();
         }
     }
+    [Header("Currency Settings")]
+    public Color goldColor = new Color(1f, 0.84f, 0f); // สีทอง
+    public Color gemsColor = Color.cyan;
+    public string goldIcon = "";
+    public string gemsIcon = "";
+
+    /// <summary>
+    /// Initialize as currency display (Gold/Gems)
+    /// </summary>
+    public void InitializeAsCurrency(Vector3 position, long amount, CurrencyDisplayType currencyType)
+    {
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+
+        // Reset state
+        timer = 0f;
+        isActive = true;
+
+        // Position setup
+        originalPosition = position + GetRandomOffset();
+        targetPosition = originalPosition + Vector3.up * (moveSpeed * 1.2f); // ขึ้นสูงกว่าปกติเล็กน้อย
+        transform.position = originalPosition;
+        transform.localScale = originalScale;
+
+        // Text setup
+        SetCurrencyText(amount, currencyType);
+
+        // Start animation
+        gameObject.SetActive(true);
+        StartCoroutine(AnimateDamageText());
+    }
+
+    private void SetCurrencyText(long amount, CurrencyDisplayType currencyType)
+    {
+        if (damageTextMesh == null) return;
+
+        string text;
+        Color textColor;
+        string icon;
+
+        switch (currencyType)
+        {
+            case CurrencyDisplayType.Gold:
+                // ใช้ N0 format เพื่อแสดง comma
+                text = $"+{amount:N0} Gold";
+                textColor = goldColor;
+                icon = goldIcon;
+                break;
+
+            case CurrencyDisplayType.Gems:
+                text = $"+{amount} Gems";
+                textColor = gemsColor;
+                icon = gemsIcon;
+                break;
+
+            default:
+                text = $"+{amount}";
+                textColor = Color.white;
+                icon = "";
+                break;
+        }
+
+        // Final text: "💰 +1,500 Gold"
+        damageTextMesh.text = $"{icon} {text}";
+        damageTextMesh.color = textColor;
+        damageTextMesh.fontSize = baseFontSize * 1.2f;
+        damageTextMesh.fontStyle = FontStyles.Bold;
+        damageTextMesh.outlineWidth = 0.2f;
+        damageTextMesh.outlineColor = Color.black;
+    }
+    /// <summary>
+    /// Initialize as custom text (สำหรับ items, notifications ฯลฯ)
+    /// </summary>
+    public void InitializeAsCustomText(Vector3 position, string message, Color color, float fontSizeMultiplier = 1f)
+    {
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+
+        // Reset state
+        timer = 0f;
+        isActive = true;
+
+        // Position setup
+        originalPosition = position + GetRandomOffset();
+        targetPosition = originalPosition + Vector3.up * (moveSpeed * 1.2f);
+        transform.position = originalPosition;
+        transform.localScale = originalScale;
+
+        // Text setup
+        SetCustomText(message, color, fontSizeMultiplier);
+
+        // Start animation
+        gameObject.SetActive(true);
+        StartCoroutine(AnimateDamageText());
+    }
+
+    private void SetCustomText(string message, Color color, float fontSizeMultiplier)
+    {
+        if (damageTextMesh == null) return;
+
+        // Apply text settings
+        damageTextMesh.text = message;
+        damageTextMesh.color = color;
+        damageTextMesh.fontSize = baseFontSize * fontSizeMultiplier;
+        damageTextMesh.fontStyle = FontStyles.Bold;
+
+        // เพิ่ม outline เพื่อให้เห็นชัดขึ้น
+        damageTextMesh.outlineWidth = 0.2f;
+        damageTextMesh.outlineColor = Color.black;
+    }
 }

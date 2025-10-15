@@ -1,10 +1,6 @@
 ﻿using UnityEngine;
 using Fusion;
 
-/// <summary>
-/// ระบบฟาร์มอัตโนมัติสำหรับ Hero ใน Lobby
-/// เมื่อไม่มี input นาน 5 วินาที จะเริ่มฟาร์ม Dummy อัตโนมัติ
-/// </summary>
 public class AutoFarmController : NetworkBehaviour
 {
     [Header("⚙️ Auto Farm Settings")]
@@ -31,6 +27,13 @@ public class AutoFarmController : NetworkBehaviour
     [Tooltip("ลำดับ Skill ที่จะใช้ (1-4)")]
     public int[] skillPriority = new int[] { 1, 2, 3, 4 };
 
+    [Header("🔧 Auto Range Adjustment")]
+    [Tooltip("เวลาที่รอก่อนปรับ buffer (วินาที)")]
+    public float timeBeforeAdjustBuffer = 3f;
+
+    [Tooltip("ระยะถอยหลังเมื่อไม่สามารถโจมตีได้")]
+    public float retreatDistance = 3f;
+
     [Header("📊 Debug")]
     public bool showDebugLogs = true;
 
@@ -45,6 +48,25 @@ public class AutoFarmController : NetworkBehaviour
     private float lastAutoAttackTime;
     private float lastSkillCheckTime;
 
+    // ✅ Auto Range Adjustment Variables
+    private float autoFarmStartTime;
+    private float lastAttackAttemptTime; // เวลาที่พยายามโจมตีครั้งล่าสุด
+    private bool hasSuccessfulAttack;
+    private bool isRangeAdjustmentLocked;
+    private float currentAttackRangeBuffer;
+    private int adjustmentAttempts;
+
+    // ✅ Retreat System Variables
+    private bool isRetreating = false;
+    private Vector3 retreatTargetPosition;
+    private float retreatStartTime;
+    private const float RETREAT_DURATION = 1.5f; // เวลาในการถอยหลัง
+
+    // Constants
+    private const float BUFFER_MIN = 1f;
+    private const float BUFFER_MAX = 2.5f;
+    private const int MAX_ADJUSTMENT_ATTEMPTS = 8; // จำกัดการปรับ
+
     // ========================================
     // INITIALIZATION
     // ========================================
@@ -53,7 +75,6 @@ public class AutoFarmController : NetworkBehaviour
     {
         base.Spawned();
 
-        // ตรวจสอบว่ามี Hero component
         hero = GetComponent<Hero>();
         if (hero == null)
         {
@@ -62,7 +83,6 @@ public class AutoFarmController : NetworkBehaviour
             return;
         }
 
-        // ตรวจสอบว่าอยู่ใน Lobby scene
         string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         isLobbyScene = sceneName.ToLower().Contains("lobby");
 
@@ -73,10 +93,13 @@ public class AutoFarmController : NetworkBehaviour
             return;
         }
 
-        // Initialize timers
         lastInputTime = Time.time;
         lastAutoAttackTime = Time.time;
         lastSkillCheckTime = Time.time;
+        lastAttackAttemptTime = Time.time;
+
+        currentAttackRangeBuffer = attackRangeBuffer;
+        ResetRangeAdjustment();
 
         Log($"✅ Auto Farm initialized for {hero.CharacterName}");
     }
@@ -87,10 +110,8 @@ public class AutoFarmController : NetworkBehaviour
 
     private void Update()
     {
-        // เฉพาะ local player เท่านั้น
         if (!HasInputAuthority || !isLobbyScene) return;
 
-        // ตรวจสอบ input
         if (HasAnyInput())
         {
             lastInputTime = Time.time;
@@ -102,7 +123,6 @@ public class AutoFarmController : NetworkBehaviour
         }
         else
         {
-            // ไม่มี input - เช็คว่าควรเปิด auto farm หรือไม่
             float idleTime = Time.time - lastInputTime;
 
             if (!isAutoFarmActive && idleTime >= idleTimeToStart)
@@ -114,21 +134,27 @@ public class AutoFarmController : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        // เฉพาะ local player และต้องเปิด auto farm
         if (!HasInputAuthority || !isAutoFarmActive) return;
 
-        // หาเป้าหมายใหม่ถ้าไม่มีหรือตายแล้ว
+        // ถ้ากำลังถอยหลัง จัดการ retreat
+        if (isRetreating)
+        {
+            HandleRetreating();
+            return;
+        }
+
         if (currentTarget == null || currentTarget.IsDead)
         {
             FindNearestDummy();
         }
 
-        // ถ้าไม่มีเป้าหมาย ออกเลย
         if (currentTarget == null || currentTarget.IsDead) return;
 
-        // คำนวณระยะห่าง
+        // ✅ ตรวจสอบและปรับ attack range
+        CheckAndAdjustAttackRange();
+
         float distance = Vector3.Distance(transform.position, currentTarget.transform.position);
-        float effectiveAttackRange = hero.AttackRange + attackRangeBuffer;
+        float effectiveAttackRange = hero.AttackRange + currentAttackRangeBuffer;
 
         // ========== เดินเข้าหาเป้าหมาย ==========
         if (distance > effectiveAttackRange)
@@ -138,7 +164,6 @@ public class AutoFarmController : NetworkBehaviour
         // ========== อยู่ในระยะแล้ว - โจมตีและใช้ skill ==========
         else
         {
-            // หยุดเดิน
             StopMovement();
 
             // ลองใช้ Skill
@@ -153,6 +178,7 @@ public class AutoFarmController : NetworkBehaviour
             {
                 PerformAutoAttack();
                 lastAutoAttackTime = Time.time;
+                lastAttackAttemptTime = Time.time; // ✅ บันทึกเวลาที่พยายามโจมตี
             }
         }
     }
@@ -163,17 +189,12 @@ public class AutoFarmController : NetworkBehaviour
 
     private bool HasAnyInput()
     {
-        // Keyboard/Mouse
         bool hasKeyboardInput = Input.anyKey;
         bool hasMouseMovement = Mathf.Abs(Input.GetAxis("Mouse X")) > 0.1f ||
                                 Mathf.Abs(Input.GetAxis("Mouse Y")) > 0.1f;
         bool hasMouseClick = Input.GetMouseButton(0) || Input.GetMouseButton(1);
-
-        // Controller
         bool hasJoystickInput = Mathf.Abs(Input.GetAxis("Horizontal")) > 0.1f ||
                                 Mathf.Abs(Input.GetAxis("Vertical")) > 0.1f;
-
-        // Touch
         bool hasTouchInput = Input.touchCount > 0;
 
         return hasKeyboardInput || hasMouseMovement || hasMouseClick ||
@@ -189,12 +210,18 @@ public class AutoFarmController : NetworkBehaviour
         isAutoFarmActive = true;
         lastAutoAttackTime = Time.time;
         lastSkillCheckTime = Time.time;
-        Log("🤖 Auto Farm ACTIVATED");
+
+        autoFarmStartTime = Time.time;
+        lastAttackAttemptTime = Time.time;
+        ResetRangeAdjustment();
+
+        Log($"🤖 Auto Farm ACTIVATED (Buffer: {currentAttackRangeBuffer})");
     }
 
     private void DeactivateAutoFarm()
     {
         isAutoFarmActive = false;
+        isRetreating = false;
         currentTarget = null;
         Log("❌ Auto Farm DEACTIVATED");
     }
@@ -212,12 +239,10 @@ public class AutoFarmController : NetworkBehaviour
 
         foreach (NetworkEnemy enemy in allEnemies)
         {
-            // ต้องเป็น Dummy และยังไม่ตาย
             if (!enemy.IsDummy || enemy.IsDead) continue;
 
             float distance = Vector3.Distance(transform.position, enemy.transform.position);
 
-            // อยู่ในระยะและใกล้ที่สุด
             if (distance < detectionRange && distance < nearestDistance)
             {
                 nearest = enemy;
@@ -240,7 +265,7 @@ public class AutoFarmController : NetworkBehaviour
     private void MoveTowardsTarget(float currentDistance, float targetRange)
     {
         Vector3 direction = (currentTarget.transform.position - transform.position).normalized;
-        direction.y = 0; // เดินแนวราบเท่านั้น
+        direction.y = 0;
 
         Rigidbody rb = hero.GetComponent<Rigidbody>();
         if (rb != null)
@@ -258,8 +283,132 @@ public class AutoFarmController : NetworkBehaviour
         if (rb != null)
         {
             Vector3 currentVel = rb.linearVelocity;
-            rb.linearVelocity = new Vector3(0, currentVel.y, 0); // คง gravity
+            rb.linearVelocity = new Vector3(0, currentVel.y, 0);
         }
+    }
+
+    // ========================================
+    // RETREAT SYSTEM
+    // ========================================
+
+    /// <summary>
+    /// เริ่มการถอยหลังจาก Dummy
+    /// </summary>
+    private void StartRetreat()
+    {
+        if (currentTarget == null) return;
+
+        isRetreating = true;
+        retreatStartTime = Time.time;
+
+        // คำนวณทิศทางถอยหลัง (ตรงข้ามกับ Dummy)
+        Vector3 directionFromTarget = (transform.position - currentTarget.transform.position).normalized;
+        directionFromTarget.y = 0;
+
+        // ตำแหน่งเป้าหมายที่จะถอยหลังไป
+        retreatTargetPosition = transform.position + directionFromTarget * retreatDistance;
+
+        Log($"🏃 Starting retreat! Target position: {retreatTargetPosition}");
+    }
+
+    /// <summary>
+    /// จัดการการเคลื่อนที่ถอยหลัง
+    /// </summary>
+    private void HandleRetreating()
+    {
+        float elapsedTime = Time.time - retreatStartTime;
+
+        // ถ้าถอยหลังครบเวลาแล้ว
+        if (elapsedTime >= RETREAT_DURATION)
+        {
+            isRetreating = false;
+            Log("✅ Retreat complete! Adjusting range buffer...");
+
+            // ปรับ buffer หลังจากถอยหลังเสร็จ
+            AdjustAttackRangeBuffer();
+            return;
+        }
+
+        // เคลื่อนที่ไปยังตำแหน่งเป้าหมาย
+        Vector3 direction = (retreatTargetPosition - transform.position).normalized;
+        direction.y = 0;
+
+        float distance = Vector3.Distance(transform.position, retreatTargetPosition);
+
+        if (distance > 0.5f) // ยังไม่ถึงเป้าหมาย
+        {
+            Rigidbody rb = hero.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                Vector3 newPosition = transform.position + direction * hero.MoveSpeed * Runner.DeltaTime;
+                rb.MovePosition(newPosition);
+            }
+
+            Log($"🏃 Retreating... Distance: {distance:F1}m");
+        }
+    }
+
+    // ========================================
+    // RANGE ADJUSTMENT SYSTEM
+    // ========================================
+
+    /// <summary>
+    /// ตรวจสอบและปรับ attack range buffer
+    /// </summary>
+    private void CheckAndAdjustAttackRange()
+    {
+        if (isRangeAdjustmentLocked || isRetreating) return;
+
+        float timeSinceLastAttack = Time.time - lastAttackAttemptTime;
+
+        // ถ้าพยายามโจมตีแล้วไม่สำเร็จเกิน timeBeforeAdjustBuffer
+        if (!hasSuccessfulAttack && timeSinceLastAttack >= timeBeforeAdjustBuffer)
+        {
+            Log($"⚠️ No successful attack for {timeSinceLastAttack:F1}s - Starting retreat!");
+            StartRetreat(); // ถอยหลังก่อน แล้วค่อยปรับ buffer
+        }
+    }
+
+    /// <summary>
+    /// ปรับ attack range buffer (เรียกหลังจากถอยหลังเสร็จ)
+    /// </summary>
+    private void AdjustAttackRangeBuffer()
+    {
+        adjustmentAttempts++;
+
+        // สลับระหว่าง BUFFER_MIN และ BUFFER_MAX
+        if (Mathf.Approximately(currentAttackRangeBuffer, BUFFER_MAX))
+        {
+            currentAttackRangeBuffer = BUFFER_MIN;
+            Log($"🔧 Adjusting buffer: {BUFFER_MAX} → {BUFFER_MIN} (Attempt #{adjustmentAttempts})");
+        }
+        else
+        {
+            currentAttackRangeBuffer = BUFFER_MAX;
+            Log($"🔧 Adjusting buffer: {BUFFER_MIN} → {BUFFER_MAX} (Attempt #{adjustmentAttempts})");
+        }
+
+        // Reset timers
+        lastAttackAttemptTime = Time.time;
+
+        // ป้องกันการปรับบ่อยเกินไป
+        if (adjustmentAttempts >= MAX_ADJUSTMENT_ATTEMPTS)
+        {
+            isRangeAdjustmentLocked = true;
+            LogError($"⛔ Range adjustment limit reached! Locked at {currentAttackRangeBuffer}");
+        }
+    }
+
+    /// <summary>
+    /// Reset ระบบปรับ range
+    /// </summary>
+    private void ResetRangeAdjustment()
+    {
+        hasSuccessfulAttack = false;
+        isRangeAdjustmentLocked = false;
+        adjustmentAttempts = 0;
+        currentAttackRangeBuffer = attackRangeBuffer;
+        isRetreating = false;
     }
 
     // ========================================
@@ -270,14 +419,13 @@ public class AutoFarmController : NetworkBehaviour
     {
         Log("🌟 Checking available skills...");
 
-        // ลองใช้ skill ตามลำดับความสำคัญ
         foreach (int skillNum in skillPriority)
         {
             if (CanUseSkill(skillNum))
             {
                 UseSkill(skillNum);
                 Log($"✅ Used Skill {skillNum}!");
-                return; // ใช้ได้แล้ว ออกเลย
+                return;
             }
         }
 
@@ -321,8 +469,31 @@ public class AutoFarmController : NetworkBehaviour
 
     private void PerformAutoAttack()
     {
-        Log("⚔️ Auto attacking...");
+        Log($"⚔️ Auto attacking... (Buffer: {currentAttackRangeBuffer})");
+
+        // เก็บ nextAttackTime ก่อนโจมตี
+        float previousNextAttackTime = hero.GetNextAttackTime();
+
         hero.TryAttack();
+
+        // เช็คว่าโจมตีสำเร็จหรือไม่ (nextAttackTime เปลี่ยนไหม)
+        float currentNextAttackTime = hero.GetNextAttackTime();
+
+        if (currentNextAttackTime > previousNextAttackTime)
+        {
+            // โจมตีสำเร็จ! (cooldown เปลี่ยน)
+            if (!hasSuccessfulAttack)
+            {
+                hasSuccessfulAttack = true;
+                isRangeAdjustmentLocked = true;
+                Log($"✅ First attack successful! Range adjustment locked at {currentAttackRangeBuffer}");
+            }
+        }
+        else
+        {
+            // โจมตีไม่สำเร็จ
+            Log($"❌ Attack failed! (out of range or on cooldown)");
+        }
     }
 
     // ========================================
@@ -354,14 +525,22 @@ public class AutoFarmController : NetworkBehaviour
         if (hero != null)
         {
             Gizmos.color = Color.green;
-            Gizmos.DrawWireSphere(transform.position, hero.AttackRange + attackRangeBuffer);
+            Gizmos.DrawWireSphere(transform.position, hero.AttackRange + currentAttackRangeBuffer);
         }
 
         // เส้นไปหาเป้าหมาย (สีแดง)
         if (currentTarget != null && isAutoFarmActive)
         {
-            Gizmos.color = Color.red;
+            Gizmos.color = isRetreating ? Color.blue : Color.red;
             Gizmos.DrawLine(transform.position, currentTarget.transform.position);
+        }
+
+        // Retreat target (สีน้ำเงิน)
+        if (isRetreating)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireSphere(retreatTargetPosition, 0.5f);
+            Gizmos.DrawLine(transform.position, retreatTargetPosition);
         }
     }
 
@@ -381,15 +560,16 @@ public class AutoFarmController : NetworkBehaviour
         DeactivateAutoFarm();
     }
 
-    [ContextMenu("Find Nearest Dummy")]
-    public void DebugFindDummy()
+    [ContextMenu("Force Start Retreat")]
+    public void ForceStartRetreat()
     {
-        FindNearestDummy();
+        StartRetreat();
     }
 
-    [ContextMenu("Try Use Skill")]
-    public void DebugUseSkill()
+    [ContextMenu("Reset Range Adjustment")]
+    public void DebugResetRange()
     {
-        TryUseSkill();
+        ResetRangeAdjustment();
+        Log($"Range adjustment reset! Current buffer: {currentAttackRangeBuffer}");
     }
 }

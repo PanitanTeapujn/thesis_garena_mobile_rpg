@@ -717,9 +717,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   idleTimeToStart: 5
   detectionRange: 20
-  attackRangeBuffer: 2.5
+  attackRangeBuffer: 1
   autoAttackInterval: 1
   skillCheckInterval: 1
   useSkillsAutomatically: 1
   skillPriority: 04000000030000000200000001000000
+  timeBeforeAdjustBuffer: 5
+  retreatDistance: 3
   showDebugLogs: 1
