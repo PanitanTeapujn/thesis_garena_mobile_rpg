@@ -371,19 +371,25 @@ public class AfkLobby : MonoBehaviour
                     var persistentData = PersistentPlayerData.Instance;
                     if (persistentData?.multiCharacterData?.afkData != null)
                     {
+                        Debug.Log($"[ClaimReward] 📝 Before claim:");
+                        Debug.Log($"  pendingLoginTime: '{persistentData.multiCharacterData.afkData.pendingLoginTime}'");
+                        Debug.Log($"  lastLoginDate: '{persistentData.multiCharacterData.lastLoginDate}'");
+
                         // บันทึกข้อมูลการรับรางวัล
                         persistentData.multiCharacterData.afkData.RecordClaim(currentReward.totalGold);
 
                         // ✅ เคลียร์ pending login time
                         persistentData.multiCharacterData.afkData.pendingLoginTime = "";
 
-                        Debug.Log("[AfkLobby] 🧹 Cleared pending login time");
+                        // ✅ อัปเดต lastLoginDate
+                        persistentData.multiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
-                        // ✅ บังคับ Save ทันที
-                        persistentData.ForceSaveAFKData();
+                        Debug.Log($"[ClaimReward] 📝 After claim (before save):");
+                        Debug.Log($"  pendingLoginTime: '{persistentData.multiCharacterData.afkData.pendingLoginTime}'");
+                        Debug.Log($"  lastLoginDate: '{persistentData.multiCharacterData.lastLoginDate}'");
 
-                        // ✅ รอให้ save เสร็จแล้ว verify
-                        StartCoroutine(VerifyPendingTimeCleared());
+                        // ✅ บังคับ Save แบบ synchronous พร้อม verify
+                        StartCoroutine(ForceSaveAndVerifyAfkClaim());
                     }
 
                     // เคลียร์เวลาเก่าใน memory
@@ -421,6 +427,197 @@ public class AfkLobby : MonoBehaviour
             Debug.LogError($"[AfkLobby] Error claiming reward: {e.Message}");
         }
     }
+
+    // 🆕 Coroutine ใหม่สำหรับ save และ verify แบบเข้มงวด
+    private System.Collections.IEnumerator ForceSaveAndVerifyAfkClaim()
+    {
+        var persistentData = PersistentPlayerData.Instance;
+
+        Debug.Log("[AfkLobby] 💾 Force saving AFK claim data...");
+
+        // Save ครั้งที่ 1
+        persistentData.ForceSaveAFKData();
+
+        // รอให้ Firebase save เสร็จ (2 วินาที)
+        yield return new WaitForSeconds(2f);
+
+        // ✅ Verify ว่า save สำเร็จ โดยโหลดข้อมูลกลับมาจาก Firebase
+        Debug.Log("[AfkLobby] 🔍 Verifying AFK data was saved...");
+
+        yield return StartCoroutine(VerifyAfkDataSaved());
+
+        Debug.Log("[AfkLobby] ✅ AFK claim save and verify completed");
+    }
+
+    // 🆕 Verify โดยการโหลดข้อมูลจาก Firebase กลับมาเช็ค
+    // 🆕 Verify โดยการโหลดข้อมูลจาก Firebase กลับมาเช็ค
+    // 🆕 Verify โดยการโหลดข้อมูลจาก Firebase กลับมาเช็ค
+    private System.Collections.IEnumerator VerifyAfkDataSaved()
+    {
+        Debug.Log("[VerifyAfkDataSaved] 🔍 Starting verification...");
+
+        var persistentData = PersistentPlayerData.Instance;
+
+        // ✅ แก้ไข: ใช้ Firebase reference จาก PersistentPlayerData
+        if (persistentData?.auth?.CurrentUser == null)
+        {
+            Debug.LogError("[VerifyAfkDataSaved] ❌ Cannot verify - no auth user");
+            yield break;
+        }
+
+        Debug.Log($"[VerifyAfkDataSaved] Reading from Firebase for user: {persistentData.auth.CurrentUser.UserId}");
+
+        // อ่านข้อมูลจาก Firebase
+        var task = persistentData.GetDatabaseReference()
+            .Child("players")
+            .Child(persistentData.auth.CurrentUser.UserId)
+            .GetValueAsync();
+
+        // รอให้ Firebase response
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        while (!task.IsCompleted && elapsed < timeout)
+        {
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (elapsed >= timeout)
+        {
+            Debug.LogError("[VerifyAfkDataSaved] ❌ Timeout waiting for Firebase response");
+            yield break;
+        }
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"[VerifyAfkDataSaved] ❌ Firebase error: {task.Exception.Message}");
+            yield break;
+        }
+
+        if (!task.Result.Exists)
+        {
+            Debug.LogError("[VerifyAfkDataSaved] ❌ No data found in Firebase");
+            yield break;
+        }
+
+        Debug.Log("[VerifyAfkDataSaved] ✅ Data received from Firebase, parsing...");
+
+        // ✅ แก้ไข: ย้าย try-catch ออกมาเป็น method แยก
+        yield return StartCoroutine(ParseAndCheckAfkData(task.Result));
+    }
+
+    // 🆕 แยก method สำหรับ parse data (ไม่มี yield return ใน try-catch)
+    private System.Collections.IEnumerator ParseAndCheckAfkData(Firebase.Database.DataSnapshot snapshot)
+    {
+        string json = "";
+        MultiCharacterPlayerData reloadedData = null;
+        bool parseSuccess = false;
+
+        // Parse ข้อมูล (ไม่มี yield return ใน try-catch)
+        try
+        {
+            json = snapshot.GetRawJsonValue();
+
+            if (string.IsNullOrEmpty(json))
+            {
+                Debug.LogError("[ParseAndCheckAfkData] ❌ Empty JSON from Firebase");
+                yield break;
+            }
+
+            Debug.Log($"[ParseAndCheckAfkData] JSON length: {json.Length} characters");
+
+            reloadedData = JsonUtility.FromJson<MultiCharacterPlayerData>(json);
+            parseSuccess = true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ParseAndCheckAfkData] ❌ Parse error: {e.Message}");
+            Debug.LogError($"Stack trace: {e.StackTrace}");
+            yield break;
+        }
+
+        // ถ้า parse สำเร็จ ให้เช็คข้อมูล
+        if (parseSuccess && reloadedData?.afkData != null)
+        {
+            string pendingTime = reloadedData.afkData.pendingLoginTime;
+            string lastLogin = reloadedData.lastLoginDate;
+
+            Debug.Log($"[ParseAndCheckAfkData] 🔍 Firebase values:");
+            Debug.Log($"  pendingLoginTime: '{pendingTime}'");
+            Debug.Log($"  lastLoginDate: '{lastLogin}'");
+
+            if (string.IsNullOrEmpty(pendingTime))
+            {
+                Debug.Log("[ParseAndCheckAfkData] ✅ Verified: Pending time cleared successfully in Firebase");
+            }
+            else
+            {
+                Debug.LogError($"[ParseAndCheckAfkData] ❌ CRITICAL: Pending time still exists in Firebase: '{pendingTime}'");
+                Debug.LogError("[ParseAndCheckAfkData] Forcing save again...");
+
+                // บังคับ save อีกครั้งแบบ direct update
+                yield return StartCoroutine(ForceDirectUpdateFirebase());
+            }
+        }
+        else
+        {
+            Debug.LogError("[ParseAndCheckAfkData] ❌ afkData is null in reloaded data");
+        }
+    }
+
+    // 🆕 Force update Firebase โดยตรง (ถ้า verify ล้มเหลว)
+    private System.Collections.IEnumerator ForceDirectUpdateFirebase()
+    {
+        Debug.Log("[ForceDirectUpdateFirebase] 🚀 Starting direct Firebase update...");
+
+        var persistentData = PersistentPlayerData.Instance;
+
+        if (persistentData?.auth?.CurrentUser == null)
+        {
+            Debug.LogError("[ForceDirectUpdateFirebase] ❌ No auth user");
+            yield break;
+        }
+
+        // อัปเดตเฉพาะ field ที่จำเป็น
+        var updates = new System.Collections.Generic.Dictionary<string, object>
+    {
+        { "afkData/pendingLoginTime", "" },
+        { "lastLoginDate", System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") }
+    };
+
+        Debug.Log("[ForceDirectUpdateFirebase] 📤 Sending direct update to Firebase...");
+
+        var task = persistentData.GetDatabaseReference()
+            .Child("players")
+            .Child(persistentData.auth.CurrentUser.UserId)
+            .UpdateChildrenAsync(updates);
+
+        // รอให้ update เสร็จ
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"[ForceDirectUpdateFirebase] ❌ Update failed: {task.Exception.Message}");
+        }
+        else
+        {
+            Debug.Log("[ForceDirectUpdateFirebase] ✅ Direct update successful");
+
+            // อัปเดต local data ด้วย
+            persistentData.multiCharacterData.afkData.pendingLoginTime = "";
+            persistentData.multiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            // Verify อีกครั้งหลัง update
+            yield return new WaitForSeconds(2f);
+
+            Debug.Log("[ForceDirectUpdateFirebase] 🔍 Re-verifying after direct update...");
+            yield return StartCoroutine(VerifyAfkDataSaved());
+        }
+    }
+
+    // 🆕 Force update Firebase โดยตรง (ถ้า verify ล้มเหลว)
+
     // 🆕 Verify ว่า pending time ถูกเคลียร์แล้ว
     private System.Collections.IEnumerator VerifyPendingTimeCleared()
     {

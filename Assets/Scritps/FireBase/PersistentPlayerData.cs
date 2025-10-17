@@ -120,17 +120,46 @@ public class PersistentPlayerData : MonoBehaviour
         {
             Debug.Log($"[PersistentPlayerData] 🚀 Force saving AFK data...");
             Debug.Log($"  Pending time: '{multiCharacterData.afkData.pendingLoginTime}'");
+            Debug.Log($"  Last login: '{multiCharacterData.lastLoginDate}'");
 
             multiCharacterData.UpdateAFKDebugInfo();
 
-            // บังคับ save ทันที
-            SavePlayerDataAsync();
+            // บังคับ save ทันทีแบบ synchronous
+            StartCoroutine(ForceSaveAFKDataSync());
 
-            Debug.Log("[PersistentPlayerData] ✅ AFK data save initiated");
+            Debug.Log("[PersistentPlayerData] ✅ AFK data force save initiated");
         }
         catch (System.Exception e)
         {
             Debug.LogError($"[PersistentPlayerData] ❌ Error force saving AFK data: {e.Message}");
+        }
+    }
+    public DatabaseReference GetDatabaseReference()
+    {
+        return databaseReference;
+    }
+    // 🆕 Coroutine สำหรับ save AFK data แบบ synchronous
+    private System.Collections.IEnumerator ForceSaveAFKDataSync()
+    {
+        if (auth?.CurrentUser == null || multiCharacterData == null)
+        {
+            Debug.LogError("[ForceSaveAFKDataSync] Cannot save - no auth or data");
+            yield break;
+        }
+
+        string json = JsonUtility.ToJson(multiCharacterData, true);
+        var task = databaseReference.Child("players").Child(auth.CurrentUser.UserId).SetRawJsonValueAsync(json);
+
+        // รอให้ save เสร็จ
+        yield return new WaitUntil(() => task.IsCompleted);
+
+        if (task.Exception != null)
+        {
+            Debug.LogError($"[ForceSaveAFKDataSync] ❌ Save failed: {task.Exception.Message}");
+        }
+        else
+        {
+            Debug.Log($"[ForceSaveAFKDataSync] ✅ AFK data saved successfully to Firebase");
         }
     }
     public string GetCurrentActiveCharacter()
