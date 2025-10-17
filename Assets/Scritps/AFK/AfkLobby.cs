@@ -1,0 +1,457 @@
+﻿using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using System;
+
+public class AfkLobby : MonoBehaviour
+{
+    [Header("UI References")]
+    public Button afkButton;
+    public Button closeAfkPanelButton;
+    public Button claimRewardButton;
+    public GameObject afkPanel;
+
+    [Header("Display UI")]
+    public TextMeshProUGUI afkTimeText;
+    public TextMeshProUGUI baseGoldText;
+    public TextMeshProUGUI dummyBonusText;
+    public TextMeshProUGUI playerBonusText;
+    public TextMeshProUGUI totalGoldText;
+
+    [Header("Progress Bar")]
+    public Slider afkProgressSlider;
+    public TextMeshProUGUI progressText; // แสดง "5/8 hours"
+
+    [Header("Status")]
+    public TextMeshProUGUI statusText;
+
+    [Header("Optional: Notification Badge")]
+    public GameObject notificationBadge;
+
+    private AFKRewardResult currentReward;
+    private bool hasClaimedReward = false;
+    private bool hasUpdatedLoginTime = false; // 🆕 เพิ่มตัวแปรนี้
+    private string savedLastLoginTime = ""; // เก็บเวลาเก่าไว้ก่อนอัปเดต
+    private bool hasCalculatedReward = false;
+
+    void Start()
+    {
+        SetupButtons();
+
+        // ปิด Panel ตอนเริ่มต้น
+        if (afkPanel != null)
+            afkPanel.SetActive(false);
+
+        // ✅ รอให้ข้อมูลโหลดเสร็จก่อนเช็ครางวัล
+        StartCoroutine(WaitForDataThenCheckReward());
+    }
+
+    // 🆕 Coroutine ใหม่สำหรับรอข้อมูล
+    private System.Collections.IEnumerator WaitForDataThenCheckReward()
+    {
+        Debug.Log("[AfkLobby] 🔄 Waiting for PersistentPlayerData...");
+
+        float timeout = 30f;
+        float elapsed = 0f;
+
+        while (elapsed < timeout)
+        {
+            if (PersistentPlayerData.Instance != null &&
+                PersistentPlayerData.Instance.isDataLoaded &&
+                PersistentPlayerData.Instance.HasValidData())
+            {
+                Debug.Log("[AfkLobby] ✅ Data loaded successfully");
+                break;
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (elapsed >= timeout)
+        {
+            Debug.LogError("[AfkLobby] ❌ Timeout waiting for data");
+            yield break;
+        }
+
+        // ✅ ใช้ AFKData จาก Firebase แทน PlayerPrefs
+        if (!hasCalculatedReward)
+        {
+            var afkData = PersistentPlayerData.Instance.multiCharacterData.afkData;
+
+            // เช็คว่ามีเวลาที่ pending อยู่หรือไม่
+            if (!string.IsNullOrEmpty(afkData.pendingLoginTime))
+            {
+                // ถ้ามีเวลาที่ยังไม่ได้รับรางวัล ให้ใช้เวลานั้น
+                savedLastLoginTime = afkData.pendingLoginTime;
+                Debug.Log($"[AfkLobby] 📥 Using pending login time from Firebase: {savedLastLoginTime}");
+            }
+            else
+            {
+                // ถ้าไม่มี ให้เก็บเวลาปัจจุบันจาก lastLoginDate
+                savedLastLoginTime = PersistentPlayerData.Instance.multiCharacterData.lastLoginDate;
+
+                // บันทึกเป็น pending time
+                afkData.pendingLoginTime = savedLastLoginTime;
+                PersistentPlayerData.Instance.SavePlayerDataAsync();
+
+                Debug.Log($"[AfkLobby] 💾 Saved new pending login time to Firebase: {savedLastLoginTime}");
+            }
+
+            // เช็ครางวัลก่อนอัปเดตเวลา
+            CheckForPendingReward();
+            hasCalculatedReward = true;
+
+            // อัปเดตเวลาใหม่หลังเช็ครางวัลแล้ว
+            UpdateCurrentLoginTime();
+        }
+    }
+    // 🆕 Method สำหรับอัปเดตเวลา Login ปัจจุบัน
+    private void UpdateCurrentLoginTime()
+    {
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+
+            if (persistentData?.multiCharacterData == null)
+            {
+                Debug.LogWarning("[AfkLobby] Cannot update login time - no data");
+                return;
+            }
+
+            string now = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+            // ✅ บันทึกเวลา Login ปัจจุบันลง Firebase
+            persistentData.multiCharacterData.lastLoginDate = now;
+            persistentData.SavePlayerDataAsync();
+
+            Debug.Log($"[AfkLobby] ✅ Updated login time: {now}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[AfkLobby] Error updating login time: {e.Message}");
+        }
+    }
+
+    void SetupButtons()
+    {
+        if (afkButton != null)
+            afkButton.onClick.AddListener(OpenAfkPanel);
+
+        if (closeAfkPanelButton != null)
+            closeAfkPanelButton.onClick.AddListener(CloseAfkPanel);
+
+        if (claimRewardButton != null)
+            claimRewardButton.onClick.AddListener(ClaimReward);
+    }
+
+    void OpenAfkPanel()
+    {
+        if (afkPanel == null) return;
+
+        // คำนวณรางวัล AFK
+        CalculateAfkReward();
+
+        // แสดง Panel
+        afkPanel.SetActive(true);
+
+        Debug.Log("[AfkLobby] Opened AFK Panel");
+    }
+
+    void CloseAfkPanel()
+    {
+        if (afkPanel != null)
+            afkPanel.SetActive(false);
+
+        Debug.Log("[AfkLobby] Closed AFK Panel");
+    }
+
+    void CheckForPendingReward()
+    {
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+
+            if (persistentData?.multiCharacterData == null)
+            {
+                Debug.Log("[AfkLobby] No player data available yet");
+                UpdateNotificationBadge(false);
+                return;
+            }
+
+            // ✅ ใช้เวลาเก่าที่เก็บไว้
+            string timeToCheck = !string.IsNullOrEmpty(savedLastLoginTime)
+                ? savedLastLoginTime
+                : persistentData.multiCharacterData.lastLoginDate;
+
+            Debug.Log($"[AfkLobby] 🔍 Checking reward with time: {timeToCheck}");
+
+            bool hasPendingReward = AFKRewardCalculator.HasPendingReward(timeToCheck);
+
+            UpdateNotificationBadge(hasPendingReward);
+
+            if (hasPendingReward)
+            {
+                Debug.Log($"[AfkLobby] 🎁 Player has pending AFK reward! Last login: {timeToCheck}");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[AfkLobby] Error checking pending reward: {e.Message}");
+        }
+    }
+
+    void CalculateAfkReward()
+    {
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+
+            if (persistentData?.multiCharacterData == null)
+            {
+                ShowNoReward("ไม่พบข้อมูลผู้เล่น");
+                return;
+            }
+
+            // ✅ ใช้เวลาเก่าที่เก็บไว้
+            string timeToCalculate = !string.IsNullOrEmpty(savedLastLoginTime)
+                ? savedLastLoginTime
+                : persistentData.multiCharacterData.lastLoginDate;
+
+            Debug.Log($"[AfkLobby] 🔍 Calculating reward with time: {timeToCalculate}");
+
+            int dummyLevel = persistentData.multiCharacterData.trainingDummy?.currentLevel ?? 1;
+            int playerLevel = persistentData.multiCharacterData.playerLevel;
+
+            currentReward = AFKRewardCalculator.CalculateReward(timeToCalculate, dummyLevel, playerLevel);
+
+            if (currentReward.hasReward)
+            {
+                DisplayReward(currentReward);
+                hasClaimedReward = false;
+            }
+            else
+            {
+                ShowNoReward("คุณต้อง AFK อย่างน้อย 1 นาที");
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[AfkLobby] Error calculating reward: {e.Message}");
+            ShowNoReward("เกิดข้อผิดพลาดในการคำนวณรางวัล");
+        }
+    }
+    void DisplayReward(AFKRewardResult reward)
+    {
+        // แสดงเวลาที่ AFK
+        if (afkTimeText != null)
+            afkTimeText.text = $"Time AFK: {reward.GetAfkTimeDisplayShort()}";
+
+        // แสดงเงินพื้นฐาน
+        if (baseGoldText != null)
+            baseGoldText.text = $"Base: {reward.baseGold:N0} Gold";
+
+        // ✅ แสดงโบนัสจาก Dummy (คูณ Level)
+        if (dummyBonusText != null)
+        {
+            dummyBonusText.text = $"Bonus Dummy Lv.{reward.dummyLevel} (x{reward.dummyLevel}): +{reward.dummyBonus:N0} Gold";
+        }
+
+        // แสดงโบนัสจาก Player Level (1% ต่อ level)
+        if (playerBonusText != null)
+        {
+            float playerPercent = reward.playerLevel * 1f;
+            playerBonusText.text = $"Bonus Player Lv.{reward.playerLevel} (+{playerPercent:F0}%): +{reward.playerLevelBonus:N0} Gold";
+        }
+
+        // แสดงเงินรวม
+        if (totalGoldText != null)
+            totalGoldText.text = $"Total: {reward.totalGold:N0} Gold";
+
+        // อัปเดต Progress Bar
+        UpdateProgressBar(reward.afkHours);
+
+        // แสดงสถานะ
+        if (statusText != null)
+        {
+            statusText.text = "กดปุ่มด้านล่างเพื่อรับรางวัล";
+            statusText.color = Color.green;
+        }
+
+        // เปิดใช้ปุ่มรับรางวัล
+        if (claimRewardButton != null)
+            claimRewardButton.interactable = true;
+
+        Debug.Log($"[AfkLobby] Displayed reward: {reward.totalGold} gold for {reward.GetAfkTimeDisplayShort()}");
+    }
+    private void UpdateProgressBar(float afkHours)
+    {
+        const int MAX_AFK_HOURS = 8;
+
+        // อัปเดต Slider
+        if (afkProgressSlider != null)
+        {
+            afkProgressSlider.maxValue = MAX_AFK_HOURS;
+            afkProgressSlider.value = Mathf.Min(afkHours, MAX_AFK_HOURS);
+        }
+
+        // อัปเดต Progress Text
+        if (progressText != null)
+        {
+            float cappedHours = Mathf.Min(afkHours, MAX_AFK_HOURS);
+            progressText.text = $"{cappedHours:F1}/{MAX_AFK_HOURS} Hrs";
+
+            // เปลี่ยนสีถ้าถึง limit
+            if (afkHours >= MAX_AFK_HOURS)
+            {
+                progressText.color = Color.yellow; // สีเหลือง = ถึง limit
+            }
+            else
+            {
+                progressText.color = Color.white;
+            }
+        }
+    }
+
+    void ShowNoReward(string message)
+    {
+        // ซ่อนข้อมูลรางวัล
+        if (afkTimeText != null) afkTimeText.text = "Time AFK: -";
+        if (baseGoldText != null) baseGoldText.text = "Base: 0 Gold";
+        if (dummyBonusText != null) dummyBonusText.text = "Bonus Dummy: 0 Gold";
+        if (playerBonusText != null) playerBonusText.text = "Bonus Player: 0 Gold";
+        if (totalGoldText != null) totalGoldText.text = "Total: 0 Gold";
+
+        // ✅ รีเซ็ต Progress Bar
+        if (afkProgressSlider != null)
+            afkProgressSlider.value = 0;
+
+        if (progressText != null)
+        {
+            progressText.text = "0/8 Hrs";
+            progressText.color = Color.white;
+        }
+
+        // แสดงสถานะ
+        if (statusText != null)
+        {
+            statusText.text = message;
+            statusText.color = Color.gray;
+        }
+
+        // ปิดปุ่มรับรางวัล
+        if (claimRewardButton != null)
+            claimRewardButton.interactable = false;
+
+        currentReward = null;
+
+        Debug.Log($"[AfkLobby] No reward available: {message}");
+    }
+
+    void ClaimReward()
+    {
+        if (currentReward == null || !currentReward.hasReward || hasClaimedReward)
+        {
+            Debug.LogWarning("[AfkLobby] No reward to claim or already claimed");
+            return;
+        }
+
+        try
+        {
+            var currencyManager = CurrencyManager.FindCurrencyManager();
+
+            if (currencyManager != null)
+            {
+                bool success = currencyManager.AddGold(currentReward.totalGold, true);
+
+                if (success)
+                {
+                    Debug.Log($"[AfkLobby] ✅ Successfully claimed {currentReward.totalGold} gold from AFK");
+
+                    var persistentData = PersistentPlayerData.Instance;
+                    if (persistentData?.multiCharacterData?.afkData != null)
+                    {
+                        persistentData.multiCharacterData.afkData.RecordClaim(currentReward.totalGold);
+
+                        // ✅ เคลียร์ pending login time หลังรับรางวัล
+                        persistentData.multiCharacterData.afkData.pendingLoginTime = "";
+
+                        persistentData.multiCharacterData.UpdateAFKDebugInfo();
+                        persistentData.SavePlayerDataAsync();
+
+                        Debug.Log("[AfkLobby] 🧹 Cleared pending login time from Firebase");
+                    }
+
+                    // เคลียร์เวลาเก่าใน memory
+                    savedLastLoginTime = "";
+
+                    hasClaimedReward = true;
+
+                    if (statusText != null)
+                    {
+                        statusText.text = $"รับรางวัล {currentReward.totalGold:N0} Gold แล้ว!";
+                        statusText.color = Color.yellow;
+                    }
+
+                    if (claimRewardButton != null)
+                        claimRewardButton.interactable = false;
+
+                    UpdateNotificationBadge(false);
+
+                    Invoke("CloseAfkPanel", 2f);
+                }
+                else
+                {
+                    Debug.LogError("[AfkLobby] Failed to add gold to player");
+
+                    if (statusText != null)
+                    {
+                        statusText.text = "เกิดข้อผิดพลาด ไม่สามารถรับรางวัลได้";
+                        statusText.color = Color.red;
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[AfkLobby] Error claiming reward: {e.Message}");
+        }
+    }
+
+    void UpdateNotificationBadge(bool show)
+    {
+        if (notificationBadge != null)
+            notificationBadge.SetActive(show);
+    }
+
+    // Debug methods (เหมือนเดิม)
+    [ContextMenu("Test AFK Reward (1 hour)")]
+    void TestAfkReward1Hour()
+    {
+        var persistentData = PersistentPlayerData.Instance;
+        if (persistentData?.multiCharacterData != null)
+        {
+            DateTime oneHourAgo = DateTime.Now.AddHours(-1);
+            persistentData.multiCharacterData.lastLoginDate = oneHourAgo.ToString("yyyy-MM-dd HH:mm:ss");
+
+            Debug.Log($"[AfkLobby] Test: Set last login to 1 hour ago");
+
+            CheckForPendingReward();
+        }
+    }
+
+    [ContextMenu("Test AFK Reward (8 hours)")]
+    void TestAfkReward8Hours()
+    {
+        var persistentData = PersistentPlayerData.Instance;
+        if (persistentData?.multiCharacterData != null)
+        {
+            DateTime eightHoursAgo = DateTime.Now.AddHours(-8);
+            persistentData.multiCharacterData.lastLoginDate = eightHoursAgo.ToString("yyyy-MM-dd HH:mm:ss");
+
+            Debug.Log($"[AfkLobby] Test: Set last login to 8 hours ago");
+
+            CheckForPendingReward();
+        }
+    }
+}

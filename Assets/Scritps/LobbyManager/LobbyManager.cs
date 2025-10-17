@@ -32,6 +32,7 @@ public class LobbyManager : MonoBehaviour
     public Button shopButton;
     public Button gachaButton;
     public Button questButton;
+    public Button afkButton;
     [Header("Character Selection")]
     public Button characterSelectionButton;
     #endregion
@@ -69,6 +70,7 @@ public class LobbyManager : MonoBehaviour
     public GameObject friendRequestItemPrefab;
     public GameObject friendItemPrefab;
 
+    public GameObject AfkPanel;
     [Header("Upgrade")]
     public GameObject upGradePanel;
     public Hero localHero { get; private set; }
@@ -155,6 +157,7 @@ public class LobbyManager : MonoBehaviour
         logoutButton.onClick.AddListener(Logout);
         upgradeButton.onClick.AddListener(ShowUpgradePanel);
         questButton.onClick.AddListener(ShowQuestPanel);
+        afkButton.onClick.AddListener(ShowAfkPanel);
         // Party management buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
@@ -265,6 +268,12 @@ public class LobbyManager : MonoBehaviour
         questPanel.SetActive(true);
 
     }
+    void ShowAfkPanel()
+    {
+        HideAllPanels();
+        AfkPanel.SetActive(true);
+
+    }
     void ShowShopPanel()
     {
 
@@ -294,6 +303,7 @@ public class LobbyManager : MonoBehaviour
         upGradePanel.SetActive(false);
         shopPanel.SetActive(false);
         questPanel.SetActive(false);
+        AfkPanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
 

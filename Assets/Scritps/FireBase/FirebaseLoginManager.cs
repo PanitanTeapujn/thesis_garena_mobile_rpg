@@ -167,7 +167,6 @@ public class FirebaseLoginManager : MonoBehaviour
             user = loginTask.Result.User;
             Debug.Log($"Login successful: {user.Email}");
 
-            UpdateLastLogin();
 
             // ✅ Setup ข้อมูลพื้นฐาน
             SetupPlayerDataQuick();
@@ -179,6 +178,7 @@ public class FirebaseLoginManager : MonoBehaviour
             SceneManager.LoadScene("Lobby");
         }
     }
+    
 
     IEnumerator RegisterUser(string email, string password)
     {

@@ -11,6 +11,107 @@ public enum StatType
     INT,    // Intelligence - Magic Attack, Mana, Cooldown Reduction
     MAS     // Mastery - Hit Rate, Life Steal, Movement Speed
 }
+#region 🛌 AFK System Classes
+[System.Serializable]
+public class AFKData
+{
+    [Header("AFK Time Tracking")]
+    public string lastLogoutTime = "";          // เวลาที่ออกจากเกมล่าสุด (จะใช้ lastLoginDate แทน)
+    public string lastClaimTime = "";           // เวลาที่รับรางวัล AFK ล่าสุด
+    public string pendingLoginTime = "";        // 🆕 เก็บเวลา login เดิมที่ยังไม่ได้รับรางวัล
+
+    [Header("AFK Rewards")]
+    public long totalAfkGoldEarned = 0;         // เงินรวมที่ได้จาก AFK ทั้งหมด
+    public int totalAfkClaims = 0;              // จำนวนครั้งที่รับรางวัล AFK
+
+    [Header("AFK Settings")]
+    public const int MAX_AFK_HOURS = 8;         // ฟาร์มได้สูงสุด 8 ชั่วโมง
+    public const int GOLD_PER_HOUR = 100;       // ทุก 1 ชั่วโมงได้ 100 gold
+
+    [Header("Debug Info")]
+    public string lastUpdateTime = "";
+
+    public AFKData()
+    {
+        lastLogoutTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        lastClaimTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        totalAfkGoldEarned = 0;
+        totalAfkClaims = 0;
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    public void UpdateDebugInfo()
+    {
+        lastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    public void RecordClaim(long goldAmount)
+    {
+        lastClaimTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        totalAfkGoldEarned += goldAmount;
+        totalAfkClaims++;
+        UpdateDebugInfo();
+    }
+}
+
+[System.Serializable]
+public class AFKRewardResult
+{
+    public bool hasReward = false;
+    public float afkHours = 0f;
+    public int dummyLevel = 1;
+    public int playerLevel = 1;
+    public long baseGold = 0;
+    public long dummyBonus = 0;
+    public long playerLevelBonus = 0;
+    public long totalGold = 0;
+
+    // Method เดิม (แบบยาว)
+    public string GetAfkTimeDisplay()
+    {
+        if (afkHours < 1f)
+        {
+            int minutes = Mathf.FloorToInt(afkHours * 60);
+            return $"{minutes} นาที";
+        }
+        else
+        {
+            int hours = Mathf.FloorToInt(afkHours);
+            int minutes = Mathf.FloorToInt((afkHours - hours) * 60);
+
+            if (minutes > 0)
+                return $"{hours} ชั่วโมง {minutes} นาที";
+            else
+                return $"{hours} ชั่วโมง";
+        }
+    }
+
+    // 🆕 Method ใหม่ (แบบสั้น - ภาษาอังกฤษ)
+    public string GetAfkTimeDisplayShort()
+    {
+        if (afkHours < (1f / 60f)) // น้อยกว่า 1 นาที
+        {
+            int seconds = Mathf.FloorToInt(afkHours * 3600);
+            return $"{seconds}s";
+        }
+        else if (afkHours < 1f) // น้อยกว่า 1 ชั่วโมง
+        {
+            int minutes = Mathf.FloorToInt(afkHours * 60);
+            return $"{minutes}min";
+        }
+        else // 1 ชั่วโมงขึ้นไป
+        {
+            int hours = Mathf.FloorToInt(afkHours);
+            int minutes = Mathf.FloorToInt((afkHours - hours) * 60);
+
+            if (minutes > 0)
+                return $"{hours}hr {minutes}min";
+            else
+                return $"{hours}hr";
+        }
+    }
+}
+#endregion
 #region Saved Inventory Data Classes
 /// <summary>
 /// ข้อมูลไอเทมที่บันทึกใน shared inventory
@@ -773,7 +874,14 @@ public class MultiCharacterPlayerData
     [Header("Friends System")]
     public List<string> friends = new List<string>();
     public List<string> pendingFriendRequests = new List<string>();
+    #region 🛌 AFK System
+    [Header("🛌 AFK Reward System")]
+    public AFKData afkData = new AFKData();
 
+    [Header("🔍 AFK Debug Info")]
+    public bool hasAfkData = false;
+    public string afkLastUpdateTime = "";
+    #endregion
     #region 🆕 Inventory System
     [Header("🎒 Shared Inventory System")]
     public SharedInventoryData sharedInventory = new SharedInventoryData();
@@ -1236,8 +1344,30 @@ public class MultiCharacterPlayerData
         InitializeDailyQuestSystem();
         // ✅ เปลี่ยนจาก InitializeDefaultCharacter() เป็น CreateEmptyDefaultCharacter()
         InitializeTrainingDummySystem();
-
+        InitializeAFKSystem();
         InitializeStageProgressSystem();
+    }
+    private void InitializeAFKSystem()
+    {
+        afkData = new AFKData();
+        hasAfkData = false;
+        afkLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+        Debug.Log("✅ AFK system initialized");
+    }
+    public void UpdateAFKDebugInfo()
+    {
+        if (afkData != null)
+        {
+            afkLastUpdateTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            hasAfkData = true;
+            afkData.UpdateDebugInfo();
+        }
+    }
+
+    public bool HasAFKData()
+    {
+        return hasAfkData && afkData != null;
     }
     public void InitializeTrainingDummySystem()
     {

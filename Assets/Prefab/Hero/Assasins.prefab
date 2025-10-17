@@ -320,6 +320,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dummyBaseDropChance: 15
+  dummyDropChancePerKDamage: 0.5
+  dummyMaxDropChance: 50
+  dummyBaseGoldAmount: 10
+  dummyGoldPerTenKDamage: 5
+  dummyMaxGoldPerHit: 500
+  dummyGoldDropCooldown: 2
 --- !u!114 &-294174450329675486
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -717,7 +724,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   idleTimeToStart: 5
   detectionRange: 20
-  attackRangeBuffer: 1
+  attackRangeBuffer: 2.5
   autoAttackInterval: 1
   skillCheckInterval: 1
   useSkillsAutomatically: 1

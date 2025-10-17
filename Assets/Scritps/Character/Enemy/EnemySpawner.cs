@@ -133,10 +133,12 @@ public class EnemySpawner : NetworkBehaviour
     public bool waitForLoadingComplete = true;
 
     [Tooltip("เวลารอสูงสุดหาก Loading Panel ไม่เจอ (วินาที)")]
-    public float maxLoadingWaitTime = 30f;
+    public float maxLoadingWaitTime = 5f; // ✅ ลดจาก 30 เป็น 5 วินาที
 
     [Tooltip("แสดง debug ข้อมูลการรอ loading")]
     public bool showLoadingDebug = true;
+
+   
 
     // เพิ่มตัวแปร private
     private bool isLoadingComplete = false;
@@ -202,7 +204,6 @@ public class EnemySpawner : NetworkBehaviour
         InitializeSpawnCounts();
         InitializeBossConditions();
         ValidateSettings();
-        InitializeLoadingSystem();
 
         if (StageRewardTracker.Instance != null)
         {
@@ -411,44 +412,7 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
-    // 🆕 Reset Dummy Level (สำหรับ debug)
-    [ContextMenu("Reset Dummy Level")]
-    public void ResetDummyLevel()
-    {
-        PlayerPrefs.SetInt("DummyLevel", 1);
-        PlayerPrefs.Save();
-        Debug.Log("[EnemySpawner] Dummy Level reset to 1");
-    }
-    private void InitializeLoadingSystem()
-    {
-        if (!waitForLoadingComplete)
-        {
-            isLoadingComplete = true;
-            if (showLoadingDebug)
-            {
-                Debug.Log("🔄 [EnemySpawner] Loading wait disabled - spawning enabled immediately");
-            }
-            return;
-        }
-
-        // หา LoadingPanelManager
-        loadingPanelManager = FindObjectOfType<LoadingPanelManager>();
-        loadingStartTime = Time.time;
-
-        if (loadingPanelManager == null)
-        {
-            Debug.LogWarning("🔄 [EnemySpawner] LoadingPanelManager not found! Will wait for max time then start spawning");
-            StartCoroutine(WaitForMaxTime());
-        }
-        else
-        {
-            if (showLoadingDebug)
-            {
-                Debug.Log("🔄 [EnemySpawner] Found LoadingPanelManager - monitoring loading progress");
-            }
-            StartCoroutine(MonitorLoadingProgress());
-        }
-    }
+   
 
     // 🆕 เพิ่ม Coroutine สำหรับตรวจสอบ loading progress
     private IEnumerator MonitorLoadingProgress()
@@ -576,8 +540,15 @@ public class EnemySpawner : NetworkBehaviour
         // 🆕 เช็คว่า loading เสร็จหรือยัง
         if (waitForLoadingComplete && !isLoadingComplete)
         {
-            // แสดง debug loading status (ไม่บ่อยเกินไป)
-            if (showLoadingDebug && Time.time % 3f < 0.1f)
+            // ถ้ารอเกิน maxLoadingWaitTime ให้เริ่มเลย
+            if (Time.time - loadingStartTime > maxLoadingWaitTime)
+            {
+                Debug.LogWarning($"[EnemySpawner] ⏰ Timeout reached ({maxLoadingWaitTime}s) - forcing start");
+                OnLoadingComplete();
+            }
+
+            // แสดง debug ทุก 5 วินาที
+            if (showLoadingDebug && Time.time % 5f < 0.1f)
             {
                 float elapsed = Time.time - loadingStartTime;
                 string status = loadingPanelManager != null ?
@@ -585,7 +556,7 @@ public class EnemySpawner : NetworkBehaviour
                     "no LoadingPanelManager";
                 Debug.Log($"🔄 [EnemySpawner] Still waiting for loading ({elapsed:F1}s) - {status}");
             }
-            return; // หยุดการทำงานจนกว่า loading จะเสร็จ
+            return;
         }
 
         // เช็คสถานะด่านก่อน
@@ -717,7 +688,6 @@ public class EnemySpawner : NetworkBehaviour
         // เริ่มตรวจสอบ loading ใหม่
         if (waitForLoadingComplete)
         {
-            InitializeLoadingSystem();
         }
     }
 
@@ -2325,38 +2295,7 @@ public class EnemySpawner : NetworkBehaviour
     }
 
     // ✅ เพิ่ม method สำหรับ debug
-    [ContextMenu("Debug: Force Spawn Dummy")]
-    private void DebugForceSpawnDummy()
-    {
-        if (!HasStateAuthority)
-        {
-            Debug.LogWarning("[EnemySpawner] ⚠️ Only host can spawn Dummy!");
-            return;
-        }
+   
 
-        Debug.Log("[EnemySpawner] 🔧 Force spawning Dummy...");
-        RespawnDummy();
-    }
-
-    [ContextMenu("Debug: Check Dummy Status")]
-    private void DebugCheckDummyStatus()
-    {
-        Debug.Log("=== DUMMY STATUS ===");
-        Debug.Log($"Has Dummy Spawned: {hasDummySpawned}");
-        Debug.Log($"Current Dummy Instance: {(currentDummyInstance != null ? "Exists" : "NULL")}");
-
-        if (currentDummyInstance != null)
-        {
-            Debug.Log($"Dummy Level: {currentDummyInstance.DummyLevel}");
-            Debug.Log($"Dummy HP: {currentDummyInstance.CurrentHp}/{currentDummyInstance.MaxHp}");
-            Debug.Log($"Dummy Is Dead: {currentDummyInstance.IsDead}");
-        }
-
-        var persistentData = PersistentPlayerData.Instance;
-        if (persistentData?.multiCharacterData?.trainingDummy != null)
-        {
-            Debug.Log($"Firebase Dummy Level: {persistentData.multiCharacterData.trainingDummy.currentLevel}");
-        }
-        Debug.Log("==================");
-    }
+    
 }
