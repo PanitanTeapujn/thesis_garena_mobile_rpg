@@ -108,7 +108,31 @@ public class PersistentPlayerData : MonoBehaviour
         var characterData = GetCurrentCharacterData();
         return characterData?.currentExp ?? 0;
     }
+    public void ForceSaveAFKData()
+    {
+        if (multiCharacterData?.afkData == null)
+        {
+            Debug.LogWarning("[PersistentPlayerData] Cannot save AFK data - data is null");
+            return;
+        }
 
+        try
+        {
+            Debug.Log($"[PersistentPlayerData] 🚀 Force saving AFK data...");
+            Debug.Log($"  Pending time: '{multiCharacterData.afkData.pendingLoginTime}'");
+
+            multiCharacterData.UpdateAFKDebugInfo();
+
+            // บังคับ save ทันที
+            SavePlayerDataAsync();
+
+            Debug.Log("[PersistentPlayerData] ✅ AFK data save initiated");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[PersistentPlayerData] ❌ Error force saving AFK data: {e.Message}");
+        }
+    }
     public string GetCurrentActiveCharacter()
     {
         if (multiCharacterData == null) return "Assassin";

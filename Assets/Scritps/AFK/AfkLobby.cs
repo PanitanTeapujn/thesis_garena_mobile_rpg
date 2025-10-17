@@ -371,15 +371,19 @@ public class AfkLobby : MonoBehaviour
                     var persistentData = PersistentPlayerData.Instance;
                     if (persistentData?.multiCharacterData?.afkData != null)
                     {
+                        // บันทึกข้อมูลการรับรางวัล
                         persistentData.multiCharacterData.afkData.RecordClaim(currentReward.totalGold);
 
-                        // ✅ เคลียร์ pending login time หลังรับรางวัล
+                        // ✅ เคลียร์ pending login time
                         persistentData.multiCharacterData.afkData.pendingLoginTime = "";
 
-                        persistentData.multiCharacterData.UpdateAFKDebugInfo();
-                        persistentData.SavePlayerDataAsync();
+                        Debug.Log("[AfkLobby] 🧹 Cleared pending login time");
 
-                        Debug.Log("[AfkLobby] 🧹 Cleared pending login time from Firebase");
+                        // ✅ บังคับ Save ทันที
+                        persistentData.ForceSaveAFKData();
+
+                        // ✅ รอให้ save เสร็จแล้ว verify
+                        StartCoroutine(VerifyPendingTimeCleared());
                     }
 
                     // เคลียร์เวลาเก่าใน memory
@@ -417,7 +421,67 @@ public class AfkLobby : MonoBehaviour
             Debug.LogError($"[AfkLobby] Error claiming reward: {e.Message}");
         }
     }
+    // 🆕 Verify ว่า pending time ถูกเคลียร์แล้ว
+    private System.Collections.IEnumerator VerifyPendingTimeCleared()
+    {
+        // รอให้ save เสร็จ
+        yield return new WaitForSeconds(1.5f);
 
+        var persistentData = PersistentPlayerData.Instance;
+        if (persistentData?.multiCharacterData?.afkData != null)
+        {
+            string pendingTime = persistentData.multiCharacterData.afkData.pendingLoginTime;
+
+            if (string.IsNullOrEmpty(pendingTime))
+            {
+                Debug.Log("[AfkLobby] ✅ Verified: Pending time cleared in Firebase");
+            }
+            else
+            {
+                Debug.LogWarning($"[AfkLobby] ⚠️ Pending time still exists: '{pendingTime}'");
+                Debug.LogWarning("[AfkLobby] Attempting to clear again...");
+
+                // บังคับเคลียร์อีกครั้ง
+                persistentData.multiCharacterData.afkData.pendingLoginTime = "";
+                persistentData.ForceSaveAFKData();
+            }
+        }
+    }
+    // 🆕 Coroutine สำหรับบังคับ save และ verify
+    private System.Collections.IEnumerator SaveAndVerifyPendingTime(PersistentPlayerData persistentData)
+    {
+        // Save ครั้งแรก
+        persistentData.SavePlayerDataAsync();
+        Debug.Log("[AfkLobby] 💾 Saving cleared pending time to Firebase...");
+
+        // รอให้ save เสร็จ
+        yield return new WaitForSeconds(1f);
+
+        // Verify ว่า save สำเร็จ
+        if (string.IsNullOrEmpty(persistentData.multiCharacterData.afkData.pendingLoginTime))
+        {
+            Debug.Log("[AfkLobby] ✅ Verified: Pending time cleared successfully");
+        }
+        else
+        {
+            Debug.LogWarning("[AfkLobby] ⚠️ Pending time still exists, forcing save again...");
+
+            // บังคับเคลียร์อีกครั้ง
+            persistentData.multiCharacterData.afkData.pendingLoginTime = "";
+            persistentData.SavePlayerDataAsync();
+
+            yield return new WaitForSeconds(1f);
+
+            if (string.IsNullOrEmpty(persistentData.multiCharacterData.afkData.pendingLoginTime))
+            {
+                Debug.Log("[AfkLobby] ✅ Retry successful: Pending time cleared");
+            }
+            else
+            {
+                Debug.LogError("[AfkLobby] ❌ Failed to clear pending time after retry");
+            }
+        }
+    }
     void UpdateNotificationBadge(bool show)
     {
         if (notificationBadge != null)
