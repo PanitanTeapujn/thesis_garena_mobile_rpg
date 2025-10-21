@@ -38,7 +38,7 @@ public class GachaUIManager : MonoBehaviour
 
     [Header("🎁 Results Display")]
     public Transform resultItemContainer;
-    public GameObject resultItemPrefab;
+    [SerializeField] private GameObject resultItemPrefab; // ทำเป็น private
     public Button closeResultsButton;
     public Button addToInventoryButton;
 
@@ -625,12 +625,14 @@ public class GachaUIManager : MonoBehaviour
             CreateResultItem(reward);
 
             // เช็คว่ามี rare item หรือไม่
-            if (reward.itemData.Tier >= ItemTier.Rare || reward.isGuaranteed)
+            if (reward.IsRareReward() || reward.isGuaranteed)
             {
                 hasRareItem = true;
             }
 
-            yield return new WaitForSeconds(0.3f); // แสดงทีละ item
+            // ✅ หน่วงเวลานานขึ้นสำหรับ rare items
+            float delay = (reward.IsRareReward() || reward.isGuaranteed) ? 0.5f : 0.2f;
+            yield return new WaitForSeconds(delay);
         }
 
         // เล่นเสียง rare item ถ้ามี
@@ -639,57 +641,141 @@ public class GachaUIManager : MonoBehaviour
             uiAudioSource.PlayOneShot(rareItemSound);
         }
     }
-
     private void CreateResultItem(GachaReward reward)
     {
         if (resultItemPrefab == null || resultItemContainer == null) return;
 
         GameObject itemObj = Instantiate(resultItemPrefab, resultItemContainer);
 
-        // Setup item display
-        Image itemIcon = itemObj.transform.Find("Icon")?.GetComponent<Image>();
-        if (itemIcon != null && reward.itemData.ItemIcon != null)
+        // ✅ ใช้ ItemRewardUI script แทนการ setup แบบเดิม
+        ItemRewardUI rewardUI = itemObj.GetComponent<ItemRewardUI>();
+        if (rewardUI != null)
         {
-            itemIcon.sprite = reward.itemData.ItemIcon;
+            // สร้าง ItemRewardInfo จาก GachaReward
+            ItemRewardInfo itemRewardInfo = ConvertGachaRewardToItemRewardInfo(reward);
+
+            // ตั้งค่าข้อมูล
+            rewardUI.SetItemData(itemRewardInfo);
+
+            // เล่น animation (หน่วงเวลาถ้าเป็น rare item)
+            if (reward.IsRareReward() || reward.isGuaranteed)
+            {
+                StartCoroutine(PlayRewardAnimationDelayed(rewardUI, 0.2f));
+            }
+            else
+            {
+                rewardUI.PlayAppearAnimation();
+            }
+        }
+        else
+        {
+            // Fallback: ใช้วิธีเดิมถ้าไม่มี ItemRewardUI component
+            SetupResultItemFallback(itemObj, reward);
+        }
+    }
+    /// <summary>
+    /// แปลง GachaReward เป็น ItemRewardInfo สำหรับใช้กับ ItemRewardUI
+    /// </summary>
+    private ItemRewardInfo ConvertGachaRewardToItemRewardInfo(GachaReward reward)
+    {
+        var itemRewardInfo = new ItemRewardInfo();
+
+        switch (reward.rewardType)
+        {
+            case RewardType.Item:
+                if (reward.itemData != null)
+                {
+                    itemRewardInfo.itemName = reward.itemData.ItemName;
+                    itemRewardInfo.itemIcon = reward.itemData.ItemIcon;
+                    itemRewardInfo.itemTier = reward.itemData.Tier;
+                    itemRewardInfo.quantity = reward.quantity;
+                }
+                break;
+
+            case RewardType.Character:
+                if (reward.characterData != null)
+                {
+                    itemRewardInfo.itemName = reward.characterData.characterName;
+                    itemRewardInfo.itemIcon = reward.characterData.characterIcon;
+                    // แปลง CharacterRarity เป็น ItemTier
+                    itemRewardInfo.itemTier = ConvertCharacterRarityToItemTier(reward.characterData.rarity);
+                    itemRewardInfo.quantity = 1;
+                }
+                break;
+
+            case RewardType.Currency:
+                itemRewardInfo.itemName = reward.currencyType;
+                // TODO: ใส่ icon สำหรับ currency (Gold/Gems icon)
+                itemRewardInfo.itemTier = ItemTier.Common; // Currency ใช้ tier common
+                itemRewardInfo.quantity = reward.quantity;
+                break;
+        }
+
+        return itemRewardInfo;
+    }
+
+    /// <summary>
+    /// แปลง CharacterRarity เป็น ItemTier
+    /// </summary>
+    private ItemTier ConvertCharacterRarityToItemTier(CharacterRarity rarity)
+    {
+        switch (rarity)
+        {
+            case CharacterRarity.Common: return ItemTier.Common;
+            case CharacterRarity.Uncommon: return ItemTier.Uncommon;
+            case CharacterRarity.Rare: return ItemTier.Rare;
+            case CharacterRarity.Epic: return ItemTier.Epic;
+            case CharacterRarity.Legendary: return ItemTier.Legendary;
+            default: return ItemTier.Common;
+        }
+    }
+    /// <summary>
+    /// เล่น animation หลังจากหน่วงเวลา (สำหรับ rare items)
+    /// </summary>
+    private IEnumerator PlayRewardAnimationDelayed(ItemRewardUI rewardUI, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        rewardUI.PlayAppearAnimation();
+    }
+    /// <summary>
+    /// Setup item แบบเดิม (fallback) ถ้าไม่มี ItemRewardUI component
+    /// </summary>
+    private void SetupResultItemFallback(GameObject itemObj, GachaReward reward)
+    {
+        // Setup item display (โค้ดเดิมของคุณ)
+        Image itemIcon = itemObj.transform.Find("Icon")?.GetComponent<Image>();
+        if (itemIcon != null && reward.GetRewardIcon() != null)
+        {
+            itemIcon.sprite = reward.GetRewardIcon();
         }
 
         TextMeshProUGUI itemName = itemObj.transform.Find("Name")?.GetComponent<TextMeshProUGUI>();
         if (itemName != null)
         {
-            itemName.text = reward.itemData.ItemName;
-            itemName.color = reward.itemData.GetTierColor();
+            itemName.text = reward.GetDisplayName();
+            itemName.color = reward.GetRewardColor();
         }
 
         TextMeshProUGUI itemQuantity = itemObj.transform.Find("Quantity")?.GetComponent<TextMeshProUGUI>();
-        if (itemQuantity != null)
+        if (itemQuantity != null && reward.quantity > 1)
         {
             itemQuantity.text = $"x{reward.quantity}";
         }
 
-        // แสดง tier
+        // แสดง tier/rarity
         TextMeshProUGUI tierText = itemObj.transform.Find("Tier")?.GetComponent<TextMeshProUGUI>();
         if (tierText != null)
         {
-            tierText.text = reward.itemData.GetTierText();
-            tierText.color = reward.itemData.GetTierColor();
+            tierText.text = reward.GetRewardTierText();
+            tierText.color = reward.GetRewardColor();
         }
 
-        // แสดง special indicators
+        // Special indicators
         GameObject newLabel = itemObj.transform.Find("NewLabel")?.gameObject;
         if (newLabel != null) newLabel.SetActive(reward.isNewItem);
 
         GameObject guaranteedLabel = itemObj.transform.Find("GuaranteedLabel")?.gameObject;
         if (guaranteedLabel != null) guaranteedLabel.SetActive(reward.isGuaranteed);
-
-        // เล่น animation สำหรับ rare items
-        if (reward.itemData.Tier >= ItemTier.Rare || reward.isGuaranteed)
-        {
-            Animator itemAnimator = itemObj.GetComponent<Animator>();
-            if (itemAnimator != null)
-            {
-                itemAnimator.SetTrigger("RareItemReveal");
-            }
-        }
     }
 
     public void ShowRareItemEffect(GachaReward reward)
