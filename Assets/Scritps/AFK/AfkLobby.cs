@@ -408,7 +408,7 @@ public class AfkLobby : MonoBehaviour
 
                     UpdateNotificationBadge(false);
 
-                    Invoke("CloseAfkPanel", 2f);
+                    CloseAfkPanel();
                 }
                 else
                 {

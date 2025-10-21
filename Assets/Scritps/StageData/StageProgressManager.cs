@@ -31,7 +31,13 @@ public class StageProgressManager : MonoBehaviour
         {
             if (PersistentPlayerData.Instance?.multiCharacterData?.stageProgress == null)
             {
-                PersistentPlayerData.Instance.multiCharacterData.stageProgress = new StageProgressData();
+                Debug.LogError("[StageProgress] ❌ stageProgress is NULL in PersistentPlayerData!");
+
+                if (PersistentPlayerData.Instance?.multiCharacterData != null)
+                {
+                    PersistentPlayerData.Instance.multiCharacterData.stageProgress = new StageProgressData();
+                    Debug.Log("[StageProgress] Created new StageProgressData");
+                }
             }
             return PersistentPlayerData.Instance.multiCharacterData.stageProgress;
         }
@@ -124,7 +130,28 @@ public class StageProgressManager : MonoBehaviour
     public static bool IsStageCompleted(string stageName)
     {
         StageProgressManager instance = Instance;
-        return instance.StageProgress?.IsStageCompleted(stageName) ?? false;
+
+        if (instance.StageProgress == null)
+        {
+            Debug.LogError($"[IsStageCompleted] StageProgress is NULL for {stageName}");
+            return false;
+        }
+
+        bool isCompleted = instance.StageProgress.IsStageCompleted(stageName);
+
+        // ✅ Debug เพื่อดูว่าเช็คถูกต้องหรือไม่
+        Debug.Log($"[IsStageCompleted] Checking '{stageName}': {isCompleted}");
+
+        if (instance.StageProgress.completedStages.Count > 0)
+        {
+            Debug.Log($"[IsStageCompleted] Available completed stages:");
+            foreach (var stage in instance.StageProgress.completedStages)
+            {
+                Debug.Log($"  - '{stage}'");
+            }
+        }
+
+        return isCompleted;
     }
 
     // ✅ ดึงจำนวน Enemy ที่กำจัดแล้ว
@@ -151,16 +178,35 @@ public class StageProgressManager : MonoBehaviour
     {
         if (PersistentPlayerData.Instance?.multiCharacterData?.stageProgress != null)
         {
-            // ข้อมูลมีอยู่แล้วจาก PersistentPlayerData
-            Debug.Log($"✅ [StageProgress] Loaded from PersistentPlayerData - {StageProgress.completedStages.Count} completed stages");
+            // ✅ ใช้ข้อมูลจาก PersistentPlayerData โดยตรง (ไม่สร้างใหม่)
+            Debug.Log($"✅ [StageProgress] Loaded from PersistentPlayerData");
+
+            var stageProgressData = PersistentPlayerData.Instance.multiCharacterData.stageProgress;
+
+            Debug.Log($"   Completed stages count: {stageProgressData.completedStages.Count}");
+
+            // แสดงรายการด่านที่ผ่านแล้ว
+            if (stageProgressData.completedStages.Count > 0)
+            {
+                Debug.Log("   Completed stages:");
+                foreach (var stage in stageProgressData.completedStages)
+                {
+                    Debug.Log($"   ✅ {stage}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("   ⚠️ No completed stages found in Firebase data");
+            }
         }
         else
         {
-            // สร้าง default progress
+            Debug.LogWarning("[StageProgress] No stage progress data in PersistentPlayerData");
+
             if (PersistentPlayerData.Instance?.multiCharacterData != null)
             {
                 PersistentPlayerData.Instance.multiCharacterData.stageProgress = new StageProgressData();
-                Debug.Log("[StageProgress] Created default progress in PersistentPlayerData");
+                Debug.Log("[StageProgress] Created default progress");
             }
         }
     }
@@ -193,7 +239,6 @@ public class StageProgressManager : MonoBehaviour
                     Debug.Log($"✅ [StageProgress] Loaded from Firebase - {stageProgress.completedStages.Count} completed stages");
 
                     // ✅ Sync กับ PlayerPrefs
-                    SaveToPlayerPrefs();
                 }
                 else
                 {
@@ -251,69 +296,13 @@ public class StageProgressManager : MonoBehaviour
         }
 
         // ✅ Sync กับ PlayerPrefs
-        SaveToPlayerPrefs();
     }
 
     // ========== PlayerPrefs Methods (Backup) ==========
 
-    private void LoadFromPlayerPrefs()
-    {
-        Debug.Log("[StageProgress] Loading from PlayerPrefs...");
+  
 
-        stageProgress = new StageProgressData();
-
-        // โหลดด่านที่ผ่านแล้ว
-        string completedStagesStr = PlayerPrefs.GetString("CompletedStages", "");
-        if (!string.IsNullOrEmpty(completedStagesStr))
-        {
-            string[] stages = completedStagesStr.Split(',');
-            foreach (string stage in stages)
-            {
-                if (!string.IsNullOrEmpty(stage))
-                    stageProgress.completedStages.Add(stage);
-            }
-        }
-
-        // โหลด Enemy kills ทุกตัว
-        string[] allPossibleStages = {
-            "PlayRoom1_1", "PlayRoom1_2", "PlayRoom1_3",
-            "PlayRoom2_1", "PlayRoom2_2", "PlayRoom2_3",
-            "PlayRoom3_1", "PlayRoom3_2", "PlayRoom3_3"
-        };
-
-        foreach (string stage in allPossibleStages)
-        {
-            int kills = PlayerPrefs.GetInt($"EnemyKills_{stage}", 0);
-            if (kills > 0)
-            {
-                stageProgress.stageEnemyKills[stage] = kills;
-            }
-        }
-
-        stageProgress.lastPlayedStage = PlayerPrefs.GetString("LastPlayedStage", "");
-
-        Debug.Log($"✅ [StageProgress] Loaded from PlayerPrefs - {stageProgress.completedStages.Count} completed stages");
-    }
-
-    private void SaveToPlayerPrefs()
-    {
-        if (stageProgress == null) return;
-
-        // บันทึก Enemy kills
-        foreach (var kvp in stageProgress.stageEnemyKills)
-        {
-            PlayerPrefs.SetInt($"EnemyKills_{kvp.Key}", kvp.Value);
-        }
-
-        // บันทึกด่านที่ผ่านแล้ว
-        string completedStagesStr = string.Join(",", stageProgress.completedStages);
-        PlayerPrefs.SetString("CompletedStages", completedStagesStr);
-        PlayerPrefs.SetString("LastPlayedStage", stageProgress.lastPlayedStage);
-
-        PlayerPrefs.Save();
-
-        Debug.Log($"💾 [StageProgress] Synced to PlayerPrefs");
-    }
+   
 
     private void CreateDefaultProgress()
     {

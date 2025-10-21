@@ -2,6 +2,29 @@
 using UnityEngine.UI;
 using TMPro;
 using System;
+[System.Serializable]
+public class SubStagePanel
+{
+    public GameObject panel;
+    public string subStageName;
+    public string sceneToLoad;
+    public Button selectButton;
+
+    [Header("🎯 Progression Settings")]
+    public int requiredEnemyKills;
+    public string[] requiredPreviousStages;
+    public bool isFirstStage = false;
+
+    [Header("📋 Stage Details (For Game Designer)")]
+    [TextArea(3, 6)]
+    public string stageDescription = ""; // คำอธิบายด่าน
+    public string stageDifficulty = "Normal"; // ความยาก: Easy, Normal, Hard, Very Hard
+    public string[] recommendedLevel; // เลเวลที่แนะนำ เช่น "Level 5-10"
+    public string[] enemyTypes; // ประเภทศัตรูในด่าน
+    public string[] stageRewards; // รางวัลที่ได้รับ
+    [TextArea(2, 4)]
+    public string designerNotes = ""; // บันทึกสำหรับ Game Designer
+}
 
 public class StageSelectionManager : MonoBehaviour
 {
@@ -14,10 +37,13 @@ public class StageSelectionManager : MonoBehaviour
         public Button selectButton;
 
         [Header("🎯 Progression Settings")]
-        public int requiredEnemyKills;        // จำนวน Enemy ที่ต้องกำจัด
-        public string[] requiredPreviousStages;   // substage ที่ต้องผ่านมาก่อน
-        public bool isFirstStage = false;         // ด่านแรกของแต่ละ Main Stage
+        public int requiredEnemyKills;
+        public string[] requiredPreviousStages;
+        public bool isFirstStage = false;
 
+        [Header("📋 Stage Detail")]
+        [TextArea(3, 6)]
+        public string stageDescription = ""; // คำอธิบายด่าน
     }
 
     [System.Serializable]
@@ -44,29 +70,25 @@ public class StageSelectionManager : MonoBehaviour
     public Button partyButton;
     public Button backToStageButton;
 
+    [Header("Stage Status Display (Always Visible)")]
+    public GameObject stageStatusPanel; // Panel แสดงสถานะด่านที่เลือก (แสดงตลอด)
+    public TextMeshProUGUI statusStageNameText;
+    public TextMeshProUGUI statusDescriptionText;
+    public TextMeshProUGUI statusText; // ✅ Completed / 🔒 Locked / ⚠️ Available
+    public UnityEngine.UI.Image statusIcon; // สีแสดงสถานะ
 
 
 
-   
     [Header("Stage Configuration")]
     public MainStagePanel[] mainStagePanels;
     public StageData[] availableStages; // Game Designer กำหนดที่นี่
 
-    [Header("Stage Info Panel")]
-    public GameObject stageInfoPanel;
-    public TextMeshProUGUI stageNameText;
-    public TextMeshProUGUI stageDescriptionText;
-    public TextMeshProUGUI progressText;
-    public TextMeshProUGUI unlockConditionText;
-    public Button selectStageButton;
+   
+
+   
 
 
-
-
-    [Header("UI References")]
-    public Transform stageButtonParent;
-    public GameObject stageButtonPrefab;
-    public Button backButton;
+   
     // Events
     public static event Action<string> OnStageSelected; // ส่ง scene name
     public static event Action<string> OnSoloGameSelected; // ส่ง scene name
@@ -81,7 +103,16 @@ public class StageSelectionManager : MonoBehaviour
         SetupButtons();
         SetupSubStageButtons();
         HideAllPanels();
-        UpdateMainStageDisplay();
+
+        // ✅ รอให้ข้อมูลโหลดเสร็จก่อนแสดงด่าน
+        StartCoroutine(WaitForDataThenUpdateStages());
+
+        // แสดง Status Panel
+        if (stageStatusPanel != null)
+        {
+            stageStatusPanel.SetActive(true);
+            ClearStatusDisplay();
+        }
     }
 
     void SetupButtons()
@@ -133,43 +164,66 @@ public class StageSelectionManager : MonoBehaviour
 
     void UpdateSubStageButtonStatus(SubStagePanel subStage)
     {
-        if (subStage.selectButton == null) return;
+        if (subStage.panel == null) return;
 
         bool isUnlocked = IsSubStageUnlocked(subStage);
         bool isCompleted = StageProgressManager.IsStageCompleted(subStage.sceneToLoad);
 
-        // เปลี่ยนสีปุ่มตามสถานะ
-        ColorBlock colors = subStage.selectButton.colors;
+        // ✅ เพิ่ม Debug เพื่อตรวจสอบ
+        Debug.Log($"[UpdateStatus] Stage: {subStage.sceneToLoad}, Completed: {isCompleted}, Unlocked: {isUnlocked}");
 
-        if (isCompleted)
+        // หา Image component ใน panel
+        UnityEngine.UI.Image panelImage = subStage.panel.GetComponent<UnityEngine.UI.Image>();
+
+        if (panelImage != null)
         {
-            colors.normalColor = Color.green;      // เขียว = ผ่านแล้ว
-            colors.highlightedColor = Color.green * 1.2f;
-        }
-        else if (isUnlocked)
-        {
-            colors.normalColor = Color.white;      // ขาว = ปลดล็อกแล้ว
-            colors.highlightedColor = Color.cyan;
-        }
-        else
-        {
-            colors.normalColor = Color.gray;       // เทา = ล็อกอยู่
-            colors.highlightedColor = Color.gray;
+            if (isCompleted)
+            {
+                // ✅ ด่านที่ผ่านแล้ว - สีเขียว
+                panelImage.color = Color.green;
+                Debug.Log($"[UpdateStatus] ✅ {subStage.sceneToLoad} set to GREEN");
+            }
+            else if (isUnlocked)
+            {
+                // ⚠️ ด่านที่ยังไม่ผ่าน - สีเทา
+                panelImage.color = Color.gray;
+                Debug.Log($"[UpdateStatus] ⚠️ {subStage.sceneToLoad} set to GRAY");
+            }
+            else
+            {
+                // 🔒 ด่านที่ล็อก - สีดำ
+                panelImage.color = Color.black;
+                Debug.Log($"[UpdateStatus] 🔒 {subStage.sceneToLoad} set to BLACK");
+            }
         }
 
-        subStage.selectButton.colors = colors;
-        subStage.selectButton.interactable = isUnlocked;
+        // รูปภาพอื่นๆ ใน panel
+        
 
-        // เปลี่ยนข้อความในปุ่ม (ถ้ามี Text component)
-        TextMeshProUGUI buttonText = subStage.selectButton.GetComponentInChildren<TextMeshProUGUI>();
+        // อัปเดตปุ่ม
+        if (subStage.selectButton != null)
+        {
+            subStage.selectButton.interactable = isUnlocked;
+        }
+
+        // อัปเดตข้อความ
+        TextMeshProUGUI buttonText = subStage.panel.GetComponentInChildren<TextMeshProUGUI>();
         if (buttonText != null)
         {
             if (isCompleted)
-                buttonText.text = subStage.subStageName + " ✓";
-            else if (isUnlocked)
-                buttonText.text = subStage.subStageName;
+            {
+                buttonText.text = subStage.subStageName + "";
+                buttonText.color = Color.white;
+            }
+            else if (!isUnlocked)
+            {
+                buttonText.text = subStage.subStageName + "";
+                buttonText.color = Color.white;
+            }
             else
-                buttonText.text = subStage.subStageName + " 🔒";
+            {
+                buttonText.color = Color.white;
+            }
         }
     }
 
@@ -256,21 +310,26 @@ public class StageSelectionManager : MonoBehaviour
         HideAllPanels();
         playModePanel.SetActive(true);
 
-        // อัพเดทชื่อ map ที่เลือก
+        // แสดง Status Panel
+        if (stageStatusPanel != null)
+        {
+            stageStatusPanel.SetActive(true);
+            ClearStatusDisplay();
+        }
+
         if (selectedMapText != null && currentMainStageIndex >= 0 && currentMainStageIndex < mainStagePanels.Length)
         {
             selectedMapText.text = mainStagePanels[currentMainStageIndex].stageName;
         }
 
-        // แสดง sub-stage panels
         ShowSubStagePanels();
 
-        // รีเซ็ตการเลือก sub-stage
+        // ✅ อัปเดตสถานะทุกครั้งที่เปิด panel
+        UpdateAllSubStageStatus();
+
         selectedSubStageIndex = -1;
         UpdateSubStageUI();
         UpdateGameModeButtons();
-        UpdateAllSubStageStatus(); // ✅ อัปเดตสถานะ
-
     }
 
     void ShowSubStagePanels()
@@ -309,22 +368,13 @@ public class StageSelectionManager : MonoBehaviour
 
         SubStagePanel selectedSubStage = mainStagePanels[mainIndex].subStagePanels[subIndex];
 
+        // อัปเดต Status Panel
+        UpdateStatusDisplay(selectedSubStage);
+
         // ✅ เช็คว่าปลดล็อกแล้วหรือยัง
         if (!IsSubStageUnlocked(selectedSubStage))
         {
             Debug.LogWarning($"SubStage {selectedSubStage.sceneToLoad} is still locked!");
-
-            if (selectedSubStageText != null)
-            {
-                string lockMessage = "🔒 Locked";
-                if (selectedSubStage.requiredPreviousStages != null && selectedSubStage.requiredPreviousStages.Length > 0)
-                {
-                    lockMessage += $" - Complete previous stages first";
-                }
-
-                selectedSubStageText.text = lockMessage;
-                selectedSubStageText.color = Color.red;
-            }
             return;
         }
 
@@ -334,15 +384,122 @@ public class StageSelectionManager : MonoBehaviour
 
         PlayerPrefs.SetString("SelectedStage", selectedSubStage.sceneToLoad);
 
-        // 🆕 แปลงเป็น lowercase ก่อนบันทึก
         string normalizedSceneName = selectedSubStage.sceneToLoad.ToLower();
         PlayerPrefs.SetInt($"RequiredKills_{normalizedSceneName}", selectedSubStage.requiredEnemyKills);
         PlayerPrefs.Save();
 
         Debug.Log($"Selected sub-stage: {selectedSubStage.subStageName} -> {selectedSubStage.sceneToLoad}");
-        Debug.Log($"🎯 Saved required kills: RequiredKills_{normalizedSceneName} = {selectedSubStage.requiredEnemyKills}");
 
         OnStageSelected?.Invoke(selectedSubStage.sceneToLoad);
+    }
+    void UpdateStatusDisplay(SubStagePanel subStage)
+    {
+        if (stageStatusPanel == null) return;
+
+        bool isUnlocked = IsSubStageUnlocked(subStage);
+        bool isCompleted = StageProgressManager.IsStageCompleted(subStage.sceneToLoad);
+
+        // ✅ Debug
+        Debug.Log($"[StatusDisplay] Stage: {subStage.sceneToLoad}, Completed: {isCompleted}, Unlocked: {isUnlocked}");
+
+        // ชื่อด่าน
+        if (statusStageNameText != null)
+        {
+            statusStageNameText.text = subStage.subStageName;
+        }
+
+        // คำอธิบายด่าน
+        if (statusDescriptionText != null)
+        {
+            if (!string.IsNullOrEmpty(subStage.stageDescription))
+                statusDescriptionText.text = subStage.stageDescription;
+            else
+                statusDescriptionText.text = "No description available.";
+        }
+
+        // สถานะด่าน
+        if (statusText != null)
+        {
+            if (isCompleted)
+            {
+                statusText.text = "COMPLETED";
+                statusText.color = Color.green;
+            }
+            else if (isUnlocked)
+            {
+                statusText.text = "AVAILABLE";
+                statusText.color = Color.yellow;
+            }
+            else
+            {
+                statusText.text = "LOCKED";
+                statusText.color = Color.red;
+            }
+        }
+
+        // ไอคอนสถานะ
+        if (statusIcon != null)
+        {
+            if (isCompleted)
+                statusIcon.color = Color.green;
+            else if (isUnlocked)
+                statusIcon.color = Color.gray;
+            else
+                statusIcon.color = Color.black;
+        }
+    }
+    // ✅ เพิ่ม Coroutine ใหม่
+    private System.Collections.IEnumerator WaitForDataThenUpdateStages()
+    {
+        Debug.Log("[StageSelection] 🔄 Waiting for PersistentPlayerData...");
+
+        float timeout = 10f;
+        float elapsed = 0f;
+
+        // รอจนกว่าข้อมูลจะโหลดเสร็จ
+        while (elapsed < timeout)
+        {
+            if (PersistentPlayerData.Instance != null &&
+                PersistentPlayerData.Instance.isDataLoaded &&
+                PersistentPlayerData.Instance.HasValidData())
+            {
+                Debug.Log("[StageSelection] ✅ Data loaded successfully");
+                break;
+            }
+
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (elapsed >= timeout)
+        {
+            Debug.LogError("[StageSelection] ❌ Timeout waiting for data");
+        }
+
+        // ✅ อัปเดตสถานะด่านทั้งหมดหลังโหลดข้อมูลเสร็จ
+        UpdateAllSubStageStatus();
+        UpdateMainStageDisplay();
+
+        Debug.Log("[StageSelection] 🎯 Stage status updated from Firebase data");
+    }
+    void ClearStatusDisplay()
+    {
+        if (statusStageNameText != null)
+            statusStageNameText.text = "Select a Stage";
+
+        if (statusDescriptionText != null)
+            statusDescriptionText.text = "Click on a stage to view details.";
+
+        if (statusText != null)
+        {
+            statusText.text = "-";
+            statusText.color = Color.white;
+        }
+
+        if (statusIcon != null)
+        {
+            statusIcon.color = Color.white;
+        }
     }
     void UpdateSubStageUI()
     {
@@ -462,5 +619,6 @@ public class StageSelectionManager : MonoBehaviour
     }
 
     // ========== Debug Methods ==========
- 
+    // เพิ่มใน StageSelectionManager
+    
 }

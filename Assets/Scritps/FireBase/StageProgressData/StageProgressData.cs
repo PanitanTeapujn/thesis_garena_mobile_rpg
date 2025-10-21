@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 
 [System.Serializable]
 public class StageProgressData
@@ -46,7 +47,20 @@ public class StageProgressData
     // ✅ เช็คว่าผ่านด่านแล้วหรือยัง
     public bool IsStageCompleted(string stageName)
     {
-        return completedStages.Contains(stageName);
+        if (completedStages == null)
+        {
+            Debug.LogError("[StageProgressData] completedStages list is NULL!");
+            completedStages = new List<string>();
+            return false;
+        }
+
+        // ✅ ทำ case-insensitive comparison เพราะอาจมีปัญหาตัวพิมพ์
+        bool found = completedStages.Any(s => s.Equals(stageName, System.StringComparison.OrdinalIgnoreCase));
+
+        Debug.Log($"[StageProgressData.IsStageCompleted] Checking '{stageName}': {found}");
+        Debug.Log($"[StageProgressData.IsStageCompleted] Total completed: {completedStages.Count}");
+
+        return found;
     }
 
     // ✅ ดึงจำนวน Enemy ที่กำจัดแล้ว

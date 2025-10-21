@@ -2670,71 +2670,13 @@ public class PersistentPlayerData : MonoBehaviour
             // ✅ ถ้าโหลดไม่ได้ ใช้ default stats
             Debug.LogError($"[CreateDefaultCharacterData] ❌ ScriptableObject not found at path: {resourcePath}");
             Debug.LogWarning($"[CreateDefaultCharacterData] ⚠️ Using default stats for {characterType}");
-            SetDefaultStatsForCharacter(newCharacter, characterType);
         }
 
         return newCharacter;
     }
 
     // ✅ เพิ่ม method สำหรับ set default stats (กรณี ScriptableObject โหลดไม่ได้)
-    private void SetDefaultStatsForCharacter(CharacterProgressData character, string characterType)
-    {
-        switch (characterType)
-        {
-            case "BloodKnight":
-                character.baseMaxHp = 150;
-                character.baseMaxMana = 80;
-                character.baseAttackDamage = 25;
-                character.baseMagicDamage = 15;
-                character.baseArmor = 10;
-                character.baseMoveSpeed = 3.0f;
-                break;
-
-            case "Archer":
-                character.baseMaxHp = 90;
-                character.baseMaxMana = 60;
-                character.baseAttackDamage = 30;
-                character.baseMagicDamage = 10;
-                character.baseArmor = 5;
-                character.baseMoveSpeed = 3.5f;
-                break;
-
-            case "Assassin":
-                character.baseMaxHp = 100;
-                character.baseMaxMana = 50;
-                character.baseAttackDamage = 35;
-                character.baseMagicDamage = 10;
-                character.baseArmor = 5;
-                character.baseMoveSpeed = 4.0f;
-                break;
-
-            case "IronJuggernaut":
-                character.baseMaxHp = 200;
-                character.baseMaxMana = 70;
-                character.baseAttackDamage = 20;
-                character.baseMagicDamage = 12;
-                character.baseArmor = 15;
-                character.baseMoveSpeed = 2.5f;
-                break;
-        }
-
-        // Stats ที่เหมือนกันทุกตัว
-        character.baseCriticalChance = 5f;
-        character.baseCriticalDamageBonus = 150f;
-        character.baseHitRate = 85f;
-        character.baseEvasionRate = 5f;
-        character.baseAttackSpeed = 1f;
-        character.baseReductionCoolDown = 0f;
-        character.baseLifeSteal = 0f;
-        character.baseMagicArmor = 0;
-        character.baseHealthRegen = 0.5f;
-        character.baseManaRegen = 1f;
-        character.attackType = AttackType.Physical;
-
-        character.UpdateTotalStats();
-
-        Debug.Log($"[SetDefaultStatsForCharacter] ✅ Default stats set: HP={character.totalMaxHp}, ATK={character.totalAttackDamage}");
-    }
+    
 
     // ✅ เพิ่ม method ใหม่สำหรับโหลด character stats อย่างปลอดภัย
     private void TryLoadCharacterStats(CharacterProgressData character, string characterType)
