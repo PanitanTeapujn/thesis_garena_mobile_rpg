@@ -463,6 +463,11 @@ public class LobbyManager : MonoBehaviour
                     playerNameText.text = currentPlayerName;
                 }
             }
+            if (PersistentPlayerData.Instance == null || !PersistentPlayerData.Instance.HasValidData())
+            {
+                Debug.LogWarning("[LobbyManager] PersistentPlayerData not ready, skipping UI update.");
+                return;
+            }
 
             string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
             if (!string.IsNullOrEmpty(activeCharacter) && characterTypeText != null)
@@ -470,8 +475,9 @@ public class LobbyManager : MonoBehaviour
                 characterTypeText.text = activeCharacter;
             }
 
-            if (playerLevelText != null)
-                playerLevelText.text = $"Level {persistentPlayerDataInstance.GetPlayerLevel()}";
+            if (playerLevelText != null && PersistentPlayerData.Instance != null)
+                playerLevelText.text = $"Level {PersistentPlayerData.Instance.GetPlayerLevel()}";
+
 
             if (playerExpText != null)
                 playerExpText.text = $"EXP: {currentCharacterData.currentExp}/{currentCharacterData.expToNextLevel}";
