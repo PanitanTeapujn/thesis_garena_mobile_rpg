@@ -33,6 +33,7 @@ public class LobbyManager : MonoBehaviour
     public Button gachaButton;
     public Button questButton;
     public Button afkButton;
+    public Button enchanceButton;
     [Header("Character Selection")]
     public Button characterSelectionButton;
     #endregion
@@ -79,6 +80,8 @@ public class LobbyManager : MonoBehaviour
     public GameObject shopPanel;
     [Header("Quest")]
     public GameObject questPanel;
+    [Header("Enchance")]
+    public GameObject enchancePanel;
     #endregion
 
     #region External References - การอ้างอิงถึง Manager และ Component อื่นๆ
@@ -158,6 +161,7 @@ public class LobbyManager : MonoBehaviour
         upgradeButton.onClick.AddListener(ShowUpgradePanel);
         questButton.onClick.AddListener(ShowQuestPanel);
         afkButton.onClick.AddListener(ShowAfkPanel);
+        enchanceButton.onClick.AddListener(EnchancePanel);
         // Party management buttons
         createRoomButton.onClick.AddListener(CreateRoom);
         joinRoomButton.onClick.AddListener(ShowJoinPanel);
@@ -273,6 +277,12 @@ public class LobbyManager : MonoBehaviour
         HideAllPanels();
         AfkPanel.SetActive(true);
 
+    } 
+    void EnchancePanel()
+    {
+        HideAllPanels();
+        enchancePanel.SetActive(true);
+
     }
     void ShowShopPanel()
     {
@@ -304,6 +314,7 @@ public class LobbyManager : MonoBehaviour
         shopPanel.SetActive(false);
         questPanel.SetActive(false);
         AfkPanel.SetActive(false);
+        enchancePanel.SetActive(false);
         if (friendsPanel != null)
             friendsPanel.SetActive(false);
 
