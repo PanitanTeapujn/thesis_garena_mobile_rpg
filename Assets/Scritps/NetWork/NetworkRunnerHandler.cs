@@ -10,6 +10,9 @@ public class NetworkRunnerHandler : MonoBehaviour
     private PlayerSpawner _spawner;
     private SingleInputController _inputController;
     public GameObject enemySpawnerPrefab;
+    private NetworkRunner _cachedRunner;
+    private Hero[] _cachedHeroes;
+    private float _lastHeroUpdateTime = 0f;
 
     private async void Start()
     {
@@ -61,9 +64,10 @@ public class NetworkRunnerHandler : MonoBehaviour
         try
         {
             await runner.StartGame(startGameArgs);
+            _cachedRunner = runner; // ✅ เก็บไว้ใช้
+
             Debug.Log($"Game started successfully - IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
 
-            // ✅ Spawn EnemySpawner เฉพาะฝั่ง Server
             if (runner.IsServer)
             {
                 Debug.Log("Running as Server - Setting up EnemySpawner");
@@ -90,30 +94,9 @@ public class NetworkRunnerHandler : MonoBehaviour
     }
     private void Update()
     {
-        // ✅ Debug บนหน้าจอ
-        if (Application.platform == RuntimePlatform.Android)
-        {
-            DrawDebugOnScreen();
-        }
+       
     }
-    private void DrawDebugOnScreen()
-    {
-        var runner = FindObjectOfType<NetworkRunner>();
-        var heroes = FindObjectsOfType<Hero>();
-
-        // Simple on-screen debug
-        GUIStyle style = new GUIStyle();
-        style.fontSize = 30;
-        style.normal.textColor = Color.red;
-
-        GUI.Label(new Rect(10, 10, 500, 400),
-            $"Platform: {Application.platform}\n" +
-            $"Internet: {Application.internetReachability}\n" +
-            $"NetworkRunner: {(runner != null ? "FOUND" : "NULL")}\n" +
-            $"IsRunning: {(runner?.IsRunning ?? false)}\n" +
-            $"Heroes: {heroes.Length}\n" +
-            $"Time: {Time.time:F1}", style);
-    }
+    
     private void OnDestroy()
     {
         if (_spawner != null)
