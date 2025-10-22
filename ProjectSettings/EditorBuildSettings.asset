@@ -38,5 +38,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom4.unity
     guid: c7248ced9e660684196a72986a274197
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Snow2_1.unity
+    guid: a993f523e2b43a345b9d308e1869905f
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0
