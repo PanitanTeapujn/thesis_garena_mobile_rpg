@@ -118,9 +118,20 @@ public class Assassin : Hero
     private IEnumerator ExecuteToxicDashFixed(Vector3 direction, Vector3 startPosition)
     {
         Vector3 startPos = startPosition;
-        Vector3 endPos = startPos + direction * dashDistance;
 
-        float dashTime = dashDistance / dashSpeed;
+        // ✅ ตรวจสอบกำแพงก่อน dash
+        float actualDashDistance = dashDistance;
+        RaycastHit wallHit;
+
+        if (Physics.Raycast(startPos, direction, out wallHit, dashDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            actualDashDistance = Mathf.Max(0.5f, wallHit.distance - 0.5f);
+            Debug.Log($"⚠️ Wall detected at {wallHit.distance}m, reducing dash to {actualDashDistance}m");
+        }
+
+        Vector3 endPos = startPos + direction * actualDashDistance;
+        float dashTime = actualDashDistance / dashSpeed;
         float elapsed = 0f;
 
         List<Character> hitEnemies = new List<Character>();
@@ -136,14 +147,13 @@ public class Assassin : Hero
             if (ps != null)
             {
                 ParticleSystem.MainModule main = ps.main;
-                main.startColor = new Color(0.5f, 1f, 0f, 0.8f); // เขียวพิษ
+                main.startColor = new Color(0.5f, 1f, 0f, 0.8f);
                 main.startLifetime = dashTime + 1f;
                 main.loop = true;
 
-                // ปรับ shape ให้เป็นเส้นตรง
                 ParticleSystem.ShapeModule shape = ps.shape;
                 shape.shapeType = ParticleSystemShapeType.Box;
-                shape.scale = new Vector3(1f, 1f, dashDistance);
+                shape.scale = new Vector3(1f, 1f, actualDashDistance);
             }
         }
 
@@ -154,6 +164,18 @@ public class Assassin : Hero
 
             Vector3 currentPos = Vector3.Lerp(startPos, endPos, progress);
 
+            // ✅ ตรวจสอบกำแพงระหว่าง dash (safety check)
+            Vector3 moveVector = currentPos - transform.position;
+            if (moveVector.magnitude > 0.1f)
+            {
+                if (Physics.Raycast(transform.position, moveVector.normalized, moveVector.magnitude,
+                    LayerMask.GetMask("Wall", "Obstacle", "Default")))
+                {
+                    Debug.LogWarning("🛑 Wall collision during dash! Stopping.");
+                    break;
+                }
+            }
+
             // อัพเดทตำแหน่ง dash trail
             if (dashTrail != null)
             {
@@ -161,6 +183,7 @@ public class Assassin : Hero
                 dashTrail.transform.LookAt(endPos);
             }
 
+            // ✅ ใช้ MovePosition แทน direct position
             if (HasInputAuthority)
             {
                 if (rb != null)
@@ -174,6 +197,9 @@ public class Assassin : Hero
                 transform.position = currentPos;
             }
 
+            // ✅ ลบบรรทัดนี้ออก - ไม่ต้องหมุนตัวสำหรับ 2D
+            // transform.forward = direction; ❌ ลบออก
+
             // เช็คศัตรู
             if (HasStateAuthority)
             {
@@ -185,8 +211,6 @@ public class Assassin : Hero
                     {
                         hitEnemies.Add(enemy);
                         ApplyToxicDashEffects(enemy);
-
-                        // สร้าง hit effect
                         CreateToxicHitEffect(enemy.transform.position);
                     }
                 }
@@ -212,19 +236,17 @@ public class Assassin : Hero
         // ทำลาย dash trail
         if (dashTrail != null)
         {
-            // หยุด loop แล้วปล่อยให้ particle หายไปเอง
             ParticleSystem ps = dashTrail.GetComponent<ParticleSystem>();
             if (ps != null)
             {
                 ParticleSystem.MainModule main = ps.main;
                 main.loop = false;
             }
-
             Destroy(dashTrail, 2f);
         }
 
         IsDashing = false;
-        Debug.Log($"🌫️ [Toxic Dash] {CharacterName} dashed through {hitEnemies.Count} enemies!");
+        Debug.Log($"🌫️ [Toxic Dash] {CharacterName} dashed {actualDashDistance}m through {hitEnemies.Count} enemies!");
     }
     private void CreateToxicHitEffect(Vector3 position)
     {
@@ -333,17 +355,31 @@ public class Assassin : Hero
         IsAssassinating = true;
 
         // คำนวณตำแหน่งหลังเป้าหมาย
-        Vector3 backPosition = targetPosition + (targetPosition - originalPosition).normalized * -2f;
+        Vector3 directionToTarget = (targetPosition - originalPosition).normalized;
+        Vector3 backPosition = targetPosition - directionToTarget * 2.5f;
         backPosition.y = targetPosition.y;
+
+        // ✅ ตรวจสอบกำแพงก่อนเทเลพอร์ต
+        RaycastHit wallCheck;
+        Vector3 teleportDirection = (backPosition - originalPosition).normalized;
+        float teleportDistance = Vector3.Distance(originalPosition, backPosition);
+
+        if (Physics.Raycast(originalPosition, teleportDirection, out wallCheck, teleportDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            // ถ้าเจอกำแพง ให้ teleport ไปหน้ากำแพงแทน
+            backPosition = originalPosition + teleportDirection * Mathf.Max(0.5f, wallCheck.distance - 0.5f);
+            Debug.LogWarning($"⚠️ Wall detected! Adjusting teleport position to {wallCheck.distance - 0.5f}m");
+        }
 
         // Phase 1: เทเลพอร์ตไปหลังเป้าหมาย
         Debug.Log($"🗡️ [Shadow Assassination] {CharacterName} teleporting behind target!");
 
-        // ✅ FIX: ซ่อนตัวและ sync กับทุกคน
+        // ซ่อนตัว
         SetVisibility(false);
         yield return new WaitForSeconds(0.2f);
 
-        // ✅ FIX: เทเลพอร์ตและ sync position
+        // ✅ เทเลพอร์ตโดยไม่หมุนตัว (2D Sprite ไม่ต้อง rotate)
         if (HasInputAuthority)
         {
             if (rb != null)
@@ -357,15 +393,14 @@ public class Assassin : Hero
             transform.position = backPosition;
         }
 
-        // หันหน้าไปหาเป้าหมาย
-        Vector3 lookDirection = (targetPosition - backPosition).normalized;
-        transform.rotation = Quaternion.LookRotation(lookDirection);
+        // ✅ ไม่ต้องหมุนตัว เพราะเป็น 2D
+        // transform.rotation ไม่ต้องแก้ไข
 
         // ปรากฏตัว
         SetVisibility(true);
         yield return new WaitForSeconds(0.1f);
 
-        // ✅ Phase 2: โจมตี Execution (เฉพาะ StateAuthority)
+        // Phase 2: โจมตี Execution
         if (HasStateAuthority)
         {
             Character targetCharacter = targetObject?.GetComponent<Character>();
@@ -1042,7 +1077,24 @@ public class Assassin : Hero
 
     private Vector3 GetDashDirection()
     {
-        // ใช้ทิศทางกล้องเป็นหลัก
+        // ✅ ใช้ input จาก Joystick เป็นหลัก
+        if (GetInput(out NetworkInputData input))
+        {
+            // ถ้ามีการกด Joystick ให้พุ่งไปทางนั้น
+            if (input.movementInput.magnitude > 0.1f)
+            {
+                Vector3 moveDir = new Vector3(
+                    input.movementInput.x,
+                    0,
+                    input.movementInput.y
+                );
+
+                Debug.Log($"🎮 Dash direction from joystick: {moveDir.normalized}");
+                return moveDir.normalized;
+            }
+        }
+
+        // Fallback: ใช้ทิศทางกล้องหรือตัวละคร
         if (cameraTransform != null)
         {
             Vector3 forward = cameraTransform.forward;
@@ -1050,7 +1102,6 @@ public class Assassin : Hero
             return forward.normalized;
         }
 
-        // fallback ใช้ forward ของตัวละคร
         return transform.forward;
     }
 
