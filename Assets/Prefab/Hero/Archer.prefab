@@ -19,6 +19,11 @@ GameObject:
   - component: {fileID: 4824691428113262727}
   - component: {fileID: 6381413172581057071}
   - component: {fileID: 5072109528599857010}
+  - component: {fileID: 7986387850677670657}
+  - component: {fileID: 3468473616050921736}
+  - component: {fileID: 4582457971263691691}
+  - component: {fileID: 2969592326572433732}
+  - component: {fileID: 4927961672429817236}
   m_Layer: 6
   m_Name: Archer
   m_TagString: Untagged
@@ -62,6 +67,9 @@ SpriteRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 0
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
@@ -168,6 +176,9 @@ MonoBehaviour:
   - {fileID: 4824691428113262727}
   - {fileID: 6381413172581057071}
   - {fileID: 5072109528599857010}
+  - {fileID: 7986387850677670657}
+  - {fileID: 2969592326572433732}
+  - {fileID: 4927961672429817236}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &-2050685904617345397
 MonoBehaviour:
@@ -194,30 +205,46 @@ MonoBehaviour:
   attackRange: 0
   attackCooldown: 0
   criticalChance: 0
-  criticalMultiplier: 0
+  criticalDamageBonus: 0
   hitRate: 0
   evasionRate: 0
   attackSpeed: 0
   reductionCoolDown: 0
+  lifeSteal: 0
+  ampDamage: 0
+  magicArmor: 0
+  manaRegen: 0
+  healthRegen: 0
+  _NetworkedMagicArmor: 0
+  _NetworkedManaRegen: 0
+  _NetworkedHealthRegen: 0
   attackType: 0
-  healthRegenPerSecond: 2
-  manaRegenPerSecond: 3
   _NetworkedCurrentHp: 0
   _NetworkedMaxHp: 0
   _NetworkedCurrentMana: 0
   _NetworkedMaxMana: 0
   _IsNetworkStateReady: 0
+  _IsStatsReady: 0
+  _NetworkedLifeSteal: 0
+  isStatsLoaded: 0
+  isSpawnComplete: 0
+  baseHealthRegenPerSecond: 0.2
+  baseManaRegenPerSecond: 0.5
+  maxHealthRegenPerTick: 50
+  maxManaRegenPerTick: 100
   rb: {fileID: 3679239757140484306}
+  characterEquippedItems: []
+  potionSlots: []
+  potionStackCounts: 
+  potionCooldown: 1
+  enableAutoFixInventory: 1
+  autoFixCompleted: 0
+  autoFixDelay: 3
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
   _NetworkedYRotation: 0
   _NetworkedScale: {x: 0, y: 0, z: 0}
-  _NetworkedCurrentHp: 0
-  _NetworkedMaxHp: 0
-  _NetworkedCurrentMana: 0
-  _NetworkedMaxMana: 0
-  _IsNetworkStateReady: 0
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 0}
   cameraRotationSpeed: 50
@@ -275,6 +302,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dummyBaseDropChance: 15
+  dummyDropChancePerKDamage: 0.5
+  dummyMaxDropChance: 50
+  dummyBaseGoldAmount: 10
+  dummyGoldPerTenKDamage: 5
+  dummyMaxGoldPerHit: 500
+  dummyGoldDropCooldown: 2
 --- !u!114 &4824691428113262727
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -381,6 +415,11 @@ MonoBehaviour:
     evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
+    ampDamageBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
   currentRuneStats:
     attackDamageBonus: 0
     magicDamageBonus: 0
@@ -396,6 +435,11 @@ MonoBehaviour:
     evasionRateBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
+    lifeStealBonus: 0
+    ampDamageBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
   _NetworkedAttackDamageBonus: 0
   _NetworkedMagicDamageBonus: 0
   _NetworkedArmorBonus: 0
@@ -410,6 +454,42 @@ MonoBehaviour:
   _NetworkedAttackSpeedBonus: 0
   _NetworkedReductionCoolDown: 0
   _NetworkedCriticalMultiplierBonus: 0
+  _NetworkedLifeStealBonus: 0
+  _NetworkedAmpDamageBonus: 0
+  _NetworkedSetMagicArmorBonus: 0
+  _NetworkedSetHealthRegenBonus: 0
+  _NetworkedSetManaRegenBonus: 0
+  currentSetBonusStats:
+    attackDamageBonus: 0
+    magicDamageBonus: 0
+    armorBonus: 0
+    criticalChanceBonus: 0
+    criticalMultiplierBonus: 0
+    reductionCoolDownBonus: 0
+    maxHpBonus: 0
+    maxManaBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+    lifeStealBonus: 0
+    ampDamageBonus: 0
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
+  _NetworkedSetAttackDamageBonus: 0
+  _NetworkedSetMagicDamageBonus: 0
+  _NetworkedSetArmorBonus: 0
+  _NetworkedSetCriticalChanceBonus: 0
+  _NetworkedSetCriticalMultiplierBonus: 0
+  _NetworkedSetMaxHpBonus: 0
+  _NetworkedSetMaxManaBonus: 0
+  _NetworkedSetMoveSpeedBonus: 0
+  _NetworkedSetAttackSpeedBonus: 0
+  _NetworkedSetLifeStealBonus: 0
+  _NetworkedAmpDamegeBonus: 0
 --- !u!114 &5072109528599857010
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -430,6 +510,8 @@ MonoBehaviour:
     armorBonusPerLevel: 1
     criticalChanceBonusPerLevel: 0
     moveSpeedBonusPerLevel: 0
+    lifeStealBonusPerLevel: 0
+    magicArmorBonusPerLevel: 1
   expSettings:
     baseExpToNextLevel: 120
     expGrowthRate: 1.5
@@ -440,3 +522,116 @@ MonoBehaviour:
   _CurrentExp: 0
   _ExpToNextLevel: 150
   _IsInitialized: 0
+--- !u!114 &7986387850677670657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 40f7b7dbd7f1a5842830b496474f529a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _NetworkedGold: 1000
+  _NetworkedGems: 50
+  _IsInitialized: 0
+--- !u!114 &3468473616050921736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04ea935b6f755fd4c9d78420ab8524a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  allEquipmentSets: []
+  currentSetBonuses: []
+  showDebugInfo: 0
+  autoLoadSetsFromResources: 1
+  resourcePaths:
+  - EquipmentSets
+  - Sets
+  - Items/Sets
+--- !u!114 &4582457971263691691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4fbc8716eb4ce49986489ebf9ed273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetSpriteRenderer: {fileID: 0}
+  shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
+  shadowAlpha: 0.5
+  shadowOffset: {x: 0.1, y: -0.3, z: 0}
+  shadowScale: {x: 1, y: 0.6, z: 1}
+  shadowRotation: {x: 0, y: 0, z: 0}
+  skewX: 0
+  followTarget: 1
+  mirrorFlip: 1
+  sameFacing: 0
+  useSameSprite: 1
+  customShadowSprite: {fileID: 0}
+  shadowMaterial: {fileID: 0}
+--- !u!114 &2969592326572433732
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d269ba3e644a7a64e801e375e75d7c56, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxSlots: 48
+  currentSlots: 24
+  items: []
+  giveStarterItems: 1
+  starterItemsGiven: 0
+  starterItemsList: []
+  useFallbackItems: 1
+  fallbackToTestItems: 1
+  testSword: {fileID: 0}
+  testStaff: {fileID: 0}
+  testArmor: {fileID: 0}
+  testBoots: {fileID: 0}
+  testRune: {fileID: 0}
+  testItems: []
+  useItemDatabase: 1
+  gridWidth: 6
+  gridHeight: 4
+  _NetworkedCurrentSlots: 0
+  _NetworkedMaxSlots: 0
+--- !u!114 &4927961672429817236
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: daff66c4b1a27d645946f6bf615e4bfe, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  idleTimeToStart: 5
+  detectionRange: 20
+  attackRangeBuffer: 2.5
+  autoAttackInterval: 1.5
+  skillCheckInterval: 2
+  useSkillsAutomatically: 1
+  skillPriority: 01000000020000000300000004000000
+  timeBeforeAdjustBuffer: 3
+  retreatDistance: 3
+  showDebugLogs: 1

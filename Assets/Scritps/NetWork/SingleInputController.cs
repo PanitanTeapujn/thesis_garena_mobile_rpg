@@ -8,6 +8,26 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
 {
     private static SingleInputController instance;
 
+    // ✅ แก้ Instance property ให้สร้างตัวเองอัตโนมัติ
+    public static SingleInputController Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                instance = FindObjectOfType<SingleInputController>();
+
+                if (instance == null)
+                {
+                    GameObject obj = new GameObject("SingleInputController");
+                    instance = obj.AddComponent<SingleInputController>();
+                    DontDestroyOnLoad(obj);
+                    Debug.Log("✅ SingleInputController auto-created!");
+                }
+            }
+            return instance;
+        }
+    }
     private FixedJoystick movementJoystick;
     private FixedJoystick cameraJoystick;
 

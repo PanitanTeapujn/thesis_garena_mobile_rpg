@@ -223,18 +223,36 @@ public class NetworkEnemy : Character
             rb.mass = 5f;   // ลด mass เพื่อให้เคลื่อนที่ได้ง่ายขึ้น
         }
 
-       
+
 
         LevelManager enemyLevel = GetComponent<LevelManager>();
-        if (enemyLevel != null && HasStateAuthority)
+        if (enemyLevel != null && !IsDummy && !isLobbyDummy)
         {
-            // Set random level 1-5 for enemy
             int randomLevel = Random.Range(1, 10);
-            while (enemyLevel.CurrentLevel < randomLevel)
-            {
-                enemyLevel.GainExp(enemyLevel.ExpToNextLevel);
-            }
-            Debug.Log($"Enemy {CharacterName} spawned at level {randomLevel}");
+            StartCoroutine(SetEnemyLevelCoroutine(enemyLevel, randomLevel));
+        }
+    }
+    private IEnumerator SetEnemyLevelCoroutine(LevelManager enemyLevel, int targetLevel)
+    {
+        int attempts = 0;
+        int maxAttempts = 50; // ป้องกัน infinite loop
+
+        while (enemyLevel.CurrentLevel < targetLevel && attempts < maxAttempts)
+        {
+            enemyLevel.GainExp(enemyLevel.ExpToNextLevel);
+            attempts++;
+
+            // ✅ รอ 1 frame เพื่อไม่ให้ค้าง
+            yield return null;
+        }
+
+        if (attempts >= maxAttempts)
+        {
+            Debug.LogWarning($"[NetworkEnemy] Failed to reach level {targetLevel} after {maxAttempts} attempts");
+        }
+        else
+        {
+            Debug.Log($"Enemy {CharacterName} spawned at level {enemyLevel.CurrentLevel}");
         }
     }
     protected void Update()

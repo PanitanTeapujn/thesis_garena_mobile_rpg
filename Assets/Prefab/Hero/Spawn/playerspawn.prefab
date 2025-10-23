@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterPrefabsArray:
   - characterType: 0
-    prefab: {fileID: 4563048088530559923, guid: 744dd220061761e4586b20f06060bc01,
+    prefab: {fileID: 9004255372814543956, guid: 40ecf1e2b729bbe4f995ee7d0637f831,
       type: 3}
   - characterType: 1
     prefab: {fileID: 9004255372814543956, guid: 666a23d7ed56f964e83c1fe926514559,
