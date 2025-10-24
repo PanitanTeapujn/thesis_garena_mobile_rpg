@@ -138,7 +138,8 @@ public class EnemySpawner : NetworkBehaviour
     [Tooltip("แสดง debug ข้อมูลการรอ loading")]
     public bool showLoadingDebug = true;
 
-   
+    private float firstSpawnTime = 0f;
+    private bool isFirstSpawnReady = false;
 
     // เพิ่มตัวแปร private
     private bool isLoadingComplete = false;
@@ -199,7 +200,9 @@ public class EnemySpawner : NetworkBehaviour
         InitializeSpawnCounts();
         InitializeBossConditions();
         ValidateSettings();
-
+        firstSpawnTime = Time.time + 6f;
+        nextSpawnTime = firstSpawnTime;
+        isFirstSpawnReady = false;
         // 🆕 ถ้าเป็น Lobby - ข้าม loading system ทันที
         if (isLobbyScene)
         {
@@ -447,14 +450,7 @@ public class EnemySpawner : NetworkBehaviour
             int level = persistentData.multiCharacterData.trainingDummy.currentLevel;
 
             // ✅ Log ข้อมูลทั้งหมดเพื่อ debug
-            Debug.Log($"╔════════════════════════════════════╗");
-            Debug.Log($"║  📥 Loading Dummy Level from Firebase");
-            Debug.Log($"╠════════════════════════════════════╣");
-            Debug.Log($"║  Current Level: {level}");
-            Debug.Log($"║  Last Reset: {persistentData.multiCharacterData.trainingDummy.lastResetDate}");
-            Debug.Log($"║  Last Update: {persistentData.multiCharacterData.trainingDummy.lastUpdateTime}");
-            Debug.Log($"║  Total Level Ups: {persistentData.multiCharacterData.trainingDummy.totalLevelUpsToday}");
-            Debug.Log($"╚════════════════════════════════════╝");
+           
 
             return level;
         }
@@ -586,59 +582,9 @@ public class EnemySpawner : NetworkBehaviour
         if (Runner == null || !Runner.IsServer) return;
         if (isLobbyScene && showLoadingDebug && Time.time % 3f < 0.1f)
         {
-            Debug.Log($"╔════════════════════════════════════╗");
-            Debug.Log($"║  🏠 LOBBY Scene Status");
-            Debug.Log($"╠════════════════════════════════════╣");
-            Debug.Log($"║  - HasStateAuthority: {HasStateAuthority}");
-            Debug.Log($"║  - isLoadingComplete: {isLoadingComplete}");
-            Debug.Log($"║  - hasDummySpawned: {hasDummySpawned}");
-            Debug.Log($"║  - currentDummyInstance: {(currentDummyInstance != null ? "EXISTS" : "NULL")}");
-            Debug.Log($"║  - dummyPrefab: {(dummyPrefab != null ? "SET" : "NULL")}");
-            Debug.Log($"║  - dummySpawnPoint: {(dummySpawnPoint != null ? "SET" : "NULL")}");
-            Debug.Log($"╚════════════════════════════════════╝");
+           
         }
-        // 🆕 Debug ละเอียดทุก 2 วินาที
-        if (showLoadingDebug && Time.time % 2f < 0.1f)
-        {
-            Debug.Log($"╔════════════════════════════════════╗");
-            Debug.Log($"║  🔍 EnemySpawner Status Check");
-            Debug.Log($"╠════════════════════════════════════╣");
-            Debug.Log($"║  Loading Status:");
-            Debug.Log($"║    - waitForLoadingComplete: {waitForLoadingComplete}");
-            Debug.Log($"║    - isLoadingComplete: {isLoadingComplete}");
-            Debug.Log($"║    - Time since start: {Time.time - loadingStartTime:F1}s");
-            Debug.Log($"║");
-            Debug.Log($"║  Stage Status:");
-            Debug.Log($"║    - currentStageName: '{currentStageName}'");
-            Debug.Log($"║    - isStageCompleted: {isStageCompleted}");
-            Debug.Log($"║    - stopSpawningWhenStageCompleted: {stopSpawningWhenStageCompleted}");
-            Debug.Log($"║    - isLobbyScene: {isLobbyScene}");
-            Debug.Log($"║");
-            Debug.Log($"║  Spawn Status:");
-            Debug.Log($"║    - Active enemies: {activeEnemies.Count}/{maxTotalEnemies}");
-            Debug.Log($"║    - Can spawn: {CanSpawnMore()}");
-            Debug.Log($"║    - multiSpawnMode: {multiSpawnMode}");
-            Debug.Log($"║    - spawnInWaves: {spawnInWaves}");
-            Debug.Log($"║");
-            Debug.Log($"║  Timing:");
-            Debug.Log($"║    - Current time: {Time.time:F1}");
-            Debug.Log($"║    - nextSpawnTime: {nextSpawnTime:F1}");
-            Debug.Log($"║    - nextWaveTime: {nextWaveTime:F1}");
-            Debug.Log($"║    - nextMultiSpawnTime: {nextMultiSpawnTime:F1}");
-            Debug.Log($"║    - Ready to spawn: {Time.time >= nextSpawnTime}");
-            Debug.Log($"║");
-            Debug.Log($"║  Enemy Prefabs:");
-            Debug.Log($"║    - Total prefabs: {(enemyPrefabs != null ? enemyPrefabs.Length : 0)}");
-            if (enemyPrefabs != null && enemyPrefabs.Length > 0)
-            {
-                Debug.Log($"║    - First prefab null: {enemyPrefabs[0]?.enemyPrefab == null}");
-            }
-            Debug.Log($"║");
-            Debug.Log($"║  Spawn Points:");
-            Debug.Log($"║    - useSpawnPoints: {useSpawnPoints}");
-            Debug.Log($"║    - Available points: {availableSpawnPoints.Count}");
-            Debug.Log($"╚════════════════════════════════════╝");
-        }
+      
 
         // Lobby dummy check
         if (isLobbyScene && Time.time - lastDummyCheckTime >= DUMMY_CHECK_INTERVAL)
@@ -647,27 +593,19 @@ public class EnemySpawner : NetworkBehaviour
             CheckAndSpawnDummyIfNeeded();
         }
 
-        // 🆕 Loading check
-        if (waitForLoadingComplete && !isLoadingComplete)
+
+        if (!isFirstSpawnReady)
         {
-            if (Time.time - loadingStartTime > maxLoadingWaitTime)
+            if (Time.time >= firstSpawnTime)
             {
-                Debug.LogWarning($"[EnemySpawner] ⏰ Timeout reached ({maxLoadingWaitTime}s) - forcing start");
-                OnLoadingComplete();
+                isFirstSpawnReady = true;
+                Debug.Log($"🎯 First spawn time reached!");
             }
-
-            if (showLoadingDebug && Time.time % 5f < 0.1f)
+            else
             {
-                float elapsed = Time.time - loadingStartTime;
-                string status = loadingPanelManager != null ?
-                    $"progress: {(loadingPanelManager.GetCurrentProgress() * 100f):F0}%" :
-                    "no LoadingPanelManager";
-                Debug.Log($"🔄 [EnemySpawner] Still waiting for loading ({elapsed:F1}s) - {status}");
+                return; // ยังไม่ถึง 6 วินาที
             }
-            return; // ⚠️ จะ return ตรงนี้ถ้า loading ยังไม่เสร็จ
         }
-
-        Debug.Log($"🎯 Passed loading check, checking stage status...");
 
         // Stage completion check
         CheckStageCompletionStatus();

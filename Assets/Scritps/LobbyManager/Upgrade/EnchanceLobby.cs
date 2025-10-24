@@ -13,7 +13,6 @@ public class EnchanceLobby : MonoBehaviour
 
     [Header("Panels")]
     public GameObject enchancePanel;
-    public GameObject upgradeStatPanel;
 
     [Header("💎 Currency Display")]
     public TextMeshProUGUI currentGoldText;
@@ -144,8 +143,7 @@ public class EnchanceLobby : MonoBehaviour
         // Main controls
         if (closeEnchanceLobby != null)
             closeEnchanceLobby.onClick.AddListener(CloseEnchanceLobby);
-        if (upgradeStatButton != null)
-            upgradeStatButton.onClick.AddListener(OpenUpgradeStatLobby);
+       
 
         // Pagination
         if (previousPageButton != null)
@@ -322,16 +320,10 @@ public class EnchanceLobby : MonoBehaviour
     void CloseEnchanceLobby()
     {
         enchancePanel.SetActive(false);
-        if (upgradeStatPanel != null)
-            upgradeStatPanel.SetActive(true);
+       
     }
 
-    void OpenUpgradeStatLobby()
-    {
-        if (upgradeStatPanel != null)
-            upgradeStatPanel.SetActive(true);
-        CloseEnchanceLobby();
-    }
+  
     #endregion
 
     #region Enchanceable Items Management
