@@ -23,8 +23,13 @@ MonoBehaviour:
   attackRange: 1
   criticalChance: 1.5
   criticalDamageBonus: 0.1
-  hitRate: 80
+  hitRate: 60
   evasionRate: 5
   attackSpeed: 1
   reductionCoolDown: 0
+  lifeSteal: 0
+  ampdamage: 0
+  magicArmor: 10
+  manaRegen: 1
+  healthRegen: 1
   attackType: 0

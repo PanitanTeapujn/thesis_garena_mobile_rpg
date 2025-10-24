@@ -790,8 +790,16 @@ public class GlobalMemoryManager : MonoBehaviour
             Texture2D tex = allTextures[i];
             if (tex != null && !IsTextureInUse(tex))
             {
-                Resources.UnloadAsset(tex);
-                unloadedTextures++;
+                // ✅ FIX: ใช้ try-catch สำหรับ Texture2D
+                try
+                {
+                    Resources.UnloadAsset(tex);
+                    unloadedTextures++;
+                }
+                catch (System.Exception)
+                {
+                    // ข้ามไปถ้า unload ไม่ได้ (texture ที่ไม่ใช่ asset)
+                }
 
                 if (i % 20 == 0) yield return null; // รอทุก 20 textures
             }
@@ -808,9 +816,17 @@ public class GlobalMemoryManager : MonoBehaviour
             AudioClip clip = allClips[i];
             if (clip != null && !IsAudioClipInUse(clip))
             {
-                clip.UnloadAudioData();
-                Resources.UnloadAsset(clip);
-                unloadedClips++;
+                // ✅ FIX: ใช้ try-catch สำหรับ AudioClip
+                try
+                {
+                    clip.UnloadAudioData();
+                    Resources.UnloadAsset(clip);
+                    unloadedClips++;
+                }
+                catch (System.Exception)
+                {
+                    // ข้ามไปถ้า unload ไม่ได้ (audio ที่ไม่ใช่ asset)
+                }
 
                 if (i % 10 == 0) yield return null; // รอทุก 10 clips
             }
@@ -940,8 +956,16 @@ public class GlobalMemoryManager : MonoBehaviour
             Material mat = allMaterials[i];
             if (mat != null && !IsMaterialInUse(mat))
             {
-                Resources.UnloadAsset(mat);
-                unloadedCount++;
+                // ✅ FIX: ใช้ try-catch
+                try
+                {
+                    Resources.UnloadAsset(mat);
+                    unloadedCount++;
+                }
+                catch (System.Exception)
+                {
+                    // ข้ามไปถ้า unload ไม่ได้
+                }
 
                 if (i % 15 == 0) yield return null;
             }
@@ -949,6 +973,7 @@ public class GlobalMemoryManager : MonoBehaviour
 
         Debug.Log($"🎨 Unloaded {unloadedCount} unused materials");
     }
+
 
     private bool IsMaterialInUse(Material material)
     {
