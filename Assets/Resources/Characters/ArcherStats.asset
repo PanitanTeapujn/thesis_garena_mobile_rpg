@@ -17,14 +17,19 @@ MonoBehaviour:
   maxHp: 200
   maxMana: 80
   attackDamage: 45
-  magicDamage: 0
+  magicDamage: 30
   arrmor: 3
   attackCoolDown: 1
   attackRange: 10
-  criticalChance: 0.2
-  criticalDamageBonus: 0.3
-  hitRate: 80
-  evasionRate: 5
+  criticalChance: 0
+  criticalDamageBonus: 0
+  hitRate: 60
+  evasionRate: 10
   attackSpeed: 5
   reductionCoolDown: 0
+  lifeSteal: 0
+  ampdamage: 0
+  magicArmor: 3
+  manaRegen: 1
+  healthRegen: 1
   attackType: 0

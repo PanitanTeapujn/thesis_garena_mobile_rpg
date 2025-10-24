@@ -25,15 +25,15 @@ public class BloodKnight : Hero
     private int bloodEdgeHitCount = 0;
 
     [Header("🩸 Blood Pool (Skill 3) Settings")]
-    private GameObject currentBloodPool;
-    public GameObject bloodPoolPrefab;
-    public GameObject cursedPoolPrefab;
+    private ParticleSystem currentBloodPool;
+    public ParticleSystem bloodPoolPrefab;
+    public ParticleSystem cursedPoolPrefab;
 
     [Header("🩸 Blood Storm (Skill 4) Settings")]
     [Networked] public bool IsInBloodStorm { get; set; }
     [Networked] public float BloodStormEndTime { get; set; }
-    public GameObject bloodStormPrefab;
-    private GameObject currentBloodStorm;
+    public ParticleSystem bloodStormPrefab;
+    private ParticleSystem currentBloodStorm;
 
     [Header("🎨 Blood Knight Visual Effects")]
     [SerializeField] private ParticleSystem bloodAuraEffect;           // Blood Points aura
@@ -605,22 +605,26 @@ public class BloodKnight : Hero
         // Destroy old pool if exists
         if (currentBloodPool != null)
         {
-            Destroy(currentBloodPool);
+            Destroy(currentBloodPool.gameObject);
         }
 
         // Create pool
-        GameObject poolPrefab = isCursed ? cursedPoolPrefab : bloodPoolPrefab;
+        ParticleSystem poolPrefab = isCursed ? cursedPoolPrefab : bloodPoolPrefab;
         if (poolPrefab != null)
         {
             currentBloodPool = Instantiate(poolPrefab, position, Quaternion.identity);
+            currentBloodPool.Play(); // เล่น particle
         }
         else
         {
-            // Fallback: create simple pool visual
-            currentBloodPool = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            currentBloodPool.transform.position = position;
-            currentBloodPool.transform.localScale = new Vector3(6f, 0.1f, 6f); // 3m radius
-            currentBloodPool.GetComponent<Renderer>().material.color = isCursed ? Color.black : Color.red;
+            // Fallback: create simple pool visual (ยังใช้ GameObject สำหรับ fallback)
+            GameObject fallbackPool = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            fallbackPool.transform.position = position;
+            fallbackPool.transform.localScale = new Vector3(6f, 0.1f, 6f);
+            fallbackPool.GetComponent<Renderer>().material.color = isCursed ? Color.black : Color.red;
+
+            // ไม่ได้เก็บใน currentBloodPool เพราะมันเป็น GameObject ไม่ใช่ ParticleSystem
+            // ถ้าต้องการเก็บด้วย ต้องเพิ่มตัวแปรใหม่หรือแก้โครงสร้าง
         }
 
         float duration = 5f;
@@ -681,10 +685,12 @@ public class BloodKnight : Hero
         // Destroy pool
         if (currentBloodPool != null)
         {
-            Destroy(currentBloodPool);
+            Destroy(currentBloodPool.gameObject);
         }
 
         Debug.Log($"🩸 [Blood Pool] Ended");
+
+        
     }
 
     #endregion
@@ -793,13 +799,15 @@ public class BloodKnight : Hero
         {
             currentBloodStorm = Instantiate(bloodStormPrefab, transform);
             currentBloodStorm.transform.localPosition = Vector3.zero;
+            currentBloodStorm.Play(); // เล่น particle
         }
         else
         {
-            // Fallback visual
-            currentBloodStorm = new GameObject("BloodStorm");
-            currentBloodStorm.transform.SetParent(transform);
-            currentBloodStorm.transform.localPosition = Vector3.zero;
+            // Fallback visual (สร้าง GameObject แล้วเพิ่ม ParticleSystem)
+            GameObject fallbackStorm = new GameObject("BloodStorm");
+            fallbackStorm.transform.SetParent(transform);
+            fallbackStorm.transform.localPosition = Vector3.zero;
+            currentBloodStorm = fallbackStorm.AddComponent<ParticleSystem>();
         }
 
         float duration = 8f;
@@ -821,7 +829,7 @@ public class BloodKnight : Hero
             stormPosition = transform.position;
             if (currentBloodStorm != null)
             {
-                currentBloodStorm.transform.position = stormPosition;
+                currentBloodStorm.transform.position = stormPosition; // ใช้ได้เลยเพราะ ParticleSystem เป็น Component
             }
 
             if (elapsed >= nextTick)
@@ -892,7 +900,7 @@ public class BloodKnight : Hero
         // Destroy storm
         if (currentBloodStorm != null)
         {
-            Destroy(currentBloodStorm);
+            Destroy(currentBloodStorm.gameObject);
         }
 
         IsInBloodStorm = false;

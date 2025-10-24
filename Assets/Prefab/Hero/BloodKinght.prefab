@@ -714,11 +714,14 @@ MonoBehaviour:
   _BloodEdgeStacks: 0
   _BloodEdgeAttackBonus: 0
   _BloodEdgeLifeSteal: 0
-  bloodPoolPrefab: {fileID: 0}
-  cursedPoolPrefab: {fileID: 0}
+  bloodPoolPrefab: {fileID: 2955197092750843386, guid: b99922c2f59b1a542bdd06ae8bee47ae,
+    type: 3}
+  cursedPoolPrefab: {fileID: 7047901910090771416, guid: d2ffbc8b168cdf74a9dbb7c6c1cfdf2f,
+    type: 3}
   _IsInBloodStorm: 0
   _BloodStormEndTime: 0
-  bloodStormPrefab: {fileID: 0}
+  bloodStormPrefab: {fileID: 1046863752393118590, guid: e84c40719cee66744925cce01bef28fc,
+    type: 3}
   bloodAuraEffect: {fileID: 6810471105834413002, guid: 97c43495f80a3244fad1301dfafbe252,
     type: 3}
   bloodTranceBurstEffect: {fileID: 6469354921825657977, guid: 4d9a3b35b3bc07649b697df7fb497b6d,
@@ -729,7 +732,7 @@ MonoBehaviour:
     type: 3}
   crimsonLanceEffect: {fileID: 8977316153704399556, guid: 0e5709a7ddb77924090c112cf73bb98a,
     type: 3}
-  bloodExplosionEffect: {fileID: 3433532831124342106, guid: 48e196c36363e814bad43a44c92dc11b,
+  bloodExplosionEffect: {fileID: 4321358288067726026, guid: 460babe280fe4aa41adc3fefd46f0c0b,
     type: 3}
   lightRedColor: {r: 1, g: 0.6, b: 0.6, a: 0.5}
   mediumRedColor: {r: 1, g: 0.3, b: 0.3, a: 0.7}
