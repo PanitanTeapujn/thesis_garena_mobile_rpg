@@ -19515,6 +19515,7 @@ RectTransform:
   - {fileID: 1279823248}
   - {fileID: 862889266}
   - {fileID: 1300880115}
+  - {fileID: 1668496815}
   - {fileID: 2127417878}
   - {fileID: 1932188837}
   - {fileID: 1731232067}
@@ -19523,7 +19524,6 @@ RectTransform:
   - {fileID: 2033617953}
   - {fileID: 1748778048}
   - {fileID: 1312094820}
-  - {fileID: 1668496815}
   - {fileID: 1686804624}
   - {fileID: 1748101384}
   - {fileID: 78183311}
@@ -40536,7 +40536,6 @@ MonoBehaviour:
   closeEnchanceLobby: {fileID: 375950851}
   upgradeStatButton: {fileID: 1526493256}
   enchancePanel: {fileID: 1312094819}
-  upgradeStatPanel: {fileID: 1748778047}
   currentGoldText: {fileID: 1086920273}
   currentGemsText: {fileID: 2030974826}
   enchanceInventoryContainer: {fileID: 948684515}

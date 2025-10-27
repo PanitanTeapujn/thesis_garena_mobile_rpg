@@ -21,7 +21,7 @@ public class EnchanceLobby : MonoBehaviour
     [Header("🔨 Phase 1: Enchance Item Display")]
     public Transform enchanceInventoryContainer;    // Container สำหรับแสดง items ที่ enchance ได้
     public GameObject enchanceItemPrefab;           // Prefab สำหรับแสดง item (ใช้ shopItemPrefab ได้)
-    public ScrollRect enchanceScrollRect;           // Scroll rect สำหรับ inventory
+    public ScrollRect enchanceScrollRect;           // Scroll rect สำหรับ inventoryf
 
     [Header("🔨 Pagination")]
     public int itemsPerPage = 12;                   // จำนวน items ต่อหน้า
@@ -317,13 +317,22 @@ public class EnchanceLobby : MonoBehaviour
     #endregion
 
     #region Panel Management
-    void CloseEnchanceLobby()
+    private void CloseEnchanceLobby()
     {
-        enchancePanel.SetActive(false);
-       
+        // ⭐ ถ้ามี item ในช่อง enhance ให้เอากลับเข้ากระเป๋าก่อน
+        if (currentEnhanceItem != null)
+        {
+            ReturnItemToInventory();
+        }
+
+        // ปิด panel
+        if (enchancePanel != null)
+        {
+            enchancePanel.SetActive(false);
+        }
     }
 
-  
+
     #endregion
 
     #region Enchanceable Items Management
