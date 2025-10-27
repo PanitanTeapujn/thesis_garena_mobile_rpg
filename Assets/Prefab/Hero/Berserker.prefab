@@ -153,8 +153,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1.84, y: 3.78, z: 0.2}
-  m_Center: {x: 0, y: -0.39, z: 0}
+  m_Size: {x: 1.84, y: 4.34, z: 0.2}
+  m_Center: {x: 0, y: 0.15, z: 0}
 --- !u!114 &7532131204607746142
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -725,7 +725,7 @@ MonoBehaviour:
     type: 3}
   berserkBurstEffect: {fileID: 1111793306440779180, guid: 8b20002c2b69a9d44ab5bae8e1d923cd,
     type: 3}
-  savageStrikeEffect: {fileID: 8254561054775754492, guid: 14078f8f7064d894fad9a68275c46f31,
+  savageStrikeEffect: {fileID: 8904114409888472623, guid: 3dd50886582244645be87adb42aa8528,
     type: 3}
   whirlwindEffect: {fileID: 1379504315796101638, guid: 3407e378c048bb5438424b28c7740b48,
     type: 3}
@@ -736,6 +736,8 @@ MonoBehaviour:
   titanFormEffect: {fileID: 797784518864179116, guid: a2a060732547fe64581bb0cb3c2bdf1d,
     type: 3}
   earthquakeZoneEffect: {fileID: 8904114409888472623, guid: 3dd50886582244645be87adb42aa8528,
+    type: 3}
+  basicAttackEffect: {fileID: 1379504315796101638, guid: 3407e378c048bb5438424b28c7740b48,
     type: 3}
   lightYellowColor: {r: 1, g: 1, b: 0.6, a: 0.5}
   orangeColor: {r: 1, g: 0.5, b: 0, a: 0.7}

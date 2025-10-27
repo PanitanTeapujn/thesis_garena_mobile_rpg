@@ -51,6 +51,7 @@ public class Berserker : Hero
     [SerializeField] private ParticleSystem groundSlamEffect;         // Skill 4 normal
     [SerializeField] private ParticleSystem titanFormEffect;          // Skill 4 berserk
     [SerializeField] private ParticleSystem earthquakeZoneEffect;     // Skill 4 zone
+    [SerializeField] private ParticleSystem basicAttackEffect;        // Basic attack effect
 
     [Header("🎨 Rage Aura Color Settings")]
     [SerializeField] private Color lightYellowColor = new Color(1f, 1f, 0.6f, 0.5f);      // 0-33
@@ -673,10 +674,10 @@ public class Berserker : Hero
         }
         else
         {
-            // Berserk Mode: Titan Rampage
-            RPC_ExecuteTitanRampage();
+            // Berserk Mode: Titan Rampage with Teleport
+            RPC_ExecuteTitanRampageWithTeleport();
 
-            Debug.Log($"⚡ [Skill 4 Berserk] {CharacterName}: Titan Rampage");
+            Debug.Log($"⚡ [Skill 4 Berserk] {CharacterName}: Titan Rampage with Teleport");
         }
 
         nextSkill4Time = Time.time + finalCooldown;
@@ -695,8 +696,17 @@ public class Berserker : Hero
         StartCoroutine(ExecuteTitanRampage());
     }
 
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_ExecuteTitanRampageWithTeleport()
+    {
+        StartCoroutine(ExecuteTitanRampageWithTeleport());
+    }
+
     private IEnumerator ExecuteGroundSlam(Vector3 position)
     {
+        // 📹 Camera Shake เมื่อทุบพื้น
+        RPC_TriggerCameraShake();
+
         // Initial impact damage and stun
         Collider[] enemies = Physics.OverlapSphere(position, groundSlamRadius, LayerMask.GetMask("Enemy"));
 
@@ -880,6 +890,226 @@ public class Berserker : Hero
         Debug.Log($"⚡ [Titan Rampage] Ended! Total enemies hit: {totalEnemiesHit}");
     }
 
+    /// <summary>
+    /// Titan Rampage พร้อมระบบ Teleport เพื่อแก้ปัญหาการติดพื้น
+    /// </summary>
+    private IEnumerator ExecuteTitanRampageWithTeleport()
+    {
+        IsInTitanForm = true;
+
+        float duration = isPhysicalBuild ? 10f : 8f;
+        TitanFormEndTime = Time.time + duration;
+
+        // บันทึกขนาดและตำแหน่งเดิม
+        Vector3 originalScale = transform.localScale;
+        Vector3 originalPosition = transform.position;
+        Vector3 targetScale = originalScale * 1.3f; // +30% size
+
+        // เก็บข้อมูล collider
+        CapsuleCollider capsuleCol = GetComponent<CapsuleCollider>();
+        BoxCollider boxCol = GetComponent<BoxCollider>();
+        Rigidbody rb = GetComponent<Rigidbody>();
+
+        Vector3 originalColliderCenter = Vector3.zero;
+        float originalColliderHeight = 0f;
+
+        if (capsuleCol != null)
+        {
+            originalColliderCenter = capsuleCol.center;
+            originalColliderHeight = capsuleCol.height;
+        }
+        else if (boxCol != null)
+        {
+            originalColliderCenter = boxCol.center;
+        }
+
+        // 🚀 PHASE 1: วาร์ปขึ้นไปข้างบน
+        float teleportHeight = 8f; // ความสูงที่จะวาร์ปขึ้นไป
+        Vector3 teleportPosition = originalPosition + Vector3.up * teleportHeight;
+
+        Debug.Log($"⚡ [Titan Rampage] Phase 1: Teleporting up to height {teleportHeight}");
+
+        // ปิด gravity ชั่วคราว
+        bool wasKinematic = rb != null && rb.isKinematic;
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+        }
+
+        // วาร์ปขึ้นไปข้างบน
+        transform.position = teleportPosition;
+
+        // ขยายตัวขณะอยู่ข้างบน
+        transform.localScale = targetScale;
+
+        // ปรับ collider ให้เหมาะสมกับขนาดใหม่
+        if (capsuleCol != null)
+        {
+            capsuleCol.center = new Vector3(
+                originalColliderCenter.x,
+                originalColliderCenter.y * 1.3f,
+                originalColliderCenter.z
+            );
+            capsuleCol.height = originalColliderHeight * 1.3f;
+        }
+        else if (boxCol != null)
+        {
+            boxCol.center = new Vector3(
+                originalColliderCenter.x,
+                originalColliderCenter.y * 1.3f,
+                originalColliderCenter.z
+            );
+        }
+
+        // รอสักครู่ (ให้เวลาเล่น animation หรือ effect)
+        yield return new WaitForSeconds(0.3f);
+
+        // 🔥 PHASE 2: ลงมาทุบพื้น
+        Debug.Log($"⚡ [Titan Rampage] Phase 2: Slamming down!");
+
+        // ลงมาที่พื้น (ใช้ raycast หาพื้น)
+        RaycastHit hit;
+        Vector3 landingPosition = originalPosition;
+
+        if (Physics.Raycast(teleportPosition, Vector3.down, out hit, teleportHeight + 2f, LayerMask.GetMask("Ground")))
+        {
+            // ปรับให้อยู่เหนือพื้นเล็กน้อย
+            landingPosition = hit.point + Vector3.up * (targetScale.y * 0.5f);
+        }
+        else
+        {
+            // ถ้าไม่เจอพื้น ใช้ตำแหน่งเดิม
+            landingPosition = new Vector3(originalPosition.x, originalPosition.y, originalPosition.z);
+        }
+
+        // เคลื่อนลงมาอย่างรวดเร็ว
+        float slamDuration = 0.2f;
+        float slamElapsed = 0f;
+        Vector3 startPos = transform.position;
+
+        while (slamElapsed < slamDuration)
+        {
+            slamElapsed += Time.deltaTime;
+            float t = slamElapsed / slamDuration;
+            // ใช้ ease-in curve เพื่อให้ลงเร็วขึ้นเรื่อยๆ
+            t = t * t;
+            transform.position = Vector3.Lerp(startPos, landingPosition, t);
+            yield return null;
+        }
+
+        transform.position = landingPosition;
+
+        // เปิด physics กลับ
+        if (rb != null)
+        {
+            rb.isKinematic = wasKinematic;
+        }
+
+        // 💥 Ground Slam Impact
+        Debug.Log($"⚡ [Titan Rampage] Ground Slam Impact!");
+
+        // 📹 Camera Shake เมื่อลงมาทุบพื้น
+        RPC_TriggerCameraShake();
+
+        float impactRadius = 10f;
+        Collider[] impactEnemies = Physics.OverlapSphere(transform.position, impactRadius, LayerMask.GetMask("Enemy"));
+
+        foreach (Collider col in impactEnemies)
+        {
+            Character enemy = col.GetComponent<Character>();
+            if (enemy != null)
+            {
+                int impactDamage = GetScaledSkillDamageWithAmp(3.5f);
+                enemy.TakeDamageFromAttacker(0, impactDamage, this, DamageType.Critical, false);
+                enemy.ApplyStatusEffect(StatusEffectType.Stun, 0, 1.5f);
+
+                Debug.Log($"⚡ Ground Slam Impact hit {enemy.CharacterName}: {impactDamage} damage");
+            }
+        }
+
+        // 🌋 PHASE 3: Earthquake Zone (เหมือนเดิม)
+        Debug.Log($"⚡ [Titan Rampage] Phase 3: Earthquake Zone for {duration}s");
+
+        float tickInterval = 1f;
+        float nextTick = 0f;
+        float elapsed = 0f;
+
+        int totalEnemiesHit = 0;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+
+            if (elapsed >= nextTick)
+            {
+                // Damage and slow enemies in earthquake zone
+                Collider[] enemies = Physics.OverlapSphere(transform.position, earthquakeZoneRadius, LayerMask.GetMask("Enemy"));
+
+                foreach (Collider col in enemies)
+                {
+                    Character enemy = col.GetComponent<Character>();
+                    if (enemy != null)
+                    {
+                        int damage = GetScaledSkillDamageWithAmp(0.8f);
+                        enemy.TakeDamageFromAttacker(0, damage, this, DamageType.Normal, false);
+
+                        // Apply slow
+                        enemy.ApplyStatusEffect(StatusEffectType.Freeze, 0, tickInterval + 0.5f);
+
+                        // Hybrid Build: Life steal
+                        if (!isPhysicalBuild)
+                        {
+                            int healAmount = Mathf.RoundToInt(damage * 0.05f); // 5%
+                            Heal(healAmount);
+                        }
+
+                        totalEnemiesHit++;
+                    }
+                }
+
+                nextTick += tickInterval;
+            }
+
+            yield return null;
+        }
+
+        // 💥 Finale: Explosion (เหมือนเดิม)
+        Debug.Log($"⚡ [Titan Rampage] Finale! Explosion!");
+
+        float explosionRadius = 10f;
+        float explosionMultiplier = isPhysicalBuild ? 4.5f : 3.0f;
+
+        Collider[] finalEnemies = Physics.OverlapSphere(transform.position, explosionRadius, LayerMask.GetMask("Enemy"));
+
+        foreach (Collider col in finalEnemies)
+        {
+            Character enemy = col.GetComponent<Character>();
+            if (enemy != null)
+            {
+                int explosionDamage = GetScaledSkillDamageWithAmp(explosionMultiplier);
+                enemy.TakeDamageFromAttacker(0, explosionDamage, this, DamageType.Critical, false);
+
+                Debug.Log($"⚡ Titan Rampage Finale hit {enemy.CharacterName}: {explosionDamage} damage");
+            }
+        }
+
+        // Reset size and collider
+        transform.localScale = originalScale;
+
+        if (capsuleCol != null)
+        {
+            capsuleCol.center = originalColliderCenter;
+            capsuleCol.height = originalColliderHeight;
+        }
+        else if (boxCol != null)
+        {
+            boxCol.center = originalColliderCenter;
+        }
+
+        IsInTitanForm = false;
+        Debug.Log($"⚡ [Titan Rampage with Teleport] Ended! Total enemies hit: {totalEnemiesHit}");
+    }
+
     #endregion
 
     #region Visual Effects RPCs
@@ -938,6 +1168,16 @@ public class Berserker : Hero
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_TriggerCameraShake()
+    {
+        // เฉพาะ local player เท่านั้นที่จะเห็นกล้องสั่น
+        if (HasInputAuthority)
+        {
+            StartCoroutine(CameraShake());
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowBerserkAura(bool show)
     {
         if (rageAuraEffect != null)
@@ -979,6 +1219,9 @@ public class Berserker : Hero
                 break;
             case "TitanWrath":
                 ShowTitanWrathEffect();
+                break;
+            case "BasicAttack":
+                ShowBasicAttackEffect();
                 break;
         }
     }
@@ -1023,6 +1266,46 @@ public class Berserker : Hero
             GameObject effect = Instantiate(titanFormEffect.gameObject, transform.position, Quaternion.identity);
             effect.transform.SetParent(transform);
             Destroy(effect, 10f);
+
+            // Note: Camera shake is now handled in ExecuteTitanRampageWithTeleport
+            // when the berserker lands on the ground
+        }
+    }
+
+    private void ShowBasicAttackEffect()
+    {
+        if (basicAttackEffect != null)
+        {
+            // ✅ ใช้ตำแหน่งของ Berserker เอง ไม่ต้องหาศัตรู
+            Vector3 effectPosition = transform.position + Vector3.up * 0.5f; // ปรับความสูงตามต้องการ
+
+            GameObject effect = Instantiate(basicAttackEffect.gameObject, effectPosition, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+
+                // สีของ effect ตาม Rage Level
+                if (RagePoints < 33f)
+                {
+                    main.startColor = new Color(1f, 0.9f, 0.7f, 0.8f);
+                }
+                else if (RagePoints < 66f)
+                {
+                    main.startColor = new Color(1f, 0.6f, 0.2f, 0.9f);
+                }
+                else if (RagePoints < 100f)
+                {
+                    main.startColor = new Color(1f, 0.3f, 0.1f, 1f);
+                }
+                else
+                {
+                    main.startColor = new Color(0.8f, 0f, 0f, 1f);
+                }
+            }
+
+            Destroy(effect, 0.5f);
         }
     }
 
@@ -1045,6 +1328,9 @@ public class Berserker : Hero
     {
         base.RPC_OnAttackHit(enemyObject);
 
+        // Show basic attack effect
+        RPC_ShowSkillEffect("BasicAttack");
+
         // Check for critical hit to gain extra Rage
         // TODO: Implement critical detection and give +5 Rage
     }
@@ -1058,6 +1344,38 @@ public class Berserker : Hero
         {
             Destroy(currentEarthquakeZone.gameObject);
         }
+    }
+
+    /// <summary>
+    /// Camera Shake Effect สำหรับ Ground Slam Impact
+    /// </summary>
+    private IEnumerator CameraShake()
+    {
+        Camera mainCam = Camera.main;
+        if (mainCam == null) yield break;
+
+        Vector3 originalPos = mainCam.transform.position;
+        float shakeDuration = 0.5f; // ระยะเวลาสั่น
+        float shakeIntensity = 0.3f; // ความแรงของการสั่น
+        float elapsed = 0f;
+
+        while (elapsed < shakeDuration)
+        {
+            elapsed += Time.deltaTime;
+
+            // ลดความแรงของการสั่นตามเวลา (ease-out)
+            float strength = shakeIntensity * (1f - (elapsed / shakeDuration));
+
+            Vector3 shakeOffset = Random.insideUnitSphere * strength;
+            shakeOffset.y *= 0.5f; // ลดการสั่นในแนวตั้ง
+
+            mainCam.transform.position = originalPos + shakeOffset;
+
+            yield return null;
+        }
+
+        // คืนตำแหน่งกล้องกลับเดิม
+        mainCam.transform.position = originalPos;
     }
 
     #endregion
