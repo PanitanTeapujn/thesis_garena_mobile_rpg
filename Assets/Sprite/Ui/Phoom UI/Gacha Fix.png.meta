@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 7f17adb73179d5a44bd7eada69f503a1
+guid: 516e3526620a68548b57803f3966c20c
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -110,13 +110,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Register_0
+      name: Gacha Fix_0
       rect:
         serializedVersion: 2
-        x: 127
-        y: 27
-        width: 374
-        height: 289
+        x: 9
+        y: 336
+        width: 181
+        height: 50
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -125,20 +125,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b696c9635dc0c4443aa829cf05c9a749
-      internalID: 1762241229
+      spriteID: 96b8f3f38578bb04bb2f5905d588b219
+      internalID: -1696893513
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Register_1
+      name: Gacha Fix_1
       rect:
         serializedVersion: 2
-        x: 527
-        y: 261
-        width: 297
-        height: 38
+        x: 211
+        y: 65
+        width: 626
+        height: 313
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -147,20 +147,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: fd3184cdb6947c849b2513e00739f413
-      internalID: -1891475555
+      spriteID: 13b1ca1092ab0cd4fa3713c83f41fb00
+      internalID: -648085476
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Register_2
+      name: Gacha Fix_2
       rect:
         serializedVersion: 2
-        x: 870
-        y: 261
-        width: 299
-        height: 39
+        x: 886
+        y: 298
+        width: 154
+        height: 74
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -169,20 +169,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: af49486b99f04c640a62f88bf67f0ef3
-      internalID: -2004237268
+      spriteID: cfb133a4d7350b84caef5eb63453d612
+      internalID: 1265282910
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Register_3
+      name: Gacha Fix_3
       rect:
         serializedVersion: 2
-        x: 531
-        y: 187
-        width: 294
-        height: 38
+        x: 10
+        y: 204
+        width: 180
+        height: 98
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -191,20 +191,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: db83a227440259a47be1804dadfd298b
-      internalID: -315352852
+      spriteID: 50358d19096b63c40ac8339afd465da1
+      internalID: 1718966086
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Register_4
+      name: Gacha Fix_4
       rect:
         serializedVersion: 2
-        x: 531
-        y: 107
-        width: 297
-        height: 38
+        x: 886
+        y: 184
+        width: 154
+        height: 74
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -213,8 +213,30 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: a051e2fdf7136314aa82bb2e6deadb31
-      internalID: 1224756993
+      spriteID: db7df5e04be6d7f4cbffbfa0280884cf
+      internalID: -1942608781
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Gacha Fix_5
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 72
+        width: 180
+        height: 98
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8668742ad2b0fd54785b68ee8179488e
+      internalID: 711486710
       vertices: []
       indices: 
       edges: []
@@ -223,7 +245,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: a19e68511a416224c8a125b4c0efe4f4
+    spriteID: 7a5074c573d621b4fa6e05ec4b3c0491
     internalID: 0
     vertices: []
     indices: 
@@ -233,11 +255,12 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Register_0: 1762241229
-      Register_1: -1891475555
-      Register_2: -2004237268
-      Register_3: -315352852
-      Register_4: 1224756993
+      Gacha Fix_0: -1696893513
+      Gacha Fix_1: -648085476
+      Gacha Fix_2: 1265282910
+      Gacha Fix_3: 1718966086
+      Gacha Fix_4: -1942608781
+      Gacha Fix_5: 711486710
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
