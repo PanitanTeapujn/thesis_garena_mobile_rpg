@@ -12,13 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d8e0e943aedcb94ca90cdc7a5c7420a, type: 3}
   m_Name: FireBird
   m_EditorClassIdentifier: 
-  characterName: IceBird
+  characterName: FireBird
   moveSpeed: 3
-  maxHp: 100
+  maxHp: 200
   maxMana: 0
-  attackDamage: 40
-  magicDamage: 20
-  arrmor: 20
+  attackDamage: 70
+  magicDamage: 30
+  arrmor: 30
   attackCoolDown: 1
   attackRange: 1
   criticalChance: 5

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: IceBird
   moveSpeed: 3
-  maxHp: 100
+  maxHp: 150
   maxMana: 0
   attackDamage: 40
   magicDamage: 20
