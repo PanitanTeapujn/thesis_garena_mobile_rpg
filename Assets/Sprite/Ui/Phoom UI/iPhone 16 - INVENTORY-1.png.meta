@@ -1,0 +1,1211 @@
+fileFormatVersion: 2
+guid: db92e38b92624fd4b89dbafde35ba6be
+TextureImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_0
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 360
+        width: 263
+        height: 462
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0250d95a2f071b64a906cdc9af5995c6
+      internalID: 549593098
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_1
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 771
+        width: 35
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 95df1192ea35da24790b4f28e0dc65d7
+      internalID: 848142166
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_2
+      rect:
+        serializedVersion: 2
+        x: 417
+        y: 531
+        width: 342
+        height: 282
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e406e50074b082441914c01580067d04
+      internalID: -699451916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_3
+      rect:
+        serializedVersion: 2
+        x: 815
+        y: 743
+        width: 75
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8d46ec1a1812eaf4f9c59ea607910d22
+      internalID: 1532176002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_4
+      rect:
+        serializedVersion: 2
+        x: 1034
+        y: 743
+        width: 75
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 48af07fba6a85e84bbc6d12ad9e06b97
+      internalID: -1456269628
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_5
+      rect:
+        serializedVersion: 2
+        x: 1203
+        y: 755
+        width: 114
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8d61e733ff81fbf4ba963634e3459d7d
+      internalID: -580559730
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_6
+      rect:
+        serializedVersion: 2
+        x: 1371
+        y: 768
+        width: 40
+        height: 48
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c2f23819681e799409689b30b75950a9
+      internalID: -1377406207
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_7
+      rect:
+        serializedVersion: 2
+        x: 1445
+        y: 755
+        width: 160
+        height: 42
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a0bac570db1f0d4479b419b606c52631
+      internalID: 2042775220
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_8
+      rect:
+        serializedVersion: 2
+        x: 303
+        y: 601
+        width: 105
+        height: 105
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 988d49d532f1ac94cad01fa85b2116a5
+      internalID: 2131617535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_9
+      rect:
+        serializedVersion: 2
+        x: 815
+        y: 668
+        width: 75
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c29bf20e08ce7604f96606d83cb9d2b8
+      internalID: -336696140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_10
+      rect:
+        serializedVersion: 2
+        x: 1034
+        y: 668
+        width: 75
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 91c4bfb8c5d077445863bdc190fc4efe
+      internalID: 813414601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_11
+      rect:
+        serializedVersion: 2
+        x: 1153
+        y: 404
+        width: 476
+        height: 339
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2e78162758eee354fac9aa2014c37ae1
+      internalID: -214430867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_12
+      rect:
+        serializedVersion: 2
+        x: 815
+        y: 593
+        width: 75
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c7d3c5ddc10ac704081d53bc836f1de4
+      internalID: -497583768
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_13
+      rect:
+        serializedVersion: 2
+        x: 1034
+        y: 593
+        width: 75
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 02cc1c44809a28e47965aeaa50e93f8b
+      internalID: 248969238
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_14
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 453
+        width: 45
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0fd997d3a16650c468a17a9b8ef40ecb
+      internalID: -290582596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_15
+      rect:
+        serializedVersion: 2
+        x: 847
+        y: 498
+        width: 55
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c3852416391af4e4c80b8eac5e4d2859
+      internalID: 834094838
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_16
+      rect:
+        serializedVersion: 2
+        x: 905
+        y: 498
+        width: 55
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3602b3af34acfcc40a9ffe59c86b949b
+      internalID: -175684664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_17
+      rect:
+        serializedVersion: 2
+        x: 963
+        y: 498
+        width: 55
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b357529b43530f540baf3833cdd99d10
+      internalID: -454324305
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_18
+      rect:
+        serializedVersion: 2
+        x: 1021
+        y: 498
+        width: 55
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e3a04d59cbefe5d4aafe83edf902d915
+      internalID: 557796231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_19
+      rect:
+        serializedVersion: 2
+        x: 827
+        y: 396
+        width: 40
+        height: 40
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 840cc3e7277ed304e9d9fae2154a1903
+      internalID: 36548685
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_20
+      rect:
+        serializedVersion: 2
+        x: 828
+        y: 42
+        width: 270
+        height: 339
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d9b72ae2b40e787459e599f25caacaa0
+      internalID: 1009217494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_21
+      rect:
+        serializedVersion: 2
+        x: 1196
+        y: 323
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d8d6b13bf169a4e47a0ae538fc6e0b05
+      internalID: -972457334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_22
+      rect:
+        serializedVersion: 2
+        x: 1261
+        y: 323
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d801bd826e3e136419eaaa79704bc716
+      internalID: 1721834733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_23
+      rect:
+        serializedVersion: 2
+        x: 1326
+        y: 323
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6732e809328a5b14c92434a5d9a95db7
+      internalID: 168050940
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_24
+      rect:
+        serializedVersion: 2
+        x: 1391
+        y: 323
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f238874178566274db252b64fa69bae4
+      internalID: 1214848954
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_25
+      rect:
+        serializedVersion: 2
+        x: 1456
+        y: 323
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a539db32334596d41868e6040824fb93
+      internalID: -409164868
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_26
+      rect:
+        serializedVersion: 2
+        x: 1521
+        y: 323
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ccce8b0bfbe1cf2468e48ad3b385b1e2
+      internalID: -1318285258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_27
+      rect:
+        serializedVersion: 2
+        x: 65
+        y: 276
+        width: 195
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: da97ee899c2951e4babd079afbd95305
+      internalID: -625754864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_28
+      rect:
+        serializedVersion: 2
+        x: 579
+        y: 235
+        width: 220
+        height: 85
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a2c7fde6499efd347b5ee27cfcd13910
+      internalID: -922042694
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_29
+      rect:
+        serializedVersion: 2
+        x: 1196
+        y: 261
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 45a316360e5eef74cb1dbbcbfdbcfe7b
+      internalID: -997842409
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_30
+      rect:
+        serializedVersion: 2
+        x: 1261
+        y: 261
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0e01dcd68082ea447918da15ca6bc8c8
+      internalID: 1473034367
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_31
+      rect:
+        serializedVersion: 2
+        x: 1326
+        y: 261
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6cd3fd627c87f454ba3d7fefa9584abe
+      internalID: 1887802140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_32
+      rect:
+        serializedVersion: 2
+        x: 1391
+        y: 261
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5625bea6badff1f46a961902a7f6c80f
+      internalID: 1817648558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_33
+      rect:
+        serializedVersion: 2
+        x: 1456
+        y: 261
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6c3d5e8bdeb6e444fb622f54ca2dd296
+      internalID: -757907724
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_34
+      rect:
+        serializedVersion: 2
+        x: 1521
+        y: 261
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: da00dab19310626418832f5cc97ca4d3
+      internalID: -148789663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_35
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 89
+        width: 211
+        height: 171
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c85cae3954fa7c84dafc5e2dcf4ce335
+      internalID: -1270289292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_36
+      rect:
+        serializedVersion: 2
+        x: 585
+        y: 156
+        width: 51
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 789704a31484c3f4c947d8940de76cc6
+      internalID: 1365397414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_37
+      rect:
+        serializedVersion: 2
+        x: 1196
+        y: 199
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f768c6e5fad4b5142845fdff1ada68fb
+      internalID: -488450569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_38
+      rect:
+        serializedVersion: 2
+        x: 1261
+        y: 199
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 94b73ee613f74364da950c66c4c97aae
+      internalID: 2127618313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_39
+      rect:
+        serializedVersion: 2
+        x: 1326
+        y: 199
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4ca0240742748714999386c0de654c42
+      internalID: 289825816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_40
+      rect:
+        serializedVersion: 2
+        x: 1391
+        y: 199
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4b18107ccb510b14b8c77d7844ff6cf5
+      internalID: -1368904621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_41
+      rect:
+        serializedVersion: 2
+        x: 1456
+        y: 199
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: aafd547df9e585a4a873900644abd1ee
+      internalID: -1508916173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_42
+      rect:
+        serializedVersion: 2
+        x: 1521
+        y: 199
+        width: 62
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 543aff8a89d2ec44bb2ad5097e4d56b7
+      internalID: 1067128577
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_43
+      rect:
+        serializedVersion: 2
+        x: 585
+        y: 71
+        width: 51
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: eccc8ae0ce4bced409b25e24e27e44f1
+      internalID: -817365132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_44
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 14
+        width: 111
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d73cb014416c011478e7b28c9035b38f
+      internalID: -696901473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_45
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 14
+        width: 111
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 776a71ef44fa07948bbdb871c29ec356
+      internalID: -128465965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: iPhone 16 - INVENTORY-1_46
+      rect:
+        serializedVersion: 2
+        x: 585
+        y: 39
+        width: 208
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1a9c46f110d5c1f45ae6158230e833e7
+      internalID: 1055287238
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      iPhone 16 - INVENTORY-1_0: 549593098
+      iPhone 16 - INVENTORY-1_1: 848142166
+      iPhone 16 - INVENTORY-1_10: 813414601
+      iPhone 16 - INVENTORY-1_11: -214430867
+      iPhone 16 - INVENTORY-1_12: -497583768
+      iPhone 16 - INVENTORY-1_13: 248969238
+      iPhone 16 - INVENTORY-1_14: -290582596
+      iPhone 16 - INVENTORY-1_15: 834094838
+      iPhone 16 - INVENTORY-1_16: -175684664
+      iPhone 16 - INVENTORY-1_17: -454324305
+      iPhone 16 - INVENTORY-1_18: 557796231
+      iPhone 16 - INVENTORY-1_19: 36548685
+      iPhone 16 - INVENTORY-1_2: -699451916
+      iPhone 16 - INVENTORY-1_20: 1009217494
+      iPhone 16 - INVENTORY-1_21: -972457334
+      iPhone 16 - INVENTORY-1_22: 1721834733
+      iPhone 16 - INVENTORY-1_23: 168050940
+      iPhone 16 - INVENTORY-1_24: 1214848954
+      iPhone 16 - INVENTORY-1_25: -409164868
+      iPhone 16 - INVENTORY-1_26: -1318285258
+      iPhone 16 - INVENTORY-1_27: -625754864
+      iPhone 16 - INVENTORY-1_28: -922042694
+      iPhone 16 - INVENTORY-1_29: -997842409
+      iPhone 16 - INVENTORY-1_3: 1532176002
+      iPhone 16 - INVENTORY-1_30: 1473034367
+      iPhone 16 - INVENTORY-1_31: 1887802140
+      iPhone 16 - INVENTORY-1_32: 1817648558
+      iPhone 16 - INVENTORY-1_33: -757907724
+      iPhone 16 - INVENTORY-1_34: -148789663
+      iPhone 16 - INVENTORY-1_35: -1270289292
+      iPhone 16 - INVENTORY-1_36: 1365397414
+      iPhone 16 - INVENTORY-1_37: -488450569
+      iPhone 16 - INVENTORY-1_38: 2127618313
+      iPhone 16 - INVENTORY-1_39: 289825816
+      iPhone 16 - INVENTORY-1_4: -1456269628
+      iPhone 16 - INVENTORY-1_40: -1368904621
+      iPhone 16 - INVENTORY-1_41: -1508916173
+      iPhone 16 - INVENTORY-1_42: 1067128577
+      iPhone 16 - INVENTORY-1_43: -817365132
+      iPhone 16 - INVENTORY-1_44: -696901473
+      iPhone 16 - INVENTORY-1_45: -128465965
+      iPhone 16 - INVENTORY-1_46: 1055287238
+      iPhone 16 - INVENTORY-1_5: -580559730
+      iPhone 16 - INVENTORY-1_6: -1377406207
+      iPhone 16 - INVENTORY-1_7: 2042775220
+      iPhone 16 - INVENTORY-1_8: 2131617535
+      iPhone 16 - INVENTORY-1_9: -336696140
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
