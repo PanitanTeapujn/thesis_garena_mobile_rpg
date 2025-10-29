@@ -750,8 +750,8 @@ public class GlobalMemoryManager : MonoBehaviour
         yield return StartCoroutine(AggressiveObjectCleanup());
 
         // 4. Clear material cache
-        yield return StartCoroutine(ClearMaterialCache());
-
+/*        yield return StartCoroutine(ClearMaterialCache());
+*/
         // 5. Multiple rounds of deep cleanup
         for (int i = 0; i < 7; i++)
         {
@@ -944,7 +944,7 @@ public class GlobalMemoryManager : MonoBehaviour
                 obj.transform.childCount == 0); // objects ที่ไม่มีลูก
     }
 
-    private System.Collections.IEnumerator ClearMaterialCache()
+   /* private System.Collections.IEnumerator ClearMaterialCache()
     {
         Debug.Log("🎨 Clearing material cache...");
 
@@ -972,7 +972,7 @@ public class GlobalMemoryManager : MonoBehaviour
         }
 
         Debug.Log($"🎨 Unloaded {unloadedCount} unused materials");
-    }
+    }*/
 
 
     private bool IsMaterialInUse(Material material)
