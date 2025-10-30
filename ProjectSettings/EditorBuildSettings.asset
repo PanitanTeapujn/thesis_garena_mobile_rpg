@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/Scenes/Test.unity
     guid: 2c97c8266d82ae14aa022f444976a386
   - enabled: 1
+    path: Assets/Scenes/Sceneliew/StartGame.unity
+    guid: 260aa992abccd5d4e8a75303a678a876
+  - enabled: 1
     path: Assets/Scenes/Sceneliew/LoginAndRegister.unity
     guid: 102a1b4ad2c2454499474b50b03959b1
   - enabled: 1
