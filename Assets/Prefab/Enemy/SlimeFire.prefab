@@ -183,6 +183,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dummyBaseDropChance: 15
+  dummyDropChancePerKDamage: 0.5
+  dummyMaxDropChance: 50
+  dummyBaseGoldAmount: 10
+  dummyGoldPerTenKDamage: 5
+  dummyMaxGoldPerHit: 500
+  dummyGoldDropCooldown: 2
 --- !u!114 &2866443350649548657
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -427,6 +434,9 @@ MonoBehaviour:
   _PatrolWaitTimer: 0
   detectRange: 10
   attackCheckInterval: 0.5
+  IsDummy: 0
+  DummyLevel: 1
+  isLobbyDummy: 0
   _CurrentState: 0
   _StateTimer: 0
   backOffDistance: 3
@@ -451,6 +461,8 @@ MonoBehaviour:
   isCollidingWithPlayer: 0
   showDebugInfo: 0
   showPatrolGizmos: 1
+  dummyUIPrefab: {fileID: 0}
+  dummyDebuffCooldown: 8
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: 0}
@@ -467,6 +479,25 @@ MonoBehaviour:
   fireLight: {fileID: 0}
   createHeatZones: 1
   heatZonePrefab: {fileID: 0}
+  attackPrepareTime: 1.5
+  attackIndicatorParticle: {fileID: 0}
+  indicatorSize: 3
+  showAttackWarning: 1
+  chargeEffect: {fileID: 0}
+  showFireAttackTelegraph: 1
+  fireAttackTelegraphTime: 5
+  fireAttackIndicator: {fileID: 0}
+  fireAttackColor: {r: 1, g: 0, b: 0, a: 1}
+  showBurnAuraTelegraph: 1
+  burnAuraTelegraphTime: 5
+  burnAuraIndicator: {fileID: 0}
+  burnAuraColor: {r: 1, g: 0.5, b: 0, a: 1}
+  burnAuraCooldown: 3
+  burnAuraLockDuration: 2
+  showExplosionTelegraph: 1
+  explosionTelegraphTime: 5
+  explosionIndicator: {fileID: 0}
+  explosionColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &-6063038309682278596
 MonoBehaviour:
   m_ObjectHideFlags: 0
