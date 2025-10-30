@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+﻿/*using UnityEngine;
 using System.Collections;
 
 public class GlobalMemoryManager : MonoBehaviour
@@ -122,8 +122,8 @@ public class GlobalMemoryManager : MonoBehaviour
         yield return StartCoroutine(CleanupParticleSystemsSmooth());
 
         // 2. Clear audio cache เบาๆ  
-        yield return StartCoroutine(ClearAudioCacheSmoothLight());
-
+*//*        yield return StartCoroutine(ClearAudioCacheSmoothLight());
+*//*
         // 3. Resource cleanup เบาๆ
         Resources.UnloadUnusedAssets();
         yield return null; // รอ 1 frame
@@ -147,8 +147,8 @@ public class GlobalMemoryManager : MonoBehaviour
         yield return StartCoroutine(CleanupInactiveObjectsSmooth());
 
         // 3. Clear audio cache (รอ frame)
-        yield return StartCoroutine(ClearAudioCacheSmooth());
-
+*//*        yield return StartCoroutine(ClearAudioCacheSmooth());
+*//*
         // 4. Resource cleanup แบบค่อยเป็นค่อยไป
         yield return StartCoroutine(SafeResourceCleanupSmooth());
 
@@ -750,8 +750,8 @@ public class GlobalMemoryManager : MonoBehaviour
         yield return StartCoroutine(AggressiveObjectCleanup());
 
         // 4. Clear material cache
-/*        yield return StartCoroutine(ClearMaterialCache());
-*/
+*//*        yield return StartCoroutine(ClearMaterialCache());
+*//*
         // 5. Multiple rounds of deep cleanup
         for (int i = 0; i < 7; i++)
         {
@@ -944,7 +944,7 @@ public class GlobalMemoryManager : MonoBehaviour
                 obj.transform.childCount == 0); // objects ที่ไม่มีลูก
     }
 
-   /* private System.Collections.IEnumerator ClearMaterialCache()
+   *//* private System.Collections.IEnumerator ClearMaterialCache()
     {
         Debug.Log("🎨 Clearing material cache...");
 
@@ -972,7 +972,7 @@ public class GlobalMemoryManager : MonoBehaviour
         }
 
         Debug.Log($"🎨 Unloaded {unloadedCount} unused materials");
-    }*/
+    }*//*
 
 
     private bool IsMaterialInUse(Material material)
@@ -1160,4 +1160,4 @@ public class GlobalMemoryManager : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
         UnityEngine.SceneManagement.SceneManager.sceneUnloaded -= OnSceneUnloaded;
     }
-}
+}*/

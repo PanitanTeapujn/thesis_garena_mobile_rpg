@@ -646,7 +646,7 @@ public class EnemySpawner : NetworkBehaviour
         }
         else
         {
-            Debug.Log($"👤 Using normal spawning (nextSpawnTime: {nextSpawnTime:F1}, current: {Time.time:F1})");
+          //  Debug.Log($"👤 Using normal spawning (nextSpawnTime: {nextSpawnTime:F1}, current: {Time.time:F1})");
             HandleNormalSpawning();
         }
     }

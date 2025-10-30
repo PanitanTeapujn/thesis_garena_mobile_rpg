@@ -106,6 +106,7 @@ public class Assassin : Hero
         }
 
         Vector3 dashDirection = GetDashDirection();
+
         RPC_PerformToxicDashAll(dashDirection, transform.position);
     }
 
@@ -117,6 +118,8 @@ public class Assassin : Hero
 
     private IEnumerator ExecuteToxicDashFixed(Vector3 direction, Vector3 startPosition)
     {
+        AudioManager.instance.PlaySFX(2, 1f);
+
         Vector3 startPos = startPosition;
 
         // ✅ ตรวจสอบกำแพงก่อน dash
@@ -352,6 +355,8 @@ public class Assassin : Hero
 
     private IEnumerator ExecuteShadowAssassinationFixed(Vector3 targetPosition, NetworkObject targetObject, Vector3 originalPosition)
     {
+        AudioManager.instance.PlaySFX(3, 1f);
+
         IsAssassinating = true;
 
         // คำนวณตำแหน่งหลังเป้าหมาย
@@ -506,6 +511,8 @@ public class Assassin : Hero
 
     private IEnumerator ExecutePlagueOutbreak(Vector3 position)
     {
+        AudioManager.instance.PlaySFX(4, 1f);
+
         // สร้าง visual effect ด้วย Particle System
         GameObject plagueEffect = null;
         if (plagueOutbreakEffect != null)
@@ -1147,6 +1154,7 @@ public class Assassin : Hero
     }
     private void ShowPoisonInfusionEffect()
     {
+        AudioManager.instance.PlaySFX(0);
         if (poisonInfusionEffect != null)
         {
             GameObject effect = Instantiate(poisonInfusionEffect.gameObject, transform.position + Vector3.up * 1f, Quaternion.identity);
@@ -1165,6 +1173,7 @@ public class Assassin : Hero
 
     private void ShowToxicDashEffect()
     {
+        AudioManager.instance.PlaySFX(0);
         if (toxicDashEffect != null)
         {
             GameObject effect = Instantiate(toxicDashEffect.gameObject, transform.position, Quaternion.identity);
@@ -1183,6 +1192,7 @@ public class Assassin : Hero
 
     private void ShowShadowAssassinationEffect()
     {
+        AudioManager.instance.PlaySFX(1);
         if (shadowAssassinEffect != null)
         {
             GameObject effect = Instantiate(shadowAssassinEffect.gameObject, transform.position + Vector3.up * 2f, Quaternion.identity);
@@ -1201,6 +1211,7 @@ public class Assassin : Hero
 
     private void ShowPlagueOutbreakEffect()
     {
+        AudioManager.instance.PlaySFX(0);
         if (plagueOutbreakEffect != null)
         {
             GameObject effect = Instantiate(plagueOutbreakEffect.gameObject, transform.position, Quaternion.identity);
@@ -1223,7 +1234,14 @@ public class Assassin : Hero
         if (basicAttackEffect != null)
         {
             GameObject effect = Instantiate(basicAttackEffect.gameObject, transform.position + Vector3.up * 1.5f, Quaternion.identity);
-
+            if (AudioManager.instance != null)
+            {
+                AudioManager.instance.PlaySFX(0,0.1f);
+            }
+            else
+            {
+                Debug.LogError("❌ AudioManager.instance is NULL!");
+            }
             ParticleSystem ps = effect.GetComponent<ParticleSystem>();
             if (ps != null)
             {
