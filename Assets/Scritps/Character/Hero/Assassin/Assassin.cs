@@ -1173,7 +1173,7 @@ public class Assassin : Hero
 
     private void ShowToxicDashEffect()
     {
-        AudioManager.instance.PlaySFX(0);
+        AudioManager.instance.PlaySFX(0,0.2f);
         if (toxicDashEffect != null)
         {
             GameObject effect = Instantiate(toxicDashEffect.gameObject, transform.position, Quaternion.identity);
@@ -1192,7 +1192,7 @@ public class Assassin : Hero
 
     private void ShowShadowAssassinationEffect()
     {
-        AudioManager.instance.PlaySFX(1);
+        AudioManager.instance.PlaySFX(1,0.2f);
         if (shadowAssassinEffect != null)
         {
             GameObject effect = Instantiate(shadowAssassinEffect.gameObject, transform.position + Vector3.up * 2f, Quaternion.identity);
@@ -1211,7 +1211,7 @@ public class Assassin : Hero
 
     private void ShowPlagueOutbreakEffect()
     {
-        AudioManager.instance.PlaySFX(0);
+        AudioManager.instance.PlaySFX(0,0.2f);
         if (plagueOutbreakEffect != null)
         {
             GameObject effect = Instantiate(plagueOutbreakEffect.gameObject, transform.position, Quaternion.identity);

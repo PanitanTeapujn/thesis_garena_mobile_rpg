@@ -1129,6 +1129,8 @@ public class CombatUIManager : MonoBehaviour
     {
         if (inventoryPanel != null)
         {
+            AudioManager.instance.PlaySFX(7, 1f);
+
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
 
