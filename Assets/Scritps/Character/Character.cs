@@ -2882,7 +2882,158 @@ public class Character : NetworkBehaviour
         }
     }
 
+    #region Knockback System
+    [Header("💥 Knockback Settings")]
+    [SerializeField] private float knockbackForce = 5f;
+    [SerializeField] private float knockbackDuration = 0.3f;
+    [SerializeField] private AnimationCurve knockbackCurve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
+    [Networked] private bool IsBeingKnockedBack { get; set; }
+    [Networked] private float KnockbackEndTime { get; set; }
+
+    /// <summary>
+    /// ตรวจสอบว่าตัวละครสามารถถูก knockback ได้หรือไม่
+    /// </summary>
+    private bool CanBeKnockedBack()
+    {
+        // ✅ เช็ค Dummy
+        NetworkEnemy enemy = GetComponent<NetworkEnemy>();
+        if (enemy != null && (enemy.IsDummy || enemy.isLobbyDummy))
+        {
+            return false;
+        }
+
+        // ✅ เช็ค Status Effects
+        if (HasStatusEffect(StatusEffectType.Stun) || HasStatusEffect(StatusEffectType.Freeze))
+        {
+            return false;
+        }
+
+        // ✅ เช็คว่ากำลังโดน knockback อยู่แล้วหรือไม่ (optional - ป้องกัน knockback ซ้อน)
+        if (IsBeingKnockedBack)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Apply knockback ให้กับตัวละคร
+    /// </summary>
+    public void ApplyKnockback(Vector3 direction, float force = -1f, float duration = -1f)
+    {
+        if (!HasStateAuthority && !HasInputAuthority) return;
+
+        // 🆕 ตรวจสอบว่าสามารถ knockback ได้หรือไม่
+        if (!CanBeKnockedBack())
+        {
+            Debug.Log($"[Knockback] {CharacterName} cannot be knocked back!");
+            return;
+        }
+
+        // ใช้ค่า default ถ้าไม่ได้ระบุ
+        float actualForce = force > 0 ? force : knockbackForce;
+        float actualDuration = duration > 0 ? duration : knockbackDuration;
+
+        Debug.Log($"[Knockback] {CharacterName} knocked back! Force: {actualForce}, Duration: {actualDuration}");
+
+        if (HasInputAuthority)
+        {
+            RPC_RequestKnockback(direction, actualForce, actualDuration);
+        }
+        else if (HasStateAuthority)
+        {
+            RPC_ApplyKnockbackToAll(direction, actualForce, actualDuration);
+        }
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_RequestKnockback(Vector3 direction, float force, float duration)
+    {
+        RPC_ApplyKnockbackToAll(direction, force, duration);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ApplyKnockbackToAll(Vector3 direction, float force, float duration)
+    {
+        StartCoroutine(ExecuteKnockback(direction, force, duration));
+    }
+
+    private IEnumerator ExecuteKnockback(Vector3 direction, float force, float duration)
+    {
+        IsBeingKnockedBack = true;
+        KnockbackEndTime = Time.time + duration;
+
+        Vector3 knockbackDirection = direction.normalized;
+        knockbackDirection.y = 0; // ไม่ให้กระเด้งขึ้นบน
+
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+
+            // ใช้ curve เพื่อให้ knockback ดู smooth
+            float curveValue = knockbackCurve.Evaluate(progress);
+            Vector3 knockbackVelocity = knockbackDirection * force * curveValue;
+
+            // ✅ ตรวจสอบกำแพงก่อน apply knockback
+            RaycastHit wallHit;
+            if (Physics.Raycast(transform.position, knockbackVelocity.normalized, out wallHit,
+                knockbackVelocity.magnitude * Time.deltaTime, LayerMask.GetMask("Wall", "Obstacle", "Default")))
+            {
+                Debug.Log($"[Knockback] {CharacterName} hit wall, stopping knockback");
+                break;
+            }
+
+            // Apply knockback
+            if (rb != null)
+            {
+                Vector3 newPosition = transform.position + knockbackVelocity * Time.deltaTime;
+                rb.MovePosition(newPosition);
+
+                // Sync position (optional - ถ้าใช้วิธีที่ 2)
+                SyncKnockbackPosition(newPosition);
+            }
+
+            yield return null;
+        }
+
+        IsBeingKnockedBack = false;
+        Debug.Log($"[Knockback] {CharacterName} knockback ended");
+    }
+
+    /// <summary>
+    /// ตรวจสอบว่ากำลังโดน knockback อยู่หรือไม่
+    /// </summary>
+    public bool IsKnockedBack()
+    {
+        return IsBeingKnockedBack;
+    }
+
+    /// <summary>
+    /// หยุด knockback ทันที
+    /// </summary>
+    public void StopKnockback()
+    {
+        IsBeingKnockedBack = false;
+        if (rb != null)
+        {
+            rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
+        }
+    }
+
+    /// <summary>
+    /// Override method นี้ใน Hero และ NetworkEnemy เพื่อ sync position
+    /// </summary>
+    protected virtual void SyncKnockbackPosition(Vector3 newPosition)
+    {
+        // Base implementation - ไม่ทำอะไร
+        // Hero และ NetworkEnemy จะ override method นี้ถ้าต้องการ
+    }
+    #endregion
     /// <summary>
     /// Force refresh equipment UI หลัง load
     /// </summary>

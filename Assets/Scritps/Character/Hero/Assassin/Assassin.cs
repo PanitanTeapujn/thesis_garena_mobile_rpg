@@ -272,11 +272,16 @@ public class Assassin : Hero
     private void ApplyToxicDashEffects(Character enemy)
     {
         // ✅ FIXED: ใช้ GetScaledSkillDamage ที่มี Amp Damage แล้ว
-        int directDamage = GetScaledSkillDamage(0.6f); // จะมี Amp Damage
-        int poisonDamage = GetScaledPoisonDamage(0.3f); // จะมี Amp Damage
+        int directDamage = GetScaledSkillDamage(0.6f);
+        int poisonDamage = GetScaledPoisonDamage(0.3f);
 
         // ✅ ทำ direct magic damage - เป็น skill attack
         enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
+
+        // 🆕 Apply Knockback - พุ่งศัตรูไปข้างหน้า
+        Vector3 dashDirection = GetDashDirection();
+        enemy.ApplyKnockback(dashDirection, 4f, 0.3f);
+        Debug.Log($"🌫️ [Toxic Dash Knockback] {enemy.CharacterName} knocked back!");
 
         // ใส่ status effects
         enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
@@ -760,6 +765,15 @@ public class Assassin : Hero
                 bool isBasicAttack = true;
 
                 Debug.Log($"🐍 [Assassin Attack] shouldPoison: {shouldPoison}, forceCritical: {forceCritical}, isBasicAttack: {isBasicAttack}");
+                bool shouldKnockback = Random.Range(0f, 100f) < 100f;
+
+                // Basic attack ไม่ใช้ Amp Damage
+                if (shouldKnockback)
+                {
+                    Vector3 knockbackDir = (enemy.transform.position - transform.position).normalized;
+                    enemy.ApplyKnockback(knockbackDir, 10f, 0.7f); // แรงเบา ระยะสั้น
+                    Debug.Log($"🐍 [Knockback] Basic attack knocked back {enemy.CharacterName}!");
+                }
 
                 // Basic attack ไม่ใช้ Amp Damage
                 enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal, isBasicAttack);

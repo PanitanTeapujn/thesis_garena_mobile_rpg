@@ -172,11 +172,15 @@ public class CombatManager : NetworkBehaviour
     #endregion
 
     #region Main Damage System - ระบบรับดาเมจหลักที่รองรับทั้ง Physical และ Magic Damage
-    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
+    // แก้ไขใน CombatManager.cs
+
+    public virtual void TakeDamageFromAttacker(int physicalDamage, int magicDamage, Character attacker,
+        DamageType damageType = DamageType.Normal, bool isBasicAttack = false,
+        bool applyKnockback = false, float knockbackForce = 3f)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
 
-        // เช็ค Hit/Miss ก่อน
+        // ✅ เช็ค Hit/Miss ก่อน - ถ้า Miss ไม่ทำอะไรเลย
         if (!CalculateHitSuccess(attacker, character))
         {
             if (HasStateAuthority)
@@ -185,10 +189,10 @@ public class CombatManager : NetworkBehaviour
                 RPC_ShowDamageText(textPosition, 0, DamageType.Normal, false, false, true);
             }
             Debug.Log($"[MISS] {attacker.CharacterName} missed {character.CharacterName}!");
-            return;
+            return; // ❌ Miss แล้ว ออกทันที - ไม่ knockback
         }
 
-        // คำนวณ critical และ apply status effects
+        // ✅ Hit แล้ว ทำ damage calculation
         bool isCritical = false;
         if (attacker != null)
         {
@@ -197,13 +201,11 @@ public class CombatManager : NetworkBehaviour
             isCritical = CalculateCriticalHit(attacker);
         }
 
-        // ✅ FIXED: Apply Amp Damage เฉพาะ skill attacks เท่านั้น
+        // Apply Amp Damage เฉพาะ skill attacks
         if (!isBasicAttack && attacker != null)
         {
-            // Apply Amp Damage ให้กับ skill damage
             int originalTotal = physicalDamage + magicDamage;
 
-            // คำนวณ Amp Damage
             int ampedPhysical = attacker.ApplyAmpDamageToSkill(physicalDamage);
             int ampedMagic = attacker.ApplyAmpDamageToSkill(magicDamage);
 
@@ -218,7 +220,7 @@ public class CombatManager : NetworkBehaviour
             Debug.Log($"[Basic Attack] {attacker?.CharacterName}: No Amp Damage applied (basic attack)");
         }
 
-        // ✅ คำนวณดาเมจแยกตาม damage type
+        // คำนวณดาเมจแยกตาม damage type
         int finalPhysicalDamage = CalculateFinalDamage(physicalDamage, isCritical, DamageType.Normal, attacker);
         int finalMagicDamage = CalculateFinalDamage(magicDamage, isCritical, DamageType.Magic, attacker);
         int totalDamage = finalPhysicalDamage + finalMagicDamage;
@@ -232,11 +234,13 @@ public class CombatManager : NetworkBehaviour
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
+
         if (character is NetworkEnemy && AudioManager.instance != null)
         {
             AudioManager.instance.PlayEnemyHitSound(character);
         }
-        // ✅ Apply lifesteal เฉพาะการโจมตีธรรมดา
+
+        // Apply lifesteal เฉพาะการโจมตีธรรมดา
         if (attacker != null && totalDamage > 0 && isBasicAttack)
         {
             ApplyLifesteal(attacker, totalDamage);
@@ -247,10 +251,18 @@ public class CombatManager : NetworkBehaviour
             Debug.Log($"[Life Steal] Skipped for skill attack (not basic attack)");
         }
 
+        // ✅ Apply Knockback หลังจากโดนแล้ว (Hit success)
+        if (applyKnockback && attacker != null && character != null && totalDamage > 0)
+        {
+            Vector3 knockbackDirection = (character.transform.position - attacker.transform.position).normalized;
+            character.ApplyKnockback(knockbackDirection, knockbackForce);
+            Debug.Log($"💥 [Knockback] {character.CharacterName} knocked back by {attacker.CharacterName}!");
+        }
+
         // Sync network state
         SyncHealthUpdate();
 
-        // ✅ แสดง Damage Text ผ่าน RPC
+        // แสดง Damage Text ผ่าน RPC
         if (HasStateAuthority)
         {
             Vector3 textPosition = character.transform.position + Vector3.up * 2f;
@@ -260,17 +272,18 @@ public class CombatManager : NetworkBehaviour
 
         // Fire damage event สำหรับ visual flash
         OnDamageTaken?.Invoke(character, totalDamage, damageType, isCritical);
+
         if (attacker != null)
         {
             TryDropGoldFromDummy(totalDamage, attacker);
         }
+
         // Check death
         if (character.CurrentHp <= 0)
         {
             HandleDeath();
         }
     }
-
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {
         if (!HasStateAuthority && !HasInputAuthority) return;
