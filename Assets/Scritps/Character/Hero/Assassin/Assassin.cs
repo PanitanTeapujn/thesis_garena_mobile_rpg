@@ -1233,15 +1233,31 @@ public class Assassin : Hero
     {
         if (basicAttackEffect != null)
         {
-            GameObject effect = Instantiate(basicAttackEffect.gameObject, transform.position + Vector3.up * 1.5f, Quaternion.identity);
+            GameObject effect = Instantiate(basicAttackEffect.gameObject, transform.position + Vector3.up , Quaternion.identity);
+
+            // ✅ Flip effect ตามทิศทางของตัวละคร
+            Vector3 effectScale = effect.transform.localScale;
+            if (transform.localScale.x < 0)
+            {
+                // ถ้าตัวละครหันซ้าย (scale.x เป็นลบ)
+                effectScale.x = -Mathf.Abs(effectScale.x);
+            }
+            else
+            {
+                // ถ้าตัวละครหันขวา (scale.x เป็นบวก)
+                effectScale.x = Mathf.Abs(effectScale.x);
+            }
+            effect.transform.localScale = effectScale;
+
             if (AudioManager.instance != null)
             {
-                AudioManager.instance.PlaySFX(0,0.1f);
+                AudioManager.instance.PlaySFX(0, 0.1f);
             }
             else
             {
                 Debug.LogError("❌ AudioManager.instance is NULL!");
             }
+
             ParticleSystem ps = effect.GetComponent<ParticleSystem>();
             if (ps != null)
             {
