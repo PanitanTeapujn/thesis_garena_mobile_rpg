@@ -56,4 +56,4 @@ MonoBehaviour:
   sfxSlider: {fileID: 0}
   bgmVolumeText: {fileID: 0}
   sfxVolumeText: {fileID: 0}
-  lobbySceneName: Lobby
+  lobbySceneName: 0
