@@ -416,7 +416,7 @@ public class ItemData : ScriptableObject
     {
         switch (tier)
         {
-            case ItemTier.Common: return Color.white;
+            case ItemTier.Common: return Color.gray;
             case ItemTier.Uncommon: return Color.green;
             case ItemTier.Rare: return Color.cyan;
             case ItemTier.Epic: return Color.magenta;
