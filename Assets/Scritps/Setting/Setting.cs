@@ -170,7 +170,7 @@ public class Setting : MonoBehaviour
         ResumeGame();
         CleanupNetworkComponents();
         Debug.Log("🏠 Loading Lobby Scene...");
-        SceneManager.LoadScene(lobbySceneName);
+        SceneManager.LoadScene("Lobby");
     }
 
     // ========== ✅ Pause System (ไม่ใช้ Time.timeScale) ==========

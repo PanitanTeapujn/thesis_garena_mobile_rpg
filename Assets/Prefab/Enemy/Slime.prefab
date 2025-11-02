@@ -23,7 +23,7 @@ GameObject:
   - component: {fileID: 3960793821190387862}
   m_Layer: 7
   m_Name: Slime
-  m_TagString: Enemy
+  m_TagString: Slime
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -241,6 +241,9 @@ MonoBehaviour:
   _PatrolWaitTimer: 0
   detectRange: 10
   attackCheckInterval: 0.5
+  IsDummy: 0
+  DummyLevel: 1
+  isLobbyDummy: 0
   _CurrentState: 0
   _StateTimer: 0
   backOffDistance: 3
@@ -265,6 +268,8 @@ MonoBehaviour:
   isCollidingWithPlayer: 0
   showDebugInfo: 0
   showPatrolGizmos: 1
+  dummyUIPrefab: {fileID: 0}
+  dummyDebuffCooldown: 8
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: -400204652379301390}
@@ -281,6 +286,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dummyBaseDropChance: 15
+  dummyDropChancePerKDamage: 0.5
+  dummyMaxDropChance: 50
+  dummyBaseGoldAmount: 10
+  dummyGoldPerTenKDamage: 5
+  dummyMaxGoldPerHit: 500
+  dummyGoldDropCooldown: 2
 --- !u!114 &2866443350649548657
 MonoBehaviour:
   m_ObjectHideFlags: 0

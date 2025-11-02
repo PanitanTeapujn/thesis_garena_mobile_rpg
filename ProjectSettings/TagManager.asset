@@ -9,6 +9,8 @@ TagManager:
   - LocalPlayer
   - RemotePlayer
   - Enemy
+  - Slime
+  - Dummy
   layers:
   - Default
   - TransparentFX

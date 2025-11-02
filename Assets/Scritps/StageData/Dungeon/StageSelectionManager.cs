@@ -180,13 +180,13 @@ public class StageSelectionManager : MonoBehaviour
             if (isCompleted)
             {
                 // ✅ ด่านที่ผ่านแล้ว - สีเขียว
-                panelImage.color = Color.green;
+                panelImage.color = Color.white;
                 Debug.Log($"[UpdateStatus] ✅ {subStage.sceneToLoad} set to GREEN");
             }
             else if (isUnlocked)
             {
                 // ⚠️ ด่านที่ยังไม่ผ่าน - สีเทา
-                panelImage.color = Color.gray;
+                panelImage.color = Color.white;
                 Debug.Log($"[UpdateStatus] ⚠️ {subStage.sceneToLoad} set to GRAY");
             }
             else
@@ -423,17 +423,17 @@ public class StageSelectionManager : MonoBehaviour
             if (isCompleted)
             {
                 statusText.text = "COMPLETED";
-                statusText.color = Color.green;
+                statusText.color = Color.white;
             }
             else if (isUnlocked)
             {
                 statusText.text = "AVAILABLE";
-                statusText.color = Color.yellow;
+                statusText.color = Color.black;
             }
             else
             {
                 statusText.text = "LOCKED";
-                statusText.color = Color.red;
+                statusText.color = Color.black;
             }
         }
 
@@ -443,7 +443,7 @@ public class StageSelectionManager : MonoBehaviour
             if (isCompleted)
                 statusIcon.color = Color.green;
             else if (isUnlocked)
-                statusIcon.color = Color.gray;
+                statusIcon.color = Color.black;
             else
                 statusIcon.color = Color.black;
         }

@@ -1154,7 +1154,7 @@ public class Assassin : Hero
     }
     private void ShowPoisonInfusionEffect()
     {
-        AudioManager.instance.PlaySFX(0);
+        AudioManager.instance.PlaySFX(0,0.3f);
         if (poisonInfusionEffect != null)
         {
             GameObject effect = Instantiate(poisonInfusionEffect.gameObject, transform.position + Vector3.up * 1f, Quaternion.identity);

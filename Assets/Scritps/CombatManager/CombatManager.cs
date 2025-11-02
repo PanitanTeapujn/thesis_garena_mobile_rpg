@@ -232,7 +232,10 @@ public class CombatManager : NetworkBehaviour
         int oldHp = character.CurrentHp;
         character.CurrentHp -= totalDamage;
         character.CurrentHp = Mathf.Clamp(character.CurrentHp, 0, character.MaxHp);
-
+        if (character is NetworkEnemy && AudioManager.instance != null)
+        {
+            AudioManager.instance.PlayEnemyHitSound(character);
+        }
         // ✅ Apply lifesteal เฉพาะการโจมตีธรรมดา
         if (attacker != null && totalDamage > 0 && isBasicAttack)
         {
