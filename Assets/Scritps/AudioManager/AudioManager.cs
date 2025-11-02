@@ -23,14 +23,19 @@ public class AudioManager : MonoBehaviour
     [System.Serializable]
     public class SceneBGMMapping
     {
-        public string sceneName;  // ชื่อ Scene
-        public int bgmIndex;      // Index ของ BGM ที่จะเล่น
+        public string sceneName;
+        public int bgmIndex;
         [Tooltip("Fade in duration (seconds)")]
         public float fadeInDuration = 1f;
     }
 
     private int currentBGMIndex = -1;
     private bool isFading = false;
+
+    // ✅ เก็บค่า Volume ไว้ใช้
+    private float currentBGMVolume = 0.7f;
+    private float currentSFXVolume = 1f;
+    private float currentMasterVolume = 1f;
 
     private void Awake()
     {
@@ -42,36 +47,30 @@ public class AudioManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         instance = this;
 
-        // ✅ Subscribe to scene change event
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void Start()
     {
-        // ✅ ตั้งค่า volume เริ่มต้น
         SetMasterVolume(1f);
         SetSFXVolume(1f);
         SetBGMVolume(0.7f);
 
-        // ✅ เล่น BGM ตาม scene ปัจจุบัน
         string currentScene = SceneManager.GetActiveScene().name;
         PlayBGMForScene(currentScene);
     }
 
     void OnDestroy()
     {
-        // ✅ Unsubscribe เมื่อ destroy
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
-    // ✅ เมื่อ Scene โหลดเสร็จ
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"🎬 Scene loaded: {scene.name}");
         PlayBGMForScene(scene.name);
     }
 
-    // ✅ เล่น BGM ตาม Scene
     private void PlayBGMForScene(string sceneName)
     {
         foreach (var mapping in sceneBGMMapping)
@@ -80,14 +79,12 @@ public class AudioManager : MonoBehaviour
             {
                 Debug.Log($"🎵 Found BGM mapping for {sceneName}: BGM[{mapping.bgmIndex}]");
 
-                // ถ้าเป็น BGM เดียวกันกับที่เล่นอยู่ ไม่ต้องเปลี่ยน
                 if (currentBGMIndex == mapping.bgmIndex && Bgm[currentBGMIndex].isPlaying)
                 {
                     Debug.Log($"🎵 BGM[{mapping.bgmIndex}] already playing");
                     return;
                 }
 
-                // เปลี่ยน BGM แบบ fade
                 StartCoroutine(CrossfadeBGM(mapping.bgmIndex, mapping.fadeInDuration));
                 return;
             }
@@ -96,10 +93,9 @@ public class AudioManager : MonoBehaviour
         Debug.LogWarning($"⚠️ No BGM mapping found for scene: {sceneName}");
     }
 
-    // ✅ Crossfade BGM (เฟดเก่าออก เฟดใหม่เข้า)
     private System.Collections.IEnumerator CrossfadeBGM(int newBGMIndex, float fadeInDuration)
     {
-        if (isFading) yield break; // ป้องกัน fade ซ้อน
+        if (isFading) yield break;
         isFading = true;
 
         float fadeDuration = 1f;
@@ -115,7 +111,6 @@ public class AudioManager : MonoBehaviour
             yield break;
         }
 
-        // Phase 1: Fade out BGM เก่า (ถ้ามี)
         if (oldBGM != null && oldBGM.isPlaying)
         {
             float startVolume = oldBGM.volume;
@@ -129,14 +124,13 @@ public class AudioManager : MonoBehaviour
             }
 
             oldBGM.Stop();
-            oldBGM.volume = startVolume; // คืนค่า volume
+            oldBGM.volume = currentBGMVolume; // ✅ ใช้ค่าที่เก็บไว้
         }
 
-        // Phase 2: เล่น BGM ใหม่และ Fade in
         newBGM.volume = 0f;
         newBGM.Play();
 
-        float targetVolume = 0.7f; // Volume เป้าหมาย
+        float targetVolume = currentBGMVolume; // ✅ ใช้ค่าที่เก็บไว้
         float elapsed2 = 0f;
 
         while (elapsed2 < fadeInDuration)
@@ -153,7 +147,6 @@ public class AudioManager : MonoBehaviour
         Debug.Log($"✅ BGM changed to BGM[{newBGMIndex}]: {newBGM.clip?.name}");
     }
 
-    // ✅ เปลี่ยน BGM แบบทันที (ไม่มี fade)
     public void PlayBGM(int i)
     {
         if (i < 0 || i >= bgm.Length)
@@ -169,12 +162,12 @@ public class AudioManager : MonoBehaviour
         }
 
         StopAllBGM();
+        Bgm[i].volume = currentBGMVolume; // ✅ ตั้งค่า volume
         Bgm[i].Play();
         currentBGMIndex = i;
         Debug.Log($"🎵 Playing BGM[{i}]: {Bgm[i].clip?.name}");
     }
 
-    // ✅ เปลี่ยน BGM แบบมี fade
     public void PlayBGMWithFade(int i, float fadeDuration = 1f)
     {
         if (i < 0 || i >= bgm.Length)
@@ -195,13 +188,13 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    // ✅ SFX Methods (เหมือนเดิม)
     public void PlaySFX(int i)
     {
         if (i < sfx.Length && sfx[i] != null)
         {
             if (sfx[i].clip != null)
             {
+                sfx[i].volume = currentSFXVolume; // ✅ ใช้ค่าที่เก็บไว้
                 sfx[i].Play();
                 Debug.Log($"🔊 Playing SFX[{i}]: {sfx[i].clip.name}");
             }
@@ -222,7 +215,7 @@ public class AudioManager : MonoBehaviour
         {
             if (sfx[i].clip != null)
             {
-                sfx[i].volume = Mathf.Clamp01(volume);
+                sfx[i].volume = Mathf.Clamp01(volume) * currentSFXVolume; // ✅ คูณกับค่า global
                 sfx[i].Play();
                 Debug.Log($"🔊 Playing SFX[{i}]: {sfx[i].clip.name} at {volume * 100}% volume");
             }
@@ -237,22 +230,80 @@ public class AudioManager : MonoBehaviour
         }
     }
 
+    // ✅ ปรับปรุงฟังก์ชันควบคุม Volume
     public void SetMasterVolume(float volume)
     {
-        audioMixer.SetFloat("MasterVolume", Mathf.Log10(volume) * 20);
+        currentMasterVolume = Mathf.Clamp01(volume);
+
+        if (audioMixer != null)
+        {
+            float dbValue = volume > 0.0001f ? Mathf.Log10(volume) * 20 : -80f;
+            bool success = audioMixer.SetFloat("Master", dbValue);
+
+            if (!success)
+            {
+                Debug.LogWarning("⚠️ Failed to set Master volume in AudioMixer. Check Exposed Parameter name!");
+            }
+        }
+
+        Debug.Log($"🔊 Master Volume: {volume * 100}%");
     }
 
     public void SetBGMVolume(float volume)
     {
-        audioMixer.SetFloat("BGMVolume", Mathf.Log10(volume) * 20);
+        currentBGMVolume = Mathf.Clamp01(volume);
+
+        // ลองตั้งค่าใน AudioMixer
+        if (audioMixer != null)
+        {
+            float dbValue = volume > 0.0001f ? Mathf.Log10(volume) * 20 : -80f;
+            bool success = audioMixer.SetFloat("BGM", dbValue);
+
+            if (!success)
+            {
+                Debug.LogWarning("⚠️ Failed to set BGM volume in AudioMixer. Using direct AudioSource control.");
+            }
+        }
+
+        // ✅ ตั้งค่า Volume ของ AudioSource ทุกตัวโดยตรง (สำรอง)
+        foreach (var audio in bgm)
+        {
+            if (audio != null && audio.isPlaying)
+            {
+                audio.volume = currentBGMVolume;
+            }
+        }
+
+        Debug.Log($"🎵 BGM Volume set to: {volume * 100}%");
     }
 
     public void SetSFXVolume(float volume)
     {
-        audioMixer.SetFloat("SFXVolume", Mathf.Log10(volume) * 20);
+        currentSFXVolume = Mathf.Clamp01(volume);
+
+        if (audioMixer != null)
+        {
+            float dbValue = volume > 0.0001f ? Mathf.Log10(volume) * 20 : -80f;
+            bool success = audioMixer.SetFloat("SFX", dbValue);
+
+            if (!success)
+            {
+                Debug.LogWarning("⚠️ Failed to set SFX volume in AudioMixer. Using direct AudioSource control.");
+            }
+        }
+
+        // ✅ อัปเดต volume ของ SFX ที่กำลังเล่นอยู่
+        foreach (var audio in sfx)
+        {
+            if (audio != null && audio.isPlaying)
+            {
+                audio.volume = currentSFXVolume;
+            }
+        }
+
+        Debug.Log($"🔊 SFX Volume set to: {volume * 100}%");
     }
 
-    // ✅ Helper: หยุด BGM ปัจจุบัน
     public void StopCurrentBGM()
     {
         if (currentBGMIndex >= 0 && currentBGMIndex < bgm.Length)
@@ -262,7 +313,6 @@ public class AudioManager : MonoBehaviour
         }
     }
 
-    // ✅ Helper: Pause/Resume BGM
     public void PauseBGM()
     {
         if (currentBGMIndex >= 0 && currentBGMIndex < bgm.Length)
