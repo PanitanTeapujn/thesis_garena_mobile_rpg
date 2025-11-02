@@ -1003,6 +1003,8 @@ public class Character : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        if (Setting.IsPaused) return;
+
         if (HasStateAuthority)
         {
             // Sync HP/Mana ทุก frame

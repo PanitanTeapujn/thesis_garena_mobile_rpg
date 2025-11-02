@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
 using TMPro;
+using Fusion;
 
 public class Setting : MonoBehaviour
 {
@@ -16,6 +17,7 @@ public class Setting : MonoBehaviour
     [SerializeField] private Button resumeButton;
     [SerializeField] private Button soundButton;
     [SerializeField] private Button closesoundButton;
+    [SerializeField] private Button backToLobbyButton;
 
     [Header("Sound Sliders")]
     [SerializeField] private Slider bgmSlider;
@@ -25,10 +27,17 @@ public class Setting : MonoBehaviour
     [SerializeField] private TextMeshProUGUI bgmVolumeText;
     [SerializeField] private TextMeshProUGUI sfxVolumeText;
 
+    [Header("Scene Settings")]
+    [SerializeField] private string lobbySceneName = "Lobby";
+
+    // ✅ เพิ่มตัวแปร pause state (ไม่ใช้ Time.timeScale)
+    public static bool IsPaused { get; private set; } = false;
+
     void Start()
     {
         SetupButton();
         SetupSliders();
+        CheckLobbyButton();
     }
 
     private void SetupButton()
@@ -38,6 +47,30 @@ public class Setting : MonoBehaviour
         closeButton.onClick.AddListener(CloseSettingPanel);
         closesoundButton.onClick.AddListener(CloseSoundPanel);
         resumeButton.onClick.AddListener(CloseSettingPanel);
+
+        if (backToLobbyButton != null)
+        {
+            backToLobbyButton.onClick.AddListener(BackToLobbys);
+        }
+    }
+
+    private void CheckLobbyButton()
+    {
+        if (backToLobbyButton != null)
+        {
+            string currentScene = SceneManager.GetActiveScene().name;
+
+            if (currentScene.Equals(lobbySceneName, System.StringComparison.OrdinalIgnoreCase))
+            {
+                backToLobbyButton.gameObject.SetActive(false);
+                Debug.Log("🏠 In Lobby scene - Back to Lobby button hidden");
+            }
+            else
+            {
+                backToLobbyButton.gameObject.SetActive(true);
+                Debug.Log($"🎮 In {currentScene} - Back to Lobby button visible");
+            }
+        }
     }
 
     private void SetupSliders()
@@ -48,12 +81,11 @@ public class Setting : MonoBehaviour
             return;
         }
 
-        // ตั้งค่า Slider Range (0 ถึง 1)
         if (bgmSlider != null)
         {
             bgmSlider.minValue = 0f;
             bgmSlider.maxValue = 1f;
-            bgmSlider.value = 0.7f; // ค่าเริ่มต้น
+            bgmSlider.value = 0.7f;
             bgmSlider.onValueChanged.AddListener(OnBGMVolumeChanged);
         }
 
@@ -61,15 +93,13 @@ public class Setting : MonoBehaviour
         {
             sfxSlider.minValue = 0f;
             sfxSlider.maxValue = 1f;
-            sfxSlider.value = 1f; // ค่าเริ่มต้น
+            sfxSlider.value = 1f;
             sfxSlider.onValueChanged.AddListener(OnSFXVolumeChanged);
         }
 
-        // อัปเดต Text แสดงค่า Volume (ถ้ามี)
         UpdateVolumeText();
     }
 
-    // ฟังก์ชันเมื่อ BGM Slider เปลี่ยนค่า
     private void OnBGMVolumeChanged(float value)
     {
         if (AudioManager.instance != null)
@@ -78,14 +108,12 @@ public class Setting : MonoBehaviour
             Debug.Log($"🎵 BGM Volume: {value * 100}%");
         }
 
-        // อัปเดต Text (ถ้ามี)
         if (bgmVolumeText != null)
         {
             bgmVolumeText.text = $"{Mathf.RoundToInt(value * 100)}%";
         }
     }
 
-    // ฟังก์ชันเมื่อ SFX Slider เปลี่ยนค่า
     private void OnSFXVolumeChanged(float value)
     {
         if (AudioManager.instance != null)
@@ -94,7 +122,6 @@ public class Setting : MonoBehaviour
             Debug.Log($"🔊 SFX Volume: {value * 100}%");
         }
 
-        // อัปเดต Text (ถ้ามี)
         if (sfxVolumeText != null)
         {
             sfxVolumeText.text = $"{Mathf.RoundToInt(value * 100)}%";
@@ -103,21 +130,22 @@ public class Setting : MonoBehaviour
 
     private void UpdateVolumeText()
     {
-        if (bgmVolumeText != null)
+        if (bgmVolumeText != null && bgmSlider != null)
         {
             bgmVolumeText.text = $"{Mathf.RoundToInt(bgmSlider.value * 100)}%";
         }
 
-        if (sfxVolumeText != null)
+        if (sfxVolumeText != null && sfxSlider != null)
         {
             sfxVolumeText.text = $"{Mathf.RoundToInt(sfxSlider.value * 100)}%";
         }
     }
 
+    // ✅ แก้ไข - ไม่ยุ่งกับ Time.timeScale
     private void OpenSettingPanel()
     {
         settingPanel.SetActive(true);
-        Time.timeScale = 0;
+        PauseGame();
     }
 
     private void OpenSoundPanel()
@@ -128,12 +156,71 @@ public class Setting : MonoBehaviour
     private void CloseSettingPanel()
     {
         settingPanel.SetActive(false);
-        soundPanel.SetActive(false); // ปิด Sound Panel ด้วย
-        Time.timeScale = 1;
+        soundPanel.SetActive(false);
+        ResumeGame();
     }
 
     private void CloseSoundPanel()
     {
         soundPanel.SetActive(false);
+    }
+
+    void BackToLobbys()
+    {
+        ResumeGame();
+        CleanupNetworkComponents();
+        Debug.Log("🏠 Loading Lobby Scene...");
+        SceneManager.LoadScene(lobbySceneName);
+    }
+
+    // ========== ✅ Pause System (ไม่ใช้ Time.timeScale) ==========
+
+    private void PauseGame()
+    {
+        IsPaused = true;
+        // ❌ ลบบรรทัดนี้ออก: Time.timeScale = 0f;
+
+        // ✅ แสดง cursor
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+
+        Debug.Log("⏸️ Game Paused");
+    }
+
+    private void ResumeGame()
+    {
+        IsPaused = false;
+        // ❌ ลบบรรทัดนี้ออก: Time.timeScale = 1f;
+
+        // ✅ ซ่อน cursor (optional - คุณอาจไม่ต้องการซ่อนก็ได้)
+        // Cursor.visible = false;
+        // Cursor.lockState = CursorLockMode.Locked;
+
+        Debug.Log("▶️ Game Resumed");
+    }
+
+    private void CleanupNetworkComponents()
+    {
+        NetworkRunner runner = FindObjectOfType<NetworkRunner>();
+        if (runner != null)
+        {
+            Debug.Log("🔌 Shutting down NetworkRunner");
+            runner.Shutdown();
+        }
+
+        PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
+        if (spawner != null)
+        {
+            spawner.CleanupOnGameExit();
+        }
+
+        NetworkObject[] networkObjects = FindObjectsOfType<NetworkObject>();
+        foreach (var obj in networkObjects)
+        {
+            if (obj != null)
+            {
+                Destroy(obj.gameObject);
+            }
+        }
     }
 }

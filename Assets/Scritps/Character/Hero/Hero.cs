@@ -260,6 +260,8 @@
         // ========== Network Update ==========
         public override void FixedUpdateNetwork()
         {
+        if (Setting.IsPaused) return;
+
         base.FixedUpdateNetwork();
 
 

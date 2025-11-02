@@ -589,6 +589,8 @@ public class NetworkEnemy : Character
     // ========== Network Update ==========
     public override void FixedUpdateNetwork()
     {
+        if (Setting.IsPaused) return;
+
         base.FixedUpdateNetwork();
 
         if (!IsSpawned) return;
