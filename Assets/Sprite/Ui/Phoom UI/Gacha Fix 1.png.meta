@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 516e3526620a68548b57803f3966c20c
+guid: 16a312345e6f7d541a1ceb50b2e631f3
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -110,13 +110,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Gacha Fix_0
+      name: Gacha Fix 1_0
       rect:
         serializedVersion: 2
-        x: 9
-        y: 336
-        width: 181
-        height: 50
+        x: 17
+        y: 335
+        width: 103
+        height: 57
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -125,14 +125,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 96b8f3f38578bb04bb2f5905d588b219
-      internalID: -1696893513
+      spriteID: 63edfeb99eab56b43a5975995d0473e9
+      internalID: -213866627
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Gacha Fix_1
+      name: Gacha Fix 1_1
       rect:
         serializedVersion: 2
         x: 211
@@ -147,14 +147,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 13b1ca1092ab0cd4fa3713c83f41fb00
-      internalID: -648085476
+      spriteID: d2880fad84e066746977499bd4fe5c70
+      internalID: -1873615086
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Gacha Fix_2
+      name: Gacha Fix 1_2
       rect:
         serializedVersion: 2
         x: 886
@@ -169,14 +169,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: cfb133a4d7350b84caef5eb63453d612
-      internalID: 1265282910
+      spriteID: 75d3583bb3ec9e249b64c02ba5f2ac5e
+      internalID: -269538353
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Gacha Fix_3
+      name: Gacha Fix 1_3
       rect:
         serializedVersion: 2
         x: 10
@@ -191,14 +191,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 50358d19096b63c40ac8339afd465da1
-      internalID: 1718966086
+      spriteID: e4c8f59a361e3664ea8d7588a79718fa
+      internalID: -421736119
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Gacha Fix_4
+      name: Gacha Fix 1_4
       rect:
         serializedVersion: 2
         x: 886
@@ -213,14 +213,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: db7df5e04be6d7f4cbffbfa0280884cf
-      internalID: -1942608781
+      spriteID: d63c822a8fb340f49b8f34fcc310067a
+      internalID: -1477627128
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Gacha Fix_5
+      name: Gacha Fix 1_5
       rect:
         serializedVersion: 2
         x: 10
@@ -235,8 +235,30 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 8668742ad2b0fd54785b68ee8179488e
-      internalID: 711486710
+      spriteID: b3c22590eb2d88a42addbc6b1ce12ccd
+      internalID: 39203170
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Gacha Fix 1_6
+      rect:
+        serializedVersion: 2
+        x: 886
+        y: 65
+        width: 342
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 72ab6a3e04b606d488a5f546b00e93c4
+      internalID: -1942967040
       vertices: []
       indices: 
       edges: []
@@ -245,7 +267,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 7a5074c573d621b4fa6e05ec4b3c0491
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -255,12 +277,13 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Gacha Fix_0: -1696893513
-      Gacha Fix_1: -648085476
-      Gacha Fix_2: 1265282910
-      Gacha Fix_3: 1718966086
-      Gacha Fix_4: -1942608781
-      Gacha Fix_5: 711486710
+      Gacha Fix 1_0: -213866627
+      Gacha Fix 1_1: -1873615086
+      Gacha Fix 1_2: -269538353
+      Gacha Fix 1_3: -421736119
+      Gacha Fix 1_4: -1477627128
+      Gacha Fix 1_5: 39203170
+      Gacha Fix 1_6: -1942967040
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
