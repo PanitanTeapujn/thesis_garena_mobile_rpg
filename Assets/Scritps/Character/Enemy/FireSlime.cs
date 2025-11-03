@@ -25,6 +25,7 @@ public class FireSlime : NetworkEnemy
 
     [Header("⚠️ Telegraph System")]
     [SerializeField] private GameObject telegraphIndicatorPrefab; // Prefab สำหรับแสดงพื้นแดง (ถ้าไม่มีจะสร้างอัตโนมัติ)
+    [SerializeField] private GameObject telegraphIndicatorChild; // Telegraph Indicator ที่เป็น Child ของ Slime (ตั้งค่าใน Inspector)
     [SerializeField] private float fireAuraTelegraphDuration = 1.5f; // เวลาแสดงเตือนก่อน Fire Aura
     [SerializeField] private float deathExplosionTelegraphDuration = 2f; // เวลาแสดงเตือนก่อนระเบิด
     [SerializeField] private float fireAuraCooldown = 8f;     // Cooldown ของ Fire Aura (วินาที)
@@ -32,12 +33,20 @@ public class FireSlime : NetworkEnemy
     [SerializeField] private Color telegraphColor = new Color(1f, 0f, 0f, 0.5f); // สีของ Telegraph (แดง โปร่งใส)
     [SerializeField] private Color explosionTelegraphColor = new Color(1f, 0.5f, 0f, 0.6f); // สีของ Telegraph ระเบิด (ส้ม)
 
+    [Header("💣 Self-Destruct Settings")]
+    [SerializeField] private float selfDestructHPThreshold = 10f; // HP ที่จะเริ่มระเบิดตัวเอง
+
     private float nextBurnTime = 0f;
     private float nextFireAuraTime = 0f;
     private bool isFireAuraActive = false;
+    private bool isSelfDestructing = false; // กำลังอยู่ในโหมดระเบิดตัวเอง
+    private bool hasTriggeredSelfDestruct = false; // ป้องกันการ trigger ซ้ำ
     private List<GameObject> activeHeatZones = new List<GameObject>();
     private Coroutine heatZoneCoroutine;
     private GameObject currentTelegraphIndicator;
+    private float previousMoveSpeed; // เก็บความเร็วเดิมไว้
+    private UnityEngine.AI.NavMeshAgent navAgent; // Reference ถึง NavMeshAgent
+    private Vector3 telegraphInitialScale; // เก็บ scale เริ่มต้นของ telegraph child
 
     protected override void Start()
     {
@@ -46,6 +55,19 @@ public class FireSlime : NetworkEnemy
         // ตั้งค่าเฉพาะของ Fire Slime
         SetupFireSlimeStats();
         InitializeFireEffects();
+
+        // เก็บ reference ของ NavMeshAgent
+        navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+
+        // ซ่อน Telegraph Indicator Child ตอนเริ่มเกม และเก็บ scale เริ่มต้น
+        if (telegraphIndicatorChild != null)
+        {
+            // เก็บ local scale เริ่มต้นไว้ (ก่อนที่จะ SetActive(false))
+            telegraphInitialScale = telegraphIndicatorChild.transform.localScale;
+            telegraphIndicatorChild.SetActive(false);
+
+            Debug.Log($"📐 Telegraph initial scale: {telegraphInitialScale}");
+        }
 
         if (HasStateAuthority)
         {
@@ -100,7 +122,19 @@ public class FireSlime : NetworkEnemy
 
         if (HasStateAuthority && !IsDead)
         {
-            ProcessFireAura();
+            // ตรวจสอบ HP เพื่อ trigger Self-Destruct
+            // ใช้ CurrentHp (property ที่ถูกต้องของ base class)
+            if (!hasTriggeredSelfDestruct && !isSelfDestructing && CurrentHp < selfDestructHPThreshold && CurrentHp >= 1)
+            {
+                hasTriggeredSelfDestruct = true;
+                StartCoroutine(SelfDestructSequence());
+            }
+
+            // ทำ Fire Aura ต่อเมื่อไม่ได้อยู่ในโหมด Self-Destruct
+            if (!isSelfDestructing)
+            {
+                ProcessFireAura();
+            }
         }
     }
 
@@ -123,17 +157,22 @@ public class FireSlime : NetworkEnemy
         Debug.Log($"⚠️ {CharacterName} is charging Fire Aura!");
 
         // แสดง Telegraph Indicator บนพื้น
-        RPC_ShowTelegraph(transform.position, burnRadius, telegraphColor, fireAuraTelegraphDuration);
+        RPC_ShowTelegraph(burnRadius, telegraphColor, fireAuraTelegraphDuration, false);
 
-        // หยุดเคลื่อนที่ขณะเตรียมโจมตี
+        // หยุดเคลื่อนที่จริงๆ ขณะเตรียมโจมตี
         bool wasMoving = CurrentState == EnemyState.Chasing;
-        if (wasMoving)
+        if (navAgent != null)
         {
-            // สามารถเพิ่ม animation หรือหยุดการเคลื่อนที่ชั่วคราว
+            previousMoveSpeed = navAgent.speed;
+            navAgent.speed = 0f; // หยุดเคลื่อนที่
+            navAgent.isStopped = true;
         }
 
         // รอจนครบเวลา Telegraph
         yield return new WaitForSeconds(fireAuraTelegraphDuration);
+
+        // ซ่อน Telegraph
+        RPC_HideTelegraph();
 
         // ========== ขั้นที่ 2: เปิดใช้งาน Fire Aura ==========
         Debug.Log($"🔥 {CharacterName} activated Fire Aura!");
@@ -161,6 +200,13 @@ public class FireSlime : NetworkEnemy
         // ========== ขั้นที่ 3: ปิด Aura และเข้า Cooldown ==========
         Debug.Log($"💤 {CharacterName} Fire Aura ended. Entering cooldown...");
 
+        // คืนความเร็วเดินให้สไลม์
+        if (navAgent != null && wasMoving)
+        {
+            navAgent.speed = previousMoveSpeed;
+            navAgent.isStopped = false;
+        }
+
         isFireAuraActive = false;
         nextFireAuraTime = Runner.SimulationTime + fireAuraCooldown;
     }
@@ -186,33 +232,111 @@ public class FireSlime : NetworkEnemy
         }
     }
 
-    // แสดง Telegraph Indicator (พื้นแดง)
+    // แสดง Telegraph Indicator (พื้นแดง) - ใช้วิธีเปิด/ปิด Child Object
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowTelegraph(Vector3 position, float radius, Color color, float duration)
+    private void RPC_ShowTelegraph(float radius, Color color, float duration, bool isExplosion)
     {
-        GameObject indicator;
-
-        // ถ้ามี Prefab ให้ใช้ Prefab
-        if (telegraphIndicatorPrefab != null)
+        // ใช้ Child Object ถ้ามี (แนะนำ)
+        if (telegraphIndicatorChild != null)
         {
-            indicator = Instantiate(telegraphIndicatorPrefab, position, Quaternion.identity);
-            indicator.transform.localScale = Vector3.one * radius * 2f;
+            telegraphIndicatorChild.SetActive(true);
+
+            // ปรับขนาดตาม radius (scale เฉพาะ X และ Z, เก็บ Y เดิม)
+            float scale = radius * 2f;
+            float yScale = telegraphInitialScale.y;
+
+            // Fallback: ถ้า initial scale ยังไม่ได้ initialize (= Vector3.zero) ใช้ค่า default
+            if (telegraphInitialScale == Vector3.zero)
+            {
+                yScale = 0.05f; // ความสูงมาตรฐานสำหรับ telegraph indicator
+                Debug.LogWarning("Telegraph initial scale not set, using default Y = 0.05");
+            }
+
+            telegraphIndicatorChild.transform.localScale = new Vector3(
+                scale,
+                yScale,  // คงค่า Y เดิมไว้ (ไม่ scale ความสูง)
+                scale
+            );
+
+            // ปรับสีใน material ถ้ามี
+            Renderer renderer = telegraphIndicatorChild.GetComponent<Renderer>();
+            if (renderer != null && renderer.material != null)
+            {
+                renderer.material.color = color;
+            }
+
+            // ใช้ animation ธรรมดาเสมอ (ไม่พึ่งพา TelegraphIndicator script)
+            StartCoroutine(AnimateTelegraphChild(telegraphIndicatorChild, duration, color));
+        }
+        // Fallback: สร้าง procedural ถ้าไม่มี Child Object (วิธีเก่า)
+        else if (telegraphIndicatorPrefab != null)
+        {
+            if (currentTelegraphIndicator != null)
+            {
+                Destroy(currentTelegraphIndicator);
+            }
+
+            currentTelegraphIndicator = Instantiate(telegraphIndicatorPrefab, transform.position, Quaternion.identity);
+            currentTelegraphIndicator.transform.localScale = Vector3.one * radius * 2f;
+
+            // ใช้ animation ธรรมดาเสมอ (ไม่พึ่งพา TelegraphIndicator script)
+            StartCoroutine(AnimateTelegraph(currentTelegraphIndicator, duration, color));
         }
         else
         {
-            // ถ้าไม่มี สร้างแบบ procedural (วงกลมแบน)
-            indicator = CreateProceduralTelegraph(position, radius, color);
+            // สร้างแบบ procedural
+            if (currentTelegraphIndicator != null)
+            {
+                Destroy(currentTelegraphIndicator);
+            }
+
+            currentTelegraphIndicator = CreateProceduralTelegraph(transform.position, radius, color);
+            StartCoroutine(AnimateTelegraph(currentTelegraphIndicator, duration, color));
+        }
+    }
+
+    // ซ่อน Telegraph Indicator
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_HideTelegraph()
+    {
+        // ซ่อน Child Object
+        if (telegraphIndicatorChild != null)
+        {
+            telegraphIndicatorChild.SetActive(false);
         }
 
-        // เก็บ reference ของ indicator ปัจจุบัน
+        // ทำลาย procedural indicator ถ้ามี
         if (currentTelegraphIndicator != null)
         {
             Destroy(currentTelegraphIndicator);
+            currentTelegraphIndicator = null;
         }
-        currentTelegraphIndicator = indicator;
+    }
 
-        // ทำให้ค่อยๆ จางหายหรือกระพริบ
-        StartCoroutine(AnimateTelegraph(indicator, duration, color));
+    // Animation สำหรับ Telegraph Child Object
+    private IEnumerator AnimateTelegraphChild(GameObject indicator, float duration, Color color)
+    {
+        Renderer renderer = indicator.GetComponent<Renderer>();
+        if (renderer == null || renderer.material == null) yield break;
+
+        Material mat = renderer.material;
+        float elapsed = 0f;
+
+        while (elapsed < duration && indicator.activeInHierarchy)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / duration;
+
+            // กระพริบเร็วขึ้นเรื่อยๆ
+            float pulseSpeed = Mathf.Lerp(2f, 10f, progress);
+            float pulse = Mathf.PingPong(Time.time * pulseSpeed, 1f);
+
+            Color currentColor = color;
+            currentColor.a *= pulse;
+            mat.color = currentColor;
+
+            yield return null;
+        }
     }
 
     private GameObject CreateProceduralTelegraph(Vector3 position, float radius, Color color)
@@ -371,6 +495,85 @@ public class FireSlime : NetworkEnemy
         }
     }
 
+    // ระบบ Self-Destruct เมื่อ HP < 10 และ >= 1
+    private IEnumerator SelfDestructSequence()
+    {
+        isSelfDestructing = true;
+
+        Debug.Log($"💣 {CharacterName} HP is low! Entering Self-Destruct mode!");
+
+        // หยุดการเคลื่อนที่
+        if (navAgent != null)
+        {
+            navAgent.speed = 0f;
+            navAgent.isStopped = true;
+        }
+
+        // แสดง Telegraph สีส้มระเบิด
+        RPC_ShowTelegraph(explodeRadius, explosionTelegraphColor, deathExplosionTelegraphDuration, true);
+
+        // เปลี่ยนสีของ Fire Slime เป็นสีส้มแดง (กำลังจะระเบิด)
+        RPC_ChangeColorBeforeExplosion();
+
+        // ทำให้โจมตีไม่ได้ (invulnerable)
+        RPC_SetInvulnerable(true);
+
+        // รอจนครบเวลา Telegraph
+        yield return new WaitForSeconds(deathExplosionTelegraphDuration);
+
+        // ซ่อน Telegraph
+        RPC_HideTelegraph();
+
+        // ระเบิด!
+        Debug.Log($"💥🔥 {CharacterName} SELF-DESTRUCTED!");
+        ExplodeOnDeath();
+
+        // ตายจริง
+        if (HasStateAuthority)
+        {
+            CurrentHp = 0;  // ใช้ CurrentHp (property ที่ถูกต้อง)
+            base.RPC_OnDeath();
+        }
+    }
+
+    // ตั้งค่า Invulnerability (ไม่สามารถโจมตีได้)
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_SetInvulnerable(bool invulnerable)
+    {
+        if (invulnerable)
+        {
+            // วิธีที่ 1: เปลี่ยน layer (แนะนำถ้ามี layer "EnemyInvulnerable")
+            // gameObject.layer = LayerMask.NameToLayer("EnemyInvulnerable");
+
+            // วิธีที่ 2: Disable collider ชั่วคราว
+            Collider[] colliders = GetComponents<Collider>();
+            foreach (Collider col in colliders)
+            {
+                if (col != null)
+                {
+                    col.enabled = false;
+                }
+            }
+
+            // เพิ่ม visual effect เพื่อบอกว่ากำลังจะระเบิด
+            // สามารถเพิ่ม shield effect, glow, particle effect ฯลฯ
+
+            Debug.Log($"🛡️ {CharacterName} is now invulnerable during self-destruct!");
+        }
+        else
+        {
+            // คืนค่า collider
+            Collider[] colliders = GetComponents<Collider>();
+            foreach (Collider col in colliders)
+            {
+                if (col != null)
+                {
+                    col.enabled = true;
+                }
+            }
+        }
+    }
+
     // Override การเรียก OnSuccessfulAttack
     public new void OnSuccessfulAttack(Character target)
     {
@@ -384,42 +587,19 @@ public class FireSlime : NetworkEnemy
         }
     }
 
-    // Override การตาย - ระเบิดไฟ พร้อม Telegraph!
+    // Override การตาย - ใช้เฉพาะเมื่อ HP = 0 (ไม่ใช่ self-destruct)
     protected override void RPC_OnDeath()
     {
-        Debug.Log($"🔥 {CharacterName} is about to explode!");
-
-        if (HasStateAuthority)
+        // ถ้าอยู่ใน Self-Destruct mode แล้ว ไม่ต้องทำอะไร (จะระเบิดเองแล้ว)
+        if (isSelfDestructing)
         {
-            // เริ่ม Telegraph แล้วค่อยระเบิด
-            StartCoroutine(DeathExplosionSequence());
-        }
-        else
-        {
-            // สำหรับ client ให้ทำการตายปกติ
             base.RPC_OnDeath();
+            return;
         }
-    }
 
-    private IEnumerator DeathExplosionSequence()
-    {
-        // ========== ขั้นที่ 1: แสดง Telegraph ก่อนระเบิด ==========
-        Debug.Log($"⚠️💀 {CharacterName} is charging death explosion!");
+        Debug.Log($"💀 {CharacterName} died normally (HP = 0)");
 
-        // แสดง Telegraph สีส้มระเบิด
-        RPC_ShowTelegraph(transform.position, explodeRadius, explosionTelegraphColor, deathExplosionTelegraphDuration);
-
-        // เปลี่ยนสีของ Fire Slime เป็นสีส้มแดง (กำลังจะระเบิด)
-        RPC_ChangeColorBeforeExplosion();
-
-        // รอจนครบเวลา Telegraph
-        yield return new WaitForSeconds(deathExplosionTelegraphDuration);
-
-        // ========== ขั้นที่ 2: ระเบิด! ==========
-        Debug.Log($"💥🔥 {CharacterName} EXPLODED!");
-        ExplodeOnDeath();
-
-        // ========== ขั้นที่ 3: ทำการตายจริง ==========
+        // ตายแบบปกติโดยไม่มีการระเบิด
         base.RPC_OnDeath();
     }
 
@@ -532,7 +712,13 @@ public class FireSlime : NetworkEnemy
         }
         activeHeatZones.Clear();
 
-        // ทำลาย Telegraph indicator ถ้ายังมีอยู่
+        // ซ่อน Telegraph indicator child ถ้ามี
+        if (telegraphIndicatorChild != null)
+        {
+            telegraphIndicatorChild.SetActive(false);
+        }
+
+        // ทำลาย procedural Telegraph indicator ถ้ายังมีอยู่
         if (currentTelegraphIndicator != null)
         {
             Destroy(currentTelegraphIndicator);
