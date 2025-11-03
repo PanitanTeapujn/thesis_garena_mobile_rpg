@@ -27965,7 +27965,7 @@ MonoBehaviour:
   m_Padding:
     m_Left: 35
     m_Right: 0
-    m_Top: 63
+    m_Top: 100
     m_Bottom: 0
   m_ChildAlignment: 0
   m_StartCorner: 0
@@ -40024,13 +40024,13 @@ MonoBehaviour:
   closeEnchanceLobby: {fileID: 375950851}
   upgradeStatButton: {fileID: 1526493256}
   enchancePanel: {fileID: 1312094819}
-  currentGoldText: {fileID: 0}
-  currentGemsText: {fileID: 0}
+  currentGoldText: {fileID: 1711137971}
+  currentGemsText: {fileID: 12891915}
   enchanceInventoryContainer: {fileID: 948684515}
   enchanceItemPrefab: {fileID: 2392452694551240924, guid: 8346908d8fd8c8645809154b0d601517,
     type: 3}
   enchanceScrollRect: {fileID: 1935645782}
-  itemsPerPage: 20
+  itemsPerPage: 15
   previousPageButton: {fileID: 1652552864}
   nextPageButton: {fileID: 876692899}
   pageInfoText: {fileID: 1301132245}
