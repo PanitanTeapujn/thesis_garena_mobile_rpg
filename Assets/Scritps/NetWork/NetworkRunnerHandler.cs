@@ -54,7 +54,7 @@ public class NetworkRunnerHandler : MonoBehaviour
 
         var startGameArgs = new StartGameArgs()
         {
-            GameMode =GameMode.AutoHostOrClient,
+            GameMode =GameMode.Single,
             SessionName = sessionName,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         };
