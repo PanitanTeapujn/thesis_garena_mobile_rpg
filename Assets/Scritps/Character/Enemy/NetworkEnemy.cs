@@ -125,10 +125,12 @@ public class NetworkEnemy : Character
     public float individualPatrolWaitTime; // เวลาหยุดที่สุ่มแล้วสำหรับตัวนี้
 
     [Header("🎯 Improved Movement Settings")]
-    public float minDistanceToPlayer = 1.0f; // ระยะห่างขั้นต่ำจากผู้เล่น
-    public float enemySpacing = 2.0f;        // ระยะห่างระหว่างศัตรูด้วยกัน
-    public LayerMask enemyLayer;             // Layer ของศัตรู
-    public bool useCircling = true;          // เปิดใช้การเคลื่อนที่แบบวนรอบผู้เล่น
+    public float minDistanceToPlayer = 1.0f;
+    public float enemySpacing = 2.0f;
+    public LayerMask enemyLayer;
+    public LayerMask wallLayer;              // 🆕 เพิ่ม Layer สำหรับกำแพง
+    public float wallDetectionDistance = 1f; // 🆕 ระยะตรวจจับกำแพง
+    public bool useCircling = true;
     public float circlingSpeed = 0.5f;
     public bool isCollidingWithPlayer;
 
@@ -166,9 +168,28 @@ public class NetworkEnemy : Character
     private float nextPickupCleanupTime = 0f;
     private const float PICKUP_CLEANUP_INTERVAL = 10f;
 
-   
+    [Header("🤖 AI Behavior Patterns")]
+    [SerializeField] private bool useAdvancedAI = true;          // เปิด/ปิด AI ซับซ้อน
+    [SerializeField] private float behaviorChangeInterval = 3f;  // เปลี่ยนพฤติกรรมทุก 3 วินาที
+    [SerializeField] private float circleRadius = 3f;            // รัศมีวนรอบ
+    [SerializeField] private float strafeSpeed = 0.7f;           // ความเร็วเดินข้าง
+    [SerializeField] private float retreatChance = 20f;          // โอกาสถอย (%)
+    [SerializeField] private float circleChance = 40f;           // โอกาสวนรอบ (%)
+    [SerializeField] private float rushChance = 40f;
     public bool IsSpawned => Object != null && Object.IsValid;
+    private enum AIBehavior
+    {
+        DirectRush,     // เดินตรงเข้าไป
+        CircleLeft,     // วนซ้าย
+        CircleRight,    // วนขวา
+        StrafeLeft,     // เดินข้างซ้าย
+        StrafeRight,    // เดินข้างขวา
+        Retreat         // ถอยหลัง
+    }
 
+    [Networked] private AIBehavior CurrentBehavior { get; set; }
+    [Networked] private float NextBehaviorChangeTime { get; set; }
+    private float circleAngle = 0f; // มุมสำหรับวนรอบ
     // ========== Unity Lifecycle ==========
     private void Awake()
     {
@@ -212,6 +233,10 @@ public class NetworkEnemy : Character
         if (enemyLayer == 0)
         {
             enemyLayer = LayerMask.GetMask("Enemy");
+        }
+        if (wallLayer == 0)
+        {
+            wallLayer = LayerMask.GetMask("Wall", "Obstacle");
         }
 
         // ตั้งค่า physics สำหรับ 2D movement
@@ -577,7 +602,8 @@ public class NetworkEnemy : Character
             // กำหนดค่าเริ่มต้นของ position และ scale
             NetworkedPosition = transform.position;
             NetworkedScale = transform.localScale;
-
+            CurrentBehavior = AIBehavior.DirectRush;
+            NextBehaviorChangeTime = Runner.SimulationTime + Random.Range(1f, 3f);
             if (showDebugInfo)
             {
                 Debug.Log($"{CharacterName}: Initialized patrol system at {PatrolCenter}");
@@ -894,16 +920,50 @@ public class NetworkEnemy : Character
 
     private Vector3 ValidatePatrolTarget(Vector3 target)
     {
-        // ตรวจสอบว่าจุดหมายไม่ติดสิ่งกีดขวาง
-        RaycastHit hit;
         Vector3 directionToTarget = (target - transform.position).normalized;
         float distanceToTarget = Vector3.Distance(transform.position, target);
 
-        if (Physics.Raycast(transform.position, directionToTarget, out hit, distanceToTarget, LayerMask.GetMask("Wall", "Obstacle")))
+        RaycastHit hit;
+
+        // ✅ เช็คแบบเดียวกับ Toxic Dash
+        if (Physics.Raycast(
+            transform.position + Vector3.up * 0.5f,  // เริ่มสูงขึ้นนิด
+            directionToTarget,
+            out hit,
+            distanceToTarget,
+            wallLayer))
         {
-            // ถ้าติดสิ่งกีดขวาง ให้เลือกจุดใกล้ๆ patrol center
-            Vector2 safeDirection = Random.insideUnitCircle.normalized;
-            return PatrolCenter + new Vector3(safeDirection.x, 0, safeDirection.y) * (patrolRange * 0.5f);
+            if (showDebugInfo)
+            {
+                Debug.Log($"{CharacterName}: Patrol blocked by {hit.collider.name} at {hit.distance:F1}m");
+                Debug.DrawLine(transform.position, hit.point, Color.red, 2f);
+            }
+
+            // ลองหาจุดใหม่ที่ปลอดภัย
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                Vector2 safeDirection = Random.insideUnitCircle.normalized;
+                Vector3 newTarget = PatrolCenter + new Vector3(safeDirection.x, 0, safeDirection.y) * (patrolRange * 0.5f);
+
+                Vector3 checkDir = (newTarget - transform.position).normalized;
+                float checkDist = Vector3.Distance(transform.position, newTarget);
+
+                // เช็คว่าทางนี้ปลอดภัยไหม
+                if (!Physics.Raycast(
+                    transform.position + Vector3.up * 0.5f,
+                    checkDir,
+                    checkDist,
+                    wallLayer))
+                {
+                    if (showDebugInfo)
+                        Debug.Log($"{CharacterName}: Found safe patrol target at attempt {attempt + 1}");
+
+                    return newTarget;
+                }
+            }
+
+            // หาไม่เจอ กลับไป patrol center
+            return PatrolCenter;
         }
 
         return target;
@@ -1046,6 +1106,7 @@ public class NetworkEnemy : Character
     }
 
     // Handler สำหรับ Chasing State
+    // Handler สำหรับ Chasing State - เวอร์ชันใหม่
     private Vector3 HandleChasing()
     {
         if (targetTransform == null) return Vector3.zero;
@@ -1053,9 +1114,9 @@ public class NetworkEnemy : Character
         Vector3 directionToPlayer = (targetTransform.position - transform.position).normalized;
         float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
 
+        // เช็คว่าควรเปลี่ยน state หรือไม่
         if (distanceToPlayer <= AttackRange && distanceToPlayer > minDistanceToPlayer * 0.7f)
         {
-            // อยู่ในระยะโจมตีที่เหมาะสม เปลี่ยนเป็น Attacking
             CurrentState = EnemyState.Attacking;
             StateTimer = 0f;
             if (showDebugInfo)
@@ -1064,14 +1125,178 @@ public class NetworkEnemy : Character
         }
         else if (distanceToPlayer <= minDistanceToPlayer * 0.7f)
         {
-            // เข้าใกล้เกินไป เปลี่ยนเป็น BackingOff
             CurrentState = EnemyState.BackingOff;
             StateTimer = 0f;
             if (showDebugInfo)
                 Debug.Log($"{CharacterName}: Too close! Backing off... Distance: {distanceToPlayer:F2}");
+            return Vector3.zero;
         }
 
-        return directionToPlayer;
+        // ✅ ใช้ Advanced AI ถ้าเปิดใช้งาน
+        if (useAdvancedAI)
+        {
+            return HandleAdvancedChasing(directionToPlayer, distanceToPlayer);
+        }
+        else
+        {
+            // AI แบบเดิม - เดินตรงเข้าไป
+            return directionToPlayer;
+        }
+    }
+
+    // ✅ Advanced AI Chasing
+    private Vector3 HandleAdvancedChasing(Vector3 directionToPlayer, float distanceToPlayer)
+    {
+        // เปลี่ยนพฤติกรรมทุกๆ interval
+        if (Runner.SimulationTime >= NextBehaviorChangeTime)
+        {
+            SelectNewBehavior(distanceToPlayer);
+            NextBehaviorChangeTime = Runner.SimulationTime + behaviorChangeInterval;
+        }
+
+        Vector3 moveDirection = Vector3.zero;
+
+        switch (CurrentBehavior)
+        {
+            case AIBehavior.DirectRush:
+                moveDirection = directionToPlayer;
+                break;
+
+            case AIBehavior.CircleLeft:
+                moveDirection = CalculateCircleMovement(directionToPlayer, -1f, distanceToPlayer);
+                break;
+
+            case AIBehavior.CircleRight:
+                moveDirection = CalculateCircleMovement(directionToPlayer, 1f, distanceToPlayer);
+                break;
+
+            case AIBehavior.StrafeLeft:
+                Vector3 leftDir = new Vector3(-directionToPlayer.z, 0, directionToPlayer.x);
+                moveDirection = (directionToPlayer + leftDir * strafeSpeed).normalized;
+                break;
+
+            case AIBehavior.StrafeRight:
+                Vector3 rightDir = new Vector3(directionToPlayer.z, 0, -directionToPlayer.x);
+                moveDirection = (directionToPlayer + rightDir * strafeSpeed).normalized;
+                break;
+
+            case AIBehavior.Retreat:
+                moveDirection = -directionToPlayer * 0.5f;
+                break;
+        }
+
+        // ✅ เช็คกำแพงก่อนคืนค่า moveDirection
+        if (moveDirection.magnitude > 0.1f)
+        {
+            RaycastHit wallCheck;
+            if (Physics.Raycast(
+                transform.position + Vector3.up * 0.5f,
+                moveDirection.normalized,
+                out wallCheck,
+                wallDetectionDistance,
+                wallLayer))
+            {
+                // เจอกำแพง - เปลี่ยน behavior
+                if (showDebugInfo)
+                {
+                    Debug.Log($"{CharacterName}: Wall ahead! Changing behavior from {CurrentBehavior}");
+                    Debug.DrawLine(transform.position, wallCheck.point, Color.yellow, 0.5f);
+                }
+
+                // บังคับเปลี่ยน behavior ทันที
+                SelectNewBehavior(distanceToPlayer);
+                NextBehaviorChangeTime = Runner.SimulationTime + 0.5f; // เปลี่ยนเร็วขึ้น
+
+                // ใช้ทิศทางไปหาผู้เล่นแทน (fallback)
+                moveDirection = directionToPlayer;
+            }
+        }
+
+        if (showDebugInfo && moveDirection.magnitude > 0.1f)
+        {
+            Color debugColor = CurrentBehavior switch
+            {
+                AIBehavior.DirectRush => Color.red,
+                AIBehavior.CircleLeft => Color.blue,
+                AIBehavior.CircleRight => Color.green,
+                AIBehavior.StrafeLeft => Color.cyan,
+                AIBehavior.StrafeRight => Color.yellow,
+                AIBehavior.Retreat => Color.magenta,
+                _ => Color.white
+            };
+            Debug.DrawRay(transform.position, moveDirection * 2f, debugColor, 0.1f);
+        }
+
+        return moveDirection;
+    }
+
+    // ✅ เลือกพฤติกรรมใหม่แบบถ่วงน้ำหนัก
+    private void SelectNewBehavior(float distanceToPlayer)
+    {
+        // ถ้าใกล้มาก → ถอยบ่อยขึ้น
+        // ถ้าไกลมาก → เดินตรงบ่อยขึ้น
+        float adjustedRetreatChance = retreatChance;
+        float adjustedRushChance = rushChance;
+
+        if (distanceToPlayer < AttackRange * 0.8f)
+        {
+            // ใกล้มาก → เพิ่มโอกาสถอย/วนรอบ
+            adjustedRetreatChance *= 2f;
+            adjustedRushChance *= 0.5f;
+        }
+        else if (distanceToPlayer > AttackRange * 1.5f)
+        {
+            // ไกลมาก → เพิ่มโอกาสเดินตรง
+            adjustedRushChance *= 1.5f;
+            adjustedRetreatChance *= 0.5f;
+        }
+
+        // สุ่มพฤติกรรม
+        float roll = Random.Range(0f, 100f);
+
+        if (roll < adjustedRetreatChance)
+        {
+            CurrentBehavior = AIBehavior.Retreat;
+        }
+        else if (roll < adjustedRetreatChance + circleChance)
+        {
+            CurrentBehavior = Random.Range(0f, 1f) > 0.5f ? AIBehavior.CircleLeft : AIBehavior.CircleRight;
+        }
+        else if (roll < adjustedRetreatChance + circleChance + 20f) // 20% strafe
+        {
+            CurrentBehavior = Random.Range(0f, 1f) > 0.5f ? AIBehavior.StrafeLeft : AIBehavior.StrafeRight;
+        }
+        else
+        {
+            CurrentBehavior = AIBehavior.DirectRush;
+        }
+
+        // รีเซ็ตมุมวนรอบ
+        circleAngle = 0f;
+
+        if (showDebugInfo)
+        {
+            Debug.Log($"{CharacterName}: New behavior: {CurrentBehavior} (distance: {distanceToPlayer:F1})");
+        }
+    }
+
+    // ✅ คำนวณการเคลื่อนที่แบบวนรอบ
+    private Vector3 CalculateCircleMovement(Vector3 directionToPlayer, float direction, float distanceToPlayer)
+    {
+        // direction: -1 = ซ้าย, 1 = ขวา
+        circleAngle += Runner.DeltaTime * 2f * direction; // หมุนรอบ
+
+        // คำนวณตำแหน่งเป้าหมายบนวงกลม
+        Vector3 tangent = new Vector3(-directionToPlayer.z, 0, directionToPlayer.x) * direction;
+        Vector3 circleOffset = tangent * Mathf.Sin(circleAngle) + directionToPlayer * Mathf.Cos(circleAngle);
+
+        // ถ้าไกลเกินไป ให้เข้าใกล้มากขึ้น
+        if (distanceToPlayer > circleRadius * 1.5f)
+        {
+            circleOffset = Vector3.Lerp(circleOffset, directionToPlayer, 0.5f);
+        }
+
+        return circleOffset.normalized;
     }
 
     // Handler สำหรับ BackingOff State
@@ -1158,26 +1383,161 @@ public class NetworkEnemy : Character
             switch (CurrentState)
             {
                 case EnemyState.Patrolling:
-                    currentMoveSpeed *= patrolSpeed; // ช้าลงเวลา patrol
+                    currentMoveSpeed *= patrolSpeed;
                     break;
                 case EnemyState.BackingOff:
-                    currentMoveSpeed *= 1.3f; // ถอยเร็วขึ้น
+                    currentMoveSpeed *= 1.3f;
                     break;
             }
 
-            Vector3 newPosition = transform.position + moveDirection * currentMoveSpeed * Runner.DeltaTime;
-            rb.MovePosition(newPosition);
+            // ✅ คำนวณระยะที่จะเคลื่อนที่
+            float moveDistance = currentMoveSpeed * Runner.DeltaTime;
 
-            // การ flip
+            // ✅ เช็คกำแพงแบบเดียวกับ Toxic Dash
+            RaycastHit wallHit;
+            if (Physics.Raycast(
+                transform.position + Vector3.up * 0.5f,  // เริ่มสูงขึ้นนิดหน่อย
+                moveDirection,
+                out wallHit,
+                moveDistance + wallDetectionDistance,
+                wallLayer))
+            {
+                // ✅ เจอกำแพง - ลดระยะการเคลื่อนที่
+                float safeDistance = Mathf.Max(0.1f, wallHit.distance - 0.5f);
+
+                if (safeDistance < moveDistance)
+                {
+                    moveDistance = safeDistance;
+
+                    if (showDebugInfo)
+                    {
+                        Debug.Log($"{CharacterName}: Wall at {wallHit.distance:F2}m, reducing move to {safeDistance:F2}m");
+                        Debug.DrawLine(transform.position, wallHit.point, Color.red, 0.5f);
+                    }
+                }
+
+                // ✅ ถ้าใกล้กำแพงมาก ให้หาทางเลี่ยว
+                if (safeDistance < 0.3f)
+                {
+                    Vector3 alternativeDirection = FindAlternativeDirection(moveDirection);
+
+                    if (alternativeDirection != Vector3.zero)
+                    {
+                        moveDirection = alternativeDirection;
+                        moveDistance = currentMoveSpeed * Runner.DeltaTime;
+
+                        if (showDebugInfo)
+                        {
+                            Debug.Log($"{CharacterName}: Taking alternative path");
+                            Debug.DrawRay(transform.position, alternativeDirection * 2f, Color.green, 0.5f);
+                        }
+                    }
+                    else
+                    {
+                        // หาทางไม่เจอ หยุดเลย
+                        rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
+
+                        if (showDebugInfo)
+                            Debug.Log($"{CharacterName}: Completely blocked! Stopping.");
+
+                        return;
+                    }
+                }
+            }
+
+            // ✅ เคลื่อนที่ด้วยระยะที่ปลอดภัย
+            Vector3 newPosition = transform.position + moveDirection * moveDistance;
+
+            // ✅ ตรวจสอบอีกครั้งขณะเคลื่อนที่ (safety check เหมือน Toxic Dash)
+            Vector3 moveVector = newPosition - transform.position;
+            if (moveVector.magnitude > 0.1f)
+            {
+                if (Physics.Raycast(
+                    transform.position + Vector3.up * 0.5f,
+                    moveVector.normalized,
+                    moveVector.magnitude,
+                    wallLayer))
+                {
+                    if (showDebugInfo)
+                        Debug.LogWarning($"🛑 {CharacterName}: Wall collision during movement! Stopping.");
+
+                    rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
+                    return;
+                }
+            }
+
+            // ✅ ใช้ MovePosition แทน direct position (เหมือน Toxic Dash)
+            rb.MovePosition(newPosition);
             FlipCharacterTowardsMovement(moveDirection);
         }
         else
         {
-            // หยุดการเคลื่อนที่
             rb.linearVelocity = new Vector3(0, rb.linearVelocity.y, 0);
         }
     }
 
+    // ✅ แก้ไข FindAlternativeDirection ให้ละเอียดขึ้น
+    private Vector3 FindAlternativeDirection(Vector3 blockedDirection)
+    {
+        // ลองหาทางเลี่ยวหลายมุม (เหมือน Toxic Dash)
+        float[] angles = { 30f, -30f, 45f, -45f, 60f, -60f, 90f, -90f };
+
+        foreach (float angle in angles)
+        {
+            Vector3 altDir = Quaternion.Euler(0, angle, 0) * blockedDirection;
+
+            // เช็คว่าทางนี้ปลอดภัยไหม
+            RaycastHit hit;
+            if (!Physics.Raycast(
+                transform.position + Vector3.up * 0.5f,
+                altDir.normalized,
+                out hit,
+                wallDetectionDistance * 2f,
+                wallLayer))
+            {
+                if (showDebugInfo)
+                {
+                    Debug.DrawRay(transform.position, altDir.normalized * 2f, Color.green, 0.5f);
+                    Debug.Log($"{CharacterName}: Found alternative at {angle}°");
+                }
+                return altDir.normalized;
+            }
+        }
+
+        // หาทางไม่เจอ
+        if (showDebugInfo)
+            Debug.Log($"{CharacterName}: No alternative path found!");
+
+        return Vector3.zero;
+    }
+
+    // ✅ ตรวจสอบว่าทางข้างหน้ามีกำแพงไหม
+    private bool IsPathBlocked(Vector3 direction, float distance)
+    {
+        // ใช้ SphereCast เพื่อตรวจจับกำแพง (ดีกว่า Raycast เพราะครอบคลุมพื้นที่กว้างขึ้น)
+        float capsuleRadius = 0.5f; // รัศมีของตัวละคร
+
+        RaycastHit hit;
+        bool blocked = Physics.SphereCast(
+            transform.position + Vector3.up * 0.5f, // จุดเริ่มต้น (สูงขึ้นนิดหน่อย)
+            capsuleRadius,                           // รัศมี
+            direction,                               // ทิศทาง
+            out hit,
+            distance + wallDetectionDistance,        // ระยะ
+            wallLayer                                // เช็คเฉพาะ Wall layer
+        );
+
+        if (blocked && showDebugInfo)
+        {
+            Debug.DrawRay(transform.position, direction * distance, Color.red, 0.1f);
+            Debug.Log($"{CharacterName}: Wall detected at {hit.point}, distance: {hit.distance:F2}");
+        }
+
+        return blocked;
+    }
+
+    // ✅ หาทางเลี่ยงเมื่อเจอกำแพง
+    
     // ========== 🔧 ระบบหลีกเลี่ยงศัตรูตัวอื่น ==========
     protected Vector3 CalculateAvoidanceForce()
     {

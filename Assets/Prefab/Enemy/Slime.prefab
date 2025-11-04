@@ -231,6 +231,32 @@ MonoBehaviour:
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
+  knockbackForce: 5
+  knockbackDuration: 0.3
+  knockbackCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _IsDead:
     _value: 0
   _NetworkedPosition: {x: 0, y: 0, z: 0}
@@ -250,7 +276,7 @@ MonoBehaviour:
   backOffTime: 1
   positionTime: 0.5
   rushSpeed: 3
-  patrolRange: 40
+  patrolRange: 5
   patrolSpeed: 1
   minPatrolWaitTime: 0
   maxPatrolWaitTime: 10
@@ -263,6 +289,10 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  wallDetectionDistance: 1
   useCircling: 1
   circlingSpeed: 0.5
   isCollidingWithPlayer: 0
@@ -274,6 +304,13 @@ MonoBehaviour:
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: -400204652379301390}
   ItemDrop: {fileID: 0}
+  useAdvancedAI: 1
+  behaviorChangeInterval: 3
+  circleRadius: 3
+  strafeSpeed: 0.7
+  retreatChance: 20
+  circleChance: 40
+  rushChance: 40
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
   m_ObjectHideFlags: 0
