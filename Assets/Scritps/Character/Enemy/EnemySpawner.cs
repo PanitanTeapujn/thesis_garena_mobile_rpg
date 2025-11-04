@@ -641,7 +641,7 @@ public class EnemySpawner : NetworkBehaviour
         }
         else if (multiSpawnMode != MultiSpawnMode.Off)
         {
-            Debug.Log($"🌊 Using multi-spawn (nextMultiSpawnTime: {nextMultiSpawnTime:F1}, current: {Time.time:F1})");
+           // Debug.Log($"🌊 Using multi-spawn (nextMultiSpawnTime: {nextMultiSpawnTime:F1}, current: {Time.time:F1})");
             HandleSimpleMultiSpawning();
         }
         else

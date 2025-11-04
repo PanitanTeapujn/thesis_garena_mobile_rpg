@@ -19,8 +19,8 @@ GameObject:
   - component: {fileID: 4266108146747291927}
   - component: {fileID: -400204652379301390}
   - component: {fileID: 8283572041256556508}
-  - component: {fileID: 5444127218872422526}
   - component: {fileID: -6063038309682278596}
+  - component: {fileID: 3146736404170834553}
   m_Layer: 7
   m_Name: SlimeFire
   m_TagString: Enemy
@@ -169,7 +169,7 @@ MonoBehaviour:
   - {fileID: 4266108146747291927}
   - {fileID: -400204652379301390}
   - {fileID: 8283572041256556508}
-  - {fileID: 5444127218872422526}
+  - {fileID: 3146736404170834553}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
@@ -364,7 +364,32 @@ MonoBehaviour:
   collectRange: 10
   dropDelay: 0
   showDropLogs: 1
---- !u!114 &5444127218872422526
+--- !u!114 &-6063038309682278596
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef4fbc8716eb4ce49986489ebf9ed273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetSpriteRenderer: {fileID: 0}
+  shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
+  shadowAlpha: 0.5
+  shadowOffset: {x: 0.1, y: -0.3, z: 0}
+  shadowScale: {x: 1, y: 0.6, z: 1}
+  shadowRotation: {x: 0, y: 0, z: 0}
+  skewX: 0
+  followTarget: 1
+  mirrorFlip: 0
+  sameFacing: 1
+  useSameSprite: 1
+  customShadowSprite: {fileID: 0}
+  shadowMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+--- !u!114 &3146736404170834553
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -494,7 +519,7 @@ MonoBehaviour:
   dropManager: {fileID: 0}
   ItemDrop: {fileID: 0}
   attackRadius: 3
-  attackCooldown: 2
+  attackCooldown: 3
   telegraphDuration: 1.5
   shakeDuration: 0.5
   postAttackCooldown: 1.5
@@ -506,30 +531,5 @@ MonoBehaviour:
   telegraphYOffset: -1.16
   stopDistance: 4
   useStatusEffect: 1
-  burnDamage: 3
-  burnDuration: 3
---- !u!114 &-6063038309682278596
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8670071803579099242}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef4fbc8716eb4ce49986489ebf9ed273, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetSpriteRenderer: {fileID: 0}
-  shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
-  shadowAlpha: 0.5
-  shadowOffset: {x: 0.1, y: -0.3, z: 0}
-  shadowScale: {x: 1, y: 0.6, z: 1}
-  shadowRotation: {x: 0, y: 0, z: 0}
-  skewX: 0
-  followTarget: 1
-  mirrorFlip: 0
-  sameFacing: 1
-  useSameSprite: 1
-  customShadowSprite: {fileID: 0}
-  shadowMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  burnDamage: 5
+  burnDuration: 6
