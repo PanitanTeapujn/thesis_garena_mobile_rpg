@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
-using Fusion.Sockets;
 using UnityEngine.SceneManagement;
 
 [System.Serializable]
@@ -10,612 +9,178 @@ public class EnemySpawnData
 {
     public NetworkEnemy enemyPrefab;
     public string enemyName;
-    public int spawnWeight = 1;
-    public int maxCount = -1;
-    public float spawnCooldown = 0f;
+    [Range(1, 10)]
+    public int spawnWeight = 1;        // น้ำหนักการสุ่ม (ยิ่งสูงยิ่งมีโอกาสมาก)
+    public int maxCount = -1;          // จำนวนสูงสุดที่สามารถมีพร้อมกันได้ (-1 = ไม่จำกัด)
+    public float spawnCooldown = 0f;   // Cooldown หลัง spawn (วินาที)
 
-    [HideInInspector]
-    public float lastSpawnTime = 0f;
-    [HideInInspector]
-    public int currentCount = 0;
-}
-
-[System.Serializable]
-public class BossSpawnCondition
-{
-    public NetworkEnemy bossPrefab;
-    public string bossName;
-    public int enemiesToKill = 50;
-    public bool includeSpecificEnemies = false;
-    public string[] specificEnemyNames;
-    public float bossRespawnCooldown = 300f;
-    public int maxBossInstances = 1;
-    public bool announceSpawn = true;
-    public float spawnWarningTime = 5f;
-
-    [HideInInspector]
-    public int currentKillCount = 0;
-    [HideInInspector]
-    public float lastBossDeathTime = 0f;
-    [HideInInspector]
-    public int currentBossCount = 0;
-    [HideInInspector]
-    public bool isSpawningBoss = false;
-}
-
-// 🎯 ระบบ Multi-Point ที่เรียบง่าย
-public enum MultiSpawnMode
-{
-    Off,              // ปิดใช้งาน - spawn ปกติ
-    Balanced,         // spawn กระจายทุกจุดเท่าๆ กัน
-    ClusterAttack,    // spawn รุมหลายจุดใกล้ๆ กัน
-    SurroundPlayer,   // spawn ล้อมรอบผู้เล่น
-    RandomBurst,      // spawn สุ่มหลายจุดพร้อมกัน
-    EdgeSpawn         // spawn แค่จุดที่ไกลจากผู้เล่น
+    [HideInInspector] public int currentCount = 0;
+    [HideInInspector] public float lastSpawnTime = 0f;
 }
 
 public class EnemySpawner : NetworkBehaviour
 {
-    [Header("Enemy Prefabs")]
+    [Header("📦 Enemy Prefabs")]
     public EnemySpawnData[] enemyPrefabs;
 
-    [Header("🏆 Boss Spawn Conditions")]
-    public BossSpawnCondition[] bossConditions;
-    public bool enableBossSpawning = true;
-    public Transform[] bossSpawnPoints;
-    public bool useBossSpawnPoints = true;
+    [Header("⚙️ Spawn Settings")]
+    [Tooltip("จำนวนศัตรูสูงสุดที่อยู่ในแมพพร้อมกัน")]
+    public int maxTotalEnemies = 10;
 
-    [Header("🌊 Simple Multi-Point Spawning")]
-    [Tooltip("เลือกรูปแบบการ spawn หลายจุด")]
-    public MultiSpawnMode multiSpawnMode = MultiSpawnMode.Balanced;
+    [Tooltip("ระยะเวลาระหว่างการ spawn (วินาที)")]
+    public float spawnInterval = 2f;
 
-    [Tooltip("จำนวนจุดที่จะ spawn พร้อมกัน (2-8)")]
-    [Range(2, 8)]
-    public int spawnPointCount = 3;
+    [Tooltip("สุ่มเวลา spawn ±")]
+    public bool randomizeSpawnInterval = true;
+    [Range(0f, 2f)]
+    public float spawnIntervalVariation = 0.5f;
 
-    [Tooltip("จำนวนศัตรูต่อจุด (1-4)")]
-    [Range(1, 4)]
-    public int enemiesPerPoint = 1;
+    // 🆕 Spawn หลายตัวพร้อมกัน
+    [Header("🌊 Batch Spawning")]
+    [Tooltip("Spawn หลายตัวพร้อมกัน")]
+    public bool enableBatchSpawning = true;
+
+    [Tooltip("จำนวนขั้นต่ำที่จะ spawn ต่อครั้ง")]
+    [Range(1, 5)]
+    public int minEnemiesPerSpawn = 2;
+
+    [Tooltip("จำนวนสูงสุดที่จะ spawn ต่อครั้ง")]
+    [Range(1, 10)]
+    public int maxEnemiesPerSpawn = 7;
+
+    [Header("🎯 Player-Based Spawning")]
+    [Tooltip("Spawn รอบๆ ผู้เล่นแทนที่จะใช้ spawn points")]
+    public bool spawnAroundPlayers = true;
 
     [Tooltip("ระยะห่างขั้นต่ำจากผู้เล่น (เมตร)")]
     [Range(5f, 20f)]
-    public float minPlayerDistance = 8f;
+    public float minSpawnDistanceFromPlayer = 8f;
 
-    [Tooltip("เวลาคูลดาวน์หลัง multi-spawn (วินาที)")]
-    [Range(3f, 15f)]
-    public float multiSpawnCooldown = 5f;
+    [Tooltip("ระยะห่างสูงสุดจากผู้เล่น (เมตร)")]
+    [Range(10f, 30f)]
+    public float maxSpawnDistanceFromPlayer = 15f;
 
-   [Header("Spawn Settings")]
-public int maxTotalEnemies = 10;
-public float spawnInterval = 5f;
-public bool randomizeSpawnInterval = true;
-public float spawnIntervalVariation = 2f;
+    [Tooltip("ตรวจสอบกำแพงก่อน spawn")]
+    public bool checkWallsBeforeSpawn = true;
 
-[Header("🎯 Player-Based Spawning")]
-[Tooltip("Spawn รอบๆ ผู้เล่นแทนที่จะใช้ spawn points")]
-public bool spawnAroundPlayers = true;
-[Tooltip("ระยะห่างขั้นต่ำจากผู้เล่น (เมตร)")]
-[Range(5f, 20f)]
-public float minSpawnDistanceFromPlayer = 8f;
-[Tooltip("ระยะห่างสูงสุดจากผู้เล่น (เมตร)")]
-[Range(10f, 30f)]
-public float maxSpawnDistanceFromPlayer = 15f;
-[Tooltip("ตรวจสอบกำแพงก่อน spawn")]
-public bool checkWallsBeforeSpawn = true;
-[Tooltip("จำนวนครั้งที่พยายามหาตำแหน่งใหม่")]
-[Range(3, 10)]
-public int maxSpawnAttempts = 5;
+    [Tooltip("ตรวจสอบพื้นก่อน spawn")]
+    public bool checkGroundBeforeSpawn = true;
 
+    [Tooltip("ความสูงสูงสุดจากพื้น (ถ้าเกินจะปรับลงมา)")]
+    [Range(0.5f, 3f)]
+    public float maxGroundHeight = 1f;
 
-    [Header("Spawn Points")]
-    public Transform[] spawnPoints;
-    public float spawnRadius = 10f;
-    public bool useSpawnPoints = true;
-
-    [Header("🔧 Debug Settings")]
-    public bool showDebugInfo = false;
-    public bool verboseKillTracking = true;
-    public bool showMultiSpawnInfo = true; // 🆕 แสดงข้อมูล multi-spawn
-
-    [Header("Advanced Settings")]
-    public bool balanceEnemyTypes = false;
-    public bool spawnInWaves = false;
-    public int enemiesPerWave = 3;
-    public float waveCooldown = 10f;
-    [Header("🏁 Stage Completion")]
+    [Tooltip("จำนวนครั้งที่พยายามหาตำแหน่งใหม่")]
+    [Range(3, 10)]
+    public int maxSpawnAttempts = 5;
+    private float firstSpawnTime = 0f;
+    private bool isFirstSpawnReady = false;
+    [Header("🏁 Stage System")]
     [Tooltip("ชื่อด่านปัจจุบัน (ถ้าไม่ใส่จะใช้ชื่อ Scene)")]
     public string currentStageName = "";
 
     [Tooltip("หยุด spawn เมื่อด่านเสร็จแล้ว")]
     public bool stopSpawningWhenStageCompleted = true;
 
-    [Header("🔧 Stage Debug")]
-    public bool showStageDebugInfo = true;
-    [Header("🏆 Stage Complete UI")]
-    public StageCompleteUI stageCompleteUI;
-    // เพิ่มตัวแปรสำหรับเช็คสถานะด่าน
-    private bool isStageCompleted = false;
-    private float lastStageCheckTime = 0f;
-    private const float STAGE_CHECK_INTERVAL = 2f; // เช็คทุก 2 วินาที
-    [Header("🧹 Auto Cleanup")]
-    [Tooltip("ทำลาย enemy ทั้งหมดเมื่อด่านเสร็จ")]
+    [Tooltip("ทำลาย enemy ที่เหลือเมื่อด่านเสร็จ")]
     public bool destroyRemainingEnemiesOnStageComplete = true;
 
-    [Tooltip("หน่วงเวลาก่อนทำลาย enemy (วินาที)")]
-    [Range(0f, 5f)]
-    public float destroyDelay = 1f;
-    [Header("🔄 Loading System Integration")]
-    [Tooltip("รอให้ Loading Panel เสร็จก่อนเริ่ม spawn")]
-    public bool waitForLoadingComplete = true;
+    [Header("🎯 Lobby Dummy System")]
+    public NetworkEnemy dummyPrefab;
+    public Transform dummySpawnPoint;
+    public bool isLobbyScene = false;
 
-    [Tooltip("เวลารอสูงสุดหาก Loading Panel ไม่เจอ (วินาที)")]
-    public float maxLoadingWaitTime = 5f; // ✅ ลดจาก 30 เป็น 5 วินาที
+    [Header("🔧 Debug Settings")]
+    public bool showDebugInfo = false;
+    public bool showSpawnInfo = true;
 
-    [Tooltip("แสดง debug ข้อมูลการรอ loading")]
-    public bool showLoadingDebug = true;
-
-    private float firstSpawnTime = 0f;
-    private bool isFirstSpawnReady = false;
-
-    // เพิ่มตัวแปร private
-    private bool isLoadingComplete = false;
-    private LoadingPanelManager loadingPanelManager;
-    private float loadingStartTime;
-    private float lastDummyCheckTime = 0f;
-    private const float DUMMY_CHECK_INTERVAL = 10f; // เช็คทุก 2 วินาที
-
-    public int currentSessionKills { get; private set; } = 0; // เปลี่ยนเป็น property
-    private int requiredKillsForStage ;
-
+    // ========== Private Variables ==========
     private float nextSpawnTime = 0f;
-    private float nextWaveTime = 0f;
-    private float nextMultiSpawnTime = 0f;
     private List<NetworkEnemy> activeEnemies = new List<NetworkEnemy>();
-    private List<NetworkEnemy> activeBosses = new List<NetworkEnemy>();
-
-    // ระบบ spawn points ที่เรียบง่าย
-    private List<int> availableSpawnPoints = new List<int>();
-    private List<int> recentlyUsedPoints = new List<int>();
-    private int lastUsedSpawnPoint = -1;
-
-    // สถิติ
-    private Dictionary<string, int> spawnedCounts = new Dictionary<string, int>();
-    private Dictionary<string, int> killedCounts = new Dictionary<string, int>();
-    private int totalEnemiesKilled = 0;
     private Dictionary<NetworkObject, string> spawnedEnemyTypes = new Dictionary<NetworkObject, string>();
 
-    // 🆕 Multi-spawn ที่เรียบง่าย
-    private bool isMultiSpawning = false;
-    private Queue<Vector3> pendingSpawnPositions = new Queue<Vector3>();
-    private Queue<EnemySpawnData> pendingSpawnEnemies = new Queue<EnemySpawnData>();
+    // Stage tracking
+    private bool isStageCompleted = false;
+    private float lastStageCheckTime = 0f;
+    private const float STAGE_CHECK_INTERVAL = 2f;
+    public int currentSessionKills { get; private set; } = 0;
+    private int requiredKillsForStage = 0;
 
-    [Header("🎯 Lobby Dummy System")]
-    public NetworkEnemy dummyPrefab; // ลาก Dummy Prefab มาใส่
-    public Transform dummySpawnPoint; // ตำแหน่ง spawn Dummy
-    public bool isLobbyScene = false; // เช็คว่าเป็น Lobby หรือไม่
-    private NetworkEnemy currentDummyInstance;        // ✅ เพิ่มตัวแปรนี้
-    private bool hasDummySpawned = false;             // ✅ เพิ่มตัวแปรนี้
-    private float dummyCheckInterval = 2f;            // ตรวจสอบทุก 2 วินาที
+    // Lobby dummy
+    private NetworkEnemy currentDummyInstance;
+    private bool hasDummySpawned = false;
+    private float lastDummyCheckTime = 0f;
+    private const float DUMMY_CHECK_INTERVAL = 10f;
 
+    // ========== Unity Lifecycle ==========
     private void Start()
     {
-        // 🆕 เช็ค Lobby Scene ก่อน
         string sceneName = SceneManager.GetActiveScene().name;
         isLobbyScene = sceneName.ToLower().Contains("lobby");
 
-        if (Runner == null)
-        {
-            var networkRunner = FindObjectOfType<NetworkRunner>();
-            if (networkRunner != null)
-            {
-                Debug.Log("EnemySpawner found NetworkRunner");
-            }
-        }
-
-        InitializeSpawnPoints();
-        InitializeSpawnCounts();
-        InitializeBossConditions();
-        ValidateSettings();
-        firstSpawnTime = Time.time + 6f;
-        nextSpawnTime = firstSpawnTime;
-        isFirstSpawnReady = false;
-        // 🆕 ถ้าเป็น Lobby - ข้าม loading system ทันที
         if (isLobbyScene)
         {
-            Debug.Log("🏠 [EnemySpawner] Lobby scene detected - bypassing loading system");
-            waitForLoadingComplete = false;
-            isLoadingComplete = true;
-            loadingStartTime = Time.time;
-
+            Debug.Log("🏠 [EnemySpawner] Lobby scene detected");
             if (HasStateAuthority)
             {
-                Debug.Log("🎯 [EnemySpawner] Starting Lobby Dummy spawn...");
                 StartCoroutine(SpawnLobbyDummy());
             }
-            return; // 🆕 Return เลยไม่ต้องไป setup stage tracking
+            return;
         }
 
-        // === ส่วนที่เหลือสำหรับ Stage Scene ===
-
-        if (StageRewardTracker.Instance != null)
-        {
-            StageRewardTracker.Instance.StartStageTracking(currentStageName);
-            Debug.Log($"🎯 [EnemySpawner] Forced StageRewardTracker to start tracking: {currentStageName}");
-        }
-
+        // === Stage Scene Setup ===
         if (string.IsNullOrEmpty(currentStageName))
         {
-            string selectedStage = PlayerPrefs.GetString("SelectedStage", "");
-            if (!string.IsNullOrEmpty(selectedStage))
-            {
-                currentStageName = selectedStage;
-                Debug.Log($"🎯 [EnemySpawner] Using stage from PlayerPrefs: '{currentStageName}'");
-            }
-            else
-            {
-                currentStageName = SceneManager.GetActiveScene().name;
-                Debug.LogWarning($"🎯 [EnemySpawner] No PlayerPrefs, using scene name: '{currentStageName}'");
-            }
+            currentStageName = PlayerPrefs.GetString("SelectedStage", SceneManager.GetActiveScene().name);
         }
-
-        if (string.IsNullOrEmpty(currentStageName))
-        {
-            Debug.LogError("🚨 [EnemySpawner] currentStageName is still empty after setup!");
-            currentStageName = "playroom1_1";
-        }
-
-        Debug.Log($"🔍 [DEBUG] About to check required kills for stage: {currentStageName}");
-        Debug.Log($"🔍 [DEBUG] PlayerPrefs key will be: RequiredKills_{currentStageName}");
-        Debug.Log($"🔍 [DEBUG] PlayerPrefs value: {PlayerPrefs.GetInt($"RequiredKills_{currentStageName}", -999)}");
 
         currentSessionKills = 0;
         requiredKillsForStage = EnemyKillTracker.GetRequiredKillsForStage(currentStageName);
-        nextSpawnTime = Time.time + 2f;
-        lastStageCheckTime = Time.time + 3f;
-
-        Debug.Log($"🔍 [DEBUG] Got required kills: {requiredKillsForStage}");
 
         if (requiredKillsForStage <= 0)
         {
-            Debug.LogError($"❌ [ERROR] Invalid requiredKillsForStage: {requiredKillsForStage}. Setting to 10.");
             requiredKillsForStage = 10;
         }
 
+        // ✅ รอ 6 วินาทีก่อน spawn ครั้งแรก
+        firstSpawnTime = Time.time + 6f;
+        nextSpawnTime = firstSpawnTime;
+        isFirstSpawnReady = false;
+
         isStageCompleted = false;
 
-        Debug.Log($"🎯 [FINAL] Stage: {currentStageName}, Required: {requiredKillsForStage}, Session: {currentSessionKills}");
+        Debug.Log($"🎯 [EnemySpawner] Stage: {currentStageName}, Required Kills: {requiredKillsForStage}");
+        Debug.Log($"⏰ First spawn will occur at {firstSpawnTime:F1}s (in 6 seconds)");
 
-        // 🆕 Initialize Loading System (สำหรับ Stage Scene เท่านั้น)
-        loadingStartTime = Time.time;
-
-        if (waitForLoadingComplete)
+        foreach (EnemySpawnData enemy in enemyPrefabs)
         {
-            loadingPanelManager = FindObjectOfType<LoadingPanelManager>();
-
-            if (loadingPanelManager != null)
-            {
-                if (showLoadingDebug)
-                {
-                    Debug.Log($"🔄 [EnemySpawner] Found LoadingPanelManager - waiting for loading to complete");
-                }
-
-                StartCoroutine(MonitorLoadingProgress());
-                StartCoroutine(WaitForMaxTime());
-            }
-            else
-            {
-                if (showLoadingDebug)
-                {
-                    Debug.LogWarning($"🔄 [EnemySpawner] No LoadingPanelManager found - starting immediately");
-                }
-                OnLoadingComplete();
-            }
-        }
-        else
-        {
-            OnLoadingComplete();
-        }
-    }
-    private IEnumerator SpawnLobbyDummy()
-    {
-        Debug.Log("🏠 [SpawnLobbyDummy] Starting lobby dummy spawn routine...");
-
-        // 🆕 รอ loading เสร็จ แต่มี timeout
-        float waitStartTime = Time.time;
-        float maxWaitTime = 3f; // รอสูงสุด 3 วินาที
-
-        while (!isLoadingComplete)
-        {
-            if (Time.time - waitStartTime > maxWaitTime)
-            {
-                Debug.LogWarning($"🏠 [SpawnLobbyDummy] Loading wait timeout ({maxWaitTime}s) - spawning anyway");
-                break;
-            }
-
-            Debug.Log($"🏠 [SpawnLobbyDummy] Waiting for loading... ({Time.time - waitStartTime:F1}s)");
-            yield return new WaitForSeconds(0.5f);
-        }
-
-        Debug.Log("🏠 [SpawnLobbyDummy] Loading complete, waiting additional 1s...");
-        yield return new WaitForSeconds(1f);
-
-        // ✅ เช็คว่ามี Dummy อยู่แล้วหรือไม่
-        NetworkEnemy[] existingEnemies = FindObjectsOfType<NetworkEnemy>();
-        bool hasExistingDummy = false;
-
-        foreach (NetworkEnemy enemy in existingEnemies)
-        {
-            if (enemy != null && enemy.isLobbyDummy && !enemy.IsDead)
-            {
-                hasExistingDummy = true;
-                Debug.Log("🏠 [SpawnLobbyDummy] Dummy already exists - skipping spawn");
-                break;
-            }
-        }
-
-        // Spawn เฉพาะเมื่อไม่มี Dummy
-        if (!hasExistingDummy && dummyPrefab != null && dummySpawnPoint != null)
-        {
-            Debug.Log("🏠 [SpawnLobbyDummy] Spawning dummy now...");
-            SpawnDummyAtPosition(dummySpawnPoint.position);
-        }
-        else if (dummyPrefab == null || dummySpawnPoint == null)
-        {
-            Debug.LogError("🏠 [SpawnLobbyDummy] ❌ Dummy prefab or spawn point not set!");
+            enemy.currentCount = 0;
+            enemy.lastSpawnTime = 0f;
         }
     }
 
-    // 🆕 Spawn Dummy ที่ตำแหน่งที่กำหนด
-    public void SpawnDummyAtPosition(Vector3 position)
+    // ========== Network Update ==========
+    public override void FixedUpdateNetwork()
     {
         if (!HasStateAuthority) return;
 
-        try
+        if (isLobbyScene)
         {
-            Debug.Log($"[EnemySpawner] 🎯 Spawning Dummy at {position}...");
-
-            // ✅ โหลด level ล่าสุดจาก Firebase
-            int dummyLevel = LoadDummyLevelFromFirebase();
-
-            Debug.Log($"[EnemySpawner] 📥 Current Firebase level: {dummyLevel}");
-
-            // Spawn Dummy
-            var spawnedObject = Runner.Spawn(
-                dummyPrefab,
-                position,
-                Quaternion.identity,
-                PlayerRef.None
-            );
-
-            if (spawnedObject != null)
+            if (Time.time - lastDummyCheckTime >= DUMMY_CHECK_INTERVAL)
             {
-                var enemy = spawnedObject.GetComponent<NetworkEnemy>();
-                if (enemy != null)
-                {
-                    enemy.IsDummy = true;
-                    enemy.DummyLevel = dummyLevel;
-                    enemy.isLobbyDummy = true;
-
-                    currentDummyInstance = enemy;
-                    hasDummySpawned = true;
-
-                    Debug.Log($"[EnemySpawner] ✅ Dummy spawned at Level {dummyLevel}");
-                }
+                lastDummyCheckTime = Time.time;
+                CheckAndSpawnDummyIfNeeded();
             }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[EnemySpawner] ❌ Error spawning Dummy: {e.Message}");
-        }
-    }
-
-    // ✅ เพิ่ม coroutine สำหรับ spawn หลัง clear
-    private IEnumerator SpawnDummyAfterClear(Vector3 position, int dummyLevel)
-    {
-        yield return new WaitForSeconds(0.3f);
-
-        try
-        {
-            // Spawn Dummy
-            var spawnedObject = Runner.Spawn(
-                dummyPrefab,
-                position,
-                Quaternion.identity,
-                PlayerRef.None
-            );
-
-            if (spawnedObject != null)
-            {
-                var enemy = spawnedObject.GetComponent<NetworkEnemy>();
-                if (enemy != null)
-                {
-                    // ✅ ตั้งค่า Dummy properties
-                    enemy.IsDummy = true;
-                    enemy.DummyLevel = dummyLevel;
-                    enemy.isLobbyDummy = true;
-
-                    currentDummyInstance = enemy;
-                    hasDummySpawned = true;
-
-                    Debug.Log($"[EnemySpawner] ✅ Dummy spawned at Level {dummyLevel}");
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[EnemySpawner] ❌ Error in SpawnDummyAfterClear: {e.Message}");
-        }
-    }
-    // ✅ เพิ่ม method สำหรับโหลด Dummy Level จาก Firebase
-    private int LoadDummyLevelFromFirebase()
-    {
-        try
-        {
-            var persistentData = PersistentPlayerData.Instance;
-
-            if (persistentData?.multiCharacterData == null)
-            {
-                Debug.LogWarning("[EnemySpawner] Firebase data not ready, using level 1");
-                return 1;
-            }
-
-            // ✅ เช็คและรีเซ็ตถ้าเป็นวันใหม่
-            persistentData.multiCharacterData.CheckAndResetDummyIfNewDay();
-
-            // ✅ โหลด level จาก Firebase
-            int level = persistentData.multiCharacterData.trainingDummy.currentLevel;
-
-            // ✅ Log ข้อมูลทั้งหมดเพื่อ debug
-           
-
-            return level;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[EnemySpawner] ❌ Error loading level: {e.Message}");
-            return 1;
-        }
-    }
-
-   
-
-    // 🆕 เพิ่ม Coroutine สำหรับตรวจสอบ loading progress
-    private IEnumerator MonitorLoadingProgress()
-    {
-        if (loadingPanelManager == null)
-        {
-            yield break;
+            return;
         }
 
-        while (!isLoadingComplete)
-        {
-            // เช็คว่า loading เสร็จหรือยัง
-            if (loadingPanelManager.IsLoadingComplete())
-            {
-                OnLoadingComplete();
-                yield break;
-            }
-
-            // เช็ค timeout
-            if (Time.time - loadingStartTime > maxLoadingWaitTime)
-            {
-                Debug.LogWarning($"🔄 [EnemySpawner] Loading timeout after {maxLoadingWaitTime}s - starting spawning anyway");
-                OnLoadingComplete();
-                yield break;
-            }
-
-            // แสดง debug progress
-            if (showLoadingDebug && Time.time % 1f < 0.1f) // เปลี่ยนจาก 2f เป็น 1f (debug บ่อยขึ้น)
-            {
-                float progress = loadingPanelManager.GetCurrentProgress();
-                float elapsed = Time.time - loadingStartTime;
-                Debug.Log($"🔄 [EnemySpawner] Loading progress: {(progress * 100f):F0}% (elapsed: {elapsed:F1}s)");
-            }
-
-            yield return new WaitForSeconds(0.05f); // เช็คทุก 0.05 วินาที (เร็วกว่าเดิม)
-        }
-    }
-
-
-    // 🆕 เพิ่ม Coroutine สำหรับ timeout
-    private IEnumerator WaitForMaxTime()
-    {
-        yield return new WaitForSeconds(maxLoadingWaitTime);
-
-        if (!isLoadingComplete)
-        {
-            Debug.LogWarning($"🔄 [EnemySpawner] Max loading wait time ({maxLoadingWaitTime}s) reached - starting spawning");
-            OnLoadingComplete();
-        }
-    }
-
-    // 🆕 เรียกเมื่อ loading เสร็จ
-    private void OnLoadingComplete()
-    {
-        isLoadingComplete = true;
-
-        // เริ่ม spawning
-        nextSpawnTime = Time.time + 0.2f;// รอ 1 วินาทีหลัง loading เสร็จ
-        nextWaveTime = Time.time + 1f;
-        nextMultiSpawnTime = Time.time + 0.5f;
-        if (showLoadingDebug)
-        {
-            float totalWaitTime = Time.time - loadingStartTime;
-            Debug.Log($"✅ [EnemySpawner] Loading complete! Total wait time: {totalWaitTime:F1}s - Starting enemy spawning");
-        }
-
-        // เรียก event หรือ callback อื่นๆ ถ้าต้องการ
-        OnSpawningEnabled();
-    }
-
-    // 🆕 เรียกเมื่อเริ่ม spawning
-    private void OnSpawningEnabled()
-    {
-        if (showLoadingDebug)
-        {
-            Debug.Log($"🏁 [EnemySpawner] Enemy spawning enabled for stage: {currentStageName}");
-            Debug.Log($"🎯 Target kills: {requiredKillsForStage}, Max enemies: {maxTotalEnemies}");
-
-            if (multiSpawnMode != MultiSpawnMode.Off)
-            {
-                Debug.Log($"🌊 Multi-spawn mode: {multiSpawnMode} ({spawnPointCount} points, {enemiesPerPoint} per point)");
-            }
-        }
-    }
-    private void InitializeSpawnPoints()
-    {
-        availableSpawnPoints.Clear();
-        recentlyUsedPoints.Clear();
-
-        if (spawnPoints != null && spawnPoints.Length > 0)
-        {
-            for (int i = 0; i < spawnPoints.Length; i++)
-            {
-                if (spawnPoints[i] != null)
-                {
-                    availableSpawnPoints.Add(i);
-                }
-                else
-                {
-                    Debug.LogWarning($"[EnemySpawner] Spawn point {i} is null!");
-                }
-            }
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnemySpawner] Initialized {availableSpawnPoints.Count} valid spawn points");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[EnemySpawner] No spawn points configured! Multi-spawn will be disabled.");
-            multiSpawnMode = MultiSpawnMode.Off;
-        }
-    }
-
-    public override void FixedUpdateNetwork()
-    {
-        if (Runner == null || !Runner.IsServer) return;
-        if (isLobbyScene && showLoadingDebug && Time.time % 3f < 0.1f)
-        {
-           
-        }
-      
-
-        // Lobby dummy check
-        if (isLobbyScene && Time.time - lastDummyCheckTime >= DUMMY_CHECK_INTERVAL)
-        {
-            lastDummyCheckTime = Time.time;
-            CheckAndSpawnDummyIfNeeded();
-        }
-
-
+        // ✅ เช็คว่าถึงเวลา spawn ครั้งแรกหรือยัง
         if (!isFirstSpawnReady)
         {
             if (Time.time >= firstSpawnTime)
             {
                 isFirstSpawnReady = true;
-                Debug.Log($"🎯 First spawn time reached!");
+                Debug.Log($"✅ First spawn time reached! Starting enemy spawning...");
             }
             else
             {
@@ -624,1229 +189,161 @@ public int maxSpawnAttempts = 5;
         }
 
         // Stage completion check
-        CheckStageCompletionStatus();
+        if (Time.time - lastStageCheckTime >= STAGE_CHECK_INTERVAL)
+        {
+            lastStageCheckTime = Time.time;
+            CheckStageCompletion();
+        }
 
-        // 🆕 ถ้าด่านเสร็จแล้วและต้องหยุด spawn
         if (isStageCompleted && stopSpawningWhenStageCompleted)
         {
-            Debug.Log($"⚠️ Stage completed - spawning stopped!");
             CleanupDeadEnemies();
-            CleanupDeadBosses();
-            ProcessPendingMultiSpawns();
-            return; // ⚠️ จะ return ตรงนี้ถ้าด่านเสร็จแล้ว
+            return;
         }
 
-        Debug.Log($"🎯 Passed stage check, proceeding to spawn logic...");
-
-        // Cleanup
         CleanupDeadEnemies();
-        CleanupDeadBosses();
-        ProcessPendingMultiSpawns();
 
-        // Boss spawning
-        if (enableBossSpawning)
+        // ✅ Spawn logic - รองรับ batch spawning
+        if (Time.time >= nextSpawnTime && CanSpawnMore())
         {
-            CheckBossSpawnConditions();
-        }
-
-        // 🆕 Main spawning logic
-        if (spawnInWaves)
-        {
-            Debug.Log($"🌊 Using wave spawning (nextWaveTime: {nextWaveTime:F1}, current: {Time.time:F1})");
-            HandleWaveSpawning();
-        }
-        else if (multiSpawnMode != MultiSpawnMode.Off)
-        {
-           // Debug.Log($"🌊 Using multi-spawn (nextMultiSpawnTime: {nextMultiSpawnTime:F1}, current: {Time.time:F1})");
-            HandleSimpleMultiSpawning();
-        }
-        else
-        {
-          //  Debug.Log($"👤 Using normal spawning (nextSpawnTime: {nextSpawnTime:F1}, current: {Time.time:F1})");
-            HandleNormalSpawning();
+            if (enableBatchSpawning)
+            {
+                SpawnBatch();
+            }
+            else
+            {
+                SpawnRandomEnemy();
+            }
+            UpdateNextSpawnTime();
         }
     }
-    // ✅ Method สำหรับตรวจสอบและ spawn Dummy
-    private void CheckAndSpawnDummyIfNeeded()
+    private void SpawnBatch()
     {
-        if (!HasStateAuthority) return;
+        // คำนวณจำนวนที่จะ spawn
+        int availableSlots = maxTotalEnemies - activeEnemies.Count;
+        int enemiesToSpawn = Random.Range(minEnemiesPerSpawn, maxEnemiesPerSpawn + 1);
+        enemiesToSpawn = Mathf.Min(enemiesToSpawn, availableSlots);
 
-        // ✅ หา Dummy ที่มีอยู่ใน scene
-        NetworkEnemy[] allEnemies = FindObjectsOfType<NetworkEnemy>();
-        NetworkEnemy existingDummy = null;
+        if (enemiesToSpawn <= 0) return;
 
-        foreach (NetworkEnemy enemy in allEnemies)
+        List<string> spawnedList = new List<string>();
+
+        for (int i = 0; i < enemiesToSpawn; i++)
         {
-            if (enemy != null && enemy.IsDummy && !enemy.IsDead)
+            EnemySpawnData selectedEnemy = SelectRandomEnemyByWeight();
+
+            if (selectedEnemy == null) continue;
+
+            Vector3 spawnPosition = spawnAroundPlayers
+                ? GetSpawnPositionAroundPlayers()
+                : transform.position;
+
+            NetworkEnemy enemy = Runner.Spawn(
+                selectedEnemy.enemyPrefab,
+                spawnPosition,
+                Quaternion.identity,
+                PlayerRef.None
+            );
+
+            if (enemy != null)
             {
-                existingDummy = enemy;
-                break;
+                activeEnemies.Add(enemy);
+                spawnedEnemyTypes[enemy.Object] = selectedEnemy.enemyName;
+                selectedEnemy.currentCount++;
+                selectedEnemy.lastSpawnTime = Time.time;
+
+                spawnedList.Add(selectedEnemy.enemyName);
             }
         }
 
-        // ✅ ถ้าไม่มี Dummy ให้ spawn ใหม่
-        if (existingDummy == null)
+        if (showSpawnInfo && spawnedList.Count > 0)
         {
-            Debug.Log("[EnemySpawner] 🎯 No Dummy found in lobby, spawning new one...");
-            SpawnDummy();
-        }
-        else
-        {
-            // อัพเดท reference
-            currentDummyInstance = existingDummy;
+            // นับจำนวนแต่ละประเภท
+            Dictionary<string, int> counts = new Dictionary<string, int>();
+            foreach (string name in spawnedList)
+            {
+                if (counts.ContainsKey(name))
+                    counts[name]++;
+                else
+                    counts[name] = 1;
+            }
+
+            string spawnInfo = "🌊 Spawned batch: ";
+            foreach (var kvp in counts)
+            {
+                spawnInfo += $"{kvp.Key} x{kvp.Value}, ";
+            }
+            spawnInfo += $"| Active: {activeEnemies.Count}/{maxTotalEnemies}";
+
+            Debug.Log(spawnInfo);
         }
     }
-    private void SpawnDummy()
+
+    // ========== Spawn Logic ==========
+    private void SpawnRandomEnemy()
     {
-        if (dummyPrefab == null)
+        EnemySpawnData selectedEnemy = SelectRandomEnemyByWeight();
+
+        if (selectedEnemy == null)
         {
-            Debug.LogError("[EnemySpawner] ❌ Dummy prefab is not assigned!");
+            if (showDebugInfo)
+                Debug.LogWarning("[Spawn] No valid enemy to spawn");
             return;
         }
 
-        Vector3 spawnPosition = dummySpawnPoint != null
-            ? dummySpawnPoint.position
-            : transform.position + Vector3.forward * 5f;
-
-        SpawnDummyAtPosition(spawnPosition);
-    }
-
-    // ✅ Method สำหรับ spawn Dummy ที่ตำแหน่งที่กำหนด
-
-    public void ForceStartSpawning()
-    {
-        if (showLoadingDebug)
-        {
-            Debug.Log("🔄 [EnemySpawner] Force starting spawning (bypassing loading wait)");
-        }
-        OnLoadingComplete();
-    }
-    public void ResetToWaitForLoading()
-    {
-        isLoadingComplete = false;
-        nextSpawnTime = float.MaxValue;
-        nextWaveTime = float.MaxValue;
-        nextMultiSpawnTime = float.MaxValue;
-        loadingStartTime = Time.time;
-
-        if (showLoadingDebug)
-        {
-            Debug.Log("🔄 [EnemySpawner] Reset to wait for loading state");
-        }
-
-        // เริ่มตรวจสอบ loading ใหม่
-        if (waitForLoadingComplete)
-        {
-        }
-    }
-
-    /// <summary>
-    /// เช็คว่า spawning พร้อมหรือยัง
-    /// </summary>
-    public bool IsSpawningReady()
-    {
-        return !waitForLoadingComplete || isLoadingComplete;
-    }
-
-    /// <summary>
-    /// ตั้งค่าให้รอ loading หรือไม่
-    /// </summary>
-    public void SetWaitForLoading(bool shouldWait)
-    {
-        waitForLoadingComplete = shouldWait;
-
-        if (!shouldWait && !isLoadingComplete)
-        {
-            OnLoadingComplete();
-        }
-
-        if (showLoadingDebug)
-        {
-            Debug.Log($"🔄 [EnemySpawner] Wait for loading set to: {shouldWait}");
-        }
-    }
-    public void OnEnemyDeath(NetworkEnemy deadEnemy, string enemyTypeName)
-    {
-        if (!HasStateAuthority) return;
-
-        Debug.Log($"🔥 EnemySpawner: Received death notification for {enemyTypeName}");
-        Debug.Log($"🔥 currentSessionKills BEFORE: {currentSessionKills}");
-
-        // อัพเดท session kills ทันที
-        currentSessionKills++;
-        totalEnemiesKilled++;
-
-        Debug.Log($"🔥 currentSessionKills AFTER: {currentSessionKills}");
-        Debug.Log($"🎯 Stage progress: {currentSessionKills}/{requiredKillsForStage} for {currentStageName}");
-
-        // 🆕 ส่งข้อมูลไป StageRewardTracker (ใช้ RPC เพื่อให้ทุกคนได้ข้อมูลเดียวกัน)
-        RPC_UpdateStageRewardTracker(enemyTypeName);
-
-        // อัพเดท kill statistics
-        if (killedCounts.ContainsKey(enemyTypeName))
-        {
-            killedCounts[enemyTypeName]++;
-        }
-        else
-        {
-            killedCounts[enemyTypeName] = 1;
-        }
-
-        // อัพเดท boss kill counts
-        UpdateBossKillCounts(enemyTypeName);
-
-        // เช็คว่าด่านเสร็จหรือยังทันที
-        if (currentSessionKills >= requiredKillsForStage && !isStageCompleted)
-        {
-            Debug.Log($"🎉 Stage completion triggered by direct death notification! Kill #{currentSessionKills}");
-            ForceCheckStageStatus();
-        }
-
-        if (verboseKillTracking)
-        {
-            Debug.Log($"📊 Direct Kill Update - {enemyTypeName}: {killedCounts[enemyTypeName]}, Total: {totalEnemiesKilled}");
-        }
-    }
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_UpdateStageRewardTracker(string enemyTypeName)
-    {
-        // อัพเดท StageRewardTracker ให้ทุกคน
-        StageRewardTracker.AddEnemyKill();
-
-        Debug.Log($"[RPC_UpdateStageRewardTracker] Added enemy kill for {enemyTypeName}");
-    }
-    private void CheckStageCompletionStatus()
-    {
-        // เช็คทุก STAGE_CHECK_INTERVAL วินาที เพื่อไม่ให้ส่งผลต่อ performance
-        if (Time.time - lastStageCheckTime < STAGE_CHECK_INTERVAL)
-            return;
-
-        lastStageCheckTime = Time.time;
-
-        // 🆕 ป้องกัน stage name ว่าง
-        if (string.IsNullOrEmpty(currentStageName))
-        {
-            Debug.LogWarning("🚨 [CheckStageCompletionStatus] currentStageName is empty, skipping check");
-            return;
-        }
-
-        bool wasCompleted = isStageCompleted;
-
-        // ใช้ currentSessionKills แทนค่าที่เก็บถาวร
-        isStageCompleted = currentSessionKills >= requiredKillsForStage;
-
-        if (showStageDebugInfo && Time.time % 3f < 0.1f) // Debug ทุก 3 วินาที
-        {
-            Debug.Log($"🎯 Stage '{currentStageName}': {currentSessionKills}/{requiredKillsForStage} kills (Session) - Completed: {isStageCompleted}");
-        }
-
-        // ถ้าเพิ่งเสร็จใหม่
-        if (!wasCompleted && isStageCompleted)
-        {
-            OnStageJustCompleted();
-        }
-    }
-
-    // 🆕 เรียกเมื่อด่านเพิ่งเสร็จใหม่
-    private void OnStageJustCompleted()
-    {
-        // ตรวจสอบว่า stageName ไม่ว่าง
-        if (string.IsNullOrEmpty(currentStageName))
-        {
-            return;
-        }
-
-        // Mark ด่านเป็น completed ใน StageProgressManager (สำหรับ save ถาวร)
-        StageProgressManager.CompleteStage(currentStageName);
-
-        if (stopSpawningWhenStageCompleted)
-        {
-            // หยุด spawning ทันที
-            nextSpawnTime = float.MaxValue;
-            nextWaveTime = float.MaxValue;
-            nextMultiSpawnTime = float.MaxValue;
-
-            // หยุด multi-spawn ที่กำลังทำอยู่
-            isMultiSpawning = false;
-            pendingSpawnPositions.Clear();
-            pendingSpawnEnemies.Clear();
-
-            // 🆕 ทำลาย enemy ที่เหลือทั้งหมด
-            if (destroyRemainingEnemiesOnStageComplete)
-            {
-                DestroyRemainingEnemies();
-            }
-
-            // แจ้งเตือนผู้เล่น (ผ่าน RPC)
-            RPC_AnnounceStageCompleted(currentStageName);
-        }
-    }
-    private void DestroyRemainingEnemies()
-    {
-        if (!HasStateAuthority) return;
-
-        int destroyedCount = 0;
-        int destroyedBossCount = 0;
-
-        // ทำลาย enemy ปกติ
-        for (int i = activeEnemies.Count - 1; i >= 0; i--)
-        {
-            NetworkEnemy enemy = activeEnemies[i];
-            if (enemy != null && !enemy.IsDead)
-            {
-                // ลบออกจาก tracking ก่อน
-                if (enemy.Object != null && spawnedEnemyTypes.ContainsKey(enemy.Object))
-                {
-                    string enemyTypeName = spawnedEnemyTypes[enemy.Object];
-                    spawnedEnemyTypes.Remove(enemy.Object);
-
-                    // ลด current count
-                    foreach (EnemySpawnData enemyData in enemyPrefabs)
-                    {
-                        if (enemyData.enemyName == enemyTypeName)
-                        {
-                            enemyData.currentCount = Mathf.Max(0, enemyData.currentCount - 1);
-                            break;
-                        }
-                    }
-                }
-
-                // ทำลายทันที (ไม่ผ่าน death system)
-                if (enemy.Object != null)
-                {
-                    Runner.Despawn(enemy.Object);
-                    destroyedCount++;
-                }
-            }
-            activeEnemies.RemoveAt(i);
-        }
-
-        // ทำลาย boss ที่เหลือ
-        for (int i = activeBosses.Count - 1; i >= 0; i--)
-        {
-            NetworkEnemy boss = activeBosses[i];
-            if (boss != null && !boss.IsDead)
-            {
-                // อัพเดท boss condition
-                string bossName = boss.name.Replace("(Clone)", "").Trim();
-                foreach (BossSpawnCondition condition in bossConditions)
-                {
-                    if (condition.bossPrefab != null &&
-                        (condition.bossPrefab.name == bossName ||
-                         condition.bossName == bossName ||
-                         condition.bossPrefab.name.Contains(bossName) ||
-                         bossName.Contains(condition.bossPrefab.name)))
-                    {
-                        condition.currentBossCount = Mathf.Max(0, condition.currentBossCount - 1);
-                        break;
-                    }
-                }
-
-                // ทำลายทันที
-                if (boss.Object != null)
-                {
-                    Runner.Despawn(boss.Object);
-                    destroyedBossCount++;
-                }
-            }
-            activeBosses.RemoveAt(i);
-        }
-
-        // ลบ pending spawns ทั้งหมด
-        pendingSpawnPositions.Clear();
-        pendingSpawnEnemies.Clear();
-        isMultiSpawning = false;
-
-        // ส่ง RPC แจ้งการทำลาย
-        if (destroyedCount > 0 || destroyedBossCount > 0)
-        {
-            RPC_AnnounceEnemiesDestroyed(destroyedCount, destroyedBossCount);
-        }
-
-        if (showStageDebugInfo)
-        {
-            Debug.Log($"🧹 Stage cleanup: Destroyed {destroyedCount} enemies and {destroyedBossCount} bosses");
-        }
-    }
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_AnnounceEnemiesDestroyed(int enemyCount, int bossCount)
-    {
-        if (showStageDebugInfo)
-        {
-            string message = "🧹 Stage cleared! ";
-            if (enemyCount > 0)
-            {
-                message += $"Removed {enemyCount} enemies";
-            }
-            if (bossCount > 0)
-            {
-                message += $"{(enemyCount > 0 ? " and " : "")}Removed {bossCount} bosses";
-            }
-            Debug.Log(message);
-        }
-    }
-
-    // 🆕 Method สำหรับทำลาย enemy ที่เหลือแบบ manual (สำหรับเรียกจากภายนอก)
-    public void ForceDestroyAllRemainingEnemies()
-    {
-        if (!HasStateAuthority)
-        {
-            Debug.LogWarning("🚨 Cannot destroy enemies - not server authority");
-            return;
-        }
-
-        DestroyRemainingEnemies();
-        Debug.Log("🧹 Manually destroyed all remaining enemies");
-    }
-
-    // 🆕 เพิ่ม method สำหรับ toggle การทำลาย enemy อัตโนมัติ
-    public void SetAutoDestroyEnemies(bool enable)
-    {
-        destroyRemainingEnemiesOnStageComplete = enable;
-
-        if (showStageDebugInfo)
-        {
-            Debug.Log($"🧹 Auto destroy enemies on stage complete: {enable}");
-        }
-    }
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_AnnounceStageCompleted(string stageName)
-    {
-        // 🆕 เพิ่ม debug
-       
-
-        // อัพเดทจำนวน enemy สุดท้ายให้ StageRewardTracker
-        StageRewardTracker.Instance.SetCorrectEnemyCount(currentSessionKills);
-        StageCompleteUI stageUI = FindObjectOfType<StageCompleteUI>();
-
-        StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
-        if (stageUI != null)
-        {
-            bool isPanelActive = stageUI.stageCompletePanel != null && stageUI.stageCompletePanel.activeSelf;
-
-            // ถ้า panel เปิดอยู่แล้ว ให้ปิด
-            if (isPanelActive)
-            {
-                stageUI.HideStageComplete();
-            }
-        }
-        if (stageCompleteUI != null)
-        {
-            stageCompleteUI.ShowStageComplete(stageName);
-        }
-        else
-        {
-        }
-    }
-    // เพิ่ม method สำหรับ manual testing
- 
-
-    public void SetCurrentStage(string stageName)
-    {
-        currentStageName = stageName;
-        isStageCompleted = false; // รีเซ็ตสถานะ
-
-        if (showStageDebugInfo)
-        {
-            Debug.Log($"🏁 Stage set to: {stageName}");
-        }
-    }
-    public int GetRequiredKills()
-    {
-        return requiredKillsForStage;
-    }
-    public bool IsCurrentStageCompleted()
-    {
-        return isStageCompleted;
-    }
-
-    /// <summary>
-    /// บังคับให้เช็คสถานะด่านทันที
-    /// </summary>
-    public void ForceCheckStageStatus()
-    {
-        lastStageCheckTime = 0f; // รีเซ็ตเวลาเพื่อให้เช็คใหม่ทันที
-        CheckStageCompletionStatus();
-    }
-
-    /// <summary>
-    /// เปิด/ปิดการหยุด spawn เมื่อด่านเสร็จ
-    /// </summary>
-    public void SetStopSpawningWhenCompleted(bool shouldStop)
-    {
-        stopSpawningWhenStageCompleted = shouldStop;
-
-        if (showStageDebugInfo)
-        {
-            Debug.Log($"🏁 Stop spawning when completed: {shouldStop}");
-        }
-    }
-
-    /// <summary>
-    /// รีสตาร์ทการ spawn หลังจากที่หยุดไปแล้ว (สำหรับ restart ด่าน)
-    /// </summary>
-    public void RestartSpawning()
-    {
-        if (!HasStateAuthority) return;
-
-        isStageCompleted = false;
-        currentSessionKills = 0;
-        totalEnemiesKilled = 0; // รีเซ็ต total kills ด้วย
-
-        // รีเซ็ต timers
-        nextSpawnTime = Time.time + 1f;
-        nextWaveTime = Time.time + waveCooldown;
-        nextMultiSpawnTime = Time.time + multiSpawnCooldown;
-        lastStageCheckTime = 0f;
-
-        // รีเซ็ต kill counts และ boss conditions
-        InitializeSpawnCounts();
-        InitializeBossConditions();
-
-        Debug.Log($"🔄 Complete restart for stage: {currentStageName}");
-        Debug.Log($"🎯 Required kills: {requiredKillsForStage}");
-        Debug.Log($"🔥 Session kills reset to: {currentSessionKills}");
-    }
-
-    /// <summary>
-    /// เปิด/ปิดการหยุด spawn เมื่อด่านเสร็จ
-    /// </summary>
-
-  
-
-    // 🆕 ระบบ Multi-Spawn ที่เรียบง่าย
-    private void HandleSimpleMultiSpawning()
-    {
-        if (Time.time >= nextMultiSpawnTime && CanSpawnMore() && !isMultiSpawning)
-        {
-            StartSimpleMultiSpawn();
-        }
-    }
-
-    private void StartSimpleMultiSpawn()
-    {
-        if (isMultiSpawning || availableSpawnPoints.Count == 0) return;
-
-        List<Vector3> spawnPositions = GetMultiSpawnPositions();
-        if (spawnPositions.Count == 0) return;
-
-        isMultiSpawning = true;
-        pendingSpawnPositions.Clear();
-        pendingSpawnEnemies.Clear();
-
-        // เตรียม spawn requests
-        int totalPlanned = 0;
-        foreach (Vector3 position in spawnPositions)
-        {
-            for (int i = 0; i < enemiesPerPoint && totalPlanned < (maxTotalEnemies - activeEnemies.Count); i++)
-            {
-                EnemySpawnData selectedEnemy = SelectEnemyToSpawn();
-                if (selectedEnemy != null)
-                {
-                    // เพิ่ม offset เล็กน้อยสำหรับตัวที่ 2, 3, 4...
-                    Vector3 adjustedPosition = position;
-                    if (i > 0)
-                    {
-                        Vector2 randomOffset = Random.insideUnitCircle * 2f;
-                        adjustedPosition += new Vector3(randomOffset.x, 0, randomOffset.y);
-                    }
-
-                    pendingSpawnPositions.Enqueue(adjustedPosition);
-                    pendingSpawnEnemies.Enqueue(selectedEnemy);
-                    totalPlanned++;
-                }
-            }
-        }
-
-        nextMultiSpawnTime = Time.time + multiSpawnCooldown;
-
-        if (showMultiSpawnInfo && totalPlanned > 0)
-        {
-        }
-    }
-
-    // 🎯 หาตำแหน่ง spawn ตามโหมดที่เลือก
-    private List<Vector3> GetMultiSpawnPositions()
-    {
-        // ✅ ถ้าเปิดใช้ spawn รอบผู้เล่น
-        if (spawnAroundPlayers)
-        {
-            return GetMultiSpawnPositionsAroundPlayers();
-        }
-
-        // โค้ดเดิม...
-        if (!useSpawnPoints || availableSpawnPoints.Count == 0)
-            return new List<Vector3>();
-
-        List<Vector3> positions = new List<Vector3>();
-        List<Transform> playerTransforms = GetAllPlayerTransforms();
-
-        int actualPointCount = Mathf.Min(spawnPointCount, availableSpawnPoints.Count);
-
-        switch (multiSpawnMode)
-        {
-            case MultiSpawnMode.Balanced:
-                positions = GetBalancedSpawnPositions(actualPointCount);
-                break;
-
-            case MultiSpawnMode.ClusterAttack:
-                positions = GetClusterSpawnPositions(actualPointCount);
-                break;
-
-            case MultiSpawnMode.SurroundPlayer:
-                positions = GetSurroundPlayerPositions(actualPointCount, playerTransforms);
-                break;
-
-            case MultiSpawnMode.RandomBurst:
-                positions = GetRandomSpawnPositions(actualPointCount);
-                break;
-
-            case MultiSpawnMode.EdgeSpawn:
-                positions = GetEdgeSpawnPositions(actualPointCount, playerTransforms);
-                break;
-        }
-
-        return FilterPositionsByPlayerDistance(positions, playerTransforms);
-    }
-
-    // ✅ Multi-spawn รอบผู้เล่น
-    private List<Vector3> GetMultiSpawnPositionsAroundPlayers()
-    {
-        List<Vector3> positions = new List<Vector3>();
-        List<Transform> players = GetAllPlayerTransforms();
-
-        if (players.Count == 0)
-        {
-            if (showMultiSpawnInfo)
-                Debug.LogWarning("[EnemySpawner] No players found for multi-spawn");
-            return positions;
-        }
-
-        // แบ่ง spawn points ให้ผู้เล่นแต่ละคน
-        int pointsPerPlayer = Mathf.Max(1, spawnPointCount / players.Count);
-        int remainingPoints = spawnPointCount;
-
-        foreach (Transform player in players)
-        {
-            int pointsForThisPlayer = Mathf.Min(pointsPerPlayer, remainingPoints);
-
-            for (int i = 0; i < pointsForThisPlayer; i++)
-            {
-                // สุ่มตำแหน่งรอบผู้เล่น
-                float randomDistance = Random.Range(minSpawnDistanceFromPlayer, maxSpawnDistanceFromPlayer);
-                float angle = (360f / pointsForThisPlayer) * i + Random.Range(-30f, 30f); // กระจายเป็นวงกลม
-
-                Vector3 direction = Quaternion.Euler(0, angle, 0) * Vector3.forward;
-                Vector3 spawnPos = player.position + direction * randomDistance;
-                spawnPos.y = player.position.y;
-
-                // เช็คกำแพง
-                if (!checkWallsBeforeSpawn || !IsPositionBlockedByWall(player.position, spawnPos))
-                {
-                    positions.Add(spawnPos);
-                }
-            }
-
-            remainingPoints -= pointsForThisPlayer;
-            if (remainingPoints <= 0) break;
-        }
-
-        if (showMultiSpawnInfo)
-        {
-            Debug.Log($"🌊 Generated {positions.Count} spawn positions around {players.Count} player(s)");
-        }
-
-        return positions;
-    }
-
-    // 🎯 Balanced: กระจายทุกจุดเท่าๆ กัน
-    private List<Vector3> GetBalancedSpawnPositions(int count)
-    {
-        List<Vector3> positions = new List<Vector3>();
-
-        if (count >= availableSpawnPoints.Count)
-        {
-            // ใช้ทุกจุด
-            foreach (int pointIndex in availableSpawnPoints)
-            {
-                positions.Add(spawnPoints[pointIndex].position);
-            }
-        }
-        else
-        {
-            // เลือกจุดที่กระจายเท่าๆ กัน
-            float step = (float)availableSpawnPoints.Count / count;
-            for (int i = 0; i < count; i++)
-            {
-                int index = Mathf.RoundToInt(i * step) % availableSpawnPoints.Count;
-                int pointIndex = availableSpawnPoints[index];
-                positions.Add(spawnPoints[pointIndex].position);
-            }
-        }
-
-        return positions;
-    }
-
-    // 🎯 Cluster: spawn รุมหลายจุดใกล้ๆ กัน
-    private List<Vector3> GetClusterSpawnPositions(int count)
-    {
-        List<Vector3> positions = new List<Vector3>();
-
-        // หาจุดกลางที่สุ่ม
-        int centerIndex = availableSpawnPoints[Random.Range(0, availableSpawnPoints.Count)];
-        Vector3 centerPos = spawnPoints[centerIndex].position;
-        positions.Add(centerPos);
-
-        // หาจุดใกล้เคียงกับจุดกลาง
-        List<(int index, float distance)> nearbyPoints = new List<(int, float)>();
-        foreach (int pointIndex in availableSpawnPoints)
-        {
-            if (pointIndex != centerIndex)
-            {
-                float distance = Vector3.Distance(centerPos, spawnPoints[pointIndex].position);
-                nearbyPoints.Add((pointIndex, distance));
-            }
-        }
-
-        // เรียงตามระยะทางจากใกล้ไปไกล
-        nearbyPoints.Sort((a, b) => a.distance.CompareTo(b.distance));
-
-        // เพิ่มจุดใกล้เคียง
-        for (int i = 0; i < count - 1 && i < nearbyPoints.Count; i++)
-        {
-            positions.Add(spawnPoints[nearbyPoints[i].index].position);
-        }
-
-        return positions;
-    }
-
-    // 🎯 Surround: ล้อมรอบผู้เล่น
-    private List<Vector3> GetSurroundPlayerPositions(int count, List<Transform> players)
-    {
-        List<Vector3> positions = new List<Vector3>();
-
-        if (players.Count == 0)
-            return GetRandomSpawnPositions(count);
-
-        // หาตำแหน่งกลางของผู้เล่น
-        Vector3 playerCenter = Vector3.zero;
-        foreach (Transform player in players)
-        {
-            playerCenter += player.position;
-        }
-        playerCenter /= players.Count;
-
-        // หาจุดที่ล้อมรอบผู้เล่น (วางเป็นวงกลม)
-        List<(int index, float angle)> surroundPoints = new List<(int, float)>();
-
-        foreach (int pointIndex in availableSpawnPoints)
-        {
-            Vector3 direction = spawnPoints[pointIndex].position - playerCenter;
-            direction.y = 0;
-            float angle = Mathf.Atan2(direction.z, direction.x) * Mathf.Rad2Deg;
-            if (angle < 0) angle += 360;
-            surroundPoints.Add((pointIndex, angle));
-        }
-
-        // เรียงตามมุม
-        surroundPoints.Sort((a, b) => a.angle.CompareTo(b.angle));
-
-        // เลือกจุดที่กระจายเป็นวงกลม
-        float angleStep = 360f / count;
-        for (int i = 0; i < count && i < surroundPoints.Count; i++)
-        {
-            int selectedIndex = Mathf.RoundToInt((float)i / count * surroundPoints.Count) % surroundPoints.Count;
-            positions.Add(spawnPoints[surroundPoints[selectedIndex].index].position);
-        }
-
-        return positions;
-    }
-
-    // 🎯 Random: สุ่มจุด
-    private List<Vector3> GetRandomSpawnPositions(int count)
-    {
-        List<Vector3> positions = new List<Vector3>();
-        List<int> availableCopy = new List<int>(availableSpawnPoints);
-
-        // ลบจุดที่ใช้ไปแล้วเมื่อเร็วๆ นี้
-        foreach (int usedPoint in recentlyUsedPoints)
-        {
-            availableCopy.Remove(usedPoint);
-        }
-
-        if (availableCopy.Count == 0)
-            availableCopy = new List<int>(availableSpawnPoints);
-
-        for (int i = 0; i < count && availableCopy.Count > 0; i++)
-        {
-            int randomIndex = Random.Range(0, availableCopy.Count);
-            int pointIndex = availableCopy[randomIndex];
-            positions.Add(spawnPoints[pointIndex].position);
-            availableCopy.RemoveAt(randomIndex);
-        }
-
-        return positions;
-    }
-
-    // 🎯 Edge: จุดที่ไกลจากผู้เล่นที่สุด
-    private List<Vector3> GetEdgeSpawnPositions(int count, List<Transform> players)
-    {
-        List<Vector3> positions = new List<Vector3>();
-
-        if (players.Count == 0)
-            return GetRandomSpawnPositions(count);
-
-        // คำนวณระยะห่างขั้นต่ำของแต่ละจุดจากผู้เล่น
-        List<(int index, float minDistance)> pointDistances = new List<(int, float)>();
-
-        foreach (int pointIndex in availableSpawnPoints)
-        {
-            float minDistance = float.MaxValue;
-            Vector3 pointPos = spawnPoints[pointIndex].position;
-
-            foreach (Transform player in players)
-            {
-                float distance = Vector3.Distance(pointPos, player.position);
-                if (distance < minDistance)
-                    minDistance = distance;
-            }
-
-            pointDistances.Add((pointIndex, minDistance));
-        }
-
-        // เรียงจากไกลที่สุด
-        pointDistances.Sort((a, b) => b.minDistance.CompareTo(a.minDistance));
-
-        for (int i = 0; i < count && i < pointDistances.Count; i++)
-        {
-            positions.Add(spawnPoints[pointDistances[i].index].position);
-        }
-
-        return positions;
-    }
-
-    // 🔍 กรองตำแหน่งตามระยะห่างจากผู้เล่น
-    private List<Vector3> FilterPositionsByPlayerDistance(List<Vector3> positions, List<Transform> players)
-    {
-        if (players.Count == 0) return positions;
-
-        List<Vector3> validPositions = new List<Vector3>();
-
-        foreach (Vector3 position in positions)
-        {
-            bool isSafe = true;
-            foreach (Transform player in players)
-            {
-                if (Vector3.Distance(position, player.position) < minPlayerDistance)
-                {
-                    isSafe = false;
-                    break;
-                }
-            }
-
-            if (isSafe)
-                validPositions.Add(position);
-        }
-
-        // ถ้าไม่มีจุดที่ปลอดภัย ให้ใช้จุดเดิม (อาจจะ spawn ใกล้ผู้เล่น)
-        if (validPositions.Count == 0)
-        {
-            if (showMultiSpawnInfo)
-            return positions;
-        }
-
-        return validPositions;
-    }
-
-    // 🆕 ประมวลผล queue ที่เรียบง่าย
-    private void ProcessPendingMultiSpawns()
-    {
-        if (!isMultiSpawning) return;
-
-        if (pendingSpawnPositions.Count == 0)
-        {
-            isMultiSpawning = false;
-            return;
-        }
-
-        // Spawn ทีละตัวในแต่ละ frame เพื่อลด lag
-        if (pendingSpawnPositions.Count > 0 && pendingSpawnEnemies.Count > 0 && CanSpawnMore())
-        {
-            Vector3 position = pendingSpawnPositions.Dequeue();
-            EnemySpawnData enemyData = pendingSpawnEnemies.Dequeue();
-
-            ExecuteSpawn(enemyData, position);
-        }
-    }
-
-    private void ExecuteSpawn(EnemySpawnData enemyData, Vector3 position)
-    {
-        NetworkEnemy enemy = Runner.Spawn(enemyData.enemyPrefab, position, Quaternion.identity, PlayerRef.None);
+        Vector3 spawnPosition = spawnAroundPlayers
+            ? GetSpawnPositionAroundPlayers()
+            : transform.position;
+
+        NetworkEnemy enemy = Runner.Spawn(
+            selectedEnemy.enemyPrefab,
+            spawnPosition,
+            Quaternion.identity,
+            PlayerRef.None
+        );
 
         if (enemy != null)
         {
             activeEnemies.Add(enemy);
-            spawnedEnemyTypes[enemy.Object] = enemyData.enemyName;
+            spawnedEnemyTypes[enemy.Object] = selectedEnemy.enemyName;
+            selectedEnemy.currentCount++;
+            selectedEnemy.lastSpawnTime = Time.time;
 
-            enemyData.currentCount++;
-            enemyData.lastSpawnTime = Time.time;
-
-            if (spawnedCounts.ContainsKey(enemyData.enemyName))
+            if (showSpawnInfo)
             {
-                spawnedCounts[enemyData.enemyName]++;
-            }
-            else
-            {
-                spawnedCounts[enemyData.enemyName] = 1;
-            }
-
-            if (showMultiSpawnInfo)
-            {
-                Debug.Log($"🌊 Spawned {enemyData.enemyName} at {position} | Active: {activeEnemies.Count}/{maxTotalEnemies}");
+                Debug.Log($"✅ Spawned {selectedEnemy.enemyName} | Active: {activeEnemies.Count}/{maxTotalEnemies}");
             }
         }
     }
 
-    private List<Transform> GetAllPlayerTransforms()
-    {
-        List<Transform> playerTransforms = new List<Transform>();
-        Hero[] heroes = FindObjectsOfType<Hero>();
-
-        foreach (Hero hero in heroes)
-        {
-            if (hero != null && hero.IsSpawned)
-            {
-                playerTransforms.Add(hero.transform);
-            }
-        }
-
-        return playerTransforms;
-    }
-
-    private void HandleNormalSpawning()
-    {
-        if (Time.time >= nextSpawnTime && CanSpawnMore())
-        {
-            EnemySpawnData selectedEnemy = SelectEnemyToSpawn();
-            if (selectedEnemy != null)
-            {
-                SpawnEnemy(selectedEnemy);
-                UpdateNextSpawnTime();
-            }
-        }
-    }
-
-    private void HandleWaveSpawning()
-    {
-        if (Time.time >= nextWaveTime && CanSpawnMore())
-        {
-            if (multiSpawnMode != MultiSpawnMode.Off)
-            {
-                // แปลง wave เป็น multi-spawn แบบง่ายๆ
-                int originalEnemiesPerPoint = enemiesPerPoint;
-                int originalPointCount = spawnPointCount;
-
-                enemiesPerPoint = 1; // 1 ตัวต่อจุดสำหรับ wave
-                spawnPointCount = Mathf.Min(enemiesPerWave, availableSpawnPoints.Count);
-
-                StartSimpleMultiSpawn();
-
-                // คืนค่าเดิม
-                enemiesPerPoint = originalEnemiesPerPoint;
-                spawnPointCount = originalPointCount;
-            }
-            else
-            {
-                SpawnWave();
-            }
-            nextWaveTime = Time.time + waveCooldown;
-        }
-    }
-
-    private void SpawnWave()
-    {
-        int enemiesToSpawn = Mathf.Min(enemiesPerWave, maxTotalEnemies - activeEnemies.Count);
-
-        for (int i = 0; i < enemiesToSpawn; i++)
-        {
-            EnemySpawnData selectedEnemy = SelectEnemyToSpawn();
-            if (selectedEnemy != null)
-            {
-                SpawnEnemy(selectedEnemy);
-            }
-        }
-
-        Debug.Log($"[EnemySpawner] Spawned wave of {enemiesToSpawn} enemies");
-    }
-
-    private EnemySpawnData SelectEnemyToSpawn()
+    private EnemySpawnData SelectRandomEnemyByWeight()
     {
         if (enemyPrefabs == null || enemyPrefabs.Length == 0)
-        {
-            Debug.LogWarning("[EnemySpawner] No enemy prefabs configured!");
             return null;
-        }
 
-        List<EnemySpawnData> validEnemies = new List<EnemySpawnData>();
-
-        foreach (EnemySpawnData enemy in enemyPrefabs)
-        {
-            if (CanSpawnEnemy(enemy))
-            {
-                for (int i = 0; i < enemy.spawnWeight; i++)
-                {
-                    validEnemies.Add(enemy);
-                }
-            }
-        }
-
-        if (validEnemies.Count == 0) return null;
-
-        if (balanceEnemyTypes)
-        {
-            return SelectBalancedEnemy();
-        }
-
-        return validEnemies[Random.Range(0, validEnemies.Count)];
-    }
-
-    private EnemySpawnData SelectBalancedEnemy()
-    {
-        EnemySpawnData leastSpawned = null;
-        int minCount = int.MaxValue;
+        List<EnemySpawnData> weightedList = new List<EnemySpawnData>();
 
         foreach (EnemySpawnData enemy in enemyPrefabs)
         {
-            if (CanSpawnEnemy(enemy) && enemy.currentCount < minCount)
+            if (enemy.enemyPrefab == null) continue;
+            if (enemy.maxCount > 0 && enemy.currentCount >= enemy.maxCount) continue;
+            if (Time.time < enemy.lastSpawnTime + enemy.spawnCooldown) continue;
+
+            for (int i = 0; i < enemy.spawnWeight; i++)
             {
-                minCount = enemy.currentCount;
-                leastSpawned = enemy;
+                weightedList.Add(enemy);
             }
         }
 
-        return leastSpawned;
-    }
+        if (weightedList.Count == 0)
+            return null;
 
-    private bool CanSpawnEnemy(EnemySpawnData enemy)
-    {
-        if (enemy.enemyPrefab == null) return false;
-        if (Time.time < enemy.lastSpawnTime + enemy.spawnCooldown) return false;
-        if (enemy.maxCount > 0 && enemy.currentCount >= enemy.maxCount) return false;
-        return true;
+        return weightedList[Random.Range(0, weightedList.Count)];
     }
 
     private bool CanSpawnMore()
     {
         return activeEnemies.Count < maxTotalEnemies;
-    }
-
-    private void SpawnEnemy(EnemySpawnData enemyData)
-    {
-        if (Runner == null || !Runner.IsServer)
-        {
-            Debug.LogWarning("[EnemySpawner] Runner is not server or null. Cannot spawn.");
-            return;
-        }
-
-        Vector3 spawnPosition = GetRandomSpawnPosition();
-        NetworkEnemy enemy = Runner.Spawn(enemyData.enemyPrefab, spawnPosition, Quaternion.identity, PlayerRef.None);
-
-        if (enemy != null)
-        {
-            activeEnemies.Add(enemy);
-            spawnedEnemyTypes[enemy.Object] = enemyData.enemyName;
-
-            enemyData.currentCount++;
-            enemyData.lastSpawnTime = Time.time;
-
-            if (spawnedCounts.ContainsKey(enemyData.enemyName))
-            {
-                spawnedCounts[enemyData.enemyName]++;
-            }
-            else
-            {
-                spawnedCounts[enemyData.enemyName] = 1;
-            }
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnemySpawner] Spawned {enemyData.enemyName} at {spawnPosition}. " +
-                         $"Active: {activeEnemies.Count}/{maxTotalEnemies}");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[EnemySpawner] Runner.Spawn returned null.");
-        }
-    }
-
-    private Vector3 GetRandomSpawnPosition()
-    {
-        // ✅ ถ้าเปิดใช้ spawn รอบผู้เล่น
-        if (spawnAroundPlayers)
-        {
-            return GetSpawnPositionAroundPlayers();
-        }
-
-        // โค้ดเดิม (spawn points หรือ random)
-        if (useSpawnPoints && spawnPoints != null && availableSpawnPoints.Count > 0)
-        {
-            int selectedIndex;
-
-            if (availableSpawnPoints.Count == 1)
-            {
-                selectedIndex = 0;
-            }
-            else if (balanceEnemyTypes)
-            {
-                int currentIndex = availableSpawnPoints.IndexOf(lastUsedSpawnPoint);
-                int nextIndex = (currentIndex + 1) % availableSpawnPoints.Count;
-                selectedIndex = nextIndex;
-            }
-            else
-            {
-                List<int> otherPoints = new List<int>(availableSpawnPoints);
-                if (lastUsedSpawnPoint >= 0 && otherPoints.Count > 1)
-                {
-                    otherPoints.Remove(lastUsedSpawnPoint);
-                }
-                selectedIndex = Random.Range(0, otherPoints.Count);
-                selectedIndex = availableSpawnPoints.IndexOf(otherPoints[selectedIndex]);
-            }
-
-            int pointIndex = availableSpawnPoints[selectedIndex];
-            lastUsedSpawnPoint = pointIndex;
-
-            Vector3 position = spawnPoints[pointIndex].position;
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnemySpawner] Using spawn point {pointIndex} at {position}");
-            }
-
-            return position;
-        }
-        else
-        {
-            Vector2 randomCircle = Random.insideUnitCircle * spawnRadius;
-            Vector3 position = transform.position + new Vector3(randomCircle.x, 0, randomCircle.y);
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnemySpawner] Using random position at {position}");
-            }
-
-            return position;
-        }
-    }
-    private Vector3 GetSpawnPositionAroundPlayers()
-    {
-        // หาผู้เล่นทั้งหมด
-        List<Transform> players = GetAllPlayerTransforms();
-
-        if (players.Count == 0)
-        {
-            // ถ้าไม่มีผู้เล่น ใช้ตำแหน่งกลางแมพ
-            if (showDebugInfo)
-                Debug.LogWarning("[EnemySpawner] No players found, using center position");
-            return transform.position;
-        }
-
-        // เลือกผู้เล่นสุ่ม
-        Transform targetPlayer = players[Random.Range(0, players.Count)];
-
-        // พยายามหาตำแหน่งที่ดี
-        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
-        {
-            // สุ่มระยะห่าง
-            float randomDistance = Random.Range(minSpawnDistanceFromPlayer, maxSpawnDistanceFromPlayer);
-
-            // สุ่มมุม 360 องศา
-            float randomAngle = Random.Range(0f, 360f);
-            Vector3 direction = Quaternion.Euler(0, randomAngle, 0) * Vector3.forward;
-
-            // คำนวณตำแหน่ง spawn
-            Vector3 spawnPosition = targetPlayer.position + direction * randomDistance;
-            spawnPosition.y = targetPlayer.position.y; // ใช้ความสูงเดียวกับผู้เล่น
-
-            // ✅ ตรวจสอบกำแพงถ้าเปิดใช้งาน
-            if (checkWallsBeforeSpawn)
-            {
-                if (!IsPositionBlockedByWall(targetPlayer.position, spawnPosition))
-                {
-                    if (showDebugInfo)
-                    {
-                        Debug.Log($"[EnemySpawner] Spawning around player {targetPlayer.name} at distance {randomDistance:F1}m, angle {randomAngle:F0}° (attempt {attempt + 1})");
-                        Debug.DrawLine(targetPlayer.position, spawnPosition, Color.green, 2f);
-                    }
-                    return spawnPosition;
-                }
-                else if (showDebugInfo)
-                {
-                    Debug.DrawLine(targetPlayer.position, spawnPosition, Color.red, 0.5f);
-                }
-            }
-            else
-            {
-                // ไม่เช็คกำแพง ใช้ตำแหน่งนี้เลย
-                if (showDebugInfo)
-                {
-                    Debug.Log($"[EnemySpawner] Spawning around player {targetPlayer.name} at distance {randomDistance:F1}m (no wall check)");
-                }
-                return spawnPosition;
-            }
-        }
-
-        // ถ้าหาไม่เจอหลังจากพยายามหลายครั้ง ใช้ตำแหน่งที่ไกลสุด
-        Vector3 fallbackPosition = targetPlayer.position +
-                                   (Quaternion.Euler(0, Random.Range(0f, 360f), 0) * Vector3.forward) *
-                                   maxSpawnDistanceFromPlayer;
-
-        if (showDebugInfo)
-            Debug.LogWarning($"[EnemySpawner] Using fallback position after {maxSpawnAttempts} attempts");
-
-        return fallbackPosition;
-    }
-
-    // ✅ ตรวจสอบว่าตำแหน่งถูกบล็อกด้วยกำแพงหรือไม่
-    private bool IsPositionBlockedByWall(Vector3 startPos, Vector3 targetPos)
-    {
-        Vector3 direction = (targetPos - startPos).normalized;
-        float distance = Vector3.Distance(startPos, targetPos);
-
-        // เช็คด้วย Raycast (เหมือน Toxic Dash และ NetworkEnemy)
-        RaycastHit hit;
-        if (Physics.Raycast(
-            startPos + Vector3.up * 0.5f,  // เริ่มสูงขึ้นนิดหน่อย
-            direction,
-            out hit,
-            distance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnemySpawner] Position blocked by {hit.collider.name} at {hit.distance:F1}m");
-            }
-            return true;
-        }
-
-        // เช็คด้วย SphereCast เพิ่มเติม (ครอบคลุมพื้นที่กว้างขึ้น)
-        if (Physics.SphereCast(
-            startPos + Vector3.up * 0.5f,
-            1f,  // รัศมี 1 เมตร
-            direction,
-            out hit,
-            distance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            if (showDebugInfo)
-            {
-                Debug.Log($"[EnemySpawner] Position blocked (sphere) by {hit.collider.name} at {hit.distance:F1}m");
-            }
-            return true;
-        }
-
-        return false;
     }
 
     private void UpdateNextSpawnTime()
@@ -1862,23 +359,150 @@ public int maxSpawnAttempts = 5;
         nextSpawnTime = Time.time + interval;
     }
 
-    // ระบบการจัดการ dead enemies (เหมือนเดิม)
+    // ========== Spawn Position ==========
+    private Vector3 GetSpawnPositionAroundPlayers()
+    {
+        List<Transform> players = GetAllPlayerTransforms();
+
+        if (players.Count == 0)
+            return transform.position;
+
+        Transform targetPlayer = players[Random.Range(0, players.Count)];
+
+        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        {
+            float randomDistance = Random.Range(minSpawnDistanceFromPlayer, maxSpawnDistanceFromPlayer);
+            float randomAngle = Random.Range(0f, 360f);
+            Vector3 direction = Quaternion.Euler(0, randomAngle, 0) * Vector3.forward;
+
+            // ✅ ใช้ตำแหน่ง Y ของผู้เล่นเป็นจุดเริ่มต้น
+            Vector3 spawnPosition = targetPlayer.position + direction * randomDistance;
+
+            // เช็คกำแพง
+            if (checkWallsBeforeSpawn)
+            {
+                if (IsPositionBlockedByWall(targetPlayer.position, spawnPosition))
+                    continue;
+            }
+
+            // ✅ เช็คพื้น (บังคับเสมอ ไม่สนใจ flag)
+            Vector3 groundPosition = FindGroundPosition(spawnPosition);
+
+            // ✅ ถ้าได้ตำแหน่งกลับมา ให้ใช้เลย (ไม่เช็คว่าเป็น Vector3.zero)
+            return groundPosition;
+        }
+
+        // Fallback: ใช้ตำแหน่งผู้เล่น + offset
+        Vector3 fallbackPosition = targetPlayer.position +
+                                   (Quaternion.Euler(0, Random.Range(0f, 360f), 0) * Vector3.forward) *
+                                   maxSpawnDistanceFromPlayer;
+
+        Vector3 finalPosition = FindGroundPosition(fallbackPosition);
+        return finalPosition;
+    }
+
+    private bool IsPositionBlockedByWall(Vector3 startPos, Vector3 targetPos)
+    {
+        Vector3 direction = (targetPos - startPos).normalized;
+        float distance = Vector3.Distance(startPos, targetPos);
+
+        RaycastHit hit;
+        return Physics.Raycast(
+            startPos + Vector3.up * 0.5f,
+            direction,
+            out hit,
+            distance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")
+        );
+    }
+    // ✅ หาตำแหน่งพื้นที่ถูกต้อง (แก้ไขใหม่)
+    private Vector3 FindGroundPosition(Vector3 position)
+    {
+        // 1. ยิง Raycast ลงมาจากสูงเพื่อหาพื้น
+        RaycastHit hit;
+        Vector3 startPos = position + Vector3.up * 10f;
+
+        // ✅ เพิ่ม Layer: "Ground", "Default", "Floor"
+        LayerMask groundLayers = LayerMask.GetMask("Default", "Ground", "Floor");
+
+        if (Physics.Raycast(startPos, Vector3.down, out hit, 20f, groundLayers))
+        {
+            // ✅ ปรับตำแหน่งให้สูงจากพื้น 0.5 เมตร
+            Vector3 groundPosition = hit.point + Vector3.up * 0.5f;
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"✅ Found ground at Y={hit.point.y:F2}, spawning at Y={groundPosition.y:F2}");
+                Debug.DrawLine(startPos, hit.point, Color.green, 2f);
+            }
+
+            return groundPosition;
+        }
+
+        // 2. ถ้าไม่เจอพื้นด้วย Raycast ลองใช้ SphereCast
+        if (Physics.SphereCast(startPos, 0.5f, Vector3.down, out hit, 20f, groundLayers))
+        {
+            Vector3 groundPosition = hit.point + Vector3.up * 0.5f;
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"✅ Found ground (sphere) at Y={hit.point.y:F2}");
+            }
+
+            return groundPosition;
+        }
+
+        // 3. ถ้ายังไม่เจอ ใช้ตำแหน่งผู้เล่นแทน
+        List<Transform> players = GetAllPlayerTransforms();
+        if (players.Count > 0)
+        {
+            Vector3 playerGroundPos = players[0].position;
+            playerGroundPos.y += 0.5f; // สูงจากผู้เล่นนิดหน่อย
+
+            if (showDebugInfo)
+            {
+                Debug.LogWarning($"⚠️ No ground found, using player Y position: {playerGroundPos.y:F2}");
+            }
+
+            return playerGroundPos;
+        }
+
+        if (showDebugInfo)
+        {
+            Debug.LogError($"❌ No ground found at all! Using original position");
+            Debug.DrawLine(startPos, startPos + Vector3.down * 20f, Color.red, 2f);
+        }
+
+        return position; // ใช้ตำแหน่งเดิม (แทนที่จะ return Vector3.zero)
+    }
+    private List<Transform> GetAllPlayerTransforms()
+    {
+        List<Transform> playerTransforms = new List<Transform>();
+        Hero[] heroes = FindObjectsOfType<Hero>();
+
+        foreach (Hero hero in heroes)
+        {
+            if (hero != null && hero.IsSpawned)
+                playerTransforms.Add(hero.transform);
+        }
+
+        return playerTransforms;
+    }
+
+    // ========== Cleanup ==========
     private void CleanupDeadEnemies()
     {
         for (int i = activeEnemies.Count - 1; i >= 0; i--)
         {
             NetworkEnemy enemy = activeEnemies[i];
 
-            // ถ้า enemy ตายหรือ null ให้ลบออกจาก active list
             if (enemy == null || enemy.IsDead)
             {
-                // ลดจำนวน current count ของ enemy type นั้นๆ
                 if (enemy != null && enemy.Object != null && spawnedEnemyTypes.ContainsKey(enemy.Object))
                 {
                     string enemyTypeName = spawnedEnemyTypes[enemy.Object];
                     spawnedEnemyTypes.Remove(enemy.Object);
 
-                    // หา enemy data แล้วลด count
                     foreach (EnemySpawnData enemyData in enemyPrefabs)
                     {
                         if (enemyData.enemyName == enemyTypeName)
@@ -1887,636 +511,306 @@ public int maxSpawnAttempts = 5;
                             break;
                         }
                     }
-
-                    if (showDebugInfo)
-                    {
-                    }
                 }
 
                 activeEnemies.RemoveAt(i);
             }
         }
     }
- 
 
-    private System.Collections.IEnumerator KillEnemyAfterDelay(NetworkEnemy enemy, float delay)
+    // ========== Enemy Death Handler ==========
+    public void OnEnemyDeath(NetworkEnemy deadEnemy, string enemyTypeName)
     {
-        yield return new WaitForSeconds(delay);
+        if (!HasStateAuthority) return;
 
-        if (enemy != null && !enemy.IsDead)
+        currentSessionKills++;
+
+        if (showDebugInfo)
         {
-            Debug.Log($"🧪 Killing test enemy...");
+            Debug.Log($"🔥 Enemy killed: {enemyTypeName} | Total: {currentSessionKills}/{requiredKillsForStage}");
+        }
 
-            // ตั้งค่า HP เป็น 0 และ IsDead เป็น true
-            enemy.CurrentHp = 0;
-            enemy.IsDead = true;
+        RPC_UpdateStageRewardTracker(enemyTypeName);
 
+        if (currentSessionKills >= requiredKillsForStage && !isStageCompleted)
+        {
+            ForceCheckStageCompletion();
         }
     }
-    private void CleanupDeadBosses()
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_UpdateStageRewardTracker(string enemyTypeName)
     {
-        for (int i = activeBosses.Count - 1; i >= 0; i--)
+        StageRewardTracker.AddEnemyKill();
+    }
+
+    // ========== Stage Completion ==========
+    private void CheckStageCompletion()
+    {
+        if (string.IsNullOrEmpty(currentStageName)) return;
+
+        bool wasCompleted = isStageCompleted;
+        isStageCompleted = currentSessionKills >= requiredKillsForStage;
+
+        if (!wasCompleted && isStageCompleted)
         {
-            NetworkEnemy boss = activeBosses[i];
+            OnStageCompleted();
+        }
+    }
 
-            if (boss == null || boss.IsDead)
+    private void ForceCheckStageCompletion()
+    {
+        lastStageCheckTime = 0f;
+        CheckStageCompletion();
+    }
+
+    private void OnStageCompleted()
+    {
+        StageProgressManager.CompleteStage(currentStageName);
+
+        if (stopSpawningWhenStageCompleted)
+        {
+            nextSpawnTime = float.MaxValue;
+
+            if (destroyRemainingEnemiesOnStageComplete)
             {
-                if (boss != null)
+                DestroyRemainingEnemies();
+            }
+
+            RPC_AnnounceStageCompleted(currentStageName);
+        }
+    }
+
+    private void DestroyRemainingEnemies()
+    {
+        if (!HasStateAuthority) return;
+
+        int destroyedCount = 0;
+
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            NetworkEnemy enemy = activeEnemies[i];
+            if (enemy != null && !enemy.IsDead)
+            {
+                if (enemy.Object != null && spawnedEnemyTypes.ContainsKey(enemy.Object))
                 {
-                    string bossName = boss.name.Replace("(Clone)", "").Trim();
+                    string enemyTypeName = spawnedEnemyTypes[enemy.Object];
+                    spawnedEnemyTypes.Remove(enemy.Object);
 
-                    foreach (BossSpawnCondition condition in bossConditions)
+                    foreach (EnemySpawnData enemyData in enemyPrefabs)
                     {
-                        if (condition.bossPrefab != null &&
-                            (condition.bossPrefab.name == bossName ||
-                             condition.bossName == bossName ||
-                             condition.bossPrefab.name.Contains(bossName) ||
-                             bossName.Contains(condition.bossPrefab.name)))
+                        if (enemyData.enemyName == enemyTypeName)
                         {
-                            condition.currentBossCount = Mathf.Max(0, condition.currentBossCount - 1);
-                            condition.lastBossDeathTime = Time.time;
-
-                            RPC_AnnounceBossDefeated(condition.bossName);
-                            Debug.Log($"🏆 Boss {condition.bossName} defeated! Cooldown started.");
+                            enemyData.currentCount = Mathf.Max(0, enemyData.currentCount - 1);
                             break;
                         }
                     }
                 }
 
-                activeBosses.RemoveAt(i);
+                if (enemy.Object != null)
+                {
+                    Runner.Despawn(enemy.Object);
+                    destroyedCount++;
+                }
             }
+            activeEnemies.RemoveAt(i);
         }
-    }
 
-    
-
-    // 🧪 3. เพิ่ม method สำหรับทดสอบการฆ่า enemy ตรงๆ
-   
-
-    private void UpdateBossKillCounts(string killedEnemyName)
-    {
-        foreach (BossSpawnCondition condition in bossConditions)
+        if (showDebugInfo && destroyedCount > 0)
         {
-            bool shouldCount = false;
-
-            if (condition.includeSpecificEnemies)
-            {
-                if (condition.specificEnemyNames != null)
-                {
-                    foreach (string specificName in condition.specificEnemyNames)
-                    {
-                        if (specificName == killedEnemyName)
-                        {
-                            shouldCount = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                shouldCount = true;
-            }
-
-            if (shouldCount)
-            {
-                condition.currentKillCount++;
-
-                if (verboseKillTracking && condition.currentKillCount % 5 == 0)
-                {
-                    int remaining = condition.enemiesToKill - condition.currentKillCount;
-                    float progress = (float)condition.currentKillCount / condition.enemiesToKill * 100f;
-
-                    Debug.Log($"🎯 Boss {condition.bossName} progress: {condition.currentKillCount}/{condition.enemiesToKill} " +
-                             $"({progress:F1}%) - Remaining: {remaining}");
-
-                    if (remaining <= 5 && remaining > 0)
-                    {
-                        Debug.Log($"⚠️ WARNING: {condition.bossName} will spawn in {remaining} more kills!");
-                    }
-                }
-            }
+            Debug.Log($"🧹 Destroyed {destroyedCount} remaining enemies");
         }
     }
 
-    private void InitializeSpawnCounts()
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_AnnounceStageCompleted(string stageName)
     {
-        spawnedCounts.Clear();
-        killedCounts.Clear();
-        spawnedEnemyTypes.Clear();
-        totalEnemiesKilled = 0;
+        StageRewardTracker.Instance?.SetCorrectEnemyCount(currentSessionKills);
+
+        StageCompleteUI stageUI = FindObjectOfType<StageCompleteUI>();
+        if (stageUI != null)
+        {
+            if (stageUI.stageCompletePanel != null && stageUI.stageCompletePanel.activeSelf)
+            {
+                stageUI.HideStageComplete();
+            }
+            stageUI.ShowStageComplete(stageName);
+        }
+    }
+
+    // ========== Lobby Dummy System ==========
+    private IEnumerator SpawnLobbyDummy()
+    {
+        yield return new WaitForSeconds(1f);
+
+        NetworkEnemy[] existingEnemies = FindObjectsOfType<NetworkEnemy>();
+        bool hasExistingDummy = false;
+
+        foreach (NetworkEnemy enemy in existingEnemies)
+        {
+            if (enemy != null && enemy.isLobbyDummy && !enemy.IsDead)
+            {
+                hasExistingDummy = true;
+                break;
+            }
+        }
+
+        if (!hasExistingDummy && dummyPrefab != null && dummySpawnPoint != null)
+        {
+            SpawnDummyAtPosition(dummySpawnPoint.position);
+        }
+    }
+
+    private void CheckAndSpawnDummyIfNeeded()
+    {
+        if (!HasStateAuthority) return;
+
+        NetworkEnemy[] allEnemies = FindObjectsOfType<NetworkEnemy>();
+        NetworkEnemy existingDummy = null;
+
+        foreach (NetworkEnemy enemy in allEnemies)
+        {
+            if (enemy != null && enemy.IsDummy && !enemy.IsDead)
+            {
+                existingDummy = enemy;
+                break;
+            }
+        }
+
+        if (existingDummy == null)
+        {
+            SpawnDummy();
+        }
+        else
+        {
+            currentDummyInstance = existingDummy;
+        }
+    }
+
+    private void SpawnDummy()
+    {
+        if (dummyPrefab == null)
+        {
+            Debug.LogError("[EnemySpawner] Dummy prefab is not assigned!");
+            return;
+        }
+
+        Vector3 spawnPosition = dummySpawnPoint != null
+            ? dummySpawnPoint.position
+            : transform.position + Vector3.forward * 5f;
+
+        SpawnDummyAtPosition(spawnPosition);
+    }
+
+    public void SpawnDummyAtPosition(Vector3 position)
+    {
+        if (!HasStateAuthority) return;
+
+        try
+        {
+            int dummyLevel = LoadDummyLevelFromFirebase();
+
+            var spawnedObject = Runner.Spawn(
+                dummyPrefab,
+                position,
+                Quaternion.identity,
+                PlayerRef.None
+            );
+
+            if (spawnedObject != null)
+            {
+                var enemy = spawnedObject.GetComponent<NetworkEnemy>();
+                if (enemy != null)
+                {
+                    enemy.IsDummy = true;
+                    enemy.DummyLevel = dummyLevel;
+                    enemy.isLobbyDummy = true;
+
+                    currentDummyInstance = enemy;
+                    hasDummySpawned = true;
+
+                    Debug.Log($"[EnemySpawner] ✅ Dummy spawned at Level {dummyLevel}");
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[EnemySpawner] Error spawning Dummy: {e.Message}");
+        }
+    }
+
+    private int LoadDummyLevelFromFirebase()
+    {
+        try
+        {
+            var persistentData = PersistentPlayerData.Instance;
+
+            if (persistentData?.multiCharacterData == null)
+                return 1;
+
+            persistentData.multiCharacterData.CheckAndResetDummyIfNewDay();
+            return persistentData.multiCharacterData.trainingDummy.currentLevel;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[EnemySpawner] Error loading level: {e.Message}");
+            return 1;
+        }
+    }
+
+    // ========== Public Methods ==========
+    public void RestartSpawning()
+    {
+        if (!HasStateAuthority) return;
+
+        isStageCompleted = false;
+        currentSessionKills = 0;
+
+        // ✅ รอ 6 วินาทีใหม่
+        firstSpawnTime = Time.time + 7f;
+        nextSpawnTime = firstSpawnTime;
+        isFirstSpawnReady = false;
+
+        lastStageCheckTime = 0f;
 
         foreach (EnemySpawnData enemy in enemyPrefabs)
         {
-            if (!string.IsNullOrEmpty(enemy.enemyName))
-            {
-                spawnedCounts[enemy.enemyName] = 0;
-                killedCounts[enemy.enemyName] = 0;
-            }
             enemy.currentCount = 0;
             enemy.lastSpawnTime = 0f;
         }
 
-        if (showDebugInfo)
-        {
-            Debug.Log($"[EnemySpawner] Initialized spawn counts for {enemyPrefabs.Length} enemy types");
-        }
+        Debug.Log($"🔄 Spawning restarted for stage: {currentStageName}");
+        Debug.Log($"⏰ Next spawn in 6 seconds at {firstSpawnTime:F1}s");
     }
 
-    private void InitializeBossConditions()
+    public int GetRequiredKills()
     {
-        if (bossConditions == null) return;
-
-        foreach (BossSpawnCondition condition in bossConditions)
-        {
-            condition.currentKillCount = 0;
-            condition.lastBossDeathTime = 0f;
-            condition.currentBossCount = 0;
-            condition.isSpawningBoss = false;
-
-            if (string.IsNullOrEmpty(condition.bossName) && condition.bossPrefab != null)
-            {
-                condition.bossName = condition.bossPrefab.name;
-            }
-        }
-
-        if (showDebugInfo)
-        {
-            Debug.Log($"[EnemySpawner] Initialized {bossConditions.Length} boss conditions");
-        }
+        return requiredKillsForStage;
     }
 
-    // ========== Boss Spawning System (เหมือนเดิม) ==========
-
-    private void CheckBossSpawnConditions()
+    public bool IsCurrentStageCompleted()
     {
-        if (bossConditions == null) return;
-
-        foreach (BossSpawnCondition condition in bossConditions)
-        {
-            if (ShouldSpawnBoss(condition))
-            {
-                if (verboseKillTracking)
-                {
-                    Debug.Log($"🏆 Boss {condition.bossName} conditions met! Starting spawn process...");
-                }
-                StartCoroutine(SpawnBossWithWarning(condition));
-            }
-        }
-    }
-
-    private bool ShouldSpawnBoss(BossSpawnCondition condition)
-    {
-        if (condition.bossPrefab == null) return false;
-        if (condition.isSpawningBoss) return false;
-        if (condition.currentBossCount >= condition.maxBossInstances) return false;
-        if (condition.currentKillCount < condition.enemiesToKill) return false;
-
-        if (Time.time < condition.lastBossDeathTime + condition.bossRespawnCooldown) return false;
-
-        return true;
-    }
-
-    private IEnumerator SpawnBossWithWarning(BossSpawnCondition condition)
-    {
-        condition.isSpawningBoss = true;
-
-        if (condition.announceSpawn)
-        {
-            RPC_AnnounceBossSpawning(condition.bossName, condition.spawnWarningTime);
-            yield return new WaitForSeconds(condition.spawnWarningTime);
-        }
-
-        SpawnBoss(condition);
-        condition.currentKillCount = 0;
-        condition.isSpawningBoss = false;
-    }
-
-    private void SpawnBoss(BossSpawnCondition condition)
-    {
-        if (Runner == null || !Runner.IsServer) return;
-
-        Vector3 bossSpawnPosition = GetBossSpawnPosition();
-        NetworkEnemy boss = Runner.Spawn(condition.bossPrefab, bossSpawnPosition, Quaternion.identity, PlayerRef.None);
-
-        if (boss != null)
-        {
-            activeBosses.Add(boss);
-            condition.currentBossCount++;
-
-            RPC_AnnounceBossSpawned(condition.bossName, bossSpawnPosition);
-
-            Debug.Log($"🏆 BOSS SPAWNED: {condition.bossName} at {bossSpawnPosition}! " +
-                     $"Active bosses: {activeBosses.Count}");
-        }
-        else
-        {
-            Debug.LogWarning($"[EnemySpawner] Failed to spawn boss: {condition.bossName}");
-            condition.isSpawningBoss = false;
-        }
-    }
-
-    private Vector3 GetBossSpawnPosition()
-    {
-        if (useBossSpawnPoints && bossSpawnPoints != null && bossSpawnPoints.Length > 0)
-        {
-            Transform bossSpawnPoint = bossSpawnPoints[Random.Range(0, bossSpawnPoints.Length)];
-            return bossSpawnPoint.position;
-        }
-        else
-        {
-            return GetRandomSpawnPosition();
-        }
-    }
-
-    // ========== RPC Methods ==========
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_AnnounceBossSpawning(string bossName, float warningTime)
-    {
-        Debug.Log($"🚨 WARNING: {bossName} will spawn in {warningTime} seconds!");
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_AnnounceBossSpawned(string bossName, Vector3 position)
-    {
-        Debug.Log($"🏆 {bossName} HAS SPAWNED at {position}!");
-    }
-
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_AnnounceBossDefeated(string bossName)
-    {
-        Debug.Log($"⚔️ {bossName} HAS BEEN DEFEATED!");
-    }
-
-    private void ValidateSettings()
-    {
-        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
-        {
-            Debug.LogError("[EnemySpawner] No enemy prefabs configured! Please add enemy prefabs to spawn.");
-            return;
-        }
-
-        int validEnemies = 0;
-        foreach (EnemySpawnData enemy in enemyPrefabs)
-        {
-            if (enemy.enemyPrefab == null)
-            {
-                Debug.LogWarning($"[EnemySpawner] Enemy prefab is null for '{enemy.enemyName}'");
-                continue;
-            }
-
-            if (string.IsNullOrEmpty(currentStageName))
-            {
-                currentStageName = SceneManager.GetActiveScene().name;
-                Debug.LogWarning($"[EnemySpawner] No stage name set, using scene name: {currentStageName}");
-            }
-
-            validEnemies++;
-        }
-
-        Debug.Log($"[EnemySpawner] Validated {validEnemies} valid enemy types");
-
-        if (useSpawnPoints)
-        {
-            if (spawnPoints == null || availableSpawnPoints.Count == 0)
-            {
-                Debug.LogWarning("[EnemySpawner] useSpawnPoints is enabled but no valid spawn points found! Multi-spawn disabled.");
-                useSpawnPoints = false;
-                multiSpawnMode = MultiSpawnMode.Off;
-            }
-            else
-            {
-                Debug.Log($"[EnemySpawner] Using {availableSpawnPoints.Count} spawn points");
-
-                if (multiSpawnMode != MultiSpawnMode.Off)
-                {
-                    Debug.Log($"🌊 Multi-Spawn enabled: {multiSpawnMode} mode");
-                }
-            }
-        }
-        if (string.IsNullOrEmpty(currentStageName))
-        {
-            currentStageName = SceneManager.GetActiveScene().name;
-            Debug.LogWarning($"[EnemySpawner] No stage name set, using scene name: {currentStageName}");
-        }
-
-        if (bossConditions != null)
-        {
-            int validBosses = 0;
-            foreach (BossSpawnCondition condition in bossConditions)
-            {
-                if (condition.bossPrefab == null)
-                {
-                    Debug.LogWarning($"[EnemySpawner] Boss prefab is null for '{condition.bossName}'");
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(condition.bossName))
-                {
-                    condition.bossName = condition.bossPrefab.name;
-                }
-
-                if (condition.enemiesToKill <= 0)
-                {
-                    Debug.LogWarning($"[EnemySpawner] Boss '{condition.bossName}' has invalid enemiesToKill: {condition.enemiesToKill}");
-                    condition.enemiesToKill = 10;
-                }
-
-                if (condition.includeSpecificEnemies &&
-                    (condition.specificEnemyNames == null || condition.specificEnemyNames.Length == 0))
-                {
-                    Debug.LogWarning($"[EnemySpawner] Boss '{condition.bossName}' requires specific enemies but none specified!");
-                }
-
-                validBosses++;
-            }
-
-            Debug.Log($"[EnemySpawner] Validated {validBosses} boss conditions");
-        }
-    }
-
-    // ========== Public Methods สำหรับการควบคุม ==========
-
-    public void ForceSpawnEnemy(string enemyName)
-    {
-        if (!Runner.IsServer) return;
-
-        foreach (EnemySpawnData enemy in enemyPrefabs)
-        {
-            if (enemy.enemyName == enemyName && enemy.enemyPrefab != null)
-            {
-                SpawnEnemy(enemy);
-                break;
-            }
-        }
-    }
-
-    public void ForceSpawnBoss(string bossName)
-    {
-        if (!Runner.IsServer) return;
-
-        foreach (BossSpawnCondition condition in bossConditions)
-        {
-            if (condition.bossName == bossName && condition.bossPrefab != null)
-            {
-                SpawnBoss(condition);
-                break;
-            }
-        }
-    }
-
-    // 🆕 เปลี่ยนโหมด Multi-Spawn แบบง่ายๆ
-    public void SetMultiSpawnMode(MultiSpawnMode newMode)
-    {
-        multiSpawnMode = newMode;
-
-        if (showMultiSpawnInfo)
-        {
-            Debug.Log($"🌊 Multi-Spawn mode changed to: {newMode}");
-        }
-    }
-
-    // 🆕 บังคับให้เกิด Multi-Spawn ทันที
-    public void ForceMultiSpawn()
-    {
-        if (!Runner.IsServer || multiSpawnMode == MultiSpawnMode.Off) return;
-
-        nextMultiSpawnTime = 0f; // Reset cooldown
-        StartSimpleMultiSpawn();
-
-        Debug.Log("🌊 Force triggered multi-spawn!");
-    }
-
-    // 🆕 ตั้งค่าง่ายๆ สำหรับ intensity
-    public void SetSpawnIntensity(int intensity)
-    {
-        // intensity 1-5
-        intensity = Mathf.Clamp(intensity, 1, 5);
-
-        switch (intensity)
-        {
-            case 1: // Easy
-                spawnPointCount = 2;
-                enemiesPerPoint = 1;
-                multiSpawnCooldown = 8f;
-                break;
-            case 2: // Normal
-                spawnPointCount = 3;
-                enemiesPerPoint = 1;
-                multiSpawnCooldown = 6f;
-                break;
-            case 3: // Hard
-                spawnPointCount = 4;
-                enemiesPerPoint = 2;
-                multiSpawnCooldown = 5f;
-                break;
-            case 4: // Very Hard
-                spawnPointCount = 5;
-                enemiesPerPoint = 2;
-                multiSpawnCooldown = 4f;
-                break;
-            case 5: // Insane
-                spawnPointCount = 6;
-                enemiesPerPoint = 3;
-                multiSpawnCooldown = 3f;
-                break;
-        }
-
-        if (showMultiSpawnInfo)
-        {
-            Debug.Log($"🌊 Spawn intensity set to {intensity}: {spawnPointCount} points, {enemiesPerPoint} per point, {multiSpawnCooldown}s cooldown");
-        }
-    }
-
-  
-
-    public void ResetBossKillCount(string bossName)
-    {
-        if (!Runner.IsServer) return;
-
-        foreach (BossSpawnCondition condition in bossConditions)
-        {
-            if (condition.bossName == bossName)
-            {
-                condition.currentKillCount = 0;
-                Debug.Log($"[DEBUG] Reset kill count for boss {bossName}");
-                break;
-            }
-        }
-    }
-
-    public void PauseSpawning(float duration)
-    {
-        nextSpawnTime = Time.time + duration;
-        nextWaveTime = Time.time + duration;
-        nextMultiSpawnTime = Time.time + duration;
-        Debug.Log($"[EnemySpawner] All spawning paused for {duration} seconds");
+        return isStageCompleted;
     }
 
     public void ClearAllEnemies()
     {
-        if (!Runner.IsServer) return;
+        if (!HasStateAuthority) return;
 
         foreach (NetworkEnemy enemy in activeEnemies)
         {
             if (enemy != null)
-            {
                 Runner.Despawn(enemy.Object);
-            }
         }
 
         activeEnemies.Clear();
         spawnedEnemyTypes.Clear();
 
-        // ล้าง multi-spawn queue
-        pendingSpawnPositions.Clear();
-        pendingSpawnEnemies.Clear();
-        isMultiSpawning = false;
+        foreach (EnemySpawnData enemy in enemyPrefabs)
+        {
+            enemy.currentCount = 0;
+        }
 
-        InitializeSpawnCounts();
         Debug.Log("[EnemySpawner] All enemies cleared");
     }
-
-    public void ClearAllBosses()
-    {
-        if (!Runner.IsServer) return;
-
-        foreach (NetworkEnemy boss in activeBosses)
-        {
-            if (boss != null)
-            {
-                Runner.Despawn(boss.Object);
-            }
-        }
-
-        activeBosses.Clear();
-        InitializeBossConditions();
-        Debug.Log("[EnemySpawner] All bosses cleared");
-    }
-
-    public void ClearAll()
-    {
-        ClearAllEnemies();
-        ClearAllBosses();
-    }
-
-    public Dictionary<string, int> GetSpawnStatistics()
-    {
-        return new Dictionary<string, int>(spawnedCounts);
-    }
-
-    public Dictionary<string, int> GetKillStatistics()
-    {
-        return new Dictionary<string, int>(killedCounts);
-    }
-
-    public Dictionary<string, float> GetBossProgress()
-    {
-        Dictionary<string, float> progress = new Dictionary<string, float>();
-
-        if (bossConditions != null)
-        {
-            foreach (BossSpawnCondition condition in bossConditions)
-            {
-                float progressPercent = (float)condition.currentKillCount / condition.enemiesToKill;
-                progress[condition.bossName] = Mathf.Clamp01(progressPercent);
-            }
-        }
-
-        return progress;
-    }
-
-    // 🆕 Get simple status
-    public bool IsMultiSpawning()
-    {
-        return isMultiSpawning;
-    }
-
-    public int GetPendingSpawnCount()
-    {
-        return pendingSpawnPositions.Count;
-    }
-
-    public MultiSpawnMode GetCurrentMode()
-    {
-        return multiSpawnMode;
-    }
-
-    // ========== Debug Visualization ==========
-    private void OnDrawGizmosSelected()
-    {
-        if (spawnPoints == null) return;
-
-        for (int i = 0; i < spawnPoints.Length; i++)
-        {
-            if (spawnPoints[i] != null)
-            {
-                // เปลี่ยนสีตามโหมด Multi-Spawn
-                switch (multiSpawnMode)
-                {
-                    case MultiSpawnMode.Off:
-                        Gizmos.color = Color.gray;
-                        break;
-                    case MultiSpawnMode.Balanced:
-                        Gizmos.color = Color.green;
-                        break;
-                    case MultiSpawnMode.ClusterAttack:
-                        Gizmos.color = Color.red;
-                        break;
-                    case MultiSpawnMode.SurroundPlayer:
-                        Gizmos.color = Color.blue;
-                        break;
-                    case MultiSpawnMode.RandomBurst:
-                        Gizmos.color = Color.yellow;
-                        break;
-                    case MultiSpawnMode.EdgeSpawn:
-                        Gizmos.color = Color.magenta;
-                        break;
-                }
-
-                Gizmos.DrawWireSphere(spawnPoints[i].position, 1f);
-
-#if UNITY_EDITOR
-                UnityEditor.Handles.Label(spawnPoints[i].position + Vector3.up * 2f, $"SP {i}");
-#endif
-            }
-        }
-
-        // วาดรัศมีป้องกันผู้เล่น
-        if (multiSpawnMode != MultiSpawnMode.Off)
-        {
-            Gizmos.color = Color.red;
-            List<Transform> players = GetAllPlayerTransforms();
-            foreach (Transform player in players)
-            {
-                Gizmos.DrawWireSphere(player.position, minPlayerDistance);
-            }
-        }
-
-        // วาดรัศมี spawn ปกติ
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, spawnRadius);
-    }
-    public void RespawnDummy()
-    {
-        if (!HasStateAuthority) return;
-
-        Debug.Log("[EnemySpawner] 🔄 Respawning Dummy...");
-
-        // ลบ Dummy เก่าถ้ามี
-        if (currentDummyInstance != null)
-        {
-            Runner.Despawn(currentDummyInstance.Object);
-            currentDummyInstance = null;
-        }
-
-        hasDummySpawned = false;
-        SpawnDummy();
-    }
-
-    // ✅ เพิ่ม method สำหรับ debug
-   
-
-    
 }

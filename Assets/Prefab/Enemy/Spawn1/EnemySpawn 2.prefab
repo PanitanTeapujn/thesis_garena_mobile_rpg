@@ -152,78 +152,38 @@ MonoBehaviour:
     spawnWeight: 3
     maxCount: 5
     spawnCooldown: 1
-    lastSpawnTime: 0
     currentCount: 0
+    lastSpawnTime: 0
   - enemyPrefab: {fileID: 2102208964661930907, guid: eaf15b70e569d2343846e52d707dd01e,
       type: 3}
     enemyName: 
     spawnWeight: 5
-    maxCount: 10
+    maxCount: -1
     spawnCooldown: 1
-    lastSpawnTime: 0
     currentCount: 0
-  bossConditions:
-  - bossPrefab: {fileID: 3409677751334514079, guid: a7f6500828a473a4594dd249d3501752,
-      type: 3}
-    bossName: 
-    enemiesToKill: 20
-    includeSpecificEnemies: 1
-    specificEnemyNames:
-    - Slime
-    bossRespawnCooldown: 0
-    maxBossInstances: 0
-    announceSpawn: 1
-    spawnWarningTime: 0
-    currentKillCount: 0
-    lastBossDeathTime: 0
-    currentBossCount: 0
-    isSpawningBoss: 0
-  enableBossSpawning: 1
-  bossSpawnPoints:
-  - {fileID: 6608536978320820854}
-  useBossSpawnPoints: 1
-  multiSpawnMode: 4
-  spawnPointCount: 6
-  enemiesPerPoint: 1
-  minPlayerDistance: 8
-  multiSpawnCooldown: 10
+    lastSpawnTime: 0
   maxTotalEnemies: 10
-  spawnInterval: 5
+  spawnInterval: 2.5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
+  enableBatchSpawning: 1
+  minEnemiesPerSpawn: 2
+  maxEnemiesPerSpawn: 7
   spawnAroundPlayers: 1
   minSpawnDistanceFromPlayer: 8
   maxSpawnDistanceFromPlayer: 15
   checkWallsBeforeSpawn: 1
+  checkGroundBeforeSpawn: 1
+  maxGroundHeight: 1
   maxSpawnAttempts: 5
-  spawnPoints:
-  - {fileID: 14414437941669633}
-  - {fileID: 7888531709963633922}
-  - {fileID: 3368574102071801100}
-  - {fileID: 5449713855246032909}
-  - {fileID: 6023309308642714384}
-  - {fileID: 3756664571040027359}
-  spawnRadius: 20
-  useSpawnPoints: 1
-  showDebugInfo: 0
-  verboseKillTracking: 1
-  showMultiSpawnInfo: 1
-  balanceEnemyTypes: 1
-  spawnInWaves: 0
-  enemiesPerWave: 3
-  waveCooldown: 2
   currentStageName: 
   stopSpawningWhenStageCompleted: 1
-  showStageDebugInfo: 1
-  stageCompleteUI: {fileID: 0}
   destroyRemainingEnemiesOnStageComplete: 1
-  destroyDelay: 1
-  waitForLoadingComplete: 1
-  maxLoadingWaitTime: 5
-  showLoadingDebug: 1
   dummyPrefab: {fileID: 0}
   dummySpawnPoint: {fileID: 0}
   isLobbyScene: 0
+  showDebugInfo: 0
+  showSpawnInfo: 1
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -146,49 +146,29 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefabs: []
-  bossConditions: []
-  enableBossSpawning: 1
-  bossSpawnPoints:
-  - {fileID: 6608536978320820854}
-  useBossSpawnPoints: 1
-  multiSpawnMode: 0
-  spawnPointCount: 6
-  enemiesPerPoint: 1
-  minPlayerDistance: 8
-  multiSpawnCooldown: 10
   maxTotalEnemies: 1
-  spawnInterval: 5
+  spawnInterval: 1
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
-  spawnPoints:
-  - {fileID: 14414437941669633}
-  - {fileID: 7888531709963633922}
-  - {fileID: 3368574102071801100}
-  - {fileID: 5449713855246032909}
-  - {fileID: 6023309308642714384}
-  - {fileID: 3756664571040027359}
-  spawnRadius: 20
-  useSpawnPoints: 1
-  showDebugInfo: 0
-  verboseKillTracking: 1
-  showMultiSpawnInfo: 1
-  balanceEnemyTypes: 1
-  spawnInWaves: 0
-  enemiesPerWave: 3
-  waveCooldown: 2
+  enableBatchSpawning: 1
+  minEnemiesPerSpawn: 2
+  maxEnemiesPerSpawn: 7
+  spawnAroundPlayers: 1
+  minSpawnDistanceFromPlayer: 8
+  maxSpawnDistanceFromPlayer: 15
+  checkWallsBeforeSpawn: 1
+  checkGroundBeforeSpawn: 1
+  maxGroundHeight: 1
+  maxSpawnAttempts: 5
   currentStageName: 
   stopSpawningWhenStageCompleted: 1
-  showStageDebugInfo: 1
-  stageCompleteUI: {fileID: 0}
   destroyRemainingEnemiesOnStageComplete: 1
-  destroyDelay: 1
-  waitForLoadingComplete: 1
-  maxLoadingWaitTime: 3
-  showLoadingDebug: 1
   dummyPrefab: {fileID: 2926414130990135442, guid: 4663345fe1c8fbb4798b2b02c3f20388,
     type: 3}
   dummySpawnPoint: {fileID: 14414437941669633}
   isLobbyScene: 0
+  showDebugInfo: 0
+  showSpawnInfo: 1
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0

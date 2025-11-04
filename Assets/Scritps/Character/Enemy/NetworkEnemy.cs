@@ -90,7 +90,7 @@ public class NetworkEnemy : Character
 
     // ========== Enemy Properties ==========
     [Header("Enemy Settings")]
-    public float detectRange = 10f;
+    public float detectRange = 50f;
     public float attackCheckInterval = 0.5f;
 
     [Header("🎯 Dummy System (Firebase-based)")]
@@ -582,36 +582,37 @@ public class NetworkEnemy : Character
     {
         Debug.Log($"Enemy Spawned - HasStateAuthority: {HasStateAuthority}");
 
-        // Initialize network properties only on server
         if (HasStateAuthority)
         {
             NetworkedMaxHp = MaxHp;
             NetworkedCurrentHp = CurrentHp;
             IsDead = false;
-            CurrentState = EnemyState.Patrolling; // 🆕 เริ่มต้นด้วย Patrolling แทน Chasing
+
+            // ✅ เปลี่ยนจาก Patrolling เป็น Chasing ทันที
+            CurrentState = EnemyState.Chasing;
             StateTimer = 0f;
             totalPatrolTime = 0f;
 
-            // 🆕 ตั้งค่า patrol center และ target
             PatrolCenter = transform.position;
             GenerateNewPatrolTarget();
-
-            // 🎲 สุ่ม patrol wait time สำหรับตัวนี้
             individualPatrolWaitTime = Random.Range(minPatrolWaitTime, maxPatrolWaitTime);
 
-            // กำหนดค่าเริ่มต้นของ position และ scale
             NetworkedPosition = transform.position;
             NetworkedScale = transform.localScale;
+
+            // เริ่ม AI behavior
             CurrentBehavior = AIBehavior.DirectRush;
             NextBehaviorChangeTime = Runner.SimulationTime + Random.Range(1f, 3f);
+
+            // ✅ หาผู้เล่นทันที
+            FindNearestPlayer();
+
             if (showDebugInfo)
             {
-                Debug.Log($"{CharacterName}: Initialized patrol system at {PatrolCenter}");
-                Debug.Log($"{CharacterName}: Individual patrol wait time: {individualPatrolWaitTime:F1}s (range: {minPatrolWaitTime}-{maxPatrolWaitTime})");
+                Debug.Log($"{CharacterName}: Spawned and immediately chasing player!");
             }
         }
     }
-
     // ========== Network Update ==========
     public override void FixedUpdateNetwork()
     {
@@ -974,34 +975,34 @@ public class NetworkEnemy : Character
     {
         if (IsDummy) return;
 
-        // อัพเดท State Timer
         StateTimer += Runner.DeltaTime;
 
-        // 🆕 ตรวจสอบว่าควรเปลี่ยนจาก Patrolling เป็น Chasing หรือไม่
-        if (CurrentState == EnemyState.Patrolling && targetTransform != null)
-        {
-            float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
-            if (distanceToPlayer <= detectRange)
-            {
-                CurrentState = EnemyState.Chasing;
-                StateTimer = 0f;
-                if (showDebugInfo)
-                {
-                    Debug.Log($"{CharacterName}: Player detected! Switching to Chasing. Distance: {distanceToPlayer:F1}");
-                }
-            }
-        }
+        // ✅ ลบการเช็ค detectRange ออก - ไม่ต้องกลับไป Patrolling
+        // if (CurrentState == EnemyState.Patrolling && targetTransform != null)
+        // {
+        //     float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+        //     if (distanceToPlayer <= detectRange)
+        //     {
+        //         CurrentState = EnemyState.Chasing;
+        //         ...
+        //     }
+        // }
 
-        // 🆕 ตรวจสอบว่าควรกลับไป Patrolling หรือไม่
-        if (CurrentState != EnemyState.Patrolling && targetTransform == null)
+        // ✅ ลบการเช็คว่าควรกลับไป Patrolling - ให้ไล่ผู้เล่นตลอด
+        // if (CurrentState != EnemyState.Patrolling && targetTransform == null)
+        // {
+        //     CurrentState = EnemyState.Patrolling;
+        //     ...
+        // }
+
+        // ✅ ถ้าไม่มี target ให้หาใหม่
+        if (targetTransform == null)
         {
-            CurrentState = EnemyState.Patrolling;
-            StateTimer = 0f;
-            totalPatrolTime = 0f;
-            GenerateNewPatrolTarget();
-            if (showDebugInfo)
+            FindNearestPlayer();
+            if (targetTransform == null)
             {
-                Debug.Log($"{CharacterName}: No target found, returning to Patrol");
+                // ถ้ายังหาไม่เจอ ให้หยุดชั่วคราว
+                return;
             }
         }
 
@@ -1030,24 +1031,21 @@ public class NetworkEnemy : Character
                 break;
         }
 
-        // หลีกเลี่ยงศัตรูตัวอื่น (ยกเว้นตอน patrol)
+        // หลีกเลี่ยงศัตรูตัวอื่น
         if (CurrentState != EnemyState.Patrolling)
         {
             Vector3 avoidanceForce = CalculateAvoidanceForce();
             moveDirection += avoidanceForce;
         }
 
-        // ทำให้เป็นทิศทางที่ถูกต้อง
         moveDirection.y = 0;
         if (moveDirection.magnitude > 1f)
         {
             moveDirection.Normalize();
         }
 
-        // เคลื่อนที่
         ApplyMovement(moveDirection);
 
-        // Debug info
         if (showDebugInfo)
         {
             string targetInfo = targetTransform != null ? $"Target: {targetTransform.name}" : "No Target";
@@ -1651,13 +1649,13 @@ public class NetworkEnemy : Character
     // ========== Enemy AI ==========
     protected void FindNearestPlayer()
     {
-        if (Time.time < nextTargetCheckTime) return;
-        nextTargetCheckTime = Time.time + attackCheckInterval;
+        // ✅ ลบการเช็คเวลา - หาได้ทุกเมื่อ
+        // if (Time.time < nextTargetCheckTime) return;
+        // nextTargetCheckTime = Time.time + attackCheckInterval;
 
         float nearestDistance = float.MaxValue;
         Hero nearestHero = null;
 
-        // Find all heroes in scene
         Hero[] heroes = FindObjectsOfType<Hero>();
 
         foreach (Hero hero in heroes)
@@ -1666,15 +1664,8 @@ public class NetworkEnemy : Character
 
             float distance = Vector3.Distance(transform.position, hero.transform.position);
 
-            // 🆕 ปรับการตรวจจับ: ใช้ detectRange สำหรับ patrol, แต่ยังติดตามต่อถ้าเคย detect แล้ว
-            float effectiveDetectRange = detectRange;
-            if (CurrentState != EnemyState.Patrolling)
-            {
-                // ถ้าไม่ได้อยู่ใน patrol state ให้ติดตามในระยะไกลขึ้น
-                effectiveDetectRange = detectRange * 1.5f;
-            }
-
-            if (distance < effectiveDetectRange && distance < nearestDistance)
+            // ✅ ลบการเช็ค detectRange - หาได้ทุกระยะ
+            if (distance < nearestDistance)
             {
                 nearestDistance = distance;
                 nearestHero = hero;
