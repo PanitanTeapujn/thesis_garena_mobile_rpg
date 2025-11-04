@@ -5,114 +5,61 @@ using Fusion;
 
 public class FireSlime : NetworkEnemy
 {
-    [Header("🔥 Fire Slime Settings")]
-    [SerializeField] private float burnRadius = 3f;           // รัศมีการเผาไหม้
-    [SerializeField] private float burnTickInterval = 1f;      // ช่วงเวลาการเผาไหม้
-    [SerializeField] private int burnDamage = 30;              // ดาเมจการเผาไหม้
-    [SerializeField] private float fireTrailDuration = 5f;    // ระยะเวลาร่องไฟ
-    [SerializeField] private float explodeRadius = 4f;        // รัศมีการระเบิดเมื่อตาย
-    [SerializeField] private int explodeDamage = 25;          // ดาเมจการระเบิด
+    [Header("🔥 Fire Slime Attack Settings")]
+    [SerializeField] private float attackRadius = 3f;           // รัศมีการโจมตี
+    [SerializeField] private float attackCooldown = 3f;         // ความถี่การโจมตี
+    [SerializeField] private float telegraphDuration = 1.5f;    // เวลาขยายวงกลม
+    [SerializeField] private float shakeDuration = 0.5f;        // เวลาสั่นตัว
+    [SerializeField] private float postAttackCooldown = 1.5f;   // เวลา cooldown หลังโจมตี
 
     [Header("🎨 Visual Effects")]
-    [SerializeField] private ParticleSystem fireAuraEffect;   // เอฟเฟกต์ไฟรอบตัว
-    [SerializeField] private ParticleSystem fireTrailEffect;  // เอฟเฟกต์ร่องไฟ
-    [SerializeField] private ParticleSystem explodeEffect;    // เอฟเฟกต์การระเบิด
-    [SerializeField] private Light fireLight;                 // แสงไฟ
+    [SerializeField] private GameObject telegraphPrefab;        // Prefab วงกลมสีแดง
+    [SerializeField] private ParticleSystem fireAttackEffect;  // Particle ไฟตอนโจมตี
+    [SerializeField] private Color telegraphColor = new Color(1f, 0f, 0f, 0.5f);
+    [SerializeField] private float telegraphYOffset = -1.16f;   // 🆕 ตำแหน่ง Y ของวงกลม
 
-    [Header("🌡️ Heat Zone")]
-    [SerializeField] private bool createHeatZones = true;     // สร้างพื้นที่ร้อน
-    [SerializeField] private GameObject heatZonePrefab;       // Prefab ของพื้นที่ร้อน
+    [Header("🎯 Attack Behavior")]
+    [SerializeField] private float stopDistance = 4f;           // ระยะที่จะหยุดเพื่อเตรียมโจมตี
+    [SerializeField] private bool useStatusEffect = true;
+    [SerializeField] private int burnDamage = 5;
+    [SerializeField] private float burnDuration = 6f;
 
-    [Header("⚠️ Telegraph System")]
-    [SerializeField] private GameObject telegraphIndicatorPrefab; // Prefab สำหรับแสดงพื้นแดง (ถ้าไม่มีจะสร้างอัตโนมัติ)
-    [SerializeField] private GameObject telegraphIndicatorChild; // Telegraph Indicator ที่เป็น Child ของ Slime (ตั้งค่าใน Inspector)
-    [SerializeField] private float fireAuraTelegraphDuration = 1.5f; // เวลาแสดงเตือนก่อน Fire Aura
-    [SerializeField] private float deathExplosionTelegraphDuration = 2f; // เวลาแสดงเตือนก่อนระเบิด
-    [SerializeField] private float fireAuraCooldown = 8f;     // Cooldown ของ Fire Aura (วินาที)
-    [SerializeField] private float fireAuraActiveDuration = 3f; // ระยะเวลาที่ Fire Aura ทำงาน
-    [SerializeField] private Color telegraphColor = new Color(1f, 0f, 0f, 0.5f); // สีของ Telegraph (แดง โปร่งใส)
-    [SerializeField] private Color explosionTelegraphColor = new Color(1f, 0.5f, 0f, 0.6f); // สีของ Telegraph ระเบิด (ส้ม)
+    // Private variables
+    private float nextAttackTime = 0f;
+    private bool isAttacking = false;
+    private GameObject currentTelegraph;
+    private Vector3 originalPosition; // 🆕 เก็บตำแหน่งเดิมก่อนสั่น
+    private bool wasMovementEnabled = true; // 🆕 เก็บสถานะการเคลื่อนที่
 
-    [Header("💣 Self-Destruct Settings")]
-    [SerializeField] private float selfDestructHPThreshold = 10f; // HP ที่จะเริ่มระเบิดตัวเอง
-
-    private float nextBurnTime = 0f;
-    private float nextFireAuraTime = 0f;
-    private bool isFireAuraActive = false;
-    private bool isSelfDestructing = false; // กำลังอยู่ในโหมดระเบิดตัวเอง
-    private bool hasTriggeredSelfDestruct = false; // ป้องกันการ trigger ซ้ำ
-    private List<GameObject> activeHeatZones = new List<GameObject>();
-    private Coroutine heatZoneCoroutine;
-    private GameObject currentTelegraphIndicator;
-    private float previousMoveSpeed; // เก็บความเร็วเดิมไว้
-    private UnityEngine.AI.NavMeshAgent navAgent; // Reference ถึง NavMeshAgent
-    private Vector3 telegraphInitialScale; // เก็บ scale เริ่มต้นของ telegraph child
+    private enum AttackPhase
+    {
+        None,
+        Telegraph,
+        Charging,
+        Execute,
+        Cooldown
+    }
+    private AttackPhase currentPhase = AttackPhase.None;
 
     protected override void Start()
     {
         base.Start();
 
-        // ตั้งค่าเฉพาะของ Fire Slime
         SetupFireSlimeStats();
-        InitializeFireEffects();
+        originalPosition = transform.position;
 
-        // เก็บ reference ของ NavMeshAgent
-        navAgent = GetComponent<UnityEngine.AI.NavMeshAgent>();
-
-        // ซ่อน Telegraph Indicator Child ตอนเริ่มเกม และเก็บ scale เริ่มต้น
-        if (telegraphIndicatorChild != null)
-        {
-            // เก็บ local scale เริ่มต้นไว้ (ก่อนที่จะ SetActive(false))
-            telegraphInitialScale = telegraphIndicatorChild.transform.localScale;
-            telegraphIndicatorChild.SetActive(false);
-
-            Debug.Log($"📐 Telegraph initial scale: {telegraphInitialScale}");
-        }
-
-        if (HasStateAuthority)
-        {
-            // เริ่มสร้างพื้นที่ร้อน
-            if (createHeatZones)
-            {
-                heatZoneCoroutine = StartCoroutine(CreateHeatZonesRoutine());
-            }
-        }
+        Debug.Log($"🔥 {CharacterName} spawned!");
     }
 
     private void SetupFireSlimeStats()
     {
-        // ปรับ stats ให้เหมาะกับ Fire Slime
         CharacterName = "Fire Slime";
-        AttackType = AttackType.Magic; // ใช้ Magic damage
+        AttackType = AttackType.Magic;
 
-        // เพิ่ม fire resistance และลด ice resistance
-        if (equipmentManager != null)
-        {
-            // Fire Slime มี resistance ต่อ Burn แต่อ่อนแอต่อ Freeze
-        }
-
-        Debug.Log($"🔥 {CharacterName} spawned with fire abilities!");
-    }
-
-    private void InitializeFireEffects()
-    {
-        // เปิดเอฟเฟกต์ไฟ
-        if (fireAuraEffect != null)
-            fireAuraEffect.Play();
-
-        if (fireLight != null)
-        {
-            fireLight.color = Color.red;
-            fireLight.intensity = 1.5f;
-            fireLight.range = burnRadius;
-        }
-
-        // ตั้งค่าสีของ slime เป็นสีแดง/ส้ม
         Renderer slimeRenderer = GetComponent<Renderer>();
         if (slimeRenderer != null)
         {
             slimeRenderer.material.color = Color.red;
-            slimeRenderer.material.SetColor("_EmissionColor", Color.red * 0.5f);
         }
     }
 
@@ -122,242 +69,247 @@ public class FireSlime : NetworkEnemy
 
         if (HasStateAuthority && !IsDead)
         {
-            // ตรวจสอบ HP เพื่อ trigger Self-Destruct
-            // ใช้ CurrentHp (property ที่ถูกต้องของ base class)
-            if (!hasTriggeredSelfDestruct && !isSelfDestructing && CurrentHp < selfDestructHPThreshold && CurrentHp >= 1)
-            {
-                hasTriggeredSelfDestruct = true;
-                StartCoroutine(SelfDestructSequence());
-            }
-
-            // ทำ Fire Aura ต่อเมื่อไม่ได้อยู่ในโหมด Self-Destruct
-            if (!isSelfDestructing)
-            {
-                ProcessFireAura();
-            }
+            ProcessFireSlimeAttack();
         }
     }
 
-    // ระบบ Fire Aura ใหม่ที่มี Telegraph และ Cooldown
-    private void ProcessFireAura()
+    private void ProcessFireSlimeAttack()
     {
-        // ตรวจสอบว่าพร้อมใช้ Fire Aura หรือยัง
-        if (!isFireAuraActive && Runner.SimulationTime >= nextFireAuraTime)
+        if (isAttacking) return;
+
+        if (targetTransform == null)
         {
-            // เริ่มทำ Fire Aura พร้อม Telegraph
-            StartCoroutine(FireAuraSequence());
+            FindNearestPlayer();
+            return;
+        }
+
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+
+        if (distanceToPlayer <= stopDistance && Runner.SimulationTime >= nextAttackTime)
+        {
+            StartCoroutine(PerformFireAttackSequence());
         }
     }
 
-    private IEnumerator FireAuraSequence()
+    private IEnumerator PerformFireAttackSequence()
     {
-        isFireAuraActive = true;
+        isAttacking = true;
+        currentPhase = AttackPhase.Telegraph;
 
-        // ========== ขั้นที่ 1: แสดง Telegraph ==========
-        Debug.Log($"⚠️ {CharacterName} is charging Fire Aura!");
+        // 🆕 หยุดการเคลื่อนที่โดยการปิด AI ของ NetworkEnemy
+        StopMovement();
 
-        // แสดง Telegraph Indicator บนพื้น
-        RPC_ShowTelegraph(burnRadius, telegraphColor, fireAuraTelegraphDuration, false);
+        // บันทึกตำแหน่งก่อนเริ่มโจมตี
+        originalPosition = transform.position;
 
-        // หยุดเคลื่อนที่จริงๆ ขณะเตรียมโจมตี
-        bool wasMoving = CurrentState == EnemyState.Chasing;
-        if (navAgent != null)
+        // 🔴 Phase 1: Telegraph
+        Debug.Log($"🔥 {CharacterName}: Telegraph Phase");
+        yield return StartCoroutine(ShowTelegraphCircle());
+
+        // 🟡 Phase 2: Charging
+        currentPhase = AttackPhase.Charging;
+        Debug.Log($"🔥 {CharacterName}: Charging Phase");
+        yield return StartCoroutine(ShakeBody());
+
+        // 🔥 Phase 3: Execute
+        currentPhase = AttackPhase.Execute;
+        Debug.Log($"🔥 {CharacterName}: Execute Attack!");
+        ExecuteFireAttack();
+
+        // 💤 Phase 4: Cooldown
+        currentPhase = AttackPhase.Cooldown;
+        Debug.Log($"🔥 {CharacterName}: Cooldown Phase");
+        yield return new WaitForSeconds(postAttackCooldown);
+
+        // 🆕 เปิดการเคลื่อนที่ใหม่
+        ResumeMovement();
+
+        // รีเซ็ต
+        isAttacking = false;
+        currentPhase = AttackPhase.None;
+        nextAttackTime = Runner.SimulationTime + attackCooldown;
+
+        Debug.Log($"🔥 {CharacterName}: Ready for next attack");
+    }
+
+    // 🆕 หยุดการเคลื่อนที่
+    private void StopMovement()
+    {
+        // ปิด movement โดยการตั้ง MoveSpeed เป็น 0 ชั่วคราว
+        wasMovementEnabled = MoveSpeed > 0;
+        if (wasMovementEnabled)
         {
-            previousMoveSpeed = navAgent.speed;
-            navAgent.speed = 0f; // หยุดเคลื่อนที่
-            navAgent.isStopped = true;
+            MoveSpeed = 0f;
         }
 
-        // รอจนครบเวลา Telegraph
-        yield return new WaitForSeconds(fireAuraTelegraphDuration);
-
-        // ซ่อน Telegraph
-        RPC_HideTelegraph();
-
-        // ========== ขั้นที่ 2: เปิดใช้งาน Fire Aura ==========
-        Debug.Log($"🔥 {CharacterName} activated Fire Aura!");
-
-        // เพิ่มเอฟเฟกต์พิเศษเมื่อเริ่ม Aura
-        if (fireAuraEffect != null)
+        // หยุด velocity ของ rigidbody
+        if (rb != null)
         {
-            fireAuraEffect.Play();
+            rb.linearVelocity = Vector3.zero;
         }
 
-        // ทำ Burn Damage ซ้ำๆ ตาม duration
-        float auraEndTime = Time.time + fireAuraActiveDuration;
-        nextBurnTime = Time.time;
+        // บังคับให้ target เป็น null ชั่วคราว เพื่อไม่ให้ base class เคลื่อนที่
+        targetTransform = null;
 
-        while (Time.time < auraEndTime && !IsDead)
+        Debug.Log($"🔥 {CharacterName}: Movement STOPPED");
+    }
+
+    // 🆕 เปิดการเคลื่อนที่ใหม่
+    private void ResumeMovement()
+    {
+        if (wasMovementEnabled)
         {
-            if (Time.time >= nextBurnTime)
+            // คืนค่า MoveSpeed จาก characterStats
+            if (characterStats != null)
             {
-                nextBurnTime = Time.time + burnTickInterval;
-                ApplyBurnDamageToNearbyPlayers();
+                MoveSpeed = characterStats.moveSpeed;
             }
+        }
+
+        Debug.Log($"🔥 {CharacterName}: Movement RESUMED");
+    }
+
+    private IEnumerator ShowTelegraphCircle()
+    {
+        // 🆕 สร้าง telegraph ที่ตำแหน่งที่ถูกต้อง
+        Vector3 telegraphPosition = new Vector3(
+            transform.position.x,
+            telegraphYOffset, // ใช้ค่าที่กำหนดไว้
+            transform.position.z
+        );
+
+        if (telegraphPrefab != null)
+        {
+            currentTelegraph = Instantiate(telegraphPrefab, telegraphPosition, Quaternion.identity);
+        }
+        else
+        {
+            currentTelegraph = CreateProceduralTelegraph(telegraphPosition);
+        }
+
+        RPC_ShowTelegraph(telegraphPosition);
+
+        // Animation ขยายวงกลม
+        float elapsed = 0f;
+        Vector3 startScale = new Vector3(0.1f, 0.05f, 0.1f);
+        Vector3 targetScale = new Vector3(attackRadius * 2f, 0.05f, attackRadius * 2f);
+
+        while (elapsed < telegraphDuration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / telegraphDuration;
+
+            // Smooth expansion
+            float smoothProgress = 1f - Mathf.Pow(1f - progress, 3f);
+
+            if (currentTelegraph != null)
+            {
+                // 🆕 คงตำแหน่ง Y ไว้ ไม่ให้ตามตัวละคร
+                currentTelegraph.transform.position = new Vector3(
+                    originalPosition.x,
+                    telegraphYOffset,
+                    originalPosition.z
+                );
+
+                currentTelegraph.transform.localScale = Vector3.Lerp(startScale, targetScale, smoothProgress);
+
+                // Pulse effect
+                float pulse = Mathf.Sin(elapsed * 8f) * 0.1f + 0.9f;
+                Renderer renderer = currentTelegraph.GetComponent<Renderer>();
+                if (renderer != null)
+                {
+                    Color color = telegraphColor;
+                    color.a = telegraphColor.a * pulse;
+                    renderer.material.color = color;
+                }
+            }
+
             yield return null;
         }
 
-        // ========== ขั้นที่ 3: ปิด Aura และเข้า Cooldown ==========
-        Debug.Log($"💤 {CharacterName} Fire Aura ended. Entering cooldown...");
-
-        // คืนความเร็วเดินให้สไลม์
-        if (navAgent != null && wasMoving)
+        // ซ่อน telegraph
+        if (currentTelegraph != null)
         {
-            navAgent.speed = previousMoveSpeed;
-            navAgent.isStopped = false;
+            Destroy(currentTelegraph);
+            currentTelegraph = null;
         }
-
-        isFireAuraActive = false;
-        nextFireAuraTime = Runner.SimulationTime + fireAuraCooldown;
+        RPC_HideTelegraph();
     }
 
-    private void ApplyBurnDamageToNearbyPlayers()
+    private IEnumerator ShakeBody()
     {
-        // หาผู้เล่นในรัศมี burn
-        Collider[] nearbyTargets = Physics.OverlapSphere(transform.position, burnRadius, LayerMask.GetMask("Player"));
+        float elapsed = 0f;
+        float shakeIntensity = 0.15f;
+        float shakeSpeed = 25f;
 
-        foreach (Collider target in nearbyTargets)
+        while (elapsed < shakeDuration)
+        {
+            elapsed += Time.deltaTime;
+
+            // Shake animation (แกว่งซ้าย-ขวา)
+            float offsetX = Mathf.Sin(elapsed * shakeSpeed) * shakeIntensity;
+
+            // 🆕 คงตำแหน่ง Y และ Z ไว้ แกว่งแค่ X
+            transform.position = new Vector3(
+                originalPosition.x + offsetX,
+                originalPosition.y,
+                originalPosition.z
+            );
+
+            yield return null;
+        }
+
+        // 🆕 คืนตำแหน่งเดิม
+        transform.position = originalPosition;
+    }
+
+    private void ExecuteFireAttack()
+    {
+        // แสดง particle effect
+        if (fireAttackEffect != null)
+        {
+            fireAttackEffect.Play();
+        }
+
+        RPC_ShowFireAttackEffect(transform.position);
+
+        // หาผู้เล่นในรัศมี
+        Collider[] targets = Physics.OverlapSphere(transform.position, attackRadius, LayerMask.GetMask("Player"));
+
+        foreach (Collider target in targets)
         {
             Hero hero = target.GetComponent<Hero>();
             if (hero != null)
             {
-                // ใส่ Burn effect
-                hero.ApplyStatusEffect(StatusEffectType.Burn, burnDamage, 6f);
+                hero.TakeDamageFromAttacker(0, MagicDamage, this, DamageType.Magic);
 
-                Debug.Log($"🔥 {CharacterName} burned {hero.CharacterName}!");
+                if (useStatusEffect)
+                {
+                    hero.ApplyStatusEffect(StatusEffectType.Burn, burnDamage, burnDuration);
+                    Debug.Log($"🔥 {CharacterName} burned {hero.CharacterName}!");
+                }
 
-                // เอฟเฟกต์การเผาไหม้
-                RPC_ShowBurnEffect(hero.transform.position);
+                Debug.Log($"🔥 {CharacterName} hit {hero.CharacterName} for {MagicDamage} magic damage!");
             }
         }
     }
 
-    // แสดง Telegraph Indicator (พื้นแดง) - ใช้วิธีเปิด/ปิด Child Object
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowTelegraph(float radius, Color color, float duration, bool isExplosion)
+    // 🆕 รับ position เป็น parameter
+    private GameObject CreateProceduralTelegraph(Vector3 position)
     {
-        // ใช้ Child Object ถ้ามี (แนะนำ)
-        if (telegraphIndicatorChild != null)
-        {
-            telegraphIndicatorChild.SetActive(true);
+        GameObject telegraph = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        telegraph.name = "FireSlime_Telegraph";
+        telegraph.transform.position = position;
+        telegraph.transform.localScale = new Vector3(0.1f, 0.05f, 0.1f);
 
-            // ปรับขนาดตาม radius (scale เฉพาะ X และ Z, เก็บ Y เดิม)
-            float scale = radius * 2f;
-            float yScale = telegraphInitialScale.y;
+        Destroy(telegraph.GetComponent<Collider>());
 
-            // Fallback: ถ้า initial scale ยังไม่ได้ initialize (= Vector3.zero) ใช้ค่า default
-            if (telegraphInitialScale == Vector3.zero)
-            {
-                yScale = 0.05f; // ความสูงมาตรฐานสำหรับ telegraph indicator
-                Debug.LogWarning("Telegraph initial scale not set, using default Y = 0.05");
-            }
-
-            telegraphIndicatorChild.transform.localScale = new Vector3(
-                scale,
-                yScale,  // คงค่า Y เดิมไว้ (ไม่ scale ความสูง)
-                scale
-            );
-
-            // ปรับสีใน material ถ้ามี
-            Renderer renderer = telegraphIndicatorChild.GetComponent<Renderer>();
-            if (renderer != null && renderer.material != null)
-            {
-                renderer.material.color = color;
-            }
-
-            // ใช้ animation ธรรมดาเสมอ (ไม่พึ่งพา TelegraphIndicator script)
-            StartCoroutine(AnimateTelegraphChild(telegraphIndicatorChild, duration, color));
-        }
-        // Fallback: สร้าง procedural ถ้าไม่มี Child Object (วิธีเก่า)
-        else if (telegraphIndicatorPrefab != null)
-        {
-            if (currentTelegraphIndicator != null)
-            {
-                Destroy(currentTelegraphIndicator);
-            }
-
-            currentTelegraphIndicator = Instantiate(telegraphIndicatorPrefab, transform.position, Quaternion.identity);
-            currentTelegraphIndicator.transform.localScale = Vector3.one * radius * 2f;
-
-            // ใช้ animation ธรรมดาเสมอ (ไม่พึ่งพา TelegraphIndicator script)
-            StartCoroutine(AnimateTelegraph(currentTelegraphIndicator, duration, color));
-        }
-        else
-        {
-            // สร้างแบบ procedural
-            if (currentTelegraphIndicator != null)
-            {
-                Destroy(currentTelegraphIndicator);
-            }
-
-            currentTelegraphIndicator = CreateProceduralTelegraph(transform.position, radius, color);
-            StartCoroutine(AnimateTelegraph(currentTelegraphIndicator, duration, color));
-        }
-    }
-
-    // ซ่อน Telegraph Indicator
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_HideTelegraph()
-    {
-        // ซ่อน Child Object
-        if (telegraphIndicatorChild != null)
-        {
-            telegraphIndicatorChild.SetActive(false);
-        }
-
-        // ทำลาย procedural indicator ถ้ามี
-        if (currentTelegraphIndicator != null)
-        {
-            Destroy(currentTelegraphIndicator);
-            currentTelegraphIndicator = null;
-        }
-    }
-
-    // Animation สำหรับ Telegraph Child Object
-    private IEnumerator AnimateTelegraphChild(GameObject indicator, float duration, Color color)
-    {
-        Renderer renderer = indicator.GetComponent<Renderer>();
-        if (renderer == null || renderer.material == null) yield break;
-
-        Material mat = renderer.material;
-        float elapsed = 0f;
-
-        while (elapsed < duration && indicator.activeInHierarchy)
-        {
-            elapsed += Time.deltaTime;
-            float progress = elapsed / duration;
-
-            // กระพริบเร็วขึ้นเรื่อยๆ
-            float pulseSpeed = Mathf.Lerp(2f, 10f, progress);
-            float pulse = Mathf.PingPong(Time.time * pulseSpeed, 1f);
-
-            Color currentColor = color;
-            currentColor.a *= pulse;
-            mat.color = currentColor;
-
-            yield return null;
-        }
-    }
-
-    private GameObject CreateProceduralTelegraph(Vector3 position, float radius, Color color)
-    {
-        GameObject indicator = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        indicator.name = "TelegraphIndicator";
-
-        // ปรับตำแหน่งและขนาด
-        indicator.transform.position = position + Vector3.up * 0.1f; // ยกขึ้นเล็กน้อยเพื่อไม่ให้ชนพื้น
-        indicator.transform.localScale = new Vector3(radius * 2f, 0.05f, radius * 2f);
-
-        // ลบ Collider เพราะไม่ต้องการให้ชนได้
-        Destroy(indicator.GetComponent<Collider>());
-
-        // ตั้งค่า Material
-        Renderer renderer = indicator.GetComponent<Renderer>();
+        Renderer renderer = telegraph.GetComponent<Renderer>();
         if (renderer != null)
         {
             Material mat = new Material(Shader.Find("Standard"));
-            mat.color = color;
-            mat.SetFloat("_Mode", 3); // Transparent mode
+            mat.color = telegraphColor;
+            mat.SetFloat("_Mode", 3);
             mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
             mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             mat.SetInt("_ZWrite", 0);
@@ -365,380 +317,56 @@ public class FireSlime : NetworkEnemy
             mat.EnableKeyword("_ALPHABLEND_ON");
             mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             mat.renderQueue = 3000;
-
             renderer.material = mat;
         }
 
-        return indicator;
-    }
-
-    private IEnumerator AnimateTelegraph(GameObject indicator, float duration, Color baseColor)
-    {
-        Renderer renderer = indicator.GetComponent<Renderer>();
-        float elapsed = 0f;
-
-        while (elapsed < duration && indicator != null)
-        {
-            elapsed += Time.deltaTime;
-            float progress = elapsed / duration;
-
-            if (renderer != null)
-            {
-                // กระพริบเร็วขึ้นเมื่อใกล้หมดเวลา
-                float pulseSpeed = Mathf.Lerp(2f, 8f, progress);
-                float pulse = Mathf.Sin(elapsed * pulseSpeed) * 0.3f + 0.7f;
-
-                Color newColor = baseColor;
-                newColor.a = baseColor.a * pulse;
-                renderer.material.color = newColor;
-            }
-
-            yield return null;
-        }
-
-        // ทำลาย indicator หลังจบเวลา
-        if (indicator != null)
-        {
-            Destroy(indicator);
-        }
-    }
-
-    private IEnumerator CreateHeatZonesRoutine()
-    {
-        while (!IsDead)
-        {
-            yield return new WaitForSeconds(3f);
-
-            if (heatZonePrefab != null)
-            {
-                // สร้างพื้นที่ร้อนที่ตำแหน่งปัจจุบัน
-                Vector3 heatZonePosition = transform.position;
-                GameObject heatZone = Instantiate(heatZonePrefab, heatZonePosition, Quaternion.identity);
-                activeHeatZones.Add(heatZone);
-
-                // ทำลายพื้นที่ร้อนหลังจากเวลาผ่านไป
-                StartCoroutine(DestroyHeatZoneAfterTime(heatZone, fireTrailDuration));
-
-                Debug.Log($"🔥 {CharacterName} created heat zone at {heatZonePosition}");
-            }
-        }
-    }
-
-    private IEnumerator DestroyHeatZoneAfterTime(GameObject heatZone, float duration)
-    {
-        yield return new WaitForSeconds(duration);
-
-        if (heatZone != null)
-        {
-            activeHeatZones.Remove(heatZone);
-            Destroy(heatZone);
-        }
-    }
-
-    // Override การโจมตี เพื่อเพิ่ม Burn effect
-    protected override void TryAttackTarget()
-    {
-        if (targetTransform == null) return;
-
-        float distance = Vector3.Distance(transform.position, targetTransform.position);
-
-        bool canAttack = CurrentState == EnemyState.Attacking &&
-                         distance <= AttackRange &&
-                         distance >= minDistanceToPlayer * 0.5f &&
-                         Runner.SimulationTime >= nextAttackTime;
-
-        if (canAttack)
-        {
-            float effectiveAttackSpeed = GetEffectiveAttackSpeed();
-            float finalAttackCooldown = AttackCooldown / Mathf.Max(0.1f, effectiveAttackSpeed);
-            nextAttackTime = Runner.SimulationTime + finalAttackCooldown;
-
-            RPC_FireSlimeAttack(CurrentTarget);
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"🔥 {CharacterName}: FIRE ATTACK! Distance: {distance:F2}");
-            }
-        }
+        return telegraph;
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_FireSlimeAttack(PlayerRef targetPlayer)
+    private void RPC_ShowTelegraph(Vector3 position)
     {
-        Hero targetHero = null;
-        Hero[] heroes = FindObjectsOfType<Hero>();
-
-        foreach (Hero hero in heroes)
-        {
-            if (hero.Object != null && hero.Object.InputAuthority == targetPlayer)
-            {
-                targetHero = hero;
-                break;
-            }
-        }
-
-        if (targetHero != null)
-        {
-            Debug.Log($"🔥 {CharacterName} performs fire attack on {targetHero.CharacterName}!");
-
-            // ดาเมจปกติ + โอกาส Burn
-            targetHero.TakeDamageFromAttacker(0, MagicDamage, this, DamageType.Magic);
-
-            // 70% โอกาสใส่ Burn effect
-            if (Random.Range(0f, 100f) <= 70f)
-            {
-                targetHero.ApplyStatusEffect(StatusEffectType.Burn, burnDamage, 8f);
-                Debug.Log($"🔥 {CharacterName} applied Burn to {targetHero.CharacterName}!");
-
-                RPC_ShowBurnEffect(targetHero.transform.position);
-            }
-        }
-    }
-
-    // ระบบ Self-Destruct เมื่อ HP < 10 และ >= 1
-    private IEnumerator SelfDestructSequence()
-    {
-        isSelfDestructing = true;
-
-        Debug.Log($"💣 {CharacterName} HP is low! Entering Self-Destruct mode!");
-
-        // หยุดการเคลื่อนที่
-        if (navAgent != null)
-        {
-            navAgent.speed = 0f;
-            navAgent.isStopped = true;
-        }
-
-        // แสดง Telegraph สีส้มระเบิด
-        RPC_ShowTelegraph(explodeRadius, explosionTelegraphColor, deathExplosionTelegraphDuration, true);
-
-        // เปลี่ยนสีของ Fire Slime เป็นสีส้มแดง (กำลังจะระเบิด)
-        RPC_ChangeColorBeforeExplosion();
-
-        // ทำให้โจมตีไม่ได้ (invulnerable)
-        RPC_SetInvulnerable(true);
-
-        // รอจนครบเวลา Telegraph
-        yield return new WaitForSeconds(deathExplosionTelegraphDuration);
-
-        // ซ่อน Telegraph
-        RPC_HideTelegraph();
-
-        // ระเบิด!
-        Debug.Log($"💥🔥 {CharacterName} SELF-DESTRUCTED!");
-        ExplodeOnDeath();
-
-        // ตายจริง
-        if (HasStateAuthority)
-        {
-            CurrentHp = 0;  // ใช้ CurrentHp (property ที่ถูกต้อง)
-            base.RPC_OnDeath();
-        }
-    }
-
-    // ตั้งค่า Invulnerability (ไม่สามารถโจมตีได้)
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_SetInvulnerable(bool invulnerable)
-    {
-        if (invulnerable)
-        {
-            // วิธีที่ 1: เปลี่ยน layer (แนะนำถ้ามี layer "EnemyInvulnerable")
-            // gameObject.layer = LayerMask.NameToLayer("EnemyInvulnerable");
-
-            // วิธีที่ 2: Disable collider ชั่วคราว
-            Collider[] colliders = GetComponents<Collider>();
-            foreach (Collider col in colliders)
-            {
-                if (col != null)
-                {
-                    col.enabled = false;
-                }
-            }
-
-            // เพิ่ม visual effect เพื่อบอกว่ากำลังจะระเบิด
-            // สามารถเพิ่ม shield effect, glow, particle effect ฯลฯ
-
-            Debug.Log($"🛡️ {CharacterName} is now invulnerable during self-destruct!");
-        }
-        else
-        {
-            // คืนค่า collider
-            Collider[] colliders = GetComponents<Collider>();
-            foreach (Collider col in colliders)
-            {
-                if (col != null)
-                {
-                    col.enabled = true;
-                }
-            }
-        }
-    }
-
-    // Override การเรียก OnSuccessfulAttack
-    public new void OnSuccessfulAttack(Character target)
-    {
-        if (!HasStateAuthority) return;
-
-        // Fire Slime มีโอกาส 80% ใส่ Burn
-        if (Random.Range(0f, 100f) <= 80f)
-        {
-            target.ApplyStatusEffect(StatusEffectType.Burn, burnDamage + 2, 10f);
-            Debug.Log($"🔥 {CharacterName} applied enhanced Burn to {target.CharacterName}!");
-        }
-    }
-
-    // Override การตาย - ใช้เฉพาะเมื่อ HP = 0 (ไม่ใช่ self-destruct)
-    protected override void RPC_OnDeath()
-    {
-        // ถ้าอยู่ใน Self-Destruct mode แล้ว ไม่ต้องทำอะไร (จะระเบิดเองแล้ว)
-        if (isSelfDestructing)
-        {
-            base.RPC_OnDeath();
-            return;
-        }
-
-        Debug.Log($"💀 {CharacterName} died normally (HP = 0)");
-
-        // ตายแบบปกติโดยไม่มีการระเบิด
-        base.RPC_OnDeath();
+        Debug.Log($"[Client] Showing telegraph at {position}");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ChangeColorBeforeExplosion()
+    private void RPC_HideTelegraph()
     {
-        // เปลี่ยนสีเป็นส้มแดงสว่าง เพื่อบอกว่ากำลังจะระเบิด
-        Renderer slimeRenderer = GetComponent<Renderer>();
-        if (slimeRenderer != null)
-        {
-            slimeRenderer.material.color = Color.Lerp(Color.red, Color.yellow, 0.5f);
-            slimeRenderer.material.SetColor("_EmissionColor", Color.yellow * 2f);
-        }
-
-        // เพิ่มความสว่างของไฟ
-        if (fireLight != null)
-        {
-            fireLight.color = Color.yellow;
-            fireLight.intensity = 3f;
-        }
-
-        // เพิ่มเสียงหรือเอฟเฟกต์พิเศษ
-        if (fireAuraEffect != null)
-        {
-            var main = fireAuraEffect.main;
-            main.startColor = Color.yellow;
-        }
-    }
-
-    private void ExplodeOnDeath()
-    {
-        // หาทุกตัวละครในรัศมีระเบิด
-        Collider[] targets = Physics.OverlapSphere(transform.position, explodeRadius, LayerMask.GetMask("Player"));
-
-        foreach (Collider target in targets)
-        {
-            Hero hero = target.GetComponent<Hero>();
-            if (hero != null)
-            {
-                // ดาเมจระเบิด + Burn effect
-                hero.TakeDamage(explodeDamage, DamageType.Magic);
-                hero.ApplyStatusEffect(StatusEffectType.Burn, burnDamage * 2, 12f);
-
-                Debug.Log($"💥🔥 {CharacterName} explosion hit {hero.CharacterName} for {explodeDamage} damage!");
-            }
-        }
-
-        // แสดงเอฟเฟกต์การระเบิด
-        RPC_ShowExplosionEffect(transform.position);
+        Debug.Log("[Client] Hiding telegraph");
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowBurnEffect(Vector3 position)
+    private void RPC_ShowFireAttackEffect(Vector3 position)
     {
-        // สร้างเอฟเฟกต์การเผาไหม้
-        if (fireTrailEffect != null)
+        if (fireAttackEffect != null)
         {
-            GameObject burnFX = Instantiate(fireTrailEffect.gameObject, position, Quaternion.identity);
-            Destroy(burnFX, 2f);
+            ParticleSystem fx = Instantiate(fireAttackEffect, position, Quaternion.identity);
+            Destroy(fx.gameObject, 2f);
         }
+        Debug.Log($"[Client] Fire attack effect at {position}");
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_ShowExplosionEffect(Vector3 position)
-    {
-        // สร้างเอฟเฟกต์การระเบิด
-        if (explodeEffect != null)
-        {
-            GameObject explosionFX = Instantiate(explodeEffect.gameObject, position, Quaternion.identity);
-            Destroy(explosionFX, 3f);
-        }
-
-        // สร้างแสงระเบิด
-        GameObject lightObj = new GameObject("ExplosionLight");
-        lightObj.transform.position = position;
-        Light explosionLight = lightObj.AddComponent<Light>();
-        explosionLight.color = Color.yellow;
-        explosionLight.intensity = 3f;
-        explosionLight.range = explodeRadius * 2f;
-
-        // ค่อยๆ หรี่แสง
-        StartCoroutine(FadeExplosionLight(explosionLight, lightObj));
-    }
-
-    private IEnumerator FadeExplosionLight(Light light, GameObject lightObj)
-    {
-        float duration = 2f;
-        float startIntensity = light.intensity;
-
-        for (float t = 0; t < duration; t += Time.deltaTime)
-        {
-            if (light != null)
-            {
-                light.intensity = Mathf.Lerp(startIntensity, 0f, t / duration);
-            }
-            yield return null;
-        }
-
-        if (lightObj != null)
-            Destroy(lightObj);
-    }
-
-    protected virtual void OnDestroy()
-    {
-        // ทำลายพื้นที่ร้อนทั้งหมด
-        foreach (GameObject heatZone in activeHeatZones)
-        {
-            if (heatZone != null)
-                Destroy(heatZone);
-        }
-        activeHeatZones.Clear();
-
-        // ซ่อน Telegraph indicator child ถ้ามี
-        if (telegraphIndicatorChild != null)
-        {
-            telegraphIndicatorChild.SetActive(false);
-        }
-
-        // ทำลาย procedural Telegraph indicator ถ้ายังมีอยู่
-        if (currentTelegraphIndicator != null)
-        {
-            Destroy(currentTelegraphIndicator);
-        }
-
-        if (heatZoneCoroutine != null)
-            StopCoroutine(heatZoneCoroutine);
-
-        base.OnDestroy();
-    }
-
-    // Debug Gizmos สำหรับแสดงรัศมี Fire Aura และ Explosion
     private void OnDrawGizmosSelected()
     {
-        // วงกลม Fire Aura
-        Gizmos.color = new Color(1f, 0.5f, 0f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, burnRadius);
+        Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
+        Gizmos.DrawWireSphere(transform.position, attackRadius);
 
-        // วงกลม Death Explosion
-        Gizmos.color = new Color(1f, 0f, 0f, 0.5f);
-        Gizmos.DrawWireSphere(transform.position, explodeRadius);
+        Gizmos.color = new Color(1f, 1f, 0f, 0.2f);
+        Gizmos.DrawWireSphere(transform.position, stopDistance);
+
+        // 🆕 แสดงตำแหน่งวงกลม
+        Gizmos.color = Color.cyan;
+        Vector3 telegraphPos = new Vector3(transform.position.x, telegraphYOffset, transform.position.z);
+        Gizmos.DrawWireSphere(telegraphPos, 0.2f);
+    }
+
+    protected override void RPC_OnDeath()
+    {
+        if (currentTelegraph != null)
+        {
+            Destroy(currentTelegraph);
+        }
+
+        base.RPC_OnDeath();
     }
 }

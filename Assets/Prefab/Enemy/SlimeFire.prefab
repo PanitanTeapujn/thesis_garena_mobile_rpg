@@ -1,91 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &349191200178773758
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8937247685521429396}
-  - component: {fileID: 6713564610351862980}
-  - component: {fileID: 4013804141773271944}
-  m_Layer: 7
-  m_Name: Cylinder
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8937247685521429396
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 349191200178773758}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.1493721, y: -0.7160237, z: 0.22}
-  m_LocalScale: {x: 4, y: 0.05386, z: 4}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 5694989325660922505}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &6713564610351862980
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 349191200178773758}
-  m_Mesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
---- !u!23 &4013804141773271944
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 349191200178773758}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 58f4ebc76ce30864c9774ac2d42912c4, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!1 &8670071803579099242
 GameObject:
   m_ObjectHideFlags: 0
@@ -126,8 +40,7 @@ Transform:
   m_LocalPosition: {x: 0.59, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 8937247685521429396}
+  m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &2401407176684378722
@@ -580,27 +493,21 @@ MonoBehaviour:
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: 0}
   ItemDrop: {fileID: 0}
-  burnRadius: 3
-  burnTickInterval: 2
-  burnDamage: 8
-  fireTrailDuration: 5
-  explodeRadius: 4
-  explodeDamage: 25
-  fireAuraEffect: {fileID: 0}
-  fireTrailEffect: {fileID: 0}
-  explodeEffect: {fileID: 0}
-  fireLight: {fileID: 0}
-  createHeatZones: 1
-  heatZonePrefab: {fileID: 0}
-  telegraphIndicatorPrefab: {fileID: 349191200178773758}
-  telegraphIndicatorChild: {fileID: 349191200178773758}
-  fireAuraTelegraphDuration: 3
-  deathExplosionTelegraphDuration: 2
-  fireAuraCooldown: 8
-  fireAuraActiveDuration: 5
+  attackRadius: 3
+  attackCooldown: 2
+  telegraphDuration: 1.5
+  shakeDuration: 0.5
+  postAttackCooldown: 1.5
+  telegraphPrefab: {fileID: 4332660487222771301, guid: c0e37f7f1db3aab40bcaa1deb4ff5f7b,
+    type: 3}
+  fireAttackEffect: {fileID: 7607841488155974848, guid: ba3421ba5a7c1654cbf175aa232f24b8,
+    type: 3}
   telegraphColor: {r: 1, g: 0, b: 0, a: 0.5}
-  explosionTelegraphColor: {r: 1, g: 0.5, b: 0, a: 0.6}
-  selfDestructHPThreshold: 10
+  telegraphYOffset: -1.16
+  stopDistance: 4
+  useStatusEffect: 1
+  burnDamage: 3
+  burnDuration: 3
 --- !u!114 &-6063038309682278596
 MonoBehaviour:
   m_ObjectHideFlags: 0
