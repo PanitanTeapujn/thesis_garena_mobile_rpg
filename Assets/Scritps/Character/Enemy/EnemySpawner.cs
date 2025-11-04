@@ -85,11 +85,27 @@ public class EnemySpawner : NetworkBehaviour
     [Range(3f, 15f)]
     public float multiSpawnCooldown = 5f;
 
-    [Header("Spawn Settings")]
-    public int maxTotalEnemies = 10;
-    public float spawnInterval = 5f;
-    public bool randomizeSpawnInterval = true;
-    public float spawnIntervalVariation = 2f;
+   [Header("Spawn Settings")]
+public int maxTotalEnemies = 10;
+public float spawnInterval = 5f;
+public bool randomizeSpawnInterval = true;
+public float spawnIntervalVariation = 2f;
+
+[Header("🎯 Player-Based Spawning")]
+[Tooltip("Spawn รอบๆ ผู้เล่นแทนที่จะใช้ spawn points")]
+public bool spawnAroundPlayers = true;
+[Tooltip("ระยะห่างขั้นต่ำจากผู้เล่น (เมตร)")]
+[Range(5f, 20f)]
+public float minSpawnDistanceFromPlayer = 8f;
+[Tooltip("ระยะห่างสูงสุดจากผู้เล่น (เมตร)")]
+[Range(10f, 30f)]
+public float maxSpawnDistanceFromPlayer = 15f;
+[Tooltip("ตรวจสอบกำแพงก่อน spawn")]
+public bool checkWallsBeforeSpawn = true;
+[Tooltip("จำนวนครั้งที่พยายามหาตำแหน่งใหม่")]
+[Range(3, 10)]
+public int maxSpawnAttempts = 5;
+
 
     [Header("Spawn Points")]
     public Transform[] spawnPoints;
@@ -1152,13 +1168,19 @@ public class EnemySpawner : NetworkBehaviour
     // 🎯 หาตำแหน่ง spawn ตามโหมดที่เลือก
     private List<Vector3> GetMultiSpawnPositions()
     {
+        // ✅ ถ้าเปิดใช้ spawn รอบผู้เล่น
+        if (spawnAroundPlayers)
+        {
+            return GetMultiSpawnPositionsAroundPlayers();
+        }
+
+        // โค้ดเดิม...
         if (!useSpawnPoints || availableSpawnPoints.Count == 0)
             return new List<Vector3>();
 
         List<Vector3> positions = new List<Vector3>();
         List<Transform> playerTransforms = GetAllPlayerTransforms();
 
-        // จำกัดจำนวนจุดไม่ให้เกินที่มี
         int actualPointCount = Mathf.Min(spawnPointCount, availableSpawnPoints.Count);
 
         switch (multiSpawnMode)
@@ -1185,6 +1207,56 @@ public class EnemySpawner : NetworkBehaviour
         }
 
         return FilterPositionsByPlayerDistance(positions, playerTransforms);
+    }
+
+    // ✅ Multi-spawn รอบผู้เล่น
+    private List<Vector3> GetMultiSpawnPositionsAroundPlayers()
+    {
+        List<Vector3> positions = new List<Vector3>();
+        List<Transform> players = GetAllPlayerTransforms();
+
+        if (players.Count == 0)
+        {
+            if (showMultiSpawnInfo)
+                Debug.LogWarning("[EnemySpawner] No players found for multi-spawn");
+            return positions;
+        }
+
+        // แบ่ง spawn points ให้ผู้เล่นแต่ละคน
+        int pointsPerPlayer = Mathf.Max(1, spawnPointCount / players.Count);
+        int remainingPoints = spawnPointCount;
+
+        foreach (Transform player in players)
+        {
+            int pointsForThisPlayer = Mathf.Min(pointsPerPlayer, remainingPoints);
+
+            for (int i = 0; i < pointsForThisPlayer; i++)
+            {
+                // สุ่มตำแหน่งรอบผู้เล่น
+                float randomDistance = Random.Range(minSpawnDistanceFromPlayer, maxSpawnDistanceFromPlayer);
+                float angle = (360f / pointsForThisPlayer) * i + Random.Range(-30f, 30f); // กระจายเป็นวงกลม
+
+                Vector3 direction = Quaternion.Euler(0, angle, 0) * Vector3.forward;
+                Vector3 spawnPos = player.position + direction * randomDistance;
+                spawnPos.y = player.position.y;
+
+                // เช็คกำแพง
+                if (!checkWallsBeforeSpawn || !IsPositionBlockedByWall(player.position, spawnPos))
+                {
+                    positions.Add(spawnPos);
+                }
+            }
+
+            remainingPoints -= pointsForThisPlayer;
+            if (remainingPoints <= 0) break;
+        }
+
+        if (showMultiSpawnInfo)
+        {
+            Debug.Log($"🌊 Generated {positions.Count} spawn positions around {players.Count} player(s)");
+        }
+
+        return positions;
     }
 
     // 🎯 Balanced: กระจายทุกจุดเท่าๆ กัน
@@ -1610,6 +1682,13 @@ public class EnemySpawner : NetworkBehaviour
 
     private Vector3 GetRandomSpawnPosition()
     {
+        // ✅ ถ้าเปิดใช้ spawn รอบผู้เล่น
+        if (spawnAroundPlayers)
+        {
+            return GetSpawnPositionAroundPlayers();
+        }
+
+        // โค้ดเดิม (spawn points หรือ random)
         if (useSpawnPoints && spawnPoints != null && availableSpawnPoints.Count > 0)
         {
             int selectedIndex;
@@ -1659,6 +1738,115 @@ public class EnemySpawner : NetworkBehaviour
 
             return position;
         }
+    }
+    private Vector3 GetSpawnPositionAroundPlayers()
+    {
+        // หาผู้เล่นทั้งหมด
+        List<Transform> players = GetAllPlayerTransforms();
+
+        if (players.Count == 0)
+        {
+            // ถ้าไม่มีผู้เล่น ใช้ตำแหน่งกลางแมพ
+            if (showDebugInfo)
+                Debug.LogWarning("[EnemySpawner] No players found, using center position");
+            return transform.position;
+        }
+
+        // เลือกผู้เล่นสุ่ม
+        Transform targetPlayer = players[Random.Range(0, players.Count)];
+
+        // พยายามหาตำแหน่งที่ดี
+        for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
+        {
+            // สุ่มระยะห่าง
+            float randomDistance = Random.Range(minSpawnDistanceFromPlayer, maxSpawnDistanceFromPlayer);
+
+            // สุ่มมุม 360 องศา
+            float randomAngle = Random.Range(0f, 360f);
+            Vector3 direction = Quaternion.Euler(0, randomAngle, 0) * Vector3.forward;
+
+            // คำนวณตำแหน่ง spawn
+            Vector3 spawnPosition = targetPlayer.position + direction * randomDistance;
+            spawnPosition.y = targetPlayer.position.y; // ใช้ความสูงเดียวกับผู้เล่น
+
+            // ✅ ตรวจสอบกำแพงถ้าเปิดใช้งาน
+            if (checkWallsBeforeSpawn)
+            {
+                if (!IsPositionBlockedByWall(targetPlayer.position, spawnPosition))
+                {
+                    if (showDebugInfo)
+                    {
+                        Debug.Log($"[EnemySpawner] Spawning around player {targetPlayer.name} at distance {randomDistance:F1}m, angle {randomAngle:F0}° (attempt {attempt + 1})");
+                        Debug.DrawLine(targetPlayer.position, spawnPosition, Color.green, 2f);
+                    }
+                    return spawnPosition;
+                }
+                else if (showDebugInfo)
+                {
+                    Debug.DrawLine(targetPlayer.position, spawnPosition, Color.red, 0.5f);
+                }
+            }
+            else
+            {
+                // ไม่เช็คกำแพง ใช้ตำแหน่งนี้เลย
+                if (showDebugInfo)
+                {
+                    Debug.Log($"[EnemySpawner] Spawning around player {targetPlayer.name} at distance {randomDistance:F1}m (no wall check)");
+                }
+                return spawnPosition;
+            }
+        }
+
+        // ถ้าหาไม่เจอหลังจากพยายามหลายครั้ง ใช้ตำแหน่งที่ไกลสุด
+        Vector3 fallbackPosition = targetPlayer.position +
+                                   (Quaternion.Euler(0, Random.Range(0f, 360f), 0) * Vector3.forward) *
+                                   maxSpawnDistanceFromPlayer;
+
+        if (showDebugInfo)
+            Debug.LogWarning($"[EnemySpawner] Using fallback position after {maxSpawnAttempts} attempts");
+
+        return fallbackPosition;
+    }
+
+    // ✅ ตรวจสอบว่าตำแหน่งถูกบล็อกด้วยกำแพงหรือไม่
+    private bool IsPositionBlockedByWall(Vector3 startPos, Vector3 targetPos)
+    {
+        Vector3 direction = (targetPos - startPos).normalized;
+        float distance = Vector3.Distance(startPos, targetPos);
+
+        // เช็คด้วย Raycast (เหมือน Toxic Dash และ NetworkEnemy)
+        RaycastHit hit;
+        if (Physics.Raycast(
+            startPos + Vector3.up * 0.5f,  // เริ่มสูงขึ้นนิดหน่อย
+            direction,
+            out hit,
+            distance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            if (showDebugInfo)
+            {
+                Debug.Log($"[EnemySpawner] Position blocked by {hit.collider.name} at {hit.distance:F1}m");
+            }
+            return true;
+        }
+
+        // เช็คด้วย SphereCast เพิ่มเติม (ครอบคลุมพื้นที่กว้างขึ้น)
+        if (Physics.SphereCast(
+            startPos + Vector3.up * 0.5f,
+            1f,  // รัศมี 1 เมตร
+            direction,
+            out hit,
+            distance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            if (showDebugInfo)
+            {
+                Debug.Log($"[EnemySpawner] Position blocked (sphere) by {hit.collider.name} at {hit.distance:F1}m");
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private void UpdateNextSpawnTime()

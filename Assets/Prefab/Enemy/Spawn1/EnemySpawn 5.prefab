@@ -156,9 +156,9 @@ MonoBehaviour:
   - enemyPrefab: {fileID: 31569152083542088, guid: 85ecd7485b1e2664ea9fbd3780408dad,
       type: 3}
     enemyName: 
-    spawnWeight: 2
-    maxCount: 6
-    spawnCooldown: 5
+    spawnWeight: 5
+    maxCount: 1
+    spawnCooldown: 1
     lastSpawnTime: 0
     currentCount: 0
   bossConditions:
@@ -190,6 +190,11 @@ MonoBehaviour:
   spawnInterval: 5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
+  spawnAroundPlayers: 1
+  minSpawnDistanceFromPlayer: 8
+  maxSpawnDistanceFromPlayer: 15
+  checkWallsBeforeSpawn: 1
+  maxSpawnAttempts: 5
   spawnPoints:
   - {fileID: 14414437941669633}
   - {fileID: 7888531709963633922}

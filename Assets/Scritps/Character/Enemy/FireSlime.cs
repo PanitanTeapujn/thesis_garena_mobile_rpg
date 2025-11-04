@@ -56,11 +56,6 @@ public class FireSlime : NetworkEnemy
         CharacterName = "Fire Slime";
         AttackType = AttackType.Magic;
 
-        Renderer slimeRenderer = GetComponent<Renderer>();
-        if (slimeRenderer != null)
-        {
-            slimeRenderer.material.color = Color.red;
-        }
     }
 
     public override void FixedUpdateNetwork()

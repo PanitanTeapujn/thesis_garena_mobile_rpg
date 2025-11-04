@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefabs:
-  - enemyPrefab: {fileID: 5444127218872422526, guid: d007969deee58184ab2703244b9aced6,
+  - enemyPrefab: {fileID: 3146736404170834553, guid: d007969deee58184ab2703244b9aced6,
       type: 3}
     enemyName: 
     spawnWeight: 3
@@ -191,6 +191,11 @@ MonoBehaviour:
   spawnInterval: 5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
+  spawnAroundPlayers: 1
+  minSpawnDistanceFromPlayer: 8
+  maxSpawnDistanceFromPlayer: 15
+  checkWallsBeforeSpawn: 1
+  maxSpawnAttempts: 5
   spawnPoints:
   - {fileID: 14414437941669633}
   - {fileID: 7888531709963633922}
@@ -213,6 +218,12 @@ MonoBehaviour:
   stageCompleteUI: {fileID: 0}
   destroyRemainingEnemiesOnStageComplete: 1
   destroyDelay: 1
+  waitForLoadingComplete: 1
+  maxLoadingWaitTime: 5
+  showLoadingDebug: 1
+  dummyPrefab: {fileID: 0}
+  dummySpawnPoint: {fileID: 0}
+  isLobbyScene: 0
 --- !u!114 &5007749454147549919
 MonoBehaviour:
   m_ObjectHideFlags: 0
