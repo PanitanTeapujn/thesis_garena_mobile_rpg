@@ -1228,6 +1228,8 @@ public class Berserker : Hero
 
     private void ShowSavageStrikeEffect()
     {
+        AudioManager.instance.PlaySFX(21, 0.5f);
+
         if (savageStrikeEffect != null)
         {
             GameObject effect = Instantiate(savageStrikeEffect.gameObject, transform.position + transform.forward * 1.5f, Quaternion.identity);
@@ -1237,6 +1239,8 @@ public class Berserker : Hero
 
     private void ShowWhirlwindEffect()
     {
+        AudioManager.instance.PlaySFX(22, 0.5f);
+
         if (whirlwindEffect != null)
         {
             GameObject effect = Instantiate(whirlwindEffect.gameObject, transform.position, Quaternion.identity);
@@ -1247,6 +1251,8 @@ public class Berserker : Hero
 
     private void ShowWarCryEffect()
     {
+        AudioManager.instance.PlaySFX(23, 0.5f);
+
         if (warCryEffect != null)
         {
             GameObject effect = Instantiate(warCryEffect.gameObject, transform.position + Vector3.up * 1f, Quaternion.identity);
@@ -1256,6 +1262,8 @@ public class Berserker : Hero
 
     private void ShowTitanWrathEffect()
     {
+        AudioManager.instance.PlaySFX(24, 0.5f);
+
         if (!IsInBerserkMode && groundSlamEffect != null)
         {
             GameObject effect = Instantiate(groundSlamEffect.gameObject, transform.position, Quaternion.identity);
@@ -1274,6 +1282,8 @@ public class Berserker : Hero
 
     private void ShowBasicAttackEffect()
     {
+        AudioManager.instance.PlaySFX(20, 0.5f);
+
         if (basicAttackEffect != null)
         {
             // ✅ ใช้ตำแหน่งของ Berserker เอง ไม่ต้องหาศัตรู
