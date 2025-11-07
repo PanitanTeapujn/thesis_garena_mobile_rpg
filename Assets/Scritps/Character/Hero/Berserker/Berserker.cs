@@ -13,10 +13,9 @@ public class Berserker : Hero
     [SerializeField] private int skill4ManaCost = 50;
 
     [Header("🔥 Rage System")]
-    [Networked] public float RagePoints { get; set; }
-    [Networked] public bool IsInBerserkMode { get; set; }
-    private const float MAX_RAGE_POINTS = 100f;
-    private const float BERSERK_DRAIN_RATE = 10f; // 10 points per second
+    [Networked] public bool IsInBerserkMode { get; set; } // ✅ เพิ่มกลับมา
+    [SerializeField] private bool isBerserkActive = false; // ใช้ใน client-side
+    private float accumulatedDrain = 0f; // สะสม drain amount ที่ยังไม่ได้ปัดเศษ
 
     [Header("🔥 Rage Gain Settings")]
     private const float RAGE_FROM_DAMAGE_TAKEN = 3f; // +3 Rage per 100 damage
@@ -79,8 +78,7 @@ public class Berserker : Hero
         skill4Cooldown = 30f;
 
         // Initialize Rage Points
-        RagePoints = 0f;
-        IsInBerserkMode = false;
+        CurrentFerrisPoint = 0;
 
         Debug.Log($"🪓 Berserker {CharacterName} initialized! Build: {(isPhysicalBuild ? "Physical" : "Hybrid")}");
     }
@@ -90,46 +88,73 @@ public class Berserker : Hero
     /// <summary>
     /// เพิ่ม Rage Points
     /// </summary>
+    /// 
+   
     private void GainRagePoints(int amount)
     {
         if (IsInBerserkMode) return; // ไม่เพิ่มระหว่าง Berserk Mode
 
-        float oldRage = RagePoints;
-        RagePoints = Mathf.Min(RagePoints + amount, MAX_RAGE_POINTS);
+        float oldRage = CurrentFerrisPoint;
+        GainFerrisPoint(amount); // ใช้ method จาก Hero.cs
 
-        Debug.Log($"🔥 [Rage] {CharacterName}: {oldRage:F0} → {RagePoints:F0} (+{amount})");
+        Debug.Log($"🔥 [Ferris Points] {CharacterName}: {oldRage:F0} → {CurrentFerrisPoint:F0} (+{amount})");
 
         // Update visual
         UpdateRageAuraVisual();
-
-        // Check if should enter Berserk Mode
-        if (RagePoints >= MAX_RAGE_POINTS && !IsInBerserkMode)
-        {
-            EnterBerserkMode();
-        }
     }
 
     /// <summary>
     /// ลด Rage Points (ระหว่าง Berserk Mode)
     /// </summary>
+    /// <summary>
+    /// ลด Ferris Points (ระหว่าง Berserk Mode)
+    /// </summary>
+    /// <summary>
+    /// ลด Ferris Points (ระหว่าง Berserk Mode)
+    /// </summary>
     private void DrainRagePoints(float deltaTime)
     {
         if (!IsInBerserkMode) return;
 
-        RagePoints = Mathf.Max(0f, RagePoints - (BERSERK_DRAIN_RATE * deltaTime));
+        float drainRate = 10f; // 10 points per second
 
-        Debug.Log($"🔥 [Berserk Drain] {CharacterName}: {RagePoints:F0} rage remaining");
+        // ✅ สะสม drain amount
+        accumulatedDrain += drainRate * deltaTime;
 
-        // Update visual
-        UpdateRageAuraVisual();
-
-        // Check if should exit Berserk Mode
-        if (RagePoints <= 0f)
+        // ✅ เมื่อสะสมได้ >= 1 point ให้ลดทีละ 1 point
+        if (accumulatedDrain >= 1f)
         {
-            ExitBerserkMode();
+            int drainAmount = Mathf.FloorToInt(accumulatedDrain);
+            CurrentFerrisPoint = Mathf.Max(0, CurrentFerrisPoint - drainAmount);
+
+            accumulatedDrain -= drainAmount; // เก็บเศษไว้
+
+            Debug.Log($"🔥 [Berserk Drain] {CharacterName}: -{drainAmount} points, {CurrentFerrisPoint} remaining (accumulated: {accumulatedDrain:F2})");
+
+            // Update visual
+            UpdateRageAuraVisual();
+
+            // Check if should exit Berserk Mode
+            if (CurrentFerrisPoint <= 0)
+            {
+                accumulatedDrain = 0f; // รีเซ็ตตัวสะสม
+                ExitBerserkMode();
+            }
         }
     }
+    protected override void OnFerrisPointFull()
+    {
+        base.OnFerrisPointFull();
 
+        // ✅ เช็คว่ายังไม่ได้อยู่ใน Berserk Mode
+        if (!IsInBerserkMode)
+        {
+            EnterBerserkMode();
+        }
+    }
+    /// <summary>
+    /// เข้าสู่โหมด Berserk Mode
+    /// </summary>
     /// <summary>
     /// เข้าสู่โหมด Berserk Mode
     /// </summary>
@@ -138,7 +163,8 @@ public class Berserker : Hero
         if (!HasStateAuthority) return;
 
         IsInBerserkMode = true;
-        RagePoints = MAX_RAGE_POINTS;
+        isBerserkActive = true;
+        accumulatedDrain = 0f; // ✅ รีเซ็ตตัวสะสม
 
         Debug.Log($"🔥 [BERSERK MODE ACTIVATED] {CharacterName}");
 
@@ -150,12 +176,16 @@ public class Berserker : Hero
     /// <summary>
     /// ออกจากโหมด Berserk Mode
     /// </summary>
+    /// <summary>
+    /// ออกจากโหมด Berserk Mode
+    /// </summary>
     private void ExitBerserkMode()
     {
         if (!HasStateAuthority) return;
 
-        IsInBerserkMode = false;
-        RagePoints = 0f;
+        IsInBerserkMode = false; // ✅ ปิด state
+        isBerserkActive = false;
+        CurrentFerrisPoint = 0;
 
         Debug.Log($"🔥 [Berserk Mode Ended] {CharacterName}");
 
@@ -168,7 +198,7 @@ public class Berserker : Hero
     /// </summary>
     private void UpdateRageAuraVisual()
     {
-        RPC_UpdateRageAuraColor(RagePoints);
+        RPC_UpdateRageAuraColor(CurrentFerrisPoint);
     }
 
     /// <summary>
@@ -179,17 +209,17 @@ public class Berserker : Hero
         float attackBonus = 0f;
         float armorBonus = 0f;
 
-        if (RagePoints < 33f)
+        if (CurrentFerrisPoint < 33f)
         {
             attackBonus = 0.05f;  // +5%
             armorBonus = 0.10f;   // +10%
         }
-        else if (RagePoints < 66f)
+        else if (CurrentFerrisPoint < 66f)
         {
             attackBonus = 0.15f;  // +15%
             armorBonus = 0.20f;   // +20%
         }
-        else if (RagePoints < 100f)
+        else if (CurrentFerrisPoint < 100f)
         {
             attackBonus = 0.30f;  // +30%
             armorBonus = 0.35f;   // +35%
@@ -1115,22 +1145,22 @@ public class Berserker : Hero
     #region Visual Effects RPCs
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_UpdateRageAuraColor(float ragePoints)
+    private void RPC_UpdateRageAuraColor(float ferrisPoints) // เปลี่ยนชื่อ parameter
     {
         if (rageAuraEffect == null) return;
 
         ParticleSystem.MainModule main = rageAuraEffect.main;
         Color targetColor;
 
-        if (ragePoints < 33f)
+        if (ferrisPoints < 33f)
         {
             targetColor = lightYellowColor;
         }
-        else if (ragePoints < 66f)
+        else if (ferrisPoints < 66f)
         {
             targetColor = orangeColor;
         }
-        else if (ragePoints < 100f)
+        else if (ferrisPoints < 100f)
         {
             targetColor = darkRedColor;
         }
@@ -1143,7 +1173,7 @@ public class Berserker : Hero
 
         // Adjust particle emission based on rage
         ParticleSystem.EmissionModule emission = rageAuraEffect.emission;
-        emission.rateOverTime = ragePoints * 0.5f; // 0-50 particles/s
+        emission.rateOverTime = ferrisPoints * 0.5f; // 0-50 particles/s
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -1286,21 +1316,17 @@ public class Berserker : Hero
 
         if (basicAttackEffect != null)
         {
-            // ✅ ใช้ตำแหน่งของ Berserker เอง ไม่ต้องหาศัตรู
             Vector3 effectPosition = transform.position + Vector3.up * 0.5f;
-
             GameObject effect = Instantiate(basicAttackEffect.gameObject, effectPosition, Quaternion.identity);
 
-            // ✅ Flip effect ตามทิศทางของตัวละคร
+            // Flip effect ตามทิศทางของตัวละคร
             Vector3 effectScale = effect.transform.localScale;
             if (transform.localScale.x < 0)
             {
-                // ถ้าตัวละครหันซ้าย (scale.x เป็นลบ)
                 effectScale.x = -Mathf.Abs(effectScale.x);
             }
             else
             {
-                // ถ้าตัวละครหันขวา (scale.x เป็นบวก)
                 effectScale.x = Mathf.Abs(effectScale.x);
             }
             effect.transform.localScale = effectScale;
@@ -1310,16 +1336,16 @@ public class Berserker : Hero
             {
                 ParticleSystem.MainModule main = ps.main;
 
-                // สีของ effect ตาม Rage Level
-                if (RagePoints < 33f)
+                // ✅ แก้ไข: ใช้ CurrentFerrisPoint แทน RagePoints
+                if (CurrentFerrisPoint < 33f)
                 {
                     main.startColor = new Color(1f, 0.9f, 0.7f, 0.8f);
                 }
-                else if (RagePoints < 66f)
+                else if (CurrentFerrisPoint < 66f)
                 {
                     main.startColor = new Color(1f, 0.6f, 0.2f, 0.9f);
                 }
-                else if (RagePoints < 100f)
+                else if (CurrentFerrisPoint < 100f)
                 {
                     main.startColor = new Color(1f, 0.3f, 0.1f, 1f);
                 }
@@ -1343,7 +1369,7 @@ public class Berserker : Hero
     {
         base.FixedUpdateNetwork();
 
-        // Drain Rage during Berserk Mode
+        // Drain Ferris Points during Berserk Mode
         if (HasStateAuthority && IsInBerserkMode)
         {
             DrainRagePoints(Runner.DeltaTime);

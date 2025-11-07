@@ -8,6 +8,7 @@ public class WorldSpaceUI : MonoBehaviour
     public Slider healthBar;
     public Slider manaBar;
     public Canvas worldCanvas;
+    public Slider ferrisBar; // 🆕 เพิ่มบรรทัดนี้
 
     [Header("3D TextMeshPro Elements")]
     public TextMeshPro playerNameText3D;
@@ -96,23 +97,38 @@ public class WorldSpaceUI : MonoBehaviour
 
     private void UpdateBars()
     {
-        if (targetHero == null || !targetHero.IsSpawned) return; // เพิ่มการตรวจสอบ IsSpawned
+        if (targetHero == null || !targetHero.IsSpawned) return;
 
         // รอให้ network state พร้อม
         if (!targetHero.IsNetworkStateReady) return;
 
-        // Update Health Bar (ระบบเดิมที่ทำงานได้ดี)
+        // Update Health Bar
         if (healthBar != null && targetHero.NetworkedMaxHp > 0)
         {
             float healthPercent = (float)targetHero.NetworkedCurrentHp / targetHero.NetworkedMaxHp;
             healthBar.value = Mathf.Clamp01(healthPercent);
         }
 
-        // Update Mana Bar (ระบบเดิมที่ทำงานได้ดี)
+        // Update Mana Bar
         if (manaBar != null && targetHero.NetworkedMaxMana > 0)
         {
             float manaPercent = (float)targetHero.NetworkedCurrentMana / targetHero.NetworkedMaxMana;
             manaBar.value = Mathf.Clamp01(manaPercent);
+        }
+
+        // 🆕 Update Ferris Bar (แสดงเฉพาะ Berserker/BloodKnight)
+        if (ferrisBar != null)
+        {
+            if (targetHero.UsesFerrisPoint() && targetHero.MaxFerrisPoint > 0)
+            {
+                ferrisBar.gameObject.SetActive(true);
+                float ferrisPercent = (float)targetHero.NetworkedFerrisPoint / targetHero.MaxFerrisPoint;
+                ferrisBar.value = Mathf.Clamp01(ferrisPercent);
+            }
+            else
+            {
+                ferrisBar.gameObject.SetActive(false);
+            }
         }
     }
 

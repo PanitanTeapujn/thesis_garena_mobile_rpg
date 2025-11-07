@@ -12,11 +12,15 @@ public class BloodKnight : Hero
     [SerializeField] private int skill3ManaCost = 15;
     [SerializeField] private int skill4ManaCost = 40;
 
+    /*  [Header("🩸 Blood Points System")]
+      [Networked] public float BloodPoints { get; set; }
+      [Networked] public bool IsInBloodTrance { get; set; }
+      private const float MAX_BLOOD_POINTS = 100f;
+      private const float BLOOD_TRANCE_DRAIN_RATE = 10f; // 10 points per second*/
     [Header("🩸 Blood Points System")]
-    [Networked] public float BloodPoints { get; set; }
-    [Networked] public bool IsInBloodTrance { get; set; }
-    private const float MAX_BLOOD_POINTS = 100f;
-    private const float BLOOD_TRANCE_DRAIN_RATE = 10f; // 10 points per second
+    [Networked] public bool IsInBloodTrance { get; set; } // ✅ เพิ่มกลับมา
+    [SerializeField] private bool isBloodTrancActive = false; // ใช้ใน client-side
+    private float accumulatedDrain = 0f; // สะสม drain amount ที่ยังไม่ได้ปัดเศษ
 
     [Header("🩸 Blood Edge (Skill 1) Settings")]
     [Networked] public int BloodEdgeStacks { get; set; }
@@ -70,8 +74,8 @@ public class BloodKnight : Hero
         skill4Cooldown = 20f;
 
         // Initialize Blood Points
-        BloodPoints = 0f;
-        IsInBloodTrance = false;
+        CurrentFerrisPoint = 0;
+
 
         Debug.Log($"🩸 Blood Knight {CharacterName} initialized! Build: {(isPhysicalBuild ? "Physical" : "Magic")}");
     }
@@ -81,46 +85,71 @@ public class BloodKnight : Hero
     /// <summary>
     /// เพิ่ม Blood Points
     /// </summary>
+    /// 
+   
+
     private void GainBloodPoints(int amount)
     {
         if (IsInBloodTrance) return; // ไม่เพิ่มระหว่าง Blood Trance
 
-        float oldPoints = BloodPoints;
-        BloodPoints = Mathf.Min(BloodPoints + amount, MAX_BLOOD_POINTS);
+        float oldPoints = CurrentFerrisPoint;
+        GainFerrisPoint(amount); // ใช้ method จาก Hero.cs
 
-        Debug.Log($"🩸 [Blood Points] {CharacterName}: {oldPoints:F0} → {BloodPoints:F0} (+{amount})");
+        Debug.Log($"🩸 [Ferris Points] {CharacterName}: {oldPoints:F0} → {CurrentFerrisPoint:F0} (+{amount})");
 
         // Update visual
         UpdateBloodAuraVisual();
-
-        // Check if should enter Blood Trance
-        if (BloodPoints >= MAX_BLOOD_POINTS && !IsInBloodTrance)
-        {
-            EnterBloodTrance();
-        }
     }
 
     /// <summary>
     /// ลด Blood Points (ระหว่าง Blood Trance)
     /// </summary>
+    /// <summary>
+    /// ลด Ferris Points (ระหว่าง Blood Trance)
+    /// </summary>
+    /// <summary>
+    /// ลด Ferris Points (ระหว่าง Blood Trance)
+    /// </summary>
     private void DrainBloodPoints(float deltaTime)
     {
         if (!IsInBloodTrance) return;
 
-        BloodPoints = Mathf.Max(0f, BloodPoints - (BLOOD_TRANCE_DRAIN_RATE * deltaTime));
+        float drainRate = 10f; // 10 points per second
 
-        Debug.Log($"🩸 [Blood Trance Drain] {CharacterName}: {BloodPoints:F0} points remaining");
+        // ✅ สะสม drain amount
+        accumulatedDrain += drainRate * deltaTime;
 
-        // Update visual
-        UpdateBloodAuraVisual();
-
-        // Check if should exit Blood Trance
-        if (BloodPoints <= 0f)
+        // ✅ เมื่อสะสมได้ >= 1 point ให้ลดทีละ 1 point
+        if (accumulatedDrain >= 1f)
         {
-            ExitBloodTrance();
+            int drainAmount = Mathf.FloorToInt(accumulatedDrain);
+            CurrentFerrisPoint = Mathf.Max(0, CurrentFerrisPoint - drainAmount);
+
+            accumulatedDrain -= drainAmount; // เก็บเศษไว้
+
+            Debug.Log($"🩸 [Blood Trance Drain] {CharacterName}: -{drainAmount} points, {CurrentFerrisPoint} remaining (accumulated: {accumulatedDrain:F2})");
+
+            // Update visual
+            UpdateBloodAuraVisual();
+
+            // Check if should exit Blood Trance
+            if (CurrentFerrisPoint <= 0)
+            {
+                accumulatedDrain = 0f; // รีเซ็ตตัวสะสม
+                ExitBloodTrance();
+            }
         }
     }
+    protected override void OnFerrisPointFull()
+    {
+        base.OnFerrisPointFull();
 
+        // ✅ เช็คว่ายังไม่ได้อยู่ใน Blood Trance
+        if (!IsInBloodTrance)
+        {
+            EnterBloodTrance();
+        }
+    }
     /// <summary>
     /// เข้าสู่โหมด Blood Trance
     /// </summary>
@@ -129,7 +158,8 @@ public class BloodKnight : Hero
         if (!HasStateAuthority) return;
 
         IsInBloodTrance = true;
-        BloodPoints = MAX_BLOOD_POINTS;
+        isBloodTrancActive = true;
+        accumulatedDrain = 0f; // ✅ รีเซ็ตตัวสะสม
 
         Debug.Log($"🩸 [BLOOD TRANCE ACTIVATED] {CharacterName}");
 
@@ -145,8 +175,9 @@ public class BloodKnight : Hero
     {
         if (!HasStateAuthority) return;
 
-        IsInBloodTrance = false;
-        BloodPoints = 0f;
+        IsInBloodTrance = false; // ✅ ปิด state
+        isBloodTrancActive = false;
+        CurrentFerrisPoint = 0;
 
         Debug.Log($"🩸 [Blood Trance Ended] {CharacterName}");
 
@@ -159,7 +190,7 @@ public class BloodKnight : Hero
     /// </summary>
     private void UpdateBloodAuraVisual()
     {
-        RPC_UpdateBloodAuraColor(BloodPoints);
+        RPC_UpdateBloodAuraColor(CurrentFerrisPoint);
     }
 
     #endregion
@@ -1054,15 +1085,15 @@ public class BloodKnight : Hero
                     ParticleSystem.MainModule main = ps.main;
 
                     // สีของ effect ตาม Blood Points Level
-                    if (BloodPoints < 33f)
+                    if (CurrentFerrisPoint < 33f)
                     {
                         main.startColor = new Color(1f, 0.6f, 0.6f, 0.8f);
                     }
-                    else if (BloodPoints < 66f)
+                    else if (CurrentFerrisPoint < 66f)
                     {
                         main.startColor = new Color(1f, 0.3f, 0.3f, 0.9f);
                     }
-                    else if (BloodPoints < 100f)
+                    else if (CurrentFerrisPoint < 100f)
                     {
                         main.startColor = new Color(0.8f, 0.1f, 0.1f, 1f);
                     }
@@ -1129,22 +1160,22 @@ public class BloodKnight : Hero
     #region Visual Effects RPCs
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_UpdateBloodAuraColor(float bloodPoints)
+    private void RPC_UpdateBloodAuraColor(float ferrisPoints) // เปลี่ยนชื่อ parameter
     {
         if (bloodAuraEffect == null) return;
 
         ParticleSystem.MainModule main = bloodAuraEffect.main;
         Color targetColor;
 
-        if (bloodPoints < 33f)
+        if (ferrisPoints < 33f)
         {
             targetColor = lightRedColor;
         }
-        else if (bloodPoints < 66f)
+        else if (ferrisPoints < 66f)
         {
             targetColor = mediumRedColor;
         }
-        else if (bloodPoints < 100f)
+        else if (ferrisPoints < 100f)
         {
             targetColor = darkRedColor;
         }
@@ -1155,9 +1186,9 @@ public class BloodKnight : Hero
 
         main.startColor = targetColor;
 
-        // Adjust particle emission based on blood points
+        // Adjust particle emission based on ferris points
         ParticleSystem.EmissionModule emission = bloodAuraEffect.emission;
-        emission.rateOverTime = bloodPoints * 0.5f; // 0-50 particles/s
+        emission.rateOverTime = ferrisPoints * 0.5f; // 0-50 particles/s
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -1313,7 +1344,7 @@ public class BloodKnight : Hero
     {
         base.FixedUpdateNetwork();
 
-        // Drain Blood Points during Blood Trance
+        // Drain Ferris Points during Blood Trance
         if (HasStateAuthority && IsInBloodTrance)
         {
             DrainBloodPoints(Runner.DeltaTime);

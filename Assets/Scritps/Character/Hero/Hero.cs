@@ -25,9 +25,12 @@
         private bool skill2Consumed = false;
         private bool skill3Consumed = false;
         private bool skill4Consumed = false;
-
-        // ========== Camera Properties ==========
-        [Header("Camera")]
+    [Header("🔥 Ferris Point System (Transformation)")]
+    [Networked] public int NetworkedFerrisPoint { get; set; }
+    [SerializeField] private int currentFerrisPoint = 0;
+    [SerializeField] private int maxFerrisPoint = 100;
+    // ========== Camera Properties ==========
+    [Header("Camera")]
         public Vector3 moveDirection;
         public Transform cameraTransform;
         public float cameraRotationSpeed = 50f;
@@ -268,7 +271,9 @@
         // Client ที่มี InputAuthority แต่ไม่มี StateAuthority
         if (HasInputAuthority && !HasStateAuthority)
             {
-                if (GetInput(out networkInputData))
+            NetworkedFerrisPoint = currentFerrisPoint;
+
+            if (GetInput(out networkInputData))
                 {
                     ProcessMovement();
                     ProcessCameraRotation();
@@ -934,6 +939,126 @@
     public bool CanUseSkill(int skillNumber)
     {
         return GetSkillCooldownRemaining(skillNumber) <= 0 && !HasStatusEffect(StatusEffectType.Stun);
+    }
+    public int CurrentFerrisPoint
+    {
+        get { return currentFerrisPoint; }
+        set
+        {
+            currentFerrisPoint = Mathf.Clamp(value, 0, maxFerrisPoint);
+            if (HasStateAuthority)
+            {
+                NetworkedFerrisPoint = currentFerrisPoint;
+            }
+        }
+    }
+
+    public int MaxFerrisPoint { get { return maxFerrisPoint; } set { maxFerrisPoint = value; } }
+
+    /// <summary>
+    /// ตรวจสอบว่า Hero ตัวนี้ใช้ Ferris Point หรือไม่
+    /// </summary>
+    public virtual bool UsesFerrisPoint()
+    {
+        string heroName = CharacterName.ToLower();
+        return heroName.Contains("berserker") || heroName.Contains("bloodknight");
+    }
+
+    /// <summary>
+    /// เพิ่ม Ferris Point
+    /// </summary>
+    public void GainFerrisPoint(int amount)
+    {
+        if (!UsesFerrisPoint()) return;
+
+        int oldValue = CurrentFerrisPoint;
+        CurrentFerrisPoint += amount;
+
+        Debug.Log($"[Ferris] {CharacterName} gained {amount} Ferris Point ({oldValue} → {CurrentFerrisPoint}/{MaxFerrisPoint})");
+
+        // ตรวจสอบว่าครบแล้วหรือไม่
+        if (CurrentFerrisPoint >= MaxFerrisPoint)
+        {
+            OnFerrisPointFull();
+        }
+
+        // Sync to network
+        if (HasInputAuthority && !HasStateAuthority)
+        {
+            RPC_SyncFerrisPoint(CurrentFerrisPoint);
+        }
+    }
+
+    /// <summary>
+    /// ใช้ Ferris Point (สำหรับแปลงร่าง)
+    /// </summary>
+    public bool ConsumeFerrisPoint(int amount)
+    {
+        if (!UsesFerrisPoint()) return false;
+
+        if (CurrentFerrisPoint < amount)
+        {
+            Debug.LogWarning($"[Ferris] {CharacterName} doesn't have enough Ferris Point! ({CurrentFerrisPoint}/{amount})");
+            return false;
+        }
+
+        CurrentFerrisPoint -= amount;
+        Debug.Log($"[Ferris] {CharacterName} consumed {amount} Ferris Point (remaining: {CurrentFerrisPoint}/{MaxFerrisPoint})");
+
+        // Sync to network
+        if (HasInputAuthority && !HasStateAuthority)
+        {
+            RPC_SyncFerrisPoint(CurrentFerrisPoint);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// รีเซ็ต Ferris Point (เช่น หลังแปลงร่างเสร็จ)
+    /// </summary>
+    public void ResetFerrisPoint()
+    {
+        CurrentFerrisPoint = 0;
+        Debug.Log($"[Ferris] {CharacterName} Ferris Point reset to 0");
+
+        if (HasInputAuthority && !HasStateAuthority)
+        {
+            RPC_SyncFerrisPoint(0);
+        }
+    }
+
+    /// <summary>
+    /// เรียกเมื่อ Ferris Point เต็ม
+    /// </summary>
+    protected virtual void OnFerrisPointFull()
+    {
+        Debug.Log($"🔥 [Ferris] {CharacterName} Ferris Point is FULL! Ready to transform!");
+        // Override ใน Berserker และ BloodKnight เพื่อทำการแปลงร่าง
+    }
+
+    /// <summary>
+    /// ดึง Ferris Point percentage (0-1)
+    /// </summary>
+    public float GetFerrisPointPercentage()
+    {
+        if (!UsesFerrisPoint() || MaxFerrisPoint == 0) return 0f;
+        return (float)CurrentFerrisPoint / MaxFerrisPoint;
+    }
+
+    // 🆕 Network RPCs สำหรับ Ferris Point
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_SyncFerrisPoint(int newValue)
+    {
+        CurrentFerrisPoint = newValue;
+        NetworkedFerrisPoint = newValue;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_BroadcastFerrisPoint(int newValue)
+    {
+        CurrentFerrisPoint = newValue;
+        NetworkedFerrisPoint = newValue;
     }
     #region Ui
     public void ForceUpdateUI()

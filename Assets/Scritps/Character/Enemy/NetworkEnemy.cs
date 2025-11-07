@@ -141,7 +141,7 @@ public class NetworkEnemy : Character
 
 
     [Header("🎯 Dummy UI")]
-    public GameObject dummyUIPrefab; // ลาก WorldSpaceUI prefab มาใส่
+    public GameObject dummyUIPrefab; 
     private GameObject dummyUIInstance;
 
     [Header("🎯 Dummy Debuff System")]
@@ -500,6 +500,8 @@ public class NetworkEnemy : Character
 
         if (ui.manaBar != null)
             ui.manaBar.gameObject.SetActive(false);
+        if (ui.ferrisBar != null)
+            ui.ferrisBar.gameObject.SetActive(false);
 
         Debug.Log($"[Dummy] UI created for Level {DummyLevel} Dummy");
     }
