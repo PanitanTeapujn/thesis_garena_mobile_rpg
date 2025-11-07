@@ -602,6 +602,8 @@ public class BloodKnight : Hero
 
     private IEnumerator ExecuteBloodPool(Vector3 position, bool isCursed)
     {
+        AudioManager.instance.PlaySFX(18, 0.5f);
+
         // Destroy old pool if exists
         if (currentBloodPool != null)
         {
@@ -955,6 +957,8 @@ public class BloodKnight : Hero
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_PerformBloodKnightAttack(NetworkObject enemyObject, bool hasBloodEdge)
     {
+        AudioManager.instance.PlaySFX(15, 0.5f);
+
         if (enemyObject != null)
         {
             Character enemy = enemyObject.GetComponent<Character>();
@@ -1173,6 +1177,8 @@ public class BloodKnight : Hero
 
     private void ShowBloodEdgeEffect()
     {
+        AudioManager.instance.PlaySFX(16, 0.5f);
+
         if (bloodEdgeEffect != null)
         {
             GameObject effect = Instantiate(bloodEdgeEffect.gameObject, transform.position + Vector3.up * 1f, Quaternion.identity);
@@ -1191,6 +1197,8 @@ public class BloodKnight : Hero
 
     private void ShowCrimsonLanceEffect()
     {
+        AudioManager.instance.PlaySFX(17, 0.5f);
+
         if (crimsonLanceEffect != null)
         {
             GameObject effect = Instantiate(crimsonLanceEffect.gameObject, transform.position + Vector3.up * 1.5f, Quaternion.identity);
@@ -1214,6 +1222,8 @@ public class BloodKnight : Hero
 
     private void ShowBloodMoonEffect()
     {
+        AudioManager.instance.PlaySFX(19, 0.5f);
+
         if (bloodExplosionEffect != null)
         {
             GameObject effect = Instantiate(bloodExplosionEffect.gameObject, transform.position, Quaternion.identity);
