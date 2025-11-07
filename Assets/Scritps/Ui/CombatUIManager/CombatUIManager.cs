@@ -81,6 +81,8 @@ public class CombatUIManager : MonoBehaviour
     [Header("Character Stats in Inventory")]
     public TextMeshProUGUI characterNameText;
     public TextMeshProUGUI characterLevelText;
+    public Image characterPortraitImage; // 🆕 เพิ่มบรรทัดนี้
+
     public Slider inventoryHealthBar;
     public Slider inventoryManaBar;
     public TextMeshProUGUI inventoryHealthText;
@@ -146,6 +148,8 @@ public class CombatUIManager : MonoBehaviour
 
         // ใช้ Coroutine เพื่อหา InputController
         StartCoroutine(FindInputControllerRoutine());
+        LoadSkillIconsForCurrentHero();
+
     }
 
     private void Update()
@@ -211,7 +215,31 @@ public class CombatUIManager : MonoBehaviour
             }
         }
     }
+    /// <summary>
+    /// ตั้งค่ารูปตัวละครใน Inventory Panel
+    /// </summary>
+    private void UpdateCharacterPortrait()
+    {
+        if (characterPortraitImage == null)
+        {
+            Debug.LogWarning("[CombatUI] Character Portrait Image not assigned!");
+            return;
+        }
 
+        if (localHero == null)
+        {
+            Debug.LogWarning("[CombatUI] Local hero is null, cannot update portrait");
+            return;
+        }
+
+        // ดึงชื่อตัวละครจาก PersistentPlayerData
+        string currentHero = PersistentPlayerData.Instance?.GetCurrentActiveCharacter() ?? "Assassin";
+
+        Debug.Log($"[CombatUI] 🎨 Loading portrait for: {currentHero}");
+
+        // ใช้ CharacterPortraitManager เพื่อตั้งค่ารูป
+        CharacterPortraitManager.Instance.SetCharacterPortrait(characterPortraitImage, currentHero);
+    }
     private float lastDeleteManagerCheck = 0f; // เพิ่มตัวแปรนี้ใน class level
 
     // เพิ่ม Coroutine สำหรับหา InputController
@@ -1209,6 +1237,7 @@ public class CombatUIManager : MonoBehaviour
 
         // ✅ เพิ่มการ force refresh references
         RefreshItemDeleteManagerReferences();
+        LoadSkillIconsForCurrentHero();
 
         UpdateUI();
     }
@@ -1450,6 +1479,7 @@ public class CombatUIManager : MonoBehaviour
     public void UpdateInventoryCharacterStats()
     {
         if (localHero == null || !localHero.IsSpawned) return; // เพิ่มการตรวจสอบ IsSpawned
+        UpdateCharacterPortrait();
 
         // Character Name & Level
         if (characterNameText != null)
@@ -1577,7 +1607,20 @@ public class CombatUIManager : MonoBehaviour
             Debug.LogWarning("[CombatUI] Cannot show item detail - missing manager or item data");
         }
     }
+    public void LoadSkillIconsForCurrentHero()
+    {
+        if (PersistentPlayerData.Instance == null)
+        {
+            Debug.LogWarning("[CombatUI] PersistentPlayerData not found!");
+            return;
+        }
 
+        string currentHero = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+
+        Debug.Log($"[CombatUI] 🎨 Loading skill icons for: {currentHero}");
+
+        SkillIconManager.Instance.SetSkillIcons(this, currentHero);
+    }
     // 🆕 เพิ่ม method สำหรับซ่อน item detail
     public void HideEquipmentItemDetail()
     {

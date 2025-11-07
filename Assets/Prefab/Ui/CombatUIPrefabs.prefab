@@ -1579,6 +1579,7 @@ MonoBehaviour:
   inventoryFilterStatusText: {fileID: 0}
   characterNameText: {fileID: 3813240210449490650}
   characterLevelText: {fileID: 5237514716470196488}
+  characterPortraitImage: {fileID: 2134124018552205608}
   inventoryHealthBar: {fileID: 6322906337370074699}
   inventoryManaBar: {fileID: 2772304718966392793}
   inventoryHealthText: {fileID: 6823364734049678278}
@@ -12186,7 +12187,7 @@ GameObject:
   - component: {fileID: 3910819360860179344}
   - component: {fileID: 2134124018552205608}
   m_Layer: 5
-  m_Name: Image
+  m_Name: CharacterPortrait
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -12239,7 +12240,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 7de29876e58799e4989e04dca9384efb, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 70f226a407a37954caf34d5ec9e0765e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -16929,7 +16930,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 2a5c892bdd014164da633b8c6fd0f246,
+      objectReference: {fileID: 21300000, guid: d8fbfc107a3048943b189277ef845a48,
         type: 3}
     - target: {fileID: 6193847727099627480, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
@@ -17035,7 +17036,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: dc2e8badd3118614f910c9f20e929602,
+      objectReference: {fileID: 21300000, guid: 702ed64c04c3c0e4a8cf88b7404001de,
         type: 3}
     - target: {fileID: 7158440146213341102, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
@@ -17046,7 +17047,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: a3bfadb64c1418145a8113771c30b930,
+      objectReference: {fileID: 21300000, guid: 5603694fae98f444592f06541727ae65,
         type: 3}
     - target: {fileID: 7473404362985405609, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
@@ -17146,7 +17147,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 0389074d1deba1c448d45812db40c0df,
+      objectReference: {fileID: 21300000, guid: 2d63dcc953ad03c479ba620c3f3cb700,
         type: 3}
     - target: {fileID: 8527130980216978739, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
