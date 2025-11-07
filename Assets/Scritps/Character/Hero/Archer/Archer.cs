@@ -181,7 +181,7 @@ public class Archer : Hero
     private IEnumerator ExecuteFlameArrow(Character target)
     {
         Debug.Log($"🏹 [Flame Arrow] Firing at {target.CharacterName}!");
-
+        AudioManager.instance.PlaySFX(11, 0.2f);
         // ยิงลูกศรเพลิง (visual)
         if (arrowPrefab != null && target != null)
         {
@@ -323,6 +323,7 @@ public class Archer : Hero
     private IEnumerator ExecuteShadowStep(Vector3 direction, Vector3 smokeBombPosition)
     {
         Vector3 startPos = transform.position;
+        AudioManager.instance.PlaySFX(12, 0.5f);
 
         // ตรวจสอบกำแพงก่อน dash
         float actualDashDistance = shadowStepDistance;
@@ -473,6 +474,7 @@ public class Archer : Hero
     private IEnumerator ExecuteFireVolley(Vector3 targetPosition)
     {
         Debug.Log($"🎯 [Fire Volley] Firing at position {targetPosition}!");
+        AudioManager.instance.PlaySFX(13, 0.5f);
 
         // สร้าง visual effect
         if (fireVolleyEffect != null)
@@ -547,6 +549,7 @@ public class Archer : Hero
     private IEnumerator ExecuteInfernoRain(Vector3 targetPosition)
     {
         Debug.Log($"🔥 [INFERNO RAIN] Ultimate activated at {targetPosition}!");
+        AudioManager.instance.PlaySFX(14, 0.5f);
 
         // สร้าง visual effect
         if (infernoRainEffect != null)
@@ -973,6 +976,7 @@ public class Archer : Hero
     private IEnumerator ShootArrowVisual(Transform target)
     {
         if (arrowPrefab == null || target == null) yield break;
+        AudioManager.instance.PlaySFX(10, 0.5f);
 
         Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
         Vector3 direction = (target.position + Vector3.up - startPos).normalized;

@@ -24,7 +24,7 @@ GameObject:
   - component: {fileID: 7364249741495068857}
   m_Layer: 7
   m_Name: SlimeFire
-  m_TagString: Enemy
+  m_TagString: SlimeFire
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
