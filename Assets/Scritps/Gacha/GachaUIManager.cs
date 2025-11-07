@@ -274,7 +274,13 @@ public class GachaUIManager : MonoBehaviour
 
     private void UpdateRollButtonStates()
     {
-        if (currentMachine == null || currentMachine.Pool == null) return;
+        if (currentMachine == null) return;
+
+        // ตรวจสอบว่ามี Pool หรือ CharacterPool
+        bool hasValidPool = (currentMachine.isCharacterMachine && currentMachine.CharacterPool != null) ||
+                           (!currentMachine.isCharacterMachine && currentMachine.Pool != null);
+
+        if (!hasValidPool) return;
 
         // ตรวจสอบ currency สำหรับ single roll
         bool canAffordSingle = CanAffordRoll(1);
@@ -293,19 +299,40 @@ public class GachaUIManager : MonoBehaviour
 
     private bool CanAffordRoll(int rollCount)
     {
-        if (currentMachine == null || currentMachine.Pool == null || currencyManager == null)
+        if (currentMachine == null || currencyManager == null)
             return false;
 
-        long cost = rollCount == 1 ?
-            currentMachine.Pool.costPerRoll :
-            currentMachine.Pool.costPerTenRolls;
+        // ดึงข้อมูล pool ที่เหมาะสม
+        long cost = 0;
+        string currencyType = "";
+
+        if (currentMachine.isCharacterMachine)
+        {
+            if (currentMachine.CharacterPool == null) return false;
+
+            cost = rollCount == 1 ?
+                currentMachine.CharacterPool.costPerRoll :
+                currentMachine.CharacterPool.costPerTenRolls;
+
+            currencyType = currentMachine.CharacterPool.costCurrency;
+        }
+        else
+        {
+            if (currentMachine.Pool == null) return false;
+
+            cost = rollCount == 1 ?
+                currentMachine.Pool.costPerRoll :
+                currentMachine.Pool.costPerTenRolls;
+
+            currencyType = currentMachine.Pool.costCurrency;
+        }
 
         // ตรวจสอบตาม currency type
-        if (currentMachine.Pool.costCurrency == "Gems")
+        if (currencyType == "Gems")
         {
             return currencyManager.HasEnoughGems((int)cost);
         }
-        else if (currentMachine.Pool.costCurrency == "Gold")
+        else if (currencyType == "Gold")
         {
             return currencyManager.HasEnoughGold(cost);
         }
@@ -315,19 +342,40 @@ public class GachaUIManager : MonoBehaviour
 
     private bool SpendCurrency(int rollCount)
     {
-        if (currentMachine == null || currentMachine.Pool == null || currencyManager == null)
+        if (currentMachine == null || currencyManager == null)
             return false;
 
-        long cost = rollCount == 1 ?
-            currentMachine.Pool.costPerRoll :
-            currentMachine.Pool.costPerTenRolls;
+        // ดึงข้อมูล pool ที่เหมาะสม
+        long cost = 0;
+        string currencyType = "";
+
+        if (currentMachine.isCharacterMachine)
+        {
+            if (currentMachine.CharacterPool == null) return false;
+
+            cost = rollCount == 1 ?
+                currentMachine.CharacterPool.costPerRoll :
+                currentMachine.CharacterPool.costPerTenRolls;
+
+            currencyType = currentMachine.CharacterPool.costCurrency;
+        }
+        else
+        {
+            if (currentMachine.Pool == null) return false;
+
+            cost = rollCount == 1 ?
+                currentMachine.Pool.costPerRoll :
+                currentMachine.Pool.costPerTenRolls;
+
+            currencyType = currentMachine.Pool.costCurrency;
+        }
 
         // ใช้จ่ายตาม currency type
-        if (currentMachine.Pool.costCurrency == "Gems")
+        if (currencyType == "Gems")
         {
             return currencyManager.SpendGems((int)cost);
         }
-        else if (currentMachine.Pool.costCurrency == "Gold")
+        else if (currencyType == "Gold")
         {
             return currencyManager.SpendGold(cost);
         }
@@ -384,17 +432,35 @@ public class GachaUIManager : MonoBehaviour
             buttonText.text = machine.machineName;
         }
 
-        Image buttonIcon = newButton.transform.Find("Icon")?.GetComponent<Image>();
-        if (buttonIcon != null && machine.Pool != null && machine.Pool.poolIcon != null)
+        // Get icon and cost from appropriate pool
+        Sprite poolIcon = null;
+        int costPerRoll = 0;
+        string costCurrency = "";
+
+        if (machine.isCharacterMachine && machine.CharacterPool != null)
         {
-            buttonIcon.sprite = machine.Pool.poolIcon;
+            poolIcon = machine.CharacterPool.poolIcon;
+            costPerRoll = machine.CharacterPool.costPerRoll;
+            costCurrency = machine.CharacterPool.costCurrency;
+        }
+        else if (machine.Pool != null)
+        {
+            poolIcon = machine.Pool.poolIcon;
+            costPerRoll = machine.Pool.costPerRoll;
+            costCurrency = machine.Pool.costCurrency;
+        }
+
+        Image buttonIcon = newButton.transform.Find("Icon")?.GetComponent<Image>();
+        if (buttonIcon != null && poolIcon != null)
+        {
+            buttonIcon.sprite = poolIcon;
         }
 
         // Setup cost display on button
         TextMeshProUGUI costText = newButton.transform.Find("CostText")?.GetComponent<TextMeshProUGUI>();
-        if (costText != null && machine.Pool != null)
+        if (costText != null && costPerRoll > 0)
         {
-            costText.text = $"{machine.Pool.costPerRoll} {machine.Pool.costCurrency}";
+            costText.text = $"{costPerRoll} {costCurrency}";
         }
 
         // Setup button click event

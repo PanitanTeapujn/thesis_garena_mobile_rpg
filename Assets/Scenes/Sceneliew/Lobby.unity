@@ -1995,7 +1995,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &44344703
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7284,8 +7284,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 972, y: -17}
-  m_SizeDelta: {x: 230, y: 890.32}
+  m_AnchoredPosition: {x: 852.4072, y: -17}
+  m_SizeDelta: {x: 469.1853, y: 890.32}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &224706271
 MonoBehaviour:
@@ -7302,10 +7302,10 @@ MonoBehaviour:
   m_Padding:
     m_Left: 0
     m_Right: 0
-    m_Top: 10
+    m_Top: 0
     m_Bottom: 0
-  m_ChildAlignment: 1
-  m_Spacing: 10
+  m_ChildAlignment: 4
+  m_Spacing: 100
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 0
@@ -38676,7 +38676,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1283003063
 RectTransform:
   m_ObjectHideFlags: 0
@@ -54034,7 +54034,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   machineId: 0
-  machineName: Tool
+  machineName: Weapon
   gachaPool: {fileID: 11400000, guid: db1ef91966b08b04b85cb2ab63b33a92, type: 2}
   characterPool: {fileID: 0}
   isCharacterMachine: 0
@@ -55035,7 +55035,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   machineId: char 01
-  machineName: Char
+  machineName: Ferries
   gachaPool: {fileID: 0}
   characterPool: {fileID: 11400000, guid: db04fc9fb37060649ae23cf3382cb585, type: 2}
   isCharacterMachine: 1
