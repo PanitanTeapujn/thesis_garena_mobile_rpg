@@ -1287,9 +1287,23 @@ public class Berserker : Hero
         if (basicAttackEffect != null)
         {
             // ✅ ใช้ตำแหน่งของ Berserker เอง ไม่ต้องหาศัตรู
-            Vector3 effectPosition = transform.position + Vector3.up * 0.5f; // ปรับความสูงตามต้องการ
+            Vector3 effectPosition = transform.position + Vector3.up * 0.5f;
 
             GameObject effect = Instantiate(basicAttackEffect.gameObject, effectPosition, Quaternion.identity);
+
+            // ✅ Flip effect ตามทิศทางของตัวละคร
+            Vector3 effectScale = effect.transform.localScale;
+            if (transform.localScale.x < 0)
+            {
+                // ถ้าตัวละครหันซ้าย (scale.x เป็นลบ)
+                effectScale.x = -Mathf.Abs(effectScale.x);
+            }
+            else
+            {
+                // ถ้าตัวละครหันขวา (scale.x เป็นบวก)
+                effectScale.x = Mathf.Abs(effectScale.x);
+            }
+            effect.transform.localScale = effectScale;
 
             ParticleSystem ps = effect.GetComponent<ParticleSystem>();
             if (ps != null)
@@ -1313,9 +1327,11 @@ public class Berserker : Hero
                 {
                     main.startColor = new Color(0.8f, 0f, 0f, 1f);
                 }
+
+                main.startLifetime = 0.5f;
             }
 
-            Destroy(effect, 0.5f);
+            Destroy(effect, 1f);
         }
     }
 

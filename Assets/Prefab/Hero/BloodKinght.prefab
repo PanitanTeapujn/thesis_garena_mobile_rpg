@@ -688,6 +688,32 @@ MonoBehaviour:
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
+  knockbackForce: 5
+  knockbackDuration: 0.3
+  knockbackCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
@@ -733,6 +759,8 @@ MonoBehaviour:
   crimsonLanceEffect: {fileID: 8977316153704399556, guid: 0e5709a7ddb77924090c112cf73bb98a,
     type: 3}
   bloodExplosionEffect: {fileID: 4321358288067726026, guid: 460babe280fe4aa41adc3fefd46f0c0b,
+    type: 3}
+  basicAttackEffect: {fileID: 2929425121346758057, guid: 4aa9f30a28a77224ba84b2a2c334c71b,
     type: 3}
   lightRedColor: {r: 1, g: 0.6, b: 0.6, a: 0.5}
   mediumRedColor: {r: 1, g: 0.3, b: 0.3, a: 0.7}

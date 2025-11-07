@@ -42,6 +42,7 @@ public class BloodKnight : Hero
     [SerializeField] private ParticleSystem bloodEdgeEffect;           // Skill 1 effect
     [SerializeField] private ParticleSystem crimsonLanceEffect;        // Skill 2 effect
     [SerializeField] private ParticleSystem bloodExplosionEffect;      // Skill 4 finale
+    [SerializeField] private ParticleSystem basicAttackEffect;        // Basic attack effect
 
     [Header("🎨 Blood Aura Color Settings")]
     [SerializeField] private Color lightRedColor = new Color(1f, 0.6f, 0.6f, 0.5f);      // 0-33
@@ -957,8 +958,6 @@ public class BloodKnight : Hero
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_PerformBloodKnightAttack(NetworkObject enemyObject, bool hasBloodEdge)
     {
-        AudioManager.instance.PlaySFX(15, 0.5f);
-
         if (enemyObject != null)
         {
             Character enemy = enemyObject.GetComponent<Character>();
@@ -1016,7 +1015,72 @@ public class BloodKnight : Hero
     }
 
     #endregion
+    protected override void RPC_OnAttackHit(NetworkObject enemyObject)
+    {
+        base.RPC_OnAttackHit(enemyObject);
 
+        Debug.Log($"{CharacterName} hit enemy!");
+
+        if (enemyObject != null)
+        {
+            // ✅ แสดง basic attack effect
+            if (basicAttackEffect != null)
+            {
+                GameObject effect = Instantiate(basicAttackEffect.gameObject, transform.position + Vector3.up * 0.5f, Quaternion.identity);
+
+                // ✅ Flip effect ตามทิศทางของตัวละคร
+                Vector3 effectScale = effect.transform.localScale;
+                if (transform.localScale.x < 0)
+                {
+                    // ถ้าตัวละครหันซ้าย (scale.x เป็นลบ)
+                    effectScale.x = -Mathf.Abs(effectScale.x);
+                }
+                else
+                {
+                    // ถ้าตัวละครหันขวา (scale.x เป็นบวก)
+                    effectScale.x = Mathf.Abs(effectScale.x);
+                }
+                effect.transform.localScale = effectScale;
+
+                // Play sound
+                if (AudioManager.instance != null)
+                {
+                    AudioManager.instance.PlaySFX(15, 0.1f);
+                }
+
+                ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+                if (ps != null)
+                {
+                    ParticleSystem.MainModule main = ps.main;
+
+                    // สีของ effect ตาม Blood Points Level
+                    if (BloodPoints < 33f)
+                    {
+                        main.startColor = new Color(1f, 0.6f, 0.6f, 0.8f);
+                    }
+                    else if (BloodPoints < 66f)
+                    {
+                        main.startColor = new Color(1f, 0.3f, 0.3f, 0.9f);
+                    }
+                    else if (BloodPoints < 100f)
+                    {
+                        main.startColor = new Color(0.8f, 0.1f, 0.1f, 1f);
+                    }
+                    else
+                    {
+                        main.startColor = new Color(0.6f, 0f, 0f, 1f);
+                    }
+
+                    main.startLifetime = 0.5f;
+                }
+
+                Destroy(effect, 1f);
+            }
+
+            // ถ้ามี Blood Edge ให้แสดงเอฟเฟกต์พิเศษ
+           
+        }
+    }
     #region Helper Methods
 
     private bool CanUseSkill(int manaCost)
