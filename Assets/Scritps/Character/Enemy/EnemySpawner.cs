@@ -767,7 +767,7 @@ public class EnemySpawner : NetworkBehaviour
         currentSessionKills = 0;
 
         // ✅ รอ 6 วินาทีใหม่
-        firstSpawnTime = Time.time + 7f;
+        firstSpawnTime = Time.time + 8f;
         nextSpawnTime = firstSpawnTime;
         isFirstSpawnReady = false;
 

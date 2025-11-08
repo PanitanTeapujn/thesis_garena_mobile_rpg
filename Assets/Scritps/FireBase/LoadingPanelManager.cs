@@ -13,6 +13,9 @@ public class LoadingPanelManager : MonoBehaviour
     public TextMeshProUGUI detailText;
     public TextMeshProUGUI tipsText;
 
+    [Header("Fade Manager Reference")]
+    public FadeManager fadeManager; // ✅ อ้างอิง FadeManager
+
     [Header("Fake Loading Settings")]
     public float totalLoadingTime = 5f; // ⏱️ 5 วินาที
 
@@ -40,12 +43,14 @@ public class LoadingPanelManager : MonoBehaviour
     private float currentProgress = 0f;
     private int currentStage = 0;
     private float tipChangeInterval = 2f; // เปลี่ยน tip ทุก 2 วินาที
+    private Coroutine loadingCoroutine;
+    private Coroutine tipCoroutine;
 
     private void Start()
     {
         ShowLoadingPanel();
-        StartCoroutine(FakeLoadingProgress());
-        StartCoroutine(UpdateTipDisplay());
+        loadingCoroutine = StartCoroutine(FakeLoadingProgress());
+        tipCoroutine = StartCoroutine(UpdateTipDisplay());
     }
 
     private void ShowLoadingPanel()
@@ -106,8 +111,22 @@ public class LoadingPanelManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
+        // ✅ เรียก FadeManager ให้ Fade เป็นสีดำ
+        if (fadeManager != null)
+        {
+            yield return fadeManager.StartCoroutine(fadeManager.FadeToBlack());
+        }
+
         // ซ่อน loading panel
         HideLoadingPanel();
+
+        // ✅ เรียก FadeManager ให้ Fade กลับมาโปร่งใส
+        if (fadeManager != null)
+        {
+            yield return fadeManager.StartCoroutine(fadeManager.FadeFromBlack());
+        }
+
+        Debug.Log("[LoadingPanel] All complete! Ready to play.");
     }
 
     private void UpdateLoadingUI(float progress, string message, string detail)
@@ -135,14 +154,30 @@ public class LoadingPanelManager : MonoBehaviour
             loadingPanel.SetActive(false);
         }
 
-        Debug.Log("[LoadingPanel] Loading complete! Game ready to play.");
+        Debug.Log("[LoadingPanel] Loading complete!");
     }
 
     // Public methods
     public void ForceHideLoadingPanel()
     {
-        StopAllCoroutines();
+        if (loadingCoroutine != null)
+        {
+            StopCoroutine(loadingCoroutine);
+            loadingCoroutine = null;
+        }
+
+        if (tipCoroutine != null)
+        {
+            StopCoroutine(tipCoroutine);
+            tipCoroutine = null;
+        }
+
         HideLoadingPanel();
+
+        if (fadeManager != null)
+        {
+            fadeManager.SetTransparentInstant();
+        }
     }
 
     public bool IsLoadingComplete()
@@ -155,7 +190,6 @@ public class LoadingPanelManager : MonoBehaviour
         return currentProgress;
     }
 
-    // ✅ เพิ่ม method สำหรับเปลี่ยนเวลา loading จากภายนอก
     public void SetLoadingTime(float seconds)
     {
         totalLoadingTime = Mathf.Max(1f, seconds);

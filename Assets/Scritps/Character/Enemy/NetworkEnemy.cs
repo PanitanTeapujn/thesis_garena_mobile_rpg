@@ -631,7 +631,7 @@ public class NetworkEnemy : Character
                 // 🎯 Dummy ปล่อย Debuff
                 if (IsDummy)
                 {
-                    CheckAndApplyDummyDebuffs();
+
                 }
                 else
                 {
@@ -662,104 +662,13 @@ public class NetworkEnemy : Character
             ApplyNetworkState();
         }
     }
-    private void CheckAndApplyDummyDebuffs()
-    {
-        // ตรวจสอบทุก 2 วินาที
-        if (Time.time - lastDummyDebuffCheckTime < dummyDebuffCheckInterval)
-            return;
-
-        lastDummyDebuffCheckTime = Time.time;
-
-        // เช็ค cooldown
-        if (Time.time < nextDummyDebuffTime)
-            return;
-
-        // หาผู้เล่นในระยะ 10 เมตร
-        Collider[] heroColliders = Physics.OverlapSphere(transform.position, 10f, LayerMask.GetMask("Player"));
-
-        if (heroColliders.Length == 0)
-            return;
-
-        // เลือกผู้เล่นสุ่ม
-        Collider targetCollider = heroColliders[Random.Range(0, heroColliders.Length)];
-        Hero targetHero = targetCollider.GetComponent<Hero>();
-
-        if (targetHero != null && targetHero.IsSpawned)
-        {
-            // ใส่ Debuff ตาม Dummy Level
-            ApplyDummyDebuff(targetHero);
-            nextDummyDebuffTime = Time.time + dummyDebuffCooldown;
-        }
-    }
+  
 
     // ✅ เพิ่ม method ใหม่: ใส่ Debuff ตาม Level
-    private void ApplyDummyDebuff(Hero targetHero)
-    {
-        // คำนวณ debuff stats ตาม level
-        int level = DummyLevel;
-
-        // โอกาสใส่ debuff (เพิ่มตาม level)
-        float debuffChance = Mathf.Min(30f + (level * 3f), 70f); // 30-70%
-
-        if (Random.Range(0f, 100f) > debuffChance)
-        {
-            Debug.Log($"[Dummy] Level {level} debuff missed! (Chance: {debuffChance}%)");
-            return;
-        }
-
-        // สุ่ม debuff แบบถ่วงน้ำหนักตาม level
-        StatusEffectType debuffType = SelectDummyDebuff(level);
-
-        // คำนวณค่า debuff
-        float duration = CalculateDebuffDuration(level);
-        float amount = CalculateDebuffAmount(level, debuffType);
-
-        // ใส่ debuff
-        ApplyDebuffToHero(targetHero, debuffType, duration, amount);
-    }
+   
 
     // ✅ เลือก Debuff ตาม Level
-    private StatusEffectType SelectDummyDebuff(int level)
-    {
-        // Level 1-5: Blind เท่านั้น
-        if (level <= 5)
-        {
-            return StatusEffectType.Blind;
-        }
-
-        // Level 6-10: Blind (60%) หรือ Weakness (40%)
-        if (level <= 10)
-        {
-            return Random.Range(0f, 100f) < 60f ? StatusEffectType.Blind : StatusEffectType.Weakness;
-        }
-
-        // Level 11-20: Blind (40%), Weakness (30%), Stun (30%)
-        if (level <= 20)
-        {
-            float roll = Random.Range(0f, 100f);
-            if (roll < 40f) return StatusEffectType.Blind;
-            if (roll < 70f) return StatusEffectType.Weakness;
-            return StatusEffectType.Stun;
-        }
-
-        // Level 21-30: เท่ากันหมด + Armor Break
-        if (level <= 30)
-        {
-            float roll = Random.Range(0f, 100f);
-            if (roll < 25f) return StatusEffectType.Blind;
-            if (roll < 50f) return StatusEffectType.Weakness;
-            if (roll < 75f) return StatusEffectType.Stun;
-            return StatusEffectType.ArmorBreak;
-        }
-
-        // Level 31+: ทุก debuff (weighted random)
-        float highRoll = Random.Range(0f, 100f);
-        if (highRoll < 20f) return StatusEffectType.Blind;
-        if (highRoll < 40f) return StatusEffectType.Weakness;
-        if (highRoll < 60f) return StatusEffectType.Stun;
-        if (highRoll < 80f) return StatusEffectType.ArmorBreak;
-        return StatusEffectType.Freeze; // Level สูงมาก ใส่ Freeze ได้
-    }
+   
 
     // ✅ คำนวณระยะเวลา Debuff
     private float CalculateDebuffDuration(int level)
