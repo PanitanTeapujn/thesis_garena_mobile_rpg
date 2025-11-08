@@ -1644,6 +1644,7 @@ public class CombatUIManager : MonoBehaviour
         return selectedSlotIndex;
     }
 
+
     // 🎯 NEW: Context Menu สำหรับทดสอบ
    
 }

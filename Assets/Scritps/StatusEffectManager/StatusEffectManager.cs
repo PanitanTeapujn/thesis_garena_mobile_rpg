@@ -170,22 +170,23 @@ public class StatusEffectManager : NetworkBehaviour
     }
     #region DeBuff
     // ========== 🧪 Poison System ==========
+    // แก้ไข ApplyPoison() - เพิ่มการแสดงข้อความ
     public virtual void ApplyPoison(int damagePerTick, float duration)
     {
         if (!HasStateAuthority) return;
 
-        // 🧪 ใช้ Magic Armor แทน magicalResistance
-        float totalResistance = GetMagicalResistance(); // ใช้ Magic Armor
-
-        // ตรวจสอบโอกาสป้องกัน
+        float totalResistance = GetMagicalResistance();
         float chanceReduction = totalResistance * 0.6f;
+
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
             Debug.Log($"[Poison Resisted] {character.CharacterName} resisted poison with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
+
+            // ✅ แสดงข้อความ "RESISTED"
+            RPC_ShowStatusResistText(StatusEffectType.Poison);
             return;
         }
 
-        // ลดระยะเวลาและดาเมจตาม resistance
         float durationReduction = totalResistance / 100f;
         float damageReduction = (totalResistance * 0.5f) / 100f;
 
@@ -194,7 +195,6 @@ public class StatusEffectManager : NetworkBehaviour
 
         bool wasAlreadyPoisoned = IsPoisoned;
 
-        // Set poison status
         IsPoisoned = true;
         PoisonDamagePerTick = Mathf.Max(1, damagePerTick);
         PoisonDuration = Mathf.Max(0.5f, duration);
@@ -203,11 +203,12 @@ public class StatusEffectManager : NetworkBehaviour
         if (!wasAlreadyPoisoned)
         {
             PoisonNextTickTime = currentTime + 0.1f;
+
+            // ✅ แสดงข้อความเฉพาะครั้งแรกที่ได้รับ Poison
+            RPC_ShowStatusEffectText(StatusEffectType.Poison, damagePerTick, duration);
         }
 
-        Debug.Log($"[ApplyPoison] {character.CharacterName} poisoned! Magic Armor: {character.MagicArmor} reduced damage to {PoisonDamagePerTick} per tick for {PoisonDuration:F1}s");
-
-        // แจ้ง visual manager
+        Debug.Log($"[ApplyPoison] {character.CharacterName} poisoned! Damage: {PoisonDamagePerTick}/tick for {PoisonDuration:F1}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Poison, true);
     }
     private void ProcessPoisonEffect()
@@ -268,31 +269,34 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // ⚡ ใช้ Physical Armor แทน physicalResistance
-        float totalResistance = GetPhysicalResistance(); // ใช้ Physical Armor
-
-        // ตรวจสอบโอกาสป้องกัน
+        float totalResistance = GetPhysicalResistance();
         float chanceReduction = totalResistance * 0.6f;
+
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Stun Resisted] {character.CharacterName} resisted stun with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
+            RPC_ShowStatusResistText(StatusEffectType.Stun);
             return;
         }
 
-        // ลดระยะเวลาตาม resistance
         float durationReduction = totalResistance / 100f;
         duration = duration * (1f - durationReduction);
+
+        bool wasAlreadyStunned = IsStunned;
 
         IsStunned = true;
         StunDuration = Mathf.Max(0.5f, duration);
 
-        // หยุดการเคลื่อนไหวทั้งหมด
         if (character.rb != null)
         {
             character.rb.linearVelocity = Vector3.zero;
         }
 
-        Debug.Log($"[ApplyStun] {character.CharacterName} stunned! Armor: {character.Armor} reduced duration to {StunDuration:F1}s");
+        if (!wasAlreadyStunned)
+        {
+            // ✅ แสดงข้อความ
+            RPC_ShowStatusEffectText(StatusEffectType.Stun, 0, duration);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Stun, true);
     }
 
@@ -399,18 +403,15 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 🔥 ใช้ Magic Armor แทน magicalResistance
         float totalResistance = GetMagicalResistance();
-
-        // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
+
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Burn Resisted] {character.CharacterName} resisted burn with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
+            RPC_ShowStatusResistText(StatusEffectType.Burn);
             return;
         }
 
-        // ลดระยะเวลาและดาเมจตาม resistance
         float durationReduction = totalResistance / 100f;
         float damageReduction = (totalResistance * 0.5f) / 100f;
 
@@ -427,9 +428,11 @@ public class StatusEffectManager : NetworkBehaviour
         if (!wasAlreadyBurning)
         {
             BurnNextTickTime = currentTime + 0.1f;
+
+            // ✅ แสดงข้อความเฉพาะครั้งแรก
+            RPC_ShowStatusEffectText(StatusEffectType.Burn, damagePerTick, duration);
         }
 
-        Debug.Log($"[ApplyBurn] {character.CharacterName} burning! Magic Armor: {character.MagicArmor} reduced damage to {BurnDamagePerTick} per tick for {BurnDuration:F1}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Burn, true);
     }
 
@@ -489,18 +492,15 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 🩸 ใช้ Magic Armor แทน magicalResistance
         float totalResistance = GetMagicalResistance();
-
-        // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
+
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Bleed Resisted] {character.CharacterName} resisted bleed with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
+            RPC_ShowStatusResistText(StatusEffectType.Bleed);
             return;
         }
 
-        // ลดระยะเวลาและดาเมจตาม resistance
         float durationReduction = totalResistance / 100f;
         float damageReduction = (totalResistance * 0.5f) / 100f;
 
@@ -517,9 +517,11 @@ public class StatusEffectManager : NetworkBehaviour
         if (!wasAlreadyBleeding)
         {
             BleedNextTickTime = currentTime + 0.1f;
+
+            // ✅ แสดงข้อความเฉพาะครั้งแรก
+            RPC_ShowStatusEffectText(StatusEffectType.Bleed, damagePerTick, duration);
         }
 
-        Debug.Log($"[ApplyBleed] {character.CharacterName} bleeding! Magic Armor: {character.MagicArmor} reduced damage to {BleedDamagePerTick} per tick for {BleedDuration:F1}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Bleed, true);
     }
 
@@ -635,26 +637,30 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 👁️ ใช้ Physical Armor แทน physicalResistance
         float totalResistance = GetPhysicalResistance();
-
-        // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
+
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Blind Resisted] {character.CharacterName} resisted blind with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
+            RPC_ShowStatusResistText(StatusEffectType.Blind);
             return;
         }
 
-        // ลดระยะเวลาตาม resistance
         float durationReduction = totalResistance / 100f;
         duration = duration * (1f - durationReduction);
+
+        bool wasAlreadyBlind = IsBlind;
 
         IsBlind = true;
         BlindDuration = Mathf.Max(0.5f, duration);
         BlindAmount = reduction;
 
-        Debug.Log($"[ApplyBlind] {character.CharacterName} blinded! Armor: {character.Armor} reduced duration to {BlindDuration:F1}s with {reduction * 100}% hit/crit reduction");
+        if (!wasAlreadyBlind)
+        {
+            // ✅ แสดงข้อความ
+            RPC_ShowStatusEffectText(StatusEffectType.Blind, 0, duration, reduction);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Blind, true);
     }
 
@@ -690,26 +696,30 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // 💪 ใช้ Physical Armor แทน physicalResistance
         float totalResistance = GetPhysicalResistance();
-
-        // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
+
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Weakness Resisted] {character.CharacterName} resisted weakness with {character.Armor} Armor! ({chanceReduction:F1}% chance)");
+            RPC_ShowStatusResistText(StatusEffectType.Weakness);
             return;
         }
 
-        // ลดระยะเวลาตาม resistance
         float durationReduction = totalResistance / 100f;
         duration = duration * (1f - durationReduction);
+
+        bool wasAlreadyWeak = IsWeak;
 
         IsWeak = true;
         WeaknessDuration = Mathf.Max(0.5f, duration);
         WeaknessAmount = reduction;
 
-        Debug.Log($"[ApplyWeakness] {character.CharacterName} weakened! Armor: {character.Armor} reduced duration to {WeaknessDuration:F1}s with {reduction * 100}% attack reduction");
+        if (!wasAlreadyWeak)
+        {
+            // ✅ แสดงข้อความ
+            RPC_ShowStatusEffectText(StatusEffectType.Weakness, 0, duration, reduction);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Weakness, true);
     }
 
@@ -742,16 +752,24 @@ public class StatusEffectManager : NetworkBehaviour
     #endregion
 
 
-  #region Buff
+    #region Buff
 
     public virtual void ApplyAttackSpeedAura(float radius = 5f, float bonus = 0.3f, float duration = 15f)
     {
         if (!HasStateAuthority) return;
 
+        bool wasAlreadyProviding = IsProvidingAttackSpeedAura;
+
         IsProvidingAttackSpeedAura = true;
         AttackSpeedAuraRadius = radius;
         AttackSpeedAuraAmount = bonus;
         AttackSpeedAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            // ✅ แสดงข้อความเฉพาะครั้งแรก
+            RPC_ShowAuraBuffText(StatusEffectType.AttackSpeedAura, bonus, duration);
+        }
 
         Debug.Log($"[AttackSpeedAura] {character.CharacterName} providing +{bonus * 100}% attack speed in {radius}m for {duration}s");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.AttackSpeedAura, true);
@@ -761,25 +779,38 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
+        bool wasAlreadyProviding = IsProvidingDamageAura;
+
         IsProvidingDamageAura = true;
         DamageAuraRadius = radius;
         DamageAuraAmount = bonus;
         DamageAuraDuration = duration;
 
-        Debug.Log($"[DamageAura] {character.CharacterName} providing +{bonus * 100}% damage in {radius}m for {duration}s");
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.DamageAura, bonus, duration);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.DamageAura, true);
     }
+
 
     public virtual void ApplyMoveSpeedAura(float radius = 5f, float bonus = 0.15f, float duration = 15f)
     {
         if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingMoveSpeedAura;
 
         IsProvidingMoveSpeedAura = true;
         MoveSpeedAuraRadius = radius;
         MoveSpeedAuraAmount = bonus;
         MoveSpeedAuraDuration = duration;
 
-        Debug.Log($"[MoveSpeedAura] {character.CharacterName} providing +{bonus * 100}% move speed in {radius}m for {duration}s");
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.MoveSpeedAura, bonus, duration);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.MoveSpeedAura, true);
     }
 
@@ -787,12 +818,18 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
+        bool wasAlreadyProviding = IsProvidingProtectionAura;
+
         IsProvidingProtectionAura = true;
         ProtectionAuraRadius = radius;
         ProtectionAuraAmount = reduction;
         ProtectionAuraDuration = duration;
 
-        Debug.Log($"[ProtectionAura] {character.CharacterName} providing -{reduction * 100}% damage taken in {radius}m for {duration}s");
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.ProtectionAura, reduction, duration);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.ProtectionAura, true);
     }
 
@@ -813,12 +850,18 @@ public class StatusEffectManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
+        bool wasAlreadyProviding = IsProvidingCriticalAura;
+
         IsProvidingCriticalAura = true;
         CriticalAuraRadius = radius;
         CriticalAuraAmount = bonus;
         CriticalAuraDuration = duration;
 
-        Debug.Log($"[CriticalAura] {character.CharacterName} providing +{bonus * 100}% critical in {radius}m for {duration}s");
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.CriticalAura, bonus, duration);
+        }
+
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.CriticalAura, true);
     }
 
@@ -1306,6 +1349,133 @@ public class StatusEffectManager : NetworkBehaviour
     /// <summary>
     /// แสดงข้อมูล resistance ทั้งหมด
     /// </summary>
-  
+    // เพิ่มในส่วนท้ายของ class (ก่อน closing brace)
+
+    #region Status Effect Text Display
+
+    /// <summary>
+    /// แสดงข้อความเมื่อได้รับ Status Effect (Debuff)
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowStatusEffectText(StatusEffectType effectType, int damagePerTick, float duration, float reduction = 0f)
+    {
+        Vector3 textPosition = character.transform.position + Vector3.up * 1f;
+        string message = "";
+        Color color = Color.white;
+
+        switch (effectType)
+        {
+            case StatusEffectType.Poison:
+                message = $"POISONED";
+                color = new Color(0.2f, 0.8f, 0.2f, 1f); // เขียวพิษ
+                break;
+
+            case StatusEffectType.Burn:
+                message = $"BURNING";
+                color = new Color(1f, 0.3f, 0f, 1f); // ส้มไฟ
+                break;
+
+            case StatusEffectType.Bleed:
+                message = $"BLEEDING ";
+                color = new Color(0.8f, 0f, 0f, 1f); // แดงเลือด
+                break;
+
+            case StatusEffectType.Stun:
+                message = "STUNNED";
+                color = new Color(1f, 1f, 0f, 1f); // เหลือง
+                break;
+
+            case StatusEffectType.Weakness:
+                message = $"WEAKENED (-{reduction * 100:F0}%)";
+                color = new Color(0.6f, 0.4f, 0.8f, 1f); // ม่วงอ่อน
+                break;
+
+            case StatusEffectType.Blind:
+                message = $"BLINDED (-{reduction * 100:F0}%)";
+                color = new Color(0.3f, 0.3f, 0.3f, 1f); // เทาเข้ม
+                break;
+
+            case StatusEffectType.ArmorBreak:
+                message = $"ARMOR BREAK (-{reduction * 100:F0}%)";
+                color = new Color(0.8f, 0.5f, 0f, 1f); // ส้มเข้ม
+                break;
+
+            case StatusEffectType.Freeze:
+                message = "FROZEN";
+                color = new Color(0.5f, 0.7f, 1f, 1f); // ฟ้าน้ำแข็ง
+                break;
+        }
+
+        // แสดงข้อความ
+        DamageTextManager.ShowCustomText(textPosition, message, color, 0.7f);
+
+        Debug.Log($"[Status Text] {character.CharacterName}: {message}");
+    }
+
+    /// <summary>
+    /// แสดงข้อความเมื่อ Resist Status Effect สำเร็จ
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowStatusResistText(StatusEffectType effectType)
+    {
+        Vector3 textPosition = character.transform.position + Vector3.up * 1f;
+        string message = "RESISTED";
+        Color color = new Color(0.5f, 0.9f, 1f, 1f); // ฟ้าสว่าง
+
+        DamageTextManager.ShowCustomText(textPosition, message, color, 0.8f);
+
+        Debug.Log($"[Resist Text] {character.CharacterName} resisted {effectType}");
+    }
+
+    /// <summary>
+    /// แสดงข้อความเมื่อได้รับ Aura Buff
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowAuraBuffText(StatusEffectType auraType, float bonus, float duration)
+    {
+        Vector3 textPosition = character.transform.position + Vector3.up * 1f;
+        string message = "";
+        Color color = Color.white;
+
+        switch (auraType)
+        {
+            case StatusEffectType.AttackSpeedAura:
+                message = $"ATK SPEED +{bonus * 100:F0}%";
+                color = new Color(1f, 1f, 0.3f, 1f); // เหลืองสว่าง
+                break;
+
+            case StatusEffectType.DamageAura:
+                message = $"DAMAGE +{bonus * 100:F0}%";
+                color = new Color(1f, 0.3f, 0.3f, 1f); // แดงสว่าง
+                break;
+
+            case StatusEffectType.MoveSpeedAura:
+                message = $"SPEED +{bonus * 100:F0}%";
+                color = new Color(0.3f, 1f, 0.3f, 1f); // เขียวสว่าง
+                break;
+
+            case StatusEffectType.ProtectionAura:
+                message = $"PROTECTION -{bonus * 100:F0}%";
+                color = new Color(0.5f, 0.7f, 1f, 1f); // ฟ้าสว่าง
+                break;
+
+            case StatusEffectType.ArmorAura:
+                message = $"ARMOR +{bonus * 100:F0}%";
+                color = new Color(0.7f, 0.7f, 0.7f, 1f); // เทาสว่าง
+                break;
+
+            case StatusEffectType.CriticalAura:
+                message = $"CRIT +{bonus * 100:F0}%";
+                color = new Color(1f, 0.7f, 0f, 1f); // ทอง
+                break;
+        }
+
+        // แสดงข้อความ
+        DamageTextManager.ShowCustomText(textPosition, message, color, 0.8f);
+
+        Debug.Log($"[Aura Buff] {character.CharacterName}: {message}");
+    }
+
+    #endregion
 
 }

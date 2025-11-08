@@ -96,6 +96,11 @@ public class SkillIconManager : MonoBehaviour
         icons.skill2Icon = Resources.Load<Sprite>($"{resourcePath}/Skill2");
         icons.skill3Icon = Resources.Load<Sprite>($"{resourcePath}/Skill3");
         icons.skill4Icon = Resources.Load<Sprite>($"{resourcePath}/Skill4");
+        // 🆕 โหลดรูป Skill Upgraded (ถ้ามี)
+        icons.skill1IconUpgraded = Resources.Load<Sprite>($"{resourcePath}/Skill1_Upgraded");
+        icons.skill2IconUpgraded = Resources.Load<Sprite>($"{resourcePath}/Skill2_Upgraded");
+        icons.skill3IconUpgraded = Resources.Load<Sprite>($"{resourcePath}/Skill3_Upgraded");
+        icons.skill4IconUpgraded = Resources.Load<Sprite>($"{resourcePath}/Skill4_Upgraded");
 
         // นับจำนวนที่โหลดสำเร็จ
         int loadedCount = 0;
@@ -115,7 +120,44 @@ public class SkillIconManager : MonoBehaviour
         }
     }
     #endregion
+    // เพิ่มใน SkillIconManager.cs
+    /// <summary>
+    /// เปลี่ยน Skill Icon เป็น upgraded version
+    /// </summary>
+    public void SetSkillIconUpgraded(CombatUIManager combatUI, string heroName, int skillNumber, bool upgraded)
+    {
+        if (combatUI == null) return;
 
+        HeroSkillIcons icons = GetHeroSkillIcons(heroName);
+        if (icons == null) return;
+
+        Button targetButton = null;
+        switch (skillNumber)
+        {
+            case 1: targetButton = combatUI.skill1Button; break;
+            case 2: targetButton = combatUI.skill2Button; break;
+            case 3: targetButton = combatUI.skill3Button; break;
+            case 4: targetButton = combatUI.skill4Button; break;
+        }
+
+        if (targetButton == null) return;
+
+        Sprite newIcon = icons.GetSkillIcon(skillNumber, upgraded);
+        if (newIcon != null)
+        {
+            Image buttonImage = targetButton.GetComponent<Image>();
+            if (buttonImage == null)
+            {
+                buttonImage = targetButton.GetComponentInChildren<Image>();
+            }
+
+            if (buttonImage != null)
+            {
+                buttonImage.sprite = newIcon;
+                Debug.Log($"[SkillIconManager] Changed skill {skillNumber} icon to {(upgraded ? "upgraded" : "normal")}");
+            }
+        }
+    }
     #region Public API
     /// <summary>
     /// ดึง Skill Icons ของ Hero
@@ -258,6 +300,8 @@ public class SkillIconManager : MonoBehaviour
 /// <summary>
 /// Class สำหรับเก็บ Skill Icons ของ Hero
 /// </summary>
+// แก้ไข HeroSkillIcons class
+// แก้ไข HeroSkillIcons class
 [System.Serializable]
 public class HeroSkillIcons
 {
@@ -266,19 +310,40 @@ public class HeroSkillIcons
     public Sprite skill3Icon;
     public Sprite skill4Icon;
 
+    // 🆕 Upgraded versions
+    public Sprite skill1IconUpgraded;
+    public Sprite skill2IconUpgraded;
+    public Sprite skill3IconUpgraded;
+    public Sprite skill4IconUpgraded;
+
     public bool IsValid()
     {
         return skill1Icon != null && skill2Icon != null &&
                skill3Icon != null && skill4Icon != null;
     }
 
-    public int GetLoadedIconCount()
+    public Sprite GetSkillIcon(int skillNumber, bool upgraded = false)
     {
-        int count = 0;
-        if (skill1Icon != null) count++;
-        if (skill2Icon != null) count++;
-        if (skill3Icon != null) count++;
-        if (skill4Icon != null) count++;
-        return count;
+        if (upgraded)
+        {
+            switch (skillNumber)
+            {
+                case 1: return skill1IconUpgraded ?? skill1Icon;
+                case 2: return skill2IconUpgraded ?? skill2Icon;
+                case 3: return skill3IconUpgraded ?? skill3Icon;
+                case 4: return skill4IconUpgraded ?? skill4Icon;
+            }
+        }
+        else
+        {
+            switch (skillNumber)
+            {
+                case 1: return skill1Icon;
+                case 2: return skill2Icon;
+                case 3: return skill3Icon;
+                case 4: return skill4Icon;
+            }
+        }
+        return null;
     }
 }

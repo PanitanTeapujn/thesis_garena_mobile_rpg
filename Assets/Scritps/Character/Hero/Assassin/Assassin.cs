@@ -20,6 +20,16 @@ public class Assassin : Hero
     public GameObject toxicBombPrefab;
     public GameObject plagueCloudPrefab;
 
+    // เพิ่มในส่วน Network Properties (หลัง line ~40)
+    [Header("🌙 Shadow Mode (Ferris Point Transformation)")]
+    [Networked] public bool IsInShadowMode { get; set; }
+    [Networked] public int Skill3UsesRemaining { get; set; }
+    [Networked] public bool CanDashAgain { get; set; }
+    [Networked] public float DashGracePeriodEnd { get; set; }
+
+    private float shadowModeDrainRate = 10f; // 10 points per second
+    private float dashGracePeriod = 1.0f; // 1 second to press dash again
+    private float accumulatedDrain = 0f;
     [Header("🎨 Visual Effects")]
     public Material skillRangeIndicatorMaterial;
     private GameObject plagueRangeIndicator;
@@ -54,7 +64,10 @@ public class Assassin : Hero
 
         // สร้าง range indicator สำหรับ ultimate
         CreateRangeIndicator();
-
+        IsInShadowMode = false;
+        Skill3UsesRemaining = 0;
+        CanDashAgain = false;
+        accumulatedDrain = 0f;
         Debug.Log($"🐍 Assassin {CharacterName} initialized with Venom Mastery!");
     }
 
@@ -79,35 +92,82 @@ public class Assassin : Hero
             Debug.Log($"✅ Applied Attack Speed Aura (+30% for 12s in 6m radius)");
         }
 
+        // ✅ เก็บ Ferris Point
+        if (!IsInShadowMode)
+        {
+            GainFerrisPoint(15); // +15 points
+        }
+
         Debug.Log($"🐍 [Poison Infusion] {CharacterName} gains 3 poison-infused attacks!");
         RPC_ShowSkillEffect("PoisonInfusion");
     }
 
     // ========== 🌫️ Skill 2: Toxic Dash - FIXED ==========
+    // แทนที่ TryUseSkill2() เดิมทั้งหมด
     public override void TryUseSkill2()
     {
         if (!CanUseSkill(skill2ManaCost)) return;
         if (HasStatusEffect(StatusEffectType.Stun)) return;
 
-        // ✅ คำนวณ cooldown reduction ที่ถูกต้อง
+        // ✅ คำนวณ cooldown reduction
         float effectiveReduction = GetEffectiveReductionCoolDown();
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
-
         float finalCooldown = skill2Cooldown * reductionMultiplier;
-        nextSkill2Time = Time.time + finalCooldown;
 
-        UseMana(skill2ManaCost);
-
-        if (statusEffectManager != null)
+        if (!IsInShadowMode)
         {
-            statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f);
-            Debug.Log($"✅ Applied Move Speed Aura (+25% for 10s)");
+            // ✅ Normal Mode - dash 1 ครั้ง
+            nextSkill2Time = Time.time + finalCooldown;
+            UseMana(skill2ManaCost);
+
+            if (statusEffectManager != null)
+            {
+                statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f);
+            }
+
+            Vector3 dashDirection = GetDashDirection();
+            RPC_PerformToxicDashAll(dashDirection, transform.position);
+
+            Debug.Log($"🌫️ [Toxic Dash Normal] {CharacterName} dashed once");
         }
+        else
+        {
+            // ✅ Shadow Mode - Double Dash
+            if (!CanDashAgain)
+            {
+                // ครั้งแรก - ยังไม่ติด cooldown
+                UseMana(skill2ManaCost);
 
-        Vector3 dashDirection = GetDashDirection();
+                if (statusEffectManager != null)
+                {
+                    statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f);
+                }
 
-        RPC_PerformToxicDashAll(dashDirection, transform.position);
+                Vector3 dashDirection = GetDashDirection();
+                RPC_PerformToxicDashAll(dashDirection, transform.position);
+
+                // เปิด grace period
+                CanDashAgain = true;
+                DashGracePeriodEnd = Time.time + dashGracePeriod;
+
+                Debug.Log($"🌙 [Shadow Dash 1/2] {CharacterName} - Press again within {dashGracePeriod}s!");
+            }
+            else
+            {
+                // ครั้งที่สอง - ติด cooldown
+                nextSkill2Time = Time.time + finalCooldown;
+                UseMana(skill2ManaCost);
+
+                Vector3 dashDirection = GetDashDirection();
+                RPC_PerformToxicDashAll(dashDirection, transform.position);
+
+                // ปิด double dash
+                CanDashAgain = false;
+
+                Debug.Log($"🌙 [Shadow Dash 2/2] {CharacterName} - Cooldown applied!");
+            }
+        }
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
@@ -269,34 +329,34 @@ public class Assassin : Hero
         }
     }
 
+    // เพิ่มก่อน Debug.Log ท้ายสุด
     private void ApplyToxicDashEffects(Character enemy)
     {
-        // ✅ FIXED: ใช้ GetScaledSkillDamage ที่มี Amp Damage แล้ว
         int directDamage = GetScaledSkillDamage(0.6f);
         int poisonDamage = GetScaledPoisonDamage(0.3f);
 
-        // ✅ ทำ direct magic damage - เป็น skill attack
         enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
 
-        // 🆕 Apply Knockback - พุ่งศัตรูไปข้างหน้า
         Vector3 dashDirection = GetDashDirection();
         enemy.ApplyKnockback(dashDirection, 4f, 0.3f);
         Debug.Log($"🌫️ [Toxic Dash Knockback] {enemy.CharacterName} knocked back!");
 
-        // ใส่ status effects
         enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
-        enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 6f, 0.3f);
-        enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 4f, 0.6f);
+       
 
-        // Passive: โอกาส spread poison
         if (hasVenomMastery && Random.Range(0f, 100f) < 25f)
         {
             SpreadPoisonToNearby(enemy, 4f);
         }
 
+        // ✅ เก็บ Ferris Point ต่อศัตรูที่โดน
+        if (!IsInShadowMode)
+        {
+            GainFerrisPoint(5); // +5 points per enemy hit
+        }
+
         Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName} (with Amp)! Direct: {directDamage}, Poison: {poisonDamage}/s");
     }
-
 
     // ========== 💣 Skill 3: Shadow Assassination - FIXED ==========
     public override void TryUseSkill3()
@@ -328,27 +388,66 @@ public class Assassin : Hero
             return;
         }
 
-        // ✅ ตั้ง cooldown เฉพาะเมื่อมีเป้าหมายและใช้สกิลสำเร็จแล้ว
+        // ✅ คำนวณ cooldown reduction
         float effectiveReduction = GetEffectiveReductionCoolDown();
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
-
         float finalCooldown = skill3Cooldown * reductionMultiplier;
-        nextSkill3Time = Time.time + finalCooldown;
 
-        UseMana(skill3ManaCost);
-
-        if (statusEffectManager != null)
+        if (!IsInShadowMode)
         {
-            statusEffectManager.ApplyCriticalAura(6f, 0.4f, 12f);
-            Debug.Log($"✅ Applied Critical Aura (+40% for 12s)");
+            // ✅ Normal Mode - ใช้ 1 ครั้ง
+            nextSkill3Time = Time.time + finalCooldown;
+            UseMana(skill3ManaCost);
+
+            if (statusEffectManager != null)
+            {
+                statusEffectManager.ApplyCriticalAura(6f, 0.4f, 12f);
+            }
+
+            Vector3 originalPos = transform.position;
+            NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
+            if (targetNetworkObject != null)
+            {
+                RPC_PerformShadowAssassinationAll(targetEnemy.transform.position, targetNetworkObject, originalPos);
+            }
+
+            Debug.Log($"🗡️ [Shadow Assassination Normal] {CharacterName} - Single use");
         }
-
-        Vector3 originalPos = transform.position;
-        NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
-        if (targetNetworkObject != null)
+        else
         {
-            RPC_PerformShadowAssassinationAll(targetEnemy.transform.position, targetNetworkObject, originalPos);
+            // ✅ Shadow Mode - ใช้ได้ 3 ครั้ง
+            if (Skill3UsesRemaining > 0)
+            {
+                UseMana(skill3ManaCost);
+
+                
+
+                Vector3 originalPos = transform.position;
+                NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
+                if (targetNetworkObject != null)
+                {
+                    RPC_PerformShadowAssassinationAll(targetEnemy.transform.position, targetNetworkObject, originalPos);
+                }
+
+                Skill3UsesRemaining--;
+
+                // ถ้ายังเหลือ uses ไม่ต้องติด cooldown
+                if (Skill3UsesRemaining > 0)
+                {
+                    Debug.Log($"🌙 [Shadow Assassination {3 - Skill3UsesRemaining}/3] {CharacterName} - {Skill3UsesRemaining} uses remaining!");
+                }
+                else
+                {
+                    // ใช้ครั้งสุดท้ายแล้ว ติด cooldown
+                    nextSkill3Time = Time.time + finalCooldown;
+                    Debug.Log($"🌙 [Shadow Assassination 3/3] {CharacterName} - All uses consumed! Cooldown applied!");
+                }
+            }
+            else
+            {
+                Debug.Log("❌ No Shadow Assassination uses remaining!");
+            }
         }
     }
 
@@ -438,12 +537,10 @@ public class Assassin : Hero
         return totalDamage;
     }
 
+    // เพิ่มก่อน Debug.Log ท้ายสุด
     private void PerformExecutionAttack(Character target)
     {
-        // คำนวณ base damage
         int baseDamage = CalculateExecutionDamage();
-
-        // เช็ค execution bonus
         bool isExecutionRange = target.GetHealthPercentage() < 0.3f;
 
         if (isExecutionRange)
@@ -452,19 +549,16 @@ public class Assassin : Hero
             Debug.Log($"🩸 [Execution] Target HP < 30%! Damage increased by 50%!");
         }
 
-        // ✅ Shadow Assassination เป็น skill attack - ไม่มี life steal
         int physicalDamage = Mathf.RoundToInt(baseDamage * 0.3f);
         int magicDamage = Mathf.RoundToInt(baseDamage * 0.7f);
 
         target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, DamageType.Critical, false);
 
-        // เพิ่ม effect ตาม build
-        if (MagicDamage > AttackDamage) // Magic Build
+        if (MagicDamage > AttackDamage)
         {
             int poisonDamage = GetScaledPoisonDamage(0.6f);
             target.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 10f);
 
-            // Venom Mastery: spread poison
             if (hasVenomMastery)
             {
                 SpreadPoisonToNearby(target, 6f);
@@ -472,13 +566,19 @@ public class Assassin : Hero
 
             Debug.Log($"🐍 [Magic Build] Applied strong poison to {target.CharacterName}!");
         }
-        else // Physical Build
+        else
         {
-            // ใส่ bleeding effect
             target.ApplyStatusEffect(StatusEffectType.Bleed, 8, 8f);
             target.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 10f, 0.5f);
 
             Debug.Log($"⚔️ [Physical Build] Applied bleeding + armor break to {target.CharacterName}!");
+        }
+
+        // ✅ เก็บ Ferris Point
+        if (!IsInShadowMode)
+        {
+            int ferrisGain = isExecutionRange ? 25 : 20; // เพิ่มถ้าเป็น execution
+            GainFerrisPoint(ferrisGain);
         }
 
         Debug.Log($"🗡️ Shadow Assassination dealt {baseDamage} damage (no life steal) to {target.CharacterName} (Execution: {isExecutionRange})");
@@ -577,33 +677,40 @@ public class Assassin : Hero
 
             if (elapsed >= nextTick)
             {
-                // ผลกระทบต่อศัตรู
                 Collider[] enemies = Physics.OverlapSphere(position, 12f, LayerMask.GetMask("Enemy"));
+
+                // ✅ เก็บจำนวนศัตรูที่โดน
+                int enemiesHitThisTick = 0;
+
                 foreach (Collider col in enemies)
                 {
                     Character enemy = col.GetComponent<Character>();
                     if (enemy != null)
                     {
-                        // Super Poison
                         enemy.ApplyStatusEffect(StatusEffectType.Poison, superPoisonDamage, 5f);
                         enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 8f, 0.8f);
                         enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 8f, 0.5f);
                         enemy.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.6f);
 
-                        // ✅ FIX: Direct magic damage - skill damage ไม่มี life steal
                         int directDamage = GetScaledSkillDamage(0.3f);
                         enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
 
-                        // สร้าง hit effect
                         CreatePoisonHitEffect(enemy.transform.position);
 
-                        // โอกาส stun
                         if (Random.Range(0f, 100f) < 20f)
                         {
                             enemy.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
                             Debug.Log($"☠️ {enemy.CharacterName} stunned by plague cloud!");
                         }
+
+                        enemiesHitThisTick++;
                     }
+                }
+
+                // ✅ เก็บ Ferris Point ตามจำนวนศัตรูที่โดน
+                if (!IsInShadowMode && enemiesHitThisTick > 0)
+                {
+                    GainFerrisPoint(enemiesHitThisTick * 2); // +2 points per enemy per tick
                 }
 
                 nextTick += tickInterval;
@@ -753,6 +860,7 @@ public class Assassin : Hero
     }
 
     // ใน RPC_PerformAssassinAttack method
+    // เพิ่มก่อน Debug.Log ท้ายสุด
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_PerformAssassinAttack(NetworkObject enemyObject, bool shouldPoison, bool forceCritical)
     {
@@ -761,38 +869,32 @@ public class Assassin : Hero
             Character enemy = enemyObject.GetComponent<Character>();
             if (enemy != null)
             {
-                // ✅ FIXED: การโจมตีปกติของ Assassin ยังคงเป็น basic attack (ไม่ใช้ Amp Damage)
                 bool isBasicAttack = true;
 
                 Debug.Log($"🐍 [Assassin Attack] shouldPoison: {shouldPoison}, forceCritical: {forceCritical}, isBasicAttack: {isBasicAttack}");
                 bool shouldKnockback = Random.Range(0f, 100f) < 100f;
 
-                // Basic attack ไม่ใช้ Amp Damage
                 if (shouldKnockback)
                 {
                     Vector3 knockbackDir = (enemy.transform.position - transform.position).normalized;
-                    enemy.ApplyKnockback(knockbackDir, 10f, 0.7f); // แรงเบา ระยะสั้น
+                    enemy.ApplyKnockback(knockbackDir, 10f, 0.7f);
                     Debug.Log($"🐍 [Knockback] Basic attack knocked back {enemy.CharacterName}!");
                 }
 
-                // Basic attack ไม่ใช้ Amp Damage
                 enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal, isBasicAttack);
 
-                // ✅ Poison effect จาก skill - ใช้ Amp Damage
                 if (shouldPoison)
                 {
-                    int poisonDamage = GetScaledPoisonDamage(0.4f); // จะมี Amp Damage อยู่แล้ว
+                    int poisonDamage = GetScaledPoisonDamage(0.4f);
                     enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
 
-                    // ✅ Venom Mastery bonus - เป็น skill damage ใช้ Amp Damage
                     if (hasVenomMastery)
                     {
-                        int bonusDamage = GetScaledSkillDamage(0.2f); // จะมี Amp Damage อยู่แล้ว
-                        enemy.TakeDamageFromAttacker(0, bonusDamage, this, DamageType.Magic, false); // skill attack
+                        int bonusDamage = GetScaledSkillDamage(0.2f);
+                        enemy.TakeDamageFromAttacker(0, bonusDamage, this, DamageType.Magic, false);
                         Debug.Log($"🐍 [Venom Mastery] poison bonus (with Amp): {bonusDamage}");
                     }
 
-                    // Passive: spread poison
                     if (hasVenomMastery && Random.Range(0f, 100f) < 30f)
                     {
                         SpreadPoisonToNearby(enemy, 4f);
@@ -801,12 +903,19 @@ public class Assassin : Hero
                     Debug.Log($"🐍 Applied poison: {poisonDamage} damage/s for 8s");
                 }
 
-                // ✅ Force critical - เป็น skill damage ใช้ Amp Damage
                 if (forceCritical)
                 {
-                    int critDamage = GetScaledSkillDamage(0.8f); // จะมี Amp Damage อยู่แล้ว
-                    enemy.TakeDamageFromAttacker(0, critDamage, this, DamageType.Critical, false); // skill attack
+                    int critDamage = GetScaledSkillDamage(0.8f);
+                    enemy.TakeDamageFromAttacker(0, critDamage, this, DamageType.Critical, false);
                     Debug.Log($"🐍 [Poison Infusion] Final strike (with Amp): {critDamage} damage");
+                }
+
+                // ✅ เก็บ Ferris Point จาก basic attack
+                if (!IsInShadowMode)
+                {
+                    int ferrisGain = shouldPoison ? 3 : 2; // เพิ่มถ้ามี poison
+                    if (forceCritical) ferrisGain += 2; // เพิ่มถ้าเป็น critical
+                    GainFerrisPoint(ferrisGain);
                 }
 
                 RPC_OnAttackHit(enemyObject);
@@ -903,7 +1012,125 @@ public class Assassin : Hero
             Debug.LogWarning("PlagueOutbreakEffect is not assigned!");
         }
     }
+    // เพิ่มหลัง Start()
+    protected override void OnFerrisPointFull()
+    {
+        base.OnFerrisPointFull();
 
+        if (!IsInShadowMode)
+        {
+            EnterShadowMode();
+        }
+    }
+
+    /// <summary>
+    /// เข้าสู่โหมด Shadow Mode (เมื่อ Ferris Point เต็ม)
+    /// </summary>
+    private void EnterShadowMode()
+    {
+        if (!HasStateAuthority) return;
+
+        IsInShadowMode = true;
+        Skill3UsesRemaining = 3;
+        CanDashAgain = false;
+        accumulatedDrain = 0f;
+        RPC_ShowShadowModeText();
+        Debug.Log($"🌙 [SHADOW MODE ACTIVATED] {CharacterName} - Skill 3: 3 uses, Skill 2: Double Dash!");
+        if (HasInputAuthority)
+        {
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                // เปลี่ยนเป็น upgraded icons
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Assassin", 2, true);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Assassin", 3, true);
+            }
+        }
+        // Visual effect
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowShadowModeText()
+    {
+        // แสดงข้อความเหนือหัวตัวละคร
+        Vector3 textPosition = transform.position + Vector3.up * 1f; // สูงกว่าหัว
+
+        // สร้างข้อความ "SHADOW MODE" สีม่วง
+        Color shadowColor = new Color(0.7f, 0.3f, 1f, 1f); // สีม่วงสว่าง
+        DamageTextManager.ShowCustomText(textPosition, "Ferris MODE", shadowColor, 1f);
+
+        Debug.Log($"🌙 [Visual] Shadow Mode text displayed for {CharacterName}");
+    }
+    public override bool UsesFerrisPoint()
+    {
+        return true;
+    }
+    /// <summary>
+    /// ออกจากโหมด Shadow Mode
+    /// </summary>
+    private void ExitShadowMode()
+    {
+        if (!HasStateAuthority) return;
+
+        IsInShadowMode = false;
+        Skill3UsesRemaining = 0;
+        CanDashAgain = false;
+        CurrentFerrisPoint = 0;
+        accumulatedDrain = 0f;
+        RPC_ShowShadowModeEndText();
+
+        Debug.Log($"🌙 [Shadow Mode Ended] {CharacterName}");
+        if (HasInputAuthority)
+        {
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                // เปลี่ยนกลับเป็น normal icons
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Assassin", 2, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Assassin", 3, false);
+            }
+        }
+        // Visual effect
+        RPC_ShowShadowModeDeactivation();
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowShadowModeEndText()
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1f;
+
+        // ข้อความสีเทา
+        Color endColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+        DamageTextManager.ShowCustomText(textPosition, "Ferris MODE End", endColor, 1.0f);
+
+        Debug.Log($"🌙 [Visual] Shadow Mode end text displayed for {CharacterName}");
+    }
+    /// <summary>
+    /// ลด Ferris Points ระหว่าง Shadow Mode
+    /// </summary>
+    private void DrainFerrisPoints(float deltaTime)
+    {
+        if (!IsInShadowMode) return;
+
+        // สะสม drain amount
+        accumulatedDrain += shadowModeDrainRate * deltaTime;
+
+        // เมื่อสะสมได้ >= 1 point ให้ลดทีละ 1 point
+        if (accumulatedDrain >= 1f)
+        {
+            int drainAmount = Mathf.FloorToInt(accumulatedDrain);
+            CurrentFerrisPoint = Mathf.Max(0, CurrentFerrisPoint - drainAmount);
+
+            accumulatedDrain -= drainAmount;
+
+            Debug.Log($"🌙 [Shadow Mode Drain] {CharacterName}: -{drainAmount} points, {CurrentFerrisPoint} remaining");
+
+            // Check if should exit Shadow Mode
+            if (CurrentFerrisPoint <= 0)
+            {
+                accumulatedDrain = 0f;
+                ExitShadowMode();
+            }
+        }
+    }
     private Material CreateRangeIndicatorMaterial()
     {
         // สร้าง material สำหรับ range indicator
@@ -1161,9 +1388,8 @@ public class Assassin : Hero
             case "BasicAttack":
                 ShowBasicAttackEffect();
                 break;
-            case "Invisibility":
-                ShowInvisibilityEffect();
-                break;
+                
+                
         }
     }
     private void ShowPoisonInfusionEffect()
@@ -1284,23 +1510,7 @@ public class Assassin : Hero
         }
     }
 
-    private void ShowInvisibilityEffect()
-    {
-        if (invisibilityEffect != null)
-        {
-            GameObject effect = Instantiate(invisibilityEffect.gameObject, transform.position, Quaternion.identity);
-
-            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
-            if (ps != null)
-            {
-                ParticleSystem.MainModule main = ps.main;
-                main.startColor = new Color(0.8f, 0.8f, 0.8f, 0.3f); // เทาโปร่งใส
-                main.startLifetime = 1f;
-            }
-
-            Destroy(effect, 2f);
-        }
-    }
+  
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_SyncPosition(Vector3 newPosition)
@@ -1310,6 +1520,7 @@ public class Assassin : Hero
     }
 
     // ========== Network Update Override ==========
+    // แทนที่ FixedUpdateNetwork() เดิม
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
@@ -1334,8 +1545,51 @@ public class Assassin : Hero
         {
             SetVisibility(!IsInvisible);
         }
-    }
 
+        // ✅ Shadow Mode: Drain Ferris Points
+        if (HasStateAuthority && IsInShadowMode)
+        {
+            DrainFerrisPoints(Runner.DeltaTime);
+        }
+
+        // ✅ Shadow Mode: Grace Period Check (Skill 2 Double Dash)
+        if (HasStateAuthority && CanDashAgain && Time.time > DashGracePeriodEnd)
+        {
+            // หมดเวลา grace period - ติด cooldown
+            float effectiveReduction = GetEffectiveReductionCoolDown();
+            float reductionMultiplier = 1f - (effectiveReduction / 100f);
+            reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
+            float finalCooldown = skill2Cooldown * reductionMultiplier;
+
+            nextSkill2Time = Time.time + finalCooldown;
+            CanDashAgain = false;
+
+            Debug.Log($"⏱️ [Grace Period Expired] Skill 2 cooldown applied: {finalCooldown:F1}s");
+        }
+    }
+    // เพิ่มก่อน OnDestroy()
+    
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowShadowModeDeactivation()
+    {
+        if (shadowAssassinEffect != null)
+        {
+            GameObject effect = Instantiate(shadowAssassinEffect.gameObject, transform.position + Vector3.up * 1f, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+                main.startColor = new Color(0.3f, 0.3f, 0.3f, 0.5f); // สีเทา
+                main.startLifetime = 1f;
+            }
+
+            Destroy(effect, 2f);
+        }
+
+        Debug.Log($"🌙 [Visual] Shadow Mode Deactivated!");
+    }
     // ========== Event Handlers ==========
     protected override void OnDestroy()
     {
