@@ -313,9 +313,11 @@ public class CombatManager : NetworkBehaviour
             HandleDeath();
         }
     }
+    // ใน CombatManager.cs - method นี้มีอยู่แล้วแต่อาจต้องแก้ไข comment
+
     public virtual void TakeDamageFromAttacker(int damage, Character attacker, DamageType damageType = DamageType.Normal, bool isBasicAttack = false)
     {
-        // ✅ ปรับปรุงให้ส่ง physical และ magic damage แยก
+        // ✅ ใช้ GetAttackDamages() ที่รวม Aura Bonus แล้ว
         var (physicalDamage, magicDamage) = attacker.GetAttackDamages();
 
         Debug.Log($"[TakeDamageFromAttacker] {attacker.CharacterName}: Physical={physicalDamage}, Magic={magicDamage}, Type={damageType}, IsBasicAttack={isBasicAttack}");
@@ -433,12 +435,7 @@ public class CombatManager : NetworkBehaviour
         int finalDamage = baseDamage;
 
         // Apply Damage Aura bonus
-        if (statusEffectManager != null)
-        {
-            float damageMultiplier = statusEffectManager.GetTotalDamageMultiplier();
-            finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
-            Debug.Log($"[Damage Aura] Base: {baseDamage} -> With Aura: {finalDamage} (x{damageMultiplier:F2})");
-        }
+       
 
         // Critical damage calculation
         if (isCritical)
@@ -518,99 +515,49 @@ public class CombatManager : NetworkBehaviour
     }
     private int GetCurrentMagicArmor()
     {
-        int baseMagicArmor = character.MagicArmor;
-
-        // Add magic armor from equipment
-        if (equipmentManager != null)
-        {
-            baseMagicArmor += equipmentManager.GetMagicArmorBonus();
-        }
-
-        // Apply Armor Aura (ใช้กับ Magic Armor ด้วย)
-        if (statusEffectManager != null)
-        {
-            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
-            baseMagicArmor = Mathf.RoundToInt(baseMagicArmor * armorMultiplier);
-
-            if (armorMultiplier > 1f)
-            {
-                Debug.Log($"[Magic Armor Aura] Magic Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
-            }
-        }
+        // ✅ ใช้ GetEffectiveMagicArmor() จาก Character.cs แทน
+        int effectiveMagicArmor = character.GetEffectiveMagicArmor();
 
         // Apply Armor Break effect (ใช้กับ Magic Armor ด้วย)
         if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
         {
             float reduction = statusEffectManager.ArmorBreakAmount;
-            baseMagicArmor = Mathf.RoundToInt(baseMagicArmor * (1f - reduction));
-            Debug.Log($"[Magic Armor Break] Magic Armor reduced by {reduction * 100}%: {baseMagicArmor}");
+            effectiveMagicArmor = Mathf.RoundToInt(effectiveMagicArmor * (1f - reduction));
+            Debug.Log($"[Magic Armor Break] Magic Armor reduced by {reduction * 100}%: {effectiveMagicArmor}");
         }
 
-        Debug.Log($"[GetCurrentMagicArmor] {character.CharacterName}: Base={character.MagicArmor}, Equipment={equipmentManager?.GetMagicArmorBonus()}, Final={baseMagicArmor}");
+        Debug.Log($"[GetCurrentMagicArmor] {character.CharacterName}: Effective={effectiveMagicArmor}");
 
-        return baseMagicArmor;
+        return effectiveMagicArmor;
     }
 
     private int GetCurrentArmor()
     {
-        int baseArmor = character.Armor;
-
-        // Add armor from equipment
-        if (equipmentManager != null)
-        {
-            baseArmor += equipmentManager.GetArmorBonus();
-        }
-
-        // Apply Armor Aura
-        if (statusEffectManager != null)
-        {
-            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
-            baseArmor = Mathf.RoundToInt(baseArmor * armorMultiplier);
-
-            if (armorMultiplier > 1f)
-            {
-                Debug.Log($"[Physical Armor Aura] Armor boosted by {(armorMultiplier - 1f) * 100:F0}%");
-            }
-        }
+        // ✅ ใช้ GetEffectiveArmor() จาก Character.cs แทน
+        int effectiveArmor = character.GetEffectiveArmor();
 
         // Apply Armor Break effect
         if (statusEffectManager != null && statusEffectManager.IsArmorBreak)
         {
             float reduction = statusEffectManager.ArmorBreakAmount;
-            baseArmor = Mathf.RoundToInt(baseArmor * (1f - reduction));
-            Debug.Log($"[Physical Armor Break] Armor reduced by {reduction * 100}%: {baseArmor}");
+            effectiveArmor = Mathf.RoundToInt(effectiveArmor * (1f - reduction));
+            Debug.Log($"[Physical Armor Break] Armor reduced by {reduction * 100}%: {effectiveArmor}");
         }
 
-        Debug.Log($"[GetCurrentArmor] {character.CharacterName}: Base={character.Armor}, Equipment={equipmentManager?.GetArmorBonus()}, Final={baseArmor}");
+        Debug.Log($"[GetCurrentArmor] {character.CharacterName}: Effective={effectiveArmor}");
 
-        return baseArmor;
+        return effectiveArmor;
     }
 
+    // ใน CombatManager.cs - แทนที่ method เดิม
     private bool CalculateCriticalHit(Character attacker)
     {
         float critRoll = UnityEngine.Random.Range(0f, 100f);
-        float attackerCritChance = attacker.CriticalChance;
 
-        // Add critical chance from equipment
-        if (attacker.GetComponent<EquipmentManager>() != null)
-        {
-            attackerCritChance += attacker.GetComponent<EquipmentManager>().GetCriticalChanceBonus();
-        }
+        // ✅ ใช้ GetEffectiveCriticalChance() จาก Character.cs แทน
+        float attackerCritChance = attacker.GetEffectiveCriticalChance();
 
-        // Apply Critical Aura
-        if (attacker.GetComponent<StatusEffectManager>() != null)
-        {
-            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
-            float criticalBonus = attackerStatus.GetTotalCriticalBonus();
-            attackerCritChance += criticalBonus * 100f;
-
-            if (criticalBonus > 0f)
-            {
-                Debug.Log($"[Critical Aura] Critical chance boosted by {criticalBonus * 100:F0}%");
-            }
-        }
-
-        // Apply Blind effect
+        // Apply Blind effect (ลดโอกาส crit)
         if (attacker.GetComponent<StatusEffectManager>() != null)
         {
             StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
@@ -624,24 +571,33 @@ public class CombatManager : NetworkBehaviour
 
         bool isCritical = critRoll < attackerCritChance;
 
-        // ✅ เพิ่ม debug
-        //  Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
+        Debug.Log($"[Critical Check] {attacker.CharacterName}: Roll={critRoll:F1}, Chance={attackerCritChance:F1}%, Result={isCritical}");
 
         return isCritical;
     }
 
+    // ใน CombatManager.cs - แทนที่ method เดิม
     private int ApplyAttackerStatusEffects(int damage, Character attacker)
     {
         int modifiedDamage = damage;
 
-        // Apply Weakness effect
-        if (attacker.GetComponent<StatusEffectManager>() != null)
+        // ✅ เพิ่ม Physical/Magic Damage Aura
+        var attackerStatus = attacker.GetComponent<StatusEffectManager>();
+        if (attackerStatus != null)
         {
-            StatusEffectManager attackerStatus = attacker.GetComponent<StatusEffectManager>();
+            // Physical Damage Aura
+            float physicalMultiplier = attackerStatus.GetTotalDamageMultiplier();
+            if (physicalMultiplier > 1f)
+            {
+                modifiedDamage = Mathf.RoundToInt(modifiedDamage * physicalMultiplier);
+                Debug.Log($"[Damage Aura] {attacker.CharacterName}: {damage} -> {modifiedDamage} (x{physicalMultiplier:F2})");
+            }
+
+            // Apply Weakness effect
             if (attackerStatus.IsWeak)
             {
                 float weaknessReduction = attackerStatus.WeaknessAmount;
-                modifiedDamage = Mathf.RoundToInt(damage * (1f - weaknessReduction));
+                modifiedDamage = Mathf.RoundToInt(modifiedDamage * (1f - weaknessReduction));
                 Debug.Log($"[Weakness Effect] Damage reduced from {damage} to {modifiedDamage} ({weaknessReduction * 100}% reduction)");
             }
         }
@@ -778,7 +734,6 @@ public class CombatManager : NetworkBehaviour
 
     /// <summary>
     /// ตรวจสอบและดรอปเงินจาก Dummy
-    /// เรียกจาก TakeDamageFromAttacker เมื่อโจมตี Dummy
     /// </summary>
     private void TryDropGoldFromDummy(int totalDamage, Character attacker)
     {

@@ -24,7 +24,16 @@ public enum StatusEffectType
     MoveSpeedAura,      // +15% move speed รัศมี 5m
     ProtectionAura,     // -15% damage taken รัศมี 6m
     ArmorAura,          // +20% armor รัศมี 6m
-    CriticalAura        // +15% critical chance รัศมี 6m
+    CriticalAura,        // +15% critical chance รัศมี 6m
+         MagicDamageAura,        // +20% magic damage
+    CooldownReductionAura,  // +15% CDR
+    LifeStealAura,          // +10% life steal
+    AmpDamageAura,          // +15% amp damage
+    MagicArmorAura,         // +20% magic armor
+    HealthRegenAura,        // +50% health regen
+    ManaRegenAura,          // +50% mana regen
+    HitRateAura,            // +15% hit rate
+    EvasionAura
 }
 
 public class StatusEffectManager : NetworkBehaviour
@@ -78,8 +87,79 @@ public class StatusEffectManager : NetworkBehaviour
     [Networked] public float WeaknessDuration { get; set; }
     [Networked] public float WeaknessAmount { get; set; } // 0.4 = 40% reduction
     #endregion
-#region AuraBuff
+    #region AuraBuff
 
+    [Networked] public bool IsProvidingMagicDamageAura { get; set; }
+    [Networked] public float MagicDamageAuraDuration { get; set; }
+    [Networked] public float MagicDamageAuraRadius { get; set; }
+    [Networked] public float MagicDamageAuraAmount { get; set; }
+
+    // ========== 🆕 Cooldown Reduction Aura ==========
+    [Networked] public bool IsProvidingCooldownReductionAura { get; set; }
+    [Networked] public float CooldownReductionAuraDuration { get; set; }
+    [Networked] public float CooldownReductionAuraRadius { get; set; }
+    [Networked] public float CooldownReductionAuraAmount { get; set; }
+
+    // ========== 🆕 Life Steal Aura ==========
+    [Networked] public bool IsProvidingLifeStealAura { get; set; }
+    [Networked] public float LifeStealAuraDuration { get; set; }
+    [Networked] public float LifeStealAuraRadius { get; set; }
+    [Networked] public float LifeStealAuraAmount { get; set; }
+
+    // ========== 🆕 Amp Damage Aura ==========
+    [Networked] public bool IsProvidingAmpDamageAura { get; set; }
+    [Networked] public float AmpDamageAuraDuration { get; set; }
+    [Networked] public float AmpDamageAuraRadius { get; set; }
+    [Networked] public float AmpDamageAuraAmount { get; set; }
+
+    // ========== 🆕 Magic Armor Aura ==========
+    [Networked] public bool IsProvidingMagicArmorAura { get; set; }
+    [Networked] public float MagicArmorAuraDuration { get; set; }
+    [Networked] public float MagicArmorAuraRadius { get; set; }
+    [Networked] public float MagicArmorAuraAmount { get; set; }
+
+    // ========== 🆕 Health Regen Aura ==========
+    [Networked] public bool IsProvidingHealthRegenAura { get; set; }
+    [Networked] public float HealthRegenAuraDuration { get; set; }
+    [Networked] public float HealthRegenAuraRadius { get; set; }
+    [Networked] public float HealthRegenAuraAmount { get; set; }
+
+    // ========== 🆕 Mana Regen Aura ==========
+    [Networked] public bool IsProvidingManaRegenAura { get; set; }
+    [Networked] public float ManaRegenAuraDuration { get; set; }
+    [Networked] public float ManaRegenAuraRadius { get; set; }
+    [Networked] public float ManaRegenAuraAmount { get; set; }
+
+    // ========== 🆕 Hit Rate Aura ==========
+    [Networked] public bool IsProvidingHitRateAura { get; set; }
+    [Networked] public float HitRateAuraDuration { get; set; }
+    [Networked] public float HitRateAuraRadius { get; set; }
+    [Networked] public float HitRateAuraAmount { get; set; }
+
+    // ========== 🆕 Evasion Aura ==========
+    [Networked] public bool IsProvidingEvasionAura { get; set; }
+    [Networked] public float EvasionAuraDuration { get; set; }
+    [Networked] public float EvasionAuraRadius { get; set; }
+    [Networked] public float EvasionAuraAmount { get; set; }
+
+    // ========== Receiving Properties (เดิม + ใหม่) ==========
+    [Networked] public float ReceivedAttackSpeedBonus { get; set; }
+    [Networked] public float ReceivedDamageBonus { get; set; }
+    [Networked] public float ReceivedMoveSpeedBonus { get; set; }
+    [Networked] public float ReceivedProtectionBonus { get; set; }
+    [Networked] public float ReceivedArmorBonus { get; set; }
+    [Networked] public float ReceivedCriticalBonus { get; set; }
+
+    // 🆕 Receiving Properties ใหม่
+    [Networked] public float ReceivedMagicDamageBonus { get; set; }
+    [Networked] public float ReceivedCooldownReductionBonus { get; set; }
+    [Networked] public float ReceivedLifeStealBonus { get; set; }
+    [Networked] public float ReceivedAmpDamageBonus { get; set; }
+    [Networked] public float ReceivedMagicArmorBonus { get; set; }
+    [Networked] public float ReceivedHealthRegenBonus { get; set; }
+    [Networked] public float ReceivedManaRegenBonus { get; set; }
+    [Networked] public float ReceivedHitRateBonus { get; set; }
+    [Networked] public float ReceivedEvasionBonus { get; set; }
     // Attack Speed Aura
     [Networked] public bool IsProvidingAttackSpeedAura { get; set; }
     [Networked] public float AttackSpeedAuraDuration { get; set; }
@@ -117,12 +197,7 @@ public class StatusEffectManager : NetworkBehaviour
     [Networked] public float CriticalAuraAmount { get; set; }
 
     // ========== Team Aura Receiving Properties (สิ่งที่ได้รับจากคนอื่น) ==========
-    [Networked] public float ReceivedAttackSpeedBonus { get; set; }
-    [Networked] public float ReceivedDamageBonus { get; set; }
-    [Networked] public float ReceivedMoveSpeedBonus { get; set; }
-    [Networked] public float ReceivedProtectionBonus { get; set; }
-    [Networked] public float ReceivedArmorBonus { get; set; }
-    [Networked] public float ReceivedCriticalBonus { get; set; }
+  
 
     // Timers
     private float nextAuraCheckTime = 0f;
@@ -753,6 +828,184 @@ public class StatusEffectManager : NetworkBehaviour
 
 
     #region Buff
+    public virtual void ApplyMagicDamageAura(float radius = 5f, float bonus = 0.2f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingMagicDamageAura;
+
+        IsProvidingMagicDamageAura = true;
+        MagicDamageAuraRadius = radius;
+        MagicDamageAuraAmount = bonus;
+        MagicDamageAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.MagicDamageAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.MagicDamageAura, true);
+    }
+
+    // ========== 🆕 Cooldown Reduction Aura ==========
+    public virtual void ApplyCooldownReductionAura(float radius = 5f, float bonus = 0.15f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingCooldownReductionAura;
+
+        IsProvidingCooldownReductionAura = true;
+        CooldownReductionAuraRadius = radius;
+        CooldownReductionAuraAmount = bonus;
+        CooldownReductionAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.CooldownReductionAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.CooldownReductionAura, true);
+    }
+
+    // ========== 🆕 Life Steal Aura ==========
+    public virtual void ApplyLifeStealAura(float radius = 5f, float bonus = 0.1f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingLifeStealAura;
+
+        IsProvidingLifeStealAura = true;
+        LifeStealAuraRadius = radius;
+        LifeStealAuraAmount = bonus;
+        LifeStealAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.LifeStealAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.LifeStealAura, true);
+    }
+
+    // ========== 🆕 Amp Damage Aura ==========
+    public virtual void ApplyAmpDamageAura(float radius = 5f, float bonus = 0.15f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingAmpDamageAura;
+
+        IsProvidingAmpDamageAura = true;
+        AmpDamageAuraRadius = radius;
+        AmpDamageAuraAmount = bonus;
+        AmpDamageAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.AmpDamageAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.AmpDamageAura, true);
+    }
+
+    // ========== 🆕 Magic Armor Aura ==========
+    public virtual void ApplyMagicArmorAura(float radius = 6f, float bonus = 0.2f, float duration = 20f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingMagicArmorAura;
+
+        IsProvidingMagicArmorAura = true;
+        MagicArmorAuraRadius = radius;
+        MagicArmorAuraAmount = bonus;
+        MagicArmorAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.MagicArmorAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.MagicArmorAura, true);
+    }
+
+    // ========== 🆕 Health Regen Aura ==========
+    public virtual void ApplyHealthRegenAura(float radius = 5f, float bonus = 0.5f, float duration = 20f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingHealthRegenAura;
+
+        IsProvidingHealthRegenAura = true;
+        HealthRegenAuraRadius = radius;
+        HealthRegenAuraAmount = bonus;
+        HealthRegenAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.HealthRegenAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.HealthRegenAura, true);
+    }
+
+    // ========== 🆕 Mana Regen Aura ==========
+    public virtual void ApplyManaRegenAura(float radius = 5f, float bonus = 0.5f, float duration = 20f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingManaRegenAura;
+
+        IsProvidingManaRegenAura = true;
+        ManaRegenAuraRadius = radius;
+        ManaRegenAuraAmount = bonus;
+        ManaRegenAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.ManaRegenAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.ManaRegenAura, true);
+    }
+
+    // ========== 🆕 Hit Rate Aura ==========
+    public virtual void ApplyHitRateAura(float radius = 5f, float bonus = 0.15f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingHitRateAura;
+
+        IsProvidingHitRateAura = true;
+        HitRateAuraRadius = radius;
+        HitRateAuraAmount = bonus;
+        HitRateAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.HitRateAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.HitRateAura, true);
+    }
+
+    // ========== 🆕 Evasion Aura ==========
+    public virtual void ApplyEvasionAura(float radius = 5f, float bonus = 0.1f, float duration = 15f)
+    {
+        if (!HasStateAuthority) return;
+
+        bool wasAlreadyProviding = IsProvidingEvasionAura;
+
+        IsProvidingEvasionAura = true;
+        EvasionAuraRadius = radius;
+        EvasionAuraAmount = bonus;
+        EvasionAuraDuration = duration;
+
+        if (!wasAlreadyProviding)
+        {
+            RPC_ShowAuraBuffText(StatusEffectType.EvasionAura, bonus, duration);
+        }
+
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.EvasionAura, true);
+    }
 
     public virtual void ApplyAttackSpeedAura(float radius = 5f, float bonus = 0.3f, float duration = 15f)
     {
@@ -868,64 +1121,96 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== Process Aura Durations ==========
     private void ProcessAllAuras()
     {
-        // Attack Speed Aura
+        // ========== Aura เดิม ==========
         if (IsProvidingAttackSpeedAura)
         {
             AttackSpeedAuraDuration -= Runner.DeltaTime;
-            if (AttackSpeedAuraDuration <= 0)
-            {
-                RemoveAttackSpeedAura();
-            }
+            if (AttackSpeedAuraDuration <= 0) RemoveAttackSpeedAura();
         }
 
-        // Damage Aura
         if (IsProvidingDamageAura)
         {
             DamageAuraDuration -= Runner.DeltaTime;
-            if (DamageAuraDuration <= 0)
-            {
-                RemoveDamageAura();
-            }
+            if (DamageAuraDuration <= 0) RemoveDamageAura();
         }
 
-        // Move Speed Aura
         if (IsProvidingMoveSpeedAura)
         {
             MoveSpeedAuraDuration -= Runner.DeltaTime;
-            if (MoveSpeedAuraDuration <= 0)
-            {
-                RemoveMoveSpeedAura();
-            }
+            if (MoveSpeedAuraDuration <= 0) RemoveMoveSpeedAura();
         }
 
-        // Protection Aura
         if (IsProvidingProtectionAura)
         {
             ProtectionAuraDuration -= Runner.DeltaTime;
-            if (ProtectionAuraDuration <= 0)
-            {
-                RemoveProtectionAura();
-            }
+            if (ProtectionAuraDuration <= 0) RemoveProtectionAura();
         }
 
-        // Armor Aura
         if (IsProvidingArmorAura)
         {
             ArmorAuraDuration -= Runner.DeltaTime;
-            if (ArmorAuraDuration <= 0)
-            {
-                RemoveArmorAura();
-            }
+            if (ArmorAuraDuration <= 0) RemoveArmorAura();
         }
 
-        // Critical Aura
         if (IsProvidingCriticalAura)
         {
             CriticalAuraDuration -= Runner.DeltaTime;
-            if (CriticalAuraDuration <= 0)
-            {
-                RemoveCriticalAura();
-            }
+            if (CriticalAuraDuration <= 0) RemoveCriticalAura();
+        }
+
+        // ========== 🆕 Aura ใหม่ ==========
+        if (IsProvidingMagicDamageAura)
+        {
+            MagicDamageAuraDuration -= Runner.DeltaTime;
+            if (MagicDamageAuraDuration <= 0) RemoveMagicDamageAura();
+        }
+
+        if (IsProvidingCooldownReductionAura)
+        {
+            CooldownReductionAuraDuration -= Runner.DeltaTime;
+            if (CooldownReductionAuraDuration <= 0) RemoveCooldownReductionAura();
+        }
+
+        if (IsProvidingLifeStealAura)
+        {
+            LifeStealAuraDuration -= Runner.DeltaTime;
+            if (LifeStealAuraDuration <= 0) RemoveLifeStealAura();
+        }
+
+        if (IsProvidingAmpDamageAura)
+        {
+            AmpDamageAuraDuration -= Runner.DeltaTime;
+            if (AmpDamageAuraDuration <= 0) RemoveAmpDamageAura();
+        }
+
+        if (IsProvidingMagicArmorAura)
+        {
+            MagicArmorAuraDuration -= Runner.DeltaTime;
+            if (MagicArmorAuraDuration <= 0) RemoveMagicArmorAura();
+        }
+
+        if (IsProvidingHealthRegenAura)
+        {
+            HealthRegenAuraDuration -= Runner.DeltaTime;
+            if (HealthRegenAuraDuration <= 0) RemoveHealthRegenAura();
+        }
+
+        if (IsProvidingManaRegenAura)
+        {
+            ManaRegenAuraDuration -= Runner.DeltaTime;
+            if (ManaRegenAuraDuration <= 0) RemoveManaRegenAura();
+        }
+
+        if (IsProvidingHitRateAura)
+        {
+            HitRateAuraDuration -= Runner.DeltaTime;
+            if (HitRateAuraDuration <= 0) RemoveHitRateAura();
+        }
+
+        if (IsProvidingEvasionAura)
+        {
+            EvasionAuraDuration -= Runner.DeltaTime;
+            if (EvasionAuraDuration <= 0) RemoveEvasionAura();
         }
     }
 
@@ -961,55 +1246,202 @@ public class StatusEffectManager : NetworkBehaviour
         }
     }
 
+    // แทนที่ method เดิมด้วยโค้ดนี้
     private void CheckAndApplyAuraBonus(StatusEffectManager provider, float distance)
     {
-        // Attack Speed Aura
+        // ========== Aura เดิม ==========
         if (provider.IsProvidingAttackSpeedAura && distance <= provider.AttackSpeedAuraRadius)
         {
             ReceivedAttackSpeedBonus = Mathf.Max(ReceivedAttackSpeedBonus, provider.AttackSpeedAuraAmount);
         }
 
-        // Damage Aura
         if (provider.IsProvidingDamageAura && distance <= provider.DamageAuraRadius)
         {
             ReceivedDamageBonus = Mathf.Max(ReceivedDamageBonus, provider.DamageAuraAmount);
         }
 
-        // Move Speed Aura
         if (provider.IsProvidingMoveSpeedAura && distance <= provider.MoveSpeedAuraRadius)
         {
             ReceivedMoveSpeedBonus = Mathf.Max(ReceivedMoveSpeedBonus, provider.MoveSpeedAuraAmount);
         }
 
-        // Protection Aura
         if (provider.IsProvidingProtectionAura && distance <= provider.ProtectionAuraRadius)
         {
             ReceivedProtectionBonus = Mathf.Max(ReceivedProtectionBonus, provider.ProtectionAuraAmount);
         }
 
-        // Armor Aura
         if (provider.IsProvidingArmorAura && distance <= provider.ArmorAuraRadius)
         {
             ReceivedArmorBonus = Mathf.Max(ReceivedArmorBonus, provider.ArmorAuraAmount);
         }
 
-        // Critical Aura
         if (provider.IsProvidingCriticalAura && distance <= provider.CriticalAuraRadius)
         {
             ReceivedCriticalBonus = Mathf.Max(ReceivedCriticalBonus, provider.CriticalAuraAmount);
         }
+
+        // ========== 🆕 Aura ใหม่ ==========
+        if (provider.IsProvidingMagicDamageAura && distance <= provider.MagicDamageAuraRadius)
+        {
+            ReceivedMagicDamageBonus = Mathf.Max(ReceivedMagicDamageBonus, provider.MagicDamageAuraAmount);
+        }
+
+        if (provider.IsProvidingCooldownReductionAura && distance <= provider.CooldownReductionAuraRadius)
+        {
+            ReceivedCooldownReductionBonus = Mathf.Max(ReceivedCooldownReductionBonus, provider.CooldownReductionAuraAmount);
+        }
+
+        if (provider.IsProvidingLifeStealAura && distance <= provider.LifeStealAuraRadius)
+        {
+            ReceivedLifeStealBonus = Mathf.Max(ReceivedLifeStealBonus, provider.LifeStealAuraAmount);
+        }
+
+        if (provider.IsProvidingAmpDamageAura && distance <= provider.AmpDamageAuraRadius)
+        {
+            ReceivedAmpDamageBonus = Mathf.Max(ReceivedAmpDamageBonus, provider.AmpDamageAuraAmount);
+        }
+
+        if (provider.IsProvidingMagicArmorAura && distance <= provider.MagicArmorAuraRadius)
+        {
+            ReceivedMagicArmorBonus = Mathf.Max(ReceivedMagicArmorBonus, provider.MagicArmorAuraAmount);
+        }
+
+        if (provider.IsProvidingHealthRegenAura && distance <= provider.HealthRegenAuraRadius)
+        {
+            ReceivedHealthRegenBonus = Mathf.Max(ReceivedHealthRegenBonus, provider.HealthRegenAuraAmount);
+        }
+
+        if (provider.IsProvidingManaRegenAura && distance <= provider.ManaRegenAuraRadius)
+        {
+            ReceivedManaRegenBonus = Mathf.Max(ReceivedManaRegenBonus, provider.ManaRegenAuraAmount);
+        }
+
+        if (provider.IsProvidingHitRateAura && distance <= provider.HitRateAuraRadius)
+        {
+            ReceivedHitRateBonus = Mathf.Max(ReceivedHitRateBonus, provider.HitRateAuraAmount);
+        }
+
+        if (provider.IsProvidingEvasionAura && distance <= provider.EvasionAuraRadius)
+        {
+            ReceivedEvasionBonus = Mathf.Max(ReceivedEvasionBonus, provider.EvasionAuraAmount);
+        }
     }
 
+    // แทนที่ method เดิมด้วยโค้ดนี้
     private void ResetReceivedAuraBonuses()
     {
+        // ========== Aura เดิม ==========
         ReceivedAttackSpeedBonus = 0f;
         ReceivedDamageBonus = 0f;
         ReceivedMoveSpeedBonus = 0f;
         ReceivedProtectionBonus = 0f;
         ReceivedArmorBonus = 0f;
         ReceivedCriticalBonus = 0f;
+
+        // ========== 🆕 Aura ใหม่ ==========
+        ReceivedMagicDamageBonus = 0f;
+        ReceivedCooldownReductionBonus = 0f;
+        ReceivedLifeStealBonus = 0f;
+        ReceivedAmpDamageBonus = 0f;
+        ReceivedMagicArmorBonus = 0f;
+        ReceivedHealthRegenBonus = 0f;
+        ReceivedManaRegenBonus = 0f;
+        ReceivedHitRateBonus = 0f;
+        ReceivedEvasionBonus = 0f;
+    }
+    #region Buff - เพิ่มต่อจาก Remove Aura Methods เดิม
+
+    // ========== 🆕 Remove Magic Damage Aura ==========
+    public virtual void RemoveMagicDamageAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingMagicDamageAura = false;
+        MagicDamageAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} magic damage aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.MagicDamageAura, false);
     }
 
+    // ========== 🆕 Remove Cooldown Reduction Aura ==========
+    public virtual void RemoveCooldownReductionAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingCooldownReductionAura = false;
+        CooldownReductionAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} cooldown reduction aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.CooldownReductionAura, false);
+    }
+
+    // ========== 🆕 Remove Life Steal Aura ==========
+    public virtual void RemoveLifeStealAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingLifeStealAura = false;
+        LifeStealAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} life steal aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.LifeStealAura, false);
+    }
+
+    // ========== 🆕 Remove Amp Damage Aura ==========
+    public virtual void RemoveAmpDamageAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingAmpDamageAura = false;
+        AmpDamageAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} amp damage aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.AmpDamageAura, false);
+    }
+
+    // ========== 🆕 Remove Magic Armor Aura ==========
+    public virtual void RemoveMagicArmorAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingMagicArmorAura = false;
+        MagicArmorAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} magic armor aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.MagicArmorAura, false);
+    }
+
+    // ========== 🆕 Remove Health Regen Aura ==========
+    public virtual void RemoveHealthRegenAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingHealthRegenAura = false;
+        HealthRegenAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} health regen aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.HealthRegenAura, false);
+    }
+
+    // ========== 🆕 Remove Mana Regen Aura ==========
+    public virtual void RemoveManaRegenAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingManaRegenAura = false;
+        ManaRegenAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} mana regen aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.ManaRegenAura, false);
+    }
+
+    // ========== 🆕 Remove Hit Rate Aura ==========
+    public virtual void RemoveHitRateAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingHitRateAura = false;
+        HitRateAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} hit rate aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.HitRateAura, false);
+    }
+
+    // ========== 🆕 Remove Evasion Aura ==========
+    public virtual void RemoveEvasionAura()
+    {
+        if (!HasStateAuthority) return;
+        IsProvidingEvasionAura = false;
+        EvasionAuraDuration = 0f;
+        Debug.Log($"{character.CharacterName} evasion aura ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.EvasionAura, false);
+    }
+
+    #endregion
     // ========== Remove Aura Methods ==========
     public virtual void RemoveAttackSpeedAura()
     {
@@ -1072,27 +1504,103 @@ public class StatusEffectManager : NetworkBehaviour
     public bool IsProvidingAnyAura()
     {
         return IsProvidingAttackSpeedAura || IsProvidingDamageAura || IsProvidingMoveSpeedAura ||
-               IsProvidingProtectionAura || IsProvidingArmorAura || IsProvidingCriticalAura;
+               IsProvidingProtectionAura || IsProvidingArmorAura || IsProvidingCriticalAura ||
+               // 🆕 เพิ่ม aura ใหม่
+               IsProvidingMagicDamageAura || IsProvidingCooldownReductionAura || IsProvidingLifeStealAura ||
+               IsProvidingAmpDamageAura || IsProvidingMagicArmorAura || IsProvidingHealthRegenAura ||
+               IsProvidingManaRegenAura || IsProvidingHitRateAura || IsProvidingEvasionAura;
     }
 
     public bool IsReceivingAnyAura()
     {
         return ReceivedAttackSpeedBonus > 0 || ReceivedDamageBonus > 0 || ReceivedMoveSpeedBonus > 0 ||
-               ReceivedProtectionBonus > 0 || ReceivedArmorBonus > 0 || ReceivedCriticalBonus > 0;
+               ReceivedProtectionBonus > 0 || ReceivedArmorBonus > 0 || ReceivedCriticalBonus > 0 ||
+               // 🆕 เพิ่ม aura ใหม่
+               ReceivedMagicDamageBonus > 0 || ReceivedCooldownReductionBonus > 0 || ReceivedLifeStealBonus > 0 ||
+               ReceivedAmpDamageBonus > 0 || ReceivedMagicArmorBonus > 0 || ReceivedHealthRegenBonus > 0 ||
+               ReceivedManaRegenBonus > 0 || ReceivedHitRateBonus > 0 || ReceivedEvasionBonus > 0;
     }
 
     public void ClearAllAuras()
     {
         if (!HasStateAuthority) return;
 
+        // ========== Aura เดิม ==========
         if (IsProvidingAttackSpeedAura) RemoveAttackSpeedAura();
         if (IsProvidingDamageAura) RemoveDamageAura();
         if (IsProvidingMoveSpeedAura) RemoveMoveSpeedAura();
         if (IsProvidingProtectionAura) RemoveProtectionAura();
         if (IsProvidingArmorAura) RemoveArmorAura();
         if (IsProvidingCriticalAura) RemoveCriticalAura();
+
+        // ========== 🆕 Aura ใหม่ ==========
+        if (IsProvidingMagicDamageAura) RemoveMagicDamageAura();
+        if (IsProvidingCooldownReductionAura) RemoveCooldownReductionAura();
+        if (IsProvidingLifeStealAura) RemoveLifeStealAura();
+        if (IsProvidingAmpDamageAura) RemoveAmpDamageAura();
+        if (IsProvidingMagicArmorAura) RemoveMagicArmorAura();
+        if (IsProvidingHealthRegenAura) RemoveHealthRegenAura();
+        if (IsProvidingManaRegenAura) RemoveManaRegenAura();
+        if (IsProvidingHitRateAura) RemoveHitRateAura();
+        if (IsProvidingEvasionAura) RemoveEvasionAura();
     }
 
+    // 🆕 เพิ่ม Getter Methods ใหม่
+    public float GetTotalMagicDamageMultiplier()
+    {
+        float multiplier = 1f + ReceivedMagicDamageBonus;
+
+        // ✅ เพิ่ม debug log
+        if (ReceivedMagicDamageBonus > 0)
+        {
+            Debug.Log($"[Magic Damage Aura] {character.CharacterName}: " +
+                     $"Received Bonus = {ReceivedMagicDamageBonus:F2} ({ReceivedMagicDamageBonus * 100f:F1}%), " +
+                     $"Multiplier = {multiplier:F2}");
+        }
+
+        return multiplier;
+    }
+
+
+    public float GetTotalCooldownReductionBonus()
+    {
+        return ReceivedCooldownReductionBonus;
+    }
+
+    public float GetTotalLifeStealBonus()
+    {
+        return ReceivedLifeStealBonus;
+    }
+
+    public float GetTotalAmpDamageBonus()
+    {
+        return ReceivedAmpDamageBonus;
+    }
+
+    public float GetTotalMagicArmorMultiplier()
+    {
+        return 1f + ReceivedMagicArmorBonus;
+    }
+
+    public float GetTotalHealthRegenMultiplier()
+    {
+        return 1f + ReceivedHealthRegenBonus;
+    }
+
+    public float GetTotalManaRegenMultiplier()
+    {
+        return 1f + ReceivedManaRegenBonus;
+    }
+
+    public float GetTotalHitRateBonus()
+    {
+        return ReceivedHitRateBonus;
+    }
+
+    public float GetTotalEvasionBonus()
+    {
+        return ReceivedEvasionBonus;
+    }
     public float GetTotalDamageMultiplier()
     {
         return 1f + ReceivedDamageBonus;
@@ -1138,37 +1646,29 @@ public class StatusEffectManager : NetworkBehaviour
         return ReceivedCriticalBonus;
     }
     // ========== Helper Methods ==========
+    // ใน StatusEffectManager.cs - แทนที่ method เดิม
     private float GetMagicalResistance()
     {
-        // ✅ ใช้ Magic Armor จาก Character และ Equipment
-        int totalMagicArmor = character.MagicArmor;
+        // ✅ ใช้ GetEffectiveMagicArmor() แทน MagicArmor โดยตรง
+        int totalMagicArmor = character.GetEffectiveMagicArmor();
 
-        // เพิ่ม Magic Armor bonus จาก equipment
-        if (equipmentManager != null)
-        {
-            totalMagicArmor += equipmentManager.GetMagicArmorBonus();
-        }
-
-        // ✅ สูตรใหม่: Linear กับ soft cap
+        // ✅ สูตรเดียวกับเดิม
         float resistancePercent;
 
         if (totalMagicArmor <= 100)
         {
-            // 0-100 Magic Armor = 0-50% resistance (Linear)
             resistancePercent = totalMagicArmor * 0.5f;
         }
         else if (totalMagicArmor <= 500)
         {
-            // 101-500 Magic Armor = 50-75% resistance (Slower growth)
             float excess = totalMagicArmor - 100f;
-            resistancePercent = 50f + (excess * 0.0625f); // +25% over 400 points = 0.0625% per point
+            resistancePercent = 50f + (excess * 0.0625f);
         }
         else
         {
-            // 501+ Magic Armor = 75-90% resistance (Very slow growth)
             float excess = totalMagicArmor - 500f;
-            resistancePercent = 75f + (excess * 0.01f); // +15% over 1500 points = 0.01% per point
-            resistancePercent = Mathf.Min(resistancePercent, 90f); // Cap at 90%
+            resistancePercent = 75f + (excess * 0.01f);
+            resistancePercent = Mathf.Min(resistancePercent, 90f);
         }
 
         Debug.Log($"[Magical Resistance] {character.CharacterName}: Magic Armor {totalMagicArmor} = {resistancePercent:F1}% resistance");
@@ -1176,44 +1676,29 @@ public class StatusEffectManager : NetworkBehaviour
         return resistancePercent;
     }
 
+    // ใน StatusEffectManager.cs - แทนที่ method เดิม
     private float GetPhysicalResistance()
     {
-        // ✅ ใช้ Physical Armor จาก Character และ Equipment
-        int totalArmor = character.Armor;
+        // ✅ ใช้ GetEffectiveArmor() แทน Armor โดยตรง
+        int totalArmor = character.GetEffectiveArmor();
 
-        // เพิ่ม Armor bonus จาก equipment
-        if (equipmentManager != null)
-        {
-            totalArmor += equipmentManager.GetArmorBonus();
-        }
-
-        // ✅ รวม Armor Aura ด้วย
-        if (this != null)
-        {
-            float armorMultiplier = GetTotalArmorMultiplier();
-            totalArmor = Mathf.RoundToInt(totalArmor * armorMultiplier);
-        }
-
-        // ✅ สูตรเดียวกันกับ Magic Armor
+        // ✅ สูตรเดียวกับเดิม
         float resistancePercent;
 
         if (totalArmor <= 100)
         {
-            // 0-100 Armor = 0-50% resistance (Linear)
             resistancePercent = totalArmor * 0.5f;
         }
         else if (totalArmor <= 500)
         {
-            // 101-500 Armor = 50-75% resistance (Slower growth)
             float excess = totalArmor - 100f;
             resistancePercent = 50f + (excess * 0.0625f);
         }
         else
         {
-            // 501+ Armor = 75-90% resistance (Very slow growth)
             float excess = totalArmor - 500f;
             resistancePercent = 75f + (excess * 0.01f);
-            resistancePercent = Mathf.Min(resistancePercent, 90f); // Cap at 90%
+            resistancePercent = Mathf.Min(resistancePercent, 90f);
         }
 
         Debug.Log($"[Physical Resistance] {character.CharacterName}: Armor {totalArmor} = {resistancePercent:F1}% resistance");
@@ -1430,6 +1915,7 @@ public class StatusEffectManager : NetworkBehaviour
     /// <summary>
     /// แสดงข้อความเมื่อได้รับ Aura Buff
     /// </summary>
+    // แทนที่ RPC method เดิม - เพิ่ม cases ใหม่
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowAuraBuffText(StatusEffectType auraType, float bonus, float duration)
     {
@@ -1439,34 +1925,81 @@ public class StatusEffectManager : NetworkBehaviour
 
         switch (auraType)
         {
+            // ========== Aura เดิม ==========
             case StatusEffectType.AttackSpeedAura:
                 message = $"ATK SPEED +{bonus * 100:F0}%";
-                color = new Color(1f, 1f, 0.3f, 1f); // เหลืองสว่าง
+                color = new Color(1f, 1f, 0.3f, 1f);
                 break;
 
             case StatusEffectType.DamageAura:
                 message = $"DAMAGE +{bonus * 100:F0}%";
-                color = new Color(1f, 0.3f, 0.3f, 1f); // แดงสว่าง
+                color = new Color(1f, 0.3f, 0.3f, 1f);
                 break;
 
             case StatusEffectType.MoveSpeedAura:
                 message = $"SPEED +{bonus * 100:F0}%";
-                color = new Color(0.3f, 1f, 0.3f, 1f); // เขียวสว่าง
+                color = new Color(0.3f, 1f, 0.3f, 1f);
                 break;
 
             case StatusEffectType.ProtectionAura:
                 message = $"PROTECTION -{bonus * 100:F0}%";
-                color = new Color(0.5f, 0.7f, 1f, 1f); // ฟ้าสว่าง
+                color = new Color(0.5f, 0.7f, 1f, 1f);
                 break;
 
             case StatusEffectType.ArmorAura:
                 message = $"ARMOR +{bonus * 100:F0}%";
-                color = new Color(0.7f, 0.7f, 0.7f, 1f); // เทาสว่าง
+                color = new Color(0.7f, 0.7f, 0.7f, 1f);
                 break;
 
             case StatusEffectType.CriticalAura:
                 message = $"CRIT +{bonus * 100:F0}%";
-                color = new Color(1f, 0.7f, 0f, 1f); // ทอง
+                color = new Color(1f, 0.7f, 0f, 1f);
+                break;
+
+            // ========== 🆕 Aura ใหม่ ==========
+            case StatusEffectType.MagicDamageAura:
+                message = $"MAGIC DMG +{bonus * 100:F0}%";
+                color = new Color(0.6f, 0.3f, 1f, 1f); // ม่วง
+                break;
+
+            case StatusEffectType.CooldownReductionAura:
+                message = $"CDR +{bonus * 100:F0}%";
+                color = new Color(0.3f, 0.9f, 1f, 1f); // ฟ้าสว่าง
+                break;
+
+            case StatusEffectType.LifeStealAura:
+                message = $"LIFE STEAL +{bonus * 100:F0}%";
+                color = new Color(1f, 0.2f, 0.2f, 1f); // แดงเลือด
+                break;
+
+            case StatusEffectType.AmpDamageAura:
+                message = $"AMP DMG +{bonus * 100:F0}%";
+                color = new Color(1f, 0.5f, 0f, 1f); // ส้มสว่าง
+                break;
+
+            case StatusEffectType.MagicArmorAura:
+                message = $"MAGIC ARM +{bonus * 100:F0}%";
+                color = new Color(0.5f, 0.5f, 1f, 1f); // ม่วงอ่อน
+                break;
+
+            case StatusEffectType.HealthRegenAura:
+                message = $"HP REGEN +{bonus * 100:F0}%";
+                color = new Color(0.2f, 1f, 0.2f, 1f); // เขียวสว่าง
+                break;
+
+            case StatusEffectType.ManaRegenAura:
+                message = $"MP REGEN +{bonus * 100:F0}%";
+                color = new Color(0.3f, 0.6f, 1f, 1f); // ฟ้าน้ำเงิน
+                break;
+
+            case StatusEffectType.HitRateAura:
+                message = $"HIT RATE +{bonus * 100:F0}%";
+                color = new Color(1f, 1f, 0.5f, 1f); // เหลืองอ่อน
+                break;
+
+            case StatusEffectType.EvasionAura:
+                message = $"EVASION +{bonus * 100:F0}%";
+                color = new Color(0.8f, 0.8f, 0.8f, 1f); // เทาสว่าง
                 break;
         }
 

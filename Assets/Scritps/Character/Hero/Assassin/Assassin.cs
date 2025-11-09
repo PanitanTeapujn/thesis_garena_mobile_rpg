@@ -86,11 +86,7 @@ public class Assassin : Hero
         UseMana(skill1ManaCost);
         PoisonInfusionStacks = 3;
 
-        if (statusEffectManager != null)
-        {
-            statusEffectManager.ApplyAttackSpeedAura(6f, 0.3f, 12f);
-            Debug.Log($"✅ Applied Attack Speed Aura (+30% for 12s in 6m radius)");
-        }
+        statusEffectManager.ApplyCriticalAura(6f, 0.15f, 20f);T
 
         // ✅ เก็บ Ferris Point
         if (!IsInShadowMode)
@@ -114,7 +110,23 @@ public class Assassin : Hero
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
         float finalCooldown = skill2Cooldown * reductionMultiplier;
+        /*statusEffectManager.ApplyAttackSpeedAura(6f, 0.3f, 12f);        // +30% Attack Speed
+        statusEffectManager.ApplyDamageAura(5f, 0.2f, 15f);             // +20% Physical Damage
+        statusEffectManager.ApplyMoveSpeedAura(5f, 0.15f, 15f);         // +15% Move Speed
+        statusEffectManager.ApplyProtectionAura(6f, 0.15f, 20f);        // -15% Damage Taken
+        statusEffectManager.ApplyArmorAura(6f, 0.2f, 20f);              // +20% Armor
+        statusEffectManager.ApplyCriticalAura(6f, 0.15f, 20f);          // +15% Critical Chance
 
+        // ========== 🆕 Aura Buffs ใหม่ (9 ตัว) ==========
+        statusEffectManager.ApplyMagicDamageAura(5f, 0.2f, 15f);        // +20% Magic Damage
+        statusEffectManager.ApplyCooldownReductionAura(5f, 0.15f, 15f); // +15% CDR
+        statusEffectManager.ApplyLifeStealAura(5f, 0.1f, 15f);          // +10% Life Steal
+        statusEffectManager.ApplyAmpDamageAura(5f, 0.15f, 15f);         // +15% Amp Damage
+        statusEffectManager.ApplyMagicArmorAura(6f, 0.2f, 20f);         // +20% Magic Armor
+        statusEffectManager.ApplyHealthRegenAura(5f, 0.5f, 20f);        // +50% Health Regen
+        statusEffectManager.ApplyManaRegenAura(5f, 0.5f, 20f);          // +50% Mana Regen
+        statusEffectManager.ApplyHitRateAura(5f, 0.15f, 15f);           // +15% Hit Rate
+        statusEffectManager.ApplyEvasionAura(5f, 0.1f, 15f);            // +10% Eva*/
         if (!IsInShadowMode)
         {
             // ✅ Normal Mode - dash 1 ครั้ง
@@ -660,11 +672,7 @@ public class Assassin : Hero
         // ✅ ให้ team auras
         if (statusEffectManager != null)
         {
-            statusEffectManager.ApplyAttackSpeedAura(12f, 0.5f, 20f);
-            statusEffectManager.ApplyDamageAura(12f, 0.4f, 20f);
-            statusEffectManager.ApplyProtectionAura(12f, 0.25f, 20f);
-            statusEffectManager.ApplyCriticalAura(12f, 0.3f, 20f);
-
+            statusEffectManager.ApplyCriticalAura(12f, 0.4f, 20f);
             Debug.Log($"💚 [Plague Outbreak] Team Auras activated!");
         }
 
@@ -1034,6 +1042,7 @@ public class Assassin : Hero
         Skill3UsesRemaining = 3;
         CanDashAgain = false;
         accumulatedDrain = 0f;
+        statusEffectManager.ApplyMoveSpeedAura(6f, 0.20f, 10f);
         RPC_ShowShadowModeText();
         Debug.Log($"🌙 [SHADOW MODE ACTIVATED] {CharacterName} - Skill 3: 3 uses, Skill 2: Double Dash!");
         if (HasInputAuthority)

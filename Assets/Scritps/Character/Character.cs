@@ -1102,43 +1102,76 @@ public class Character : NetworkBehaviour
     #endregion
 
     #region Damage Calculation Methods  การคำนวณดาเมจสำหรับ Attack Types ต่างๆ
+    // ใน Character.cs - แทนที่ method เดิม
     public virtual (int physicalDamage, int magicDamage) GetAttackDamages()
     {
+        int finalPhysicalDamage = AttackDamage;
+        int finalMagicDamage = MagicDamage;
+
+        if (statusEffectManager != null)
+        {
+            // Physical Damage Aura
+            float physicalMultiplier = statusEffectManager.GetTotalDamageMultiplier();
+            finalPhysicalDamage = Mathf.RoundToInt(AttackDamage * physicalMultiplier);
+
+            // ✅ Magic Damage Aura (เพิ่ม debug)
+            float magicMultiplier = statusEffectManager.GetTotalMagicDamageMultiplier();
+            finalMagicDamage = Mathf.RoundToInt(MagicDamage * magicMultiplier);
+
+            // ✅ Debug log
+            if (magicMultiplier > 1f)
+            {
+                Debug.Log($"[GetAttackDamages] {CharacterName}: " +
+                         $"Base Magic = {MagicDamage}, Multiplier = {magicMultiplier:F2}, " +
+                         $"Final Magic = {finalMagicDamage}");
+            }
+        }
+
         switch (attackType)
         {
             case AttackType.Physical:
-                return (AttackDamage, 0); // Physical อย่างเดียว
+                return (finalPhysicalDamage, 0);
 
             case AttackType.Magic:
-                return (0, MagicDamage); // Magic อย่างเดียว
+                return (0, finalMagicDamage);
 
             case AttackType.Mixed:
-                return (AttackDamage, MagicDamage); // ทั้งสองแบบ
+                return (finalPhysicalDamage, finalMagicDamage);
 
             default:
-                return (AttackDamage, 0); // Default เป็น Physical
+                return (finalPhysicalDamage, 0);
         }
     }
 
+    // ใน Character.cs - แทนที่ method เดิม
     public virtual (int physicalDamage, int magicDamage) GetSkillDamages(AttackType skillType, float physicalRatio = 1f, float magicRatio = 1f)
     {
+        int basePhysical = Mathf.RoundToInt(AttackDamage * physicalRatio);
+        int baseMagic = Mathf.RoundToInt(MagicDamage * magicRatio);
+
+        // ✅ เพิ่ม Aura Bonus
+        if (statusEffectManager != null)
+        {
+            float physicalMultiplier = statusEffectManager.GetTotalDamageMultiplier();
+            basePhysical = Mathf.RoundToInt(basePhysical * physicalMultiplier);
+
+            float magicMultiplier = statusEffectManager.GetTotalMagicDamageMultiplier();
+            baseMagic = Mathf.RoundToInt(baseMagic * magicMultiplier);
+        }
+
         switch (skillType)
         {
             case AttackType.Physical:
-                int physDamage = Mathf.RoundToInt(AttackDamage * physicalRatio);
-                return (physDamage, 0);
+                return (basePhysical, 0);
 
             case AttackType.Magic:
-                int magDamage = Mathf.RoundToInt(MagicDamage * magicRatio);
-                return (0, magDamage);
+                return (0, baseMagic);
 
             case AttackType.Mixed:
-                int mixedPhys = Mathf.RoundToInt(AttackDamage * physicalRatio);
-                int mixedMag = Mathf.RoundToInt(MagicDamage * magicRatio);
-                return (mixedPhys, mixedMag);
+                return (basePhysical, baseMagic);
 
             default:
-                return (AttackDamage, 0);
+                return (basePhysical, 0);
         }
     }
 
@@ -1506,9 +1539,47 @@ public class Character : NetworkBehaviour
         }
         return total;
     }
+    // ใน Character.cs - เพิ่ม method ใหม่ใน region Effective Stats Methods
 
+    /// <summary>
+    /// ✅ คำนวณ Armor ที่รวม Aura Bonus
+    /// </summary>
+    public virtual int GetEffectiveArmor()
+    {
+        int baseArmor = Armor;
+
+        // ✅ รวม Armor Aura
+        if (statusEffectManager != null)
+        {
+            float armorMultiplier = statusEffectManager.GetTotalArmorMultiplier();
+            baseArmor = Mathf.RoundToInt(baseArmor * armorMultiplier);
+        }
+
+        Debug.Log($"[GetEffectiveArmor] {CharacterName}: Base={Armor}, Effective={baseArmor}");
+
+        return baseArmor;
+    }
+
+    /// <summary>
+    /// ✅ คำนวณ Magic Armor ที่รวม Aura Bonus
+    /// </summary>
+    public virtual int GetEffectiveMagicArmor()
+    {
+        int baseMagicArmor = MagicArmor;
+
+        // ✅ รวม Magic Armor Aura
+        if (statusEffectManager != null)
+        {
+            float magicArmorMultiplier = statusEffectManager.GetTotalMagicArmorMultiplier();
+            baseMagicArmor = Mathf.RoundToInt(baseMagicArmor * magicArmorMultiplier);
+        }
+
+        Debug.Log($"[GetEffectiveMagicArmor] {CharacterName}: Base={MagicArmor}, Effective={baseMagicArmor}");
+
+        return baseMagicArmor;
+    }
     // ✅ เพิ่ม method ใน Character.cs สำหรับแจ้ง EquipmentManager ว่า stats เปลี่ยน
-   
+
     public float GetCurrentHealthRegenRate()
     {
         return baseHealthRegenPerSecond + HealthRegen;
@@ -1685,18 +1756,42 @@ public class Character : NetworkBehaviour
         return multiplier;
     }
 
+    // ใน Character.cs - แทนที่ method เดิม
     public virtual float GetEffectiveCriticalDamageBonus()
     {
         float baseCriticalBonus = CriticalDamageBonus / 100f;
 
         // Equipment bonus
         float equipmentBonus = 0f;
-       
+        if (equipmentManager != null)
+        {
+            equipmentBonus = equipmentManager.GetCriticalMultiplierBonus() / 100f;
+        }
 
         float totalBonus = baseCriticalBonus + equipmentBonus;
 
+        Debug.Log($"[GetEffectiveCriticalDamageBonus] {CharacterName}: Base={baseCriticalBonus:F2}, Equipment={equipmentBonus:F2}, Total={totalBonus:F2}");
 
         return totalBonus;
+    }
+
+    public virtual float GetEffectiveCriticalChance()
+    {
+        float baseCritical = CriticalChance;
+
+        // ✅ รวม Critical Aura
+        if (statusEffectManager != null)
+        {
+            float criticalBonus = statusEffectManager.GetTotalCriticalBonus() * 100f;
+            baseCritical += criticalBonus;
+        }
+
+        // Cap ที่ 100%
+        baseCritical = Mathf.Min(baseCritical, 100f);
+
+        Debug.Log($"[GetEffectiveCriticalChance] {CharacterName}: Base={CriticalChance:F1}%, Effective={baseCritical:F1}%");
+
+        return baseCritical;
     }
     // ใน Character.cs - แก้ไข GetEffectiveLifeSteal()
     public virtual float GetEffectiveLifeSteal()

@@ -1522,72 +1522,309 @@ public class CombatUIManager : MonoBehaviour
             ManaRegen.text = $"Mana+:{localHero.ManaRegen}/s";
         }
         // Combat Stats
-        if (attackDamageText != null)
+        var statusEffectManager = localHero.GetComponent<StatusEffectManager>();
+        if (statusEffectManager != null && statusEffectManager.IsReceivingAnyAura())
         {
-            attackDamageText.text = $"ATK: {localHero.AttackDamage}";
-        }
-       
+            // แสดง Attack Speed
+            if (attackSpeedText != null)
+            {
+                float multiplier = localHero.GetAttackSpeedMultiplierForUI();
+                float auraBonus = statusEffectManager.ReceivedAttackSpeedBonus * 100f;
 
-        if (magicDamageText != null)
-        {
-            magicDamageText.text = $"MAG: {localHero.MagicDamage}";
-        }
+                if (auraBonus > 0)
+                {
+                    attackSpeedText.text = $"AS: x{multiplier:F2} <color=#FFD700>(+{auraBonus:F0}%)</color>";
+                }
+                else
+                {
+                    attackSpeedText.text = $"AS: x{multiplier:F2}";
+                }
+            }
 
-        if (armorText != null)
-        {
-            armorText.text = $"ARM: {localHero.Armor}";
-        }
-        if (magicArmor != null)
-        {
-            magicArmor.text = $"MGA: {localHero.MagicArmor}";
-        }
+            // แสดง Physical Damage
+            if (attackDamageText != null)
+            {
+                // ✅ ใช้ GetAttackDamages() แทน AttackDamage โดยตรง
+                var (physicalDamage, _) = localHero.GetAttackDamages();
+                float damageBonus = statusEffectManager.ReceivedDamageBonus * 100f;
 
-        if (moveSpeedText != null)
-        {
-            moveSpeedText.text = $"SPD: {localHero.GetEffectiveMoveSpeed():F1}";
-        }
+                if (damageBonus > 0)
+                {
+                    attackDamageText.text = $"ATK: {physicalDamage} <color=#FFD700>(+{damageBonus:F0}%)</color>";
+                }
+                else
+                {
+                    attackDamageText.text = $"ATK: {physicalDamage}";
+                }
+            }
 
-        if (criticalChanceText != null)
-        {
-            criticalChanceText.text = $"CRIT: {localHero.CriticalChance:F1}%";
-        }
+            // ใน CombatUIManager.cs - UpdateInventoryCharacterStats()
+            // แทนที่โค้ดส่วน Magic Damage (บรรทัด ~800-810)
 
-        if (criticalDamageText != null)
-        {
-            criticalDamageText.text = $"CRIT DMG: {localHero.GetEffectiveCriticalDamageBonus() * 100f:F1}%";
-        }
+            // ========== ✅ Magic Damage (แสดงแบบเดียวกับ ATK) ==========
+            if (magicDamageText != null)
+            {
+                // ✅ ดึงค่า base magic damage (ไม่รวม aura)
+                int baseMagicDamage = localHero.MagicDamage;
 
+                // ✅ ดึง aura bonus
+                float magicBonus = statusEffectManager.ReceivedMagicDamageBonus * 100f;
 
-        if (hitRateText != null)
-        {
-            hitRateText.text = $"HIT: {localHero.HitRate:F1}%";
-        }
+                // ✅ คำนวณ effective magic damage (รวม aura)
+                int effectiveMagicDamage = Mathf.RoundToInt(baseMagicDamage * (1f + statusEffectManager.ReceivedMagicDamageBonus));
 
-        if (evasionRateText != null)
-        {
-            evasionRateText.text = $"EVA: {localHero.EvasionRate:F1}%";
-        }
-        if (reductionCoolDownText != null)
-        {
-            reductionCoolDownText.text = $"CDR : {localHero.ReductionCoolDown:F1}%";
-        }
-        if (ampDamage != null)
-        {
-            ampDamage.text = $"Amp : {localHero.AmpDamage:F1}%";
-        }
-        if (attackSpeedText != null)
-        {
-            // ใช้ฟังก์ชันใหม่สำหรับ UI
-            float multiplier = localHero.GetAttackSpeedMultiplierForUI();
-            attackSpeedText.text = $"AS: x{multiplier:F2}";
-        }
-        if (liftSteal != null)
-        {
-            float effectiveLifesteal = localHero.GetEffectiveLifeSteal();
-            liftSteal.text = $"LST: {effectiveLifesteal:F1}%";
+                if (magicBonus > 0)
+                {
+                    // แสดงแบบเดียวกับ ATK: effective (bonus)
+                    magicDamageText.text = $"MAG: {effectiveMagicDamage} <color=#9D7FFF>(+{magicBonus:F0}%)</color>";
+                }
+                else
+                {
+                    magicDamageText.text = $"MAG: {baseMagicDamage}";
+                }
 
-            // ✅ เพิ่ม debug
-         //   Debug.Log($"[CombatUI] Lifesteal UI: Base={localHero.LifeSteal:F1}, Effective={effectiveLifesteal:F1}");
+                Debug.Log($"[Magic Damage UI] Base={baseMagicDamage}, Bonus={magicBonus}%, Effective={effectiveMagicDamage}");
+            }
+
+            // แสดง Move Speed
+            if (moveSpeedText != null)
+            {
+                float speedBonus = statusEffectManager.ReceivedMoveSpeedBonus * 100f;
+                float effectiveSpeed = localHero.GetEffectiveMoveSpeed();
+
+                if (speedBonus > 0)
+                {
+                    moveSpeedText.text = $"SPD: {effectiveSpeed:F1} <color=#90EE90>(+{speedBonus:F0}%)</color>";
+                }
+                else
+                {
+                    moveSpeedText.text = $"SPD: {effectiveSpeed:F1}";
+                }
+            }
+
+            // แสดง Armor
+            // ========== ✅ Physical Armor (แก้ไข) ==========
+            if (armorText != null)
+            {
+                // ✅ ใช้ GetEffectiveArmor() แทน Armor โดยตรง
+                int effectiveArmor = localHero.GetEffectiveArmor();
+                float armorBonus = statusEffectManager.ReceivedArmorBonus * 100f;
+
+                if (armorBonus > 0)
+                {
+                    armorText.text = $"ARM: {effectiveArmor} <color=#C0C0C0>(+{armorBonus:F0}%)</color>";
+                }
+                else
+                {
+                    armorText.text = $"ARM: {effectiveArmor}";
+                }
+            }
+
+            // ========== ✅ Magic Armor (แก้ไข) ==========
+            if (magicArmor != null)
+            {
+                // ✅ ใช้ GetEffectiveMagicArmor() แทน MagicArmor โดยตรง
+                int effectiveMagicArmor = localHero.GetEffectiveMagicArmor();
+                float magicArmorBonus = statusEffectManager.ReceivedMagicArmorBonus * 100f;
+
+                if (magicArmorBonus > 0)
+                {
+                    magicArmor.text = $"MGA: {effectiveMagicArmor} <color=#8080FF>(+{magicArmorBonus:F0}%)</color>";
+                }
+                else
+                {
+                    magicArmor.text = $"MGA: {effectiveMagicArmor}";
+                }
+            }
+
+            // แสดง Critical Chance
+            if (criticalChanceText != null)
+            {
+                // ✅ ใช้ GetEffectiveCriticalChance() แทน CriticalChance โดยตรง
+                float effectiveCrit = localHero.GetEffectiveCriticalChance();
+                float critBonus = statusEffectManager.ReceivedCriticalBonus * 100f;
+
+                if (critBonus > 0)
+                {
+                    criticalChanceText.text = $"CRIT: {effectiveCrit:F1}% <color=#FFD700>(+{critBonus:F0}%)</color>";
+                }
+                else
+                {
+                    criticalChanceText.text = $"CRIT: {effectiveCrit:F1}%";
+                }
+            }
+
+            // 🆕 แสดง Cooldown Reduction
+            if (reductionCoolDownText != null)
+            {
+                float cdrBonus = statusEffectManager.ReceivedCooldownReductionBonus * 100f;
+                float totalCDR = localHero.ReductionCoolDown + cdrBonus;
+
+                if (cdrBonus > 0)
+                {
+                    reductionCoolDownText.text = $"CDR: {totalCDR:F1}% <color=#87CEEB>(+{cdrBonus:F0}%)</color>";
+                }
+                else
+                {
+                    reductionCoolDownText.text = $"CDR: {localHero.ReductionCoolDown:F1}%";
+                }
+            }
+
+            // 🆕 แสดง Life Steal
+            if (liftSteal != null)
+            {
+                float lifeStealBonus = statusEffectManager.ReceivedLifeStealBonus * 100f;
+                float effectiveLifesteal = localHero.GetEffectiveLifeSteal() + lifeStealBonus;
+
+                if (lifeStealBonus > 0)
+                {
+                    liftSteal.text = $"LST: {effectiveLifesteal:F1}% <color=#FF3333>(+{lifeStealBonus:F0}%)</color>";
+                }
+                else
+                {
+                    liftSteal.text = $"LST: {effectiveLifesteal:F1}%";
+                }
+            }
+
+            // 🆕 แสดง Amp Damage
+            if (ampDamage != null)
+            {
+                float ampBonus = statusEffectManager.ReceivedAmpDamageBonus * 100f;
+                float totalAmp = localHero.AmpDamage + ampBonus;
+
+                if (ampBonus > 0)
+                {
+                    ampDamage.text = $"AMP: {totalAmp:F1}% <color=#FF8000>(+{ampBonus:F0}%)</color>";
+                }
+                else
+                {
+                    ampDamage.text = $"AMP: {localHero.AmpDamage:F1}%";
+                }
+            }
+
+            // 🆕 แสดง Health Regen
+            if (HealthRegen != null)
+            {
+                float regenBonus = statusEffectManager.ReceivedHealthRegenBonus * 100f;
+                float effectiveRegen = localHero.HealthRegen;
+
+                if (regenBonus > 0)
+                {
+                    HealthRegen.text = $"HP+: {effectiveRegen:F1}/s <color=#32CD32>(+{regenBonus:F0}%)</color>";
+                }
+                else
+                {
+                    HealthRegen.text = $"HP+: {effectiveRegen:F1}/s";
+                }
+            }
+
+            // 🆕 แสดง Mana Regen
+            if (ManaRegen != null)
+            {
+                float manaRegenBonus = statusEffectManager.ReceivedManaRegenBonus * 100f;
+                float effectiveManaRegen = localHero.ManaRegen;
+
+                if (manaRegenBonus > 0)
+                {
+                    ManaRegen.text = $"MP+: {effectiveManaRegen:F1}/s <color=#4D9BFF>(+{manaRegenBonus:F0}%)</color>";
+                }
+                else
+                {
+                    ManaRegen.text = $"MP+: {effectiveManaRegen:F1}/s";
+                }
+            }
+
+            // 🆕 แสดง Hit Rate
+            if (hitRateText != null)
+            {
+                float hitBonus = statusEffectManager.ReceivedHitRateBonus * 100f;
+                float totalHitRate = localHero.HitRate + hitBonus;
+
+                if (hitBonus > 0)
+                {
+                    hitRateText.text = $"HIT: {totalHitRate:F1}% <color=#FFFF80>(+{hitBonus:F0}%)</color>";
+                }
+                else
+                {
+                    hitRateText.text = $"HIT: {localHero.HitRate:F1}%";
+                }
+            }
+
+            // 🆕 แสดง Evasion Rate
+            if (evasionRateText != null)
+            {
+                float evasionBonus = statusEffectManager.ReceivedEvasionBonus * 100f;
+                float totalEvasion = localHero.EvasionRate + evasionBonus;
+
+                if (evasionBonus > 0)
+                {
+                    evasionRateText.text = $"EVA: {totalEvasion:F1}% <color=#CCCCCC>(+{evasionBonus:F0}%)</color>";
+                }
+                else
+                {
+                    evasionRateText.text = $"EVA: {localHero.EvasionRate:F1}%";
+                }
+            }
+
+            // แสดง Critical Damage (ไม่มี aura buff)
+            if (criticalDamageText != null)
+            {
+                criticalDamageText.text = $"CRIT DMG: {localHero.GetEffectiveCriticalDamageBonus() * 100f:F1}%";
+            }
+        }
+        else
+        {
+            // ไม่มี aura - แสดงแบบปกติ (โค้ดเดิม)
+            if (attackDamageText != null)
+                attackDamageText.text = $"ATK: {localHero.AttackDamage}";
+
+            if (magicDamageText != null)
+                magicDamageText.text = $"MAG: {localHero.MagicDamage}";
+
+            if (armorText != null)
+                armorText.text = $"ARM: {localHero.Armor}";
+
+            if (magicArmor != null)
+                magicArmor.text = $"MGA: {localHero.MagicArmor}";
+
+            if (moveSpeedText != null)
+                moveSpeedText.text = $"SPD: {localHero.GetEffectiveMoveSpeed():F1}";
+
+            if (criticalChanceText != null)
+                criticalChanceText.text = $"CRIT: {localHero.CriticalChance:F1}%";
+
+            if (criticalDamageText != null)
+                criticalDamageText.text = $"CRIT DMG: {localHero.GetEffectiveCriticalDamageBonus() * 100f:F1}%";
+
+            if (hitRateText != null)
+                hitRateText.text = $"HIT: {localHero.HitRate:F1}%";
+
+            if (evasionRateText != null)
+                evasionRateText.text = $"EVA: {localHero.EvasionRate:F1}%";
+
+            if (reductionCoolDownText != null)
+                reductionCoolDownText.text = $"CDR: {localHero.ReductionCoolDown:F1}%";
+
+            if (ampDamage != null)
+                ampDamage.text = $"AMP: {localHero.AmpDamage:F1}%";
+
+            if (attackSpeedText != null)
+            {
+                float multiplier = localHero.GetAttackSpeedMultiplierForUI();
+                attackSpeedText.text = $"AS: x{multiplier:F2}";
+            }
+
+            if (liftSteal != null)
+            {
+                float effectiveLifesteal = localHero.GetEffectiveLifeSteal();
+                liftSteal.text = $"LST: {effectiveLifesteal:F1}%";
+            }
+
+            if (HealthRegen != null)
+                HealthRegen.text = $"HP+: {localHero.HealthRegen:F1}/s";
+
+            if (ManaRegen != null)
+                ManaRegen.text = $"MP+: {localHero.ManaRegen:F1}/s";
         }
 
     }
