@@ -184,8 +184,8 @@ public class BloodKnight : Hero
             {
                 // เปลี่ยนเป็น upgraded icons (ถ้ามี)
                 // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 1, true);
-                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 2, true);
-                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 3, true);
+                 SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 2, true);
+                 SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 3, true);
                 // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 4, true);
             }
         }
@@ -216,8 +216,8 @@ public class BloodKnight : Hero
             {
                 // เปลี่ยนกลับเป็น normal icons (ถ้ามี)
                 // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 1, false);
-                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 2, false);
-                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 3, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 2, false);
+                 SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 3, false);
                 // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 4, false);
             }
         }
