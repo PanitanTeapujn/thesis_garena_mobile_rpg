@@ -159,31 +159,103 @@ public class BloodKnight : Hero
 
         IsInBloodTrance = true;
         isBloodTrancActive = true;
-        accumulatedDrain = 0f; // ✅ รีเซ็ตตัวสะสม
+        accumulatedDrain = 0f;
+
+        // ✅ ฮีล HP 20% เมื่อเข้า Blood Trance
+        int healAmount = Mathf.RoundToInt(MaxHp * 0.20f);
+        Heal(healAmount);
+        Debug.Log($"🩸 [Blood Trance Heal] {CharacterName}: +{healAmount} HP (20% Max HP)");
+
+        // ✅ เพิ่มการแสดงข้อความ Ferris Mode
+        RPC_ShowBloodTranceModeText();
 
         Debug.Log($"🩸 [BLOOD TRANCE ACTIVATED] {CharacterName}");
 
         // Visual effect
         RPC_ShowBloodTranceBurst();
         RPC_ShowBloodTranceAura(true);
+        statusEffectManager.ApplyLifeStealAura(6f, 0.20f, 20f);
+
+        // ✅ เพิ่มการอัปเดต UI Icon (ถ้ามี skill icons ที่ต้อง upgrade)
+        if (HasInputAuthority)
+        {
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                // เปลี่ยนเป็น upgraded icons (ถ้ามี)
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 1, true);
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 2, true);
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 3, true);
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 4, true);
+            }
+        }
     }
 
-    /// <summary>
-    /// ออกจากโหมด Blood Trance
-    /// </summary>
+    // เพิ่มใน ExitBloodTrance() method (บรรทัด ~253)
     private void ExitBloodTrance()
     {
         if (!HasStateAuthority) return;
 
-        IsInBloodTrance = false; // ✅ ปิด state
+        IsInBloodTrance = false;
         isBloodTrancActive = false;
         CurrentFerrisPoint = 0;
+
+        // ✅ เพิ่มการแสดงข้อความ Ferris Mode End
+        RPC_ShowBloodTranceEndText();
 
         Debug.Log($"🩸 [Blood Trance Ended] {CharacterName}");
 
         // Visual effect
         RPC_ShowBloodTranceAura(false);
+
+        // ✅ เพิ่มการอัปเดต UI Icon (ถ้ามี)
+        if (HasInputAuthority)
+        {
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                // เปลี่ยนกลับเป็น normal icons (ถ้ามี)
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 1, false);
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 2, false);
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 3, false);
+                // SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "BloodKnight", 4, false);
+            }
+        }
     }
+
+    // ========== เพิ่ม RPC Methods ใหม่ (เพิ่มในส่วน Visual Effects RPCs ก่อน #endregion) ==========
+
+    /// <summary>
+    /// แสดงข้อความ "Ferris MODE" เมื่อเข้า Blood Trance
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowBloodTranceModeText()
+    {
+        // แสดงข้อความเหนือหัวตัวละคร
+        Vector3 textPosition = transform.position + Vector3.up * 1f;
+
+        // สีแดงเลือด (Blood Red)
+        Color bloodModeColor = new Color(0.8f, 0.1f, 0.1f, 1f);
+        DamageTextManager.ShowCustomText(textPosition, "Ferris MODE", bloodModeColor, 1f);
+
+        Debug.Log($"🩸 [Visual] Blood Trance Mode text displayed for {CharacterName}");
+    }
+
+    /// <summary>
+    /// แสดงข้อความ "Ferris MODE End" เมื่อออกจาก Blood Trance
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowBloodTranceEndText()
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1f;
+
+        // ข้อความสีเทา
+        Color endColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+        DamageTextManager.ShowCustomText(textPosition, "Ferris MODE End", endColor, 1.0f);
+
+        Debug.Log($"🩸 [Visual] Blood Trance Mode end text displayed for {CharacterName}");
+    }
+
 
     /// <summary>
     /// อัปเดต Blood Aura visual ตาม Blood Points
@@ -635,6 +707,7 @@ public class BloodKnight : Hero
     private IEnumerator ExecuteBloodPool(Vector3 position, bool isCursed)
     {
         AudioManager.instance.PlaySFX(18, 0.5f);
+        statusEffectManager.ApplyCooldownReductionAura(6f, 0.15f, 5f);
 
         // Destroy old pool if exists
         if (currentBloodPool != null)

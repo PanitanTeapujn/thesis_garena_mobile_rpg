@@ -28,7 +28,7 @@ public class Assassin : Hero
     [Networked] public float DashGracePeriodEnd { get; set; }
 
     private float shadowModeDrainRate = 10f; // 10 points per second
-    private float dashGracePeriod = 1.0f; // 1 second to press dash again
+    private float dashGracePeriod = 3.5f; // 1 second to press dash again
     private float accumulatedDrain = 0f;
     [Header("🎨 Visual Effects")]
     public Material skillRangeIndicatorMaterial;
@@ -86,7 +86,7 @@ public class Assassin : Hero
         UseMana(skill1ManaCost);
         PoisonInfusionStacks = 3;
 
-        statusEffectManager.ApplyCriticalAura(6f, 0.15f, 20f);T
+        statusEffectManager.ApplyCriticalAura(6f, 0.15f, 20f);
 
         // ✅ เก็บ Ferris Point
         if (!IsInShadowMode)
@@ -153,7 +153,7 @@ public class Assassin : Hero
 
                 if (statusEffectManager != null)
                 {
-                    statusEffectManager.ApplyMoveSpeedAura(5f, 0.25f, 10f);
+                    statusEffectManager.ApplyMoveSpeedAura(5f, 0.20f, 10f);
                 }
 
                 Vector3 dashDirection = GetDashDirection();
@@ -1042,7 +1042,7 @@ public class Assassin : Hero
         Skill3UsesRemaining = 3;
         CanDashAgain = false;
         accumulatedDrain = 0f;
-        statusEffectManager.ApplyMoveSpeedAura(6f, 0.20f, 10f);
+        statusEffectManager.ApplyMoveSpeedAura(6f, 0.50f, 10f);
         RPC_ShowShadowModeText();
         Debug.Log($"🌙 [SHADOW MODE ACTIVATED] {CharacterName} - Skill 3: 3 uses, Skill 2: Double Dash!");
         if (HasInputAuthority)

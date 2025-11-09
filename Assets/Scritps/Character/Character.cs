@@ -1110,34 +1110,25 @@ public class Character : NetworkBehaviour
 
         if (statusEffectManager != null)
         {
-            // Physical Damage Aura
+            // Physical Damage Aura ✅
             float physicalMultiplier = statusEffectManager.GetTotalDamageMultiplier();
             finalPhysicalDamage = Mathf.RoundToInt(AttackDamage * physicalMultiplier);
 
-            // ✅ Magic Damage Aura (เพิ่ม debug)
+            // ✅ Magic Damage Aura (มีอยู่แล้ว - ตรวจสอบว่าทำงาน)
             float magicMultiplier = statusEffectManager.GetTotalMagicDamageMultiplier();
             finalMagicDamage = Mathf.RoundToInt(MagicDamage * magicMultiplier);
 
-            // ✅ Debug log
-            if (magicMultiplier > 1f)
-            {
-                Debug.Log($"[GetAttackDamages] {CharacterName}: " +
-                         $"Base Magic = {MagicDamage}, Multiplier = {magicMultiplier:F2}, " +
-                         $"Final Magic = {finalMagicDamage}");
-            }
+            Debug.Log($"[Aura Check] Physical: {physicalMultiplier:F2}x, Magic: {magicMultiplier:F2}x");
         }
 
         switch (attackType)
         {
             case AttackType.Physical:
                 return (finalPhysicalDamage, 0);
-
             case AttackType.Magic:
                 return (0, finalMagicDamage);
-
             case AttackType.Mixed:
                 return (finalPhysicalDamage, finalMagicDamage);
-
             default:
                 return (finalPhysicalDamage, 0);
         }
@@ -1435,15 +1426,26 @@ public class Character : NetworkBehaviour
     }
     private void RegenerateHealth()
     {
-        // รวม base regen + equipment bonus + set bonus
         float totalHealthRegen = baseHealthRegenPerSecond + HealthRegen;
+
+        // ✅ เพิ่ม: รวม Health Regen Aura
+        if (statusEffectManager != null)
+        {
+            float auraMultiplier = statusEffectManager.GetTotalHealthRegenMultiplier();
+            totalHealthRegen *= auraMultiplier;
+
+            if (auraMultiplier > 1f)
+            {
+                Debug.Log($"💚 [Health Regen Aura] {CharacterName}: " +
+                         $"Base={baseHealthRegenPerSecond + HealthRegen:F1}/s × {auraMultiplier:F2} = {totalHealthRegen:F1}/s");
+            }
+        }
 
         if (equipmentManager != null)
         {
             totalHealthRegen += equipmentManager.GetHealthRegenBonus();
         }
 
-        // ✅ ใช้ค่า cap ที่กำหนดเอง แทนที่จะคำนวณจาก %
         int regenAmount = Mathf.RoundToInt(totalHealthRegen * regenTickInterval);
         regenAmount = Mathf.Min(regenAmount, Mathf.RoundToInt(maxHealthRegenPerTick));
 
@@ -1453,12 +1455,6 @@ public class Character : NetworkBehaviour
         if (currentHp > oldHp)
         {
             NetworkedCurrentHp = currentHp;
-
-            float equipmentBonus = equipmentManager != null ? equipmentManager.GetHealthRegenBonus() : 0f;
-            Debug.Log($"[Health Regen] {CharacterName}: +{currentHp - oldHp} HP (Cap: {maxHealthRegenPerTick})");
-            Debug.Log($"  Base: {baseHealthRegenPerSecond:F1}/s + Character: {HealthRegen:F1}/s + Equipment: {equipmentBonus:F1}/s = {totalHealthRegen:F1}/s");
-            Debug.Log($"  Calculated: {totalHealthRegen * regenTickInterval:F1}, Applied: {currentHp - oldHp}");
-
             if (HasStateAuthority)
             {
                 RPC_SyncHealthRegen(currentHp);
@@ -1468,15 +1464,26 @@ public class Character : NetworkBehaviour
 
     private void RegenerateMana()
     {
-        // รวม base regen + equipment bonus + set bonus
         float totalManaRegen = baseManaRegenPerSecond + ManaRegen;
+
+        // ✅ เพิ่ม: รวม Mana Regen Aura
+        if (statusEffectManager != null)
+        {
+            float auraMultiplier = statusEffectManager.GetTotalManaRegenMultiplier();
+            totalManaRegen *= auraMultiplier;
+
+            if (auraMultiplier > 1f)
+            {
+                Debug.Log($"💙 [Mana Regen Aura] {CharacterName}: " +
+                         $"Base={baseManaRegenPerSecond + ManaRegen:F1}/s × {auraMultiplier:F2} = {totalManaRegen:F1}/s");
+            }
+        }
 
         if (equipmentManager != null)
         {
             totalManaRegen += equipmentManager.GetManaRegenBonus();
         }
 
-        // ✅ ใช้ค่า cap ที่กำหนดเอง
         int regenAmount = Mathf.RoundToInt(totalManaRegen * regenTickInterval);
         regenAmount = Mathf.Min(regenAmount, Mathf.RoundToInt(maxManaRegenPerTick));
 
@@ -1486,10 +1493,6 @@ public class Character : NetworkBehaviour
         if (currentMana > oldMana)
         {
             NetworkedCurrentMana = currentMana;
-
-            float equipmentBonus = equipmentManager != null ? equipmentManager.GetManaRegenBonus() : 0f;
-            
-
             if (HasStateAuthority)
             {
                 RPC_SyncManaRegen(currentMana);
@@ -1567,14 +1570,18 @@ public class Character : NetworkBehaviour
     {
         int baseMagicArmor = MagicArmor;
 
-        // ✅ รวม Magic Armor Aura
+        // ✅ รวม Magic Armor Aura (มีอยู่แล้ว)
         if (statusEffectManager != null)
         {
             float magicArmorMultiplier = statusEffectManager.GetTotalMagicArmorMultiplier();
             baseMagicArmor = Mathf.RoundToInt(baseMagicArmor * magicArmorMultiplier);
-        }
 
-        Debug.Log($"[GetEffectiveMagicArmor] {CharacterName}: Base={MagicArmor}, Effective={baseMagicArmor}");
+            if (magicArmorMultiplier > 1f)
+            {
+                Debug.Log($"🛡️ [Magic Armor Aura] {CharacterName}: Base={MagicArmor}, " +
+                         $"Multiplier={magicArmorMultiplier:F2}x, Final={baseMagicArmor}");
+            }
+        }
 
         return baseMagicArmor;
     }
@@ -1616,16 +1623,15 @@ public class Character : NetworkBehaviour
     {
         if (baseDamage <= 0) return baseDamage;
 
-        // รวม Amp Damage จากทุกแหล่ง
+        // ✅ ใช้ GetEffectiveAmpDamage() แทนการเรียก method แยก
         float totalAmpDamage = GetEffectiveAmpDamage();
 
         if (totalAmpDamage <= 0f) return baseDamage;
 
-        // คำนวณ damage หลัง apply Amp Damage
         float multiplier = 1f + (totalAmpDamage / 100f);
         int finalDamage = Mathf.RoundToInt(baseDamage * multiplier);
 
-        Debug.Log($"[Amp Damage] {CharacterName}: Base={baseDamage} × {multiplier:F2} = {finalDamage} (Amp: {totalAmpDamage:F1}%)");
+        Debug.Log($"💥 [Amp Damage] {CharacterName}: {baseDamage} × {multiplier:F2} = {finalDamage}");
 
         return finalDamage;
     }
@@ -1633,23 +1639,20 @@ public class Character : NetworkBehaviour
     // เพิ่ม method สำหรับดึง effective Amp Damage
     public virtual float GetEffectiveAmpDamage()
     {
-        // Base Amp Damage จาก character stats
-        float totalAmpDamage = this.AmpDamage;
+        float totalAmpDamage = this.AmpDamage; // Base + Equipment
 
-        // เพิ่ม Amp Damage จาก equipment
-        if (equipmentManager != null)
-        {
-            totalAmpDamage += equipmentManager.GetAmpDamageBonus();
-        }
-
-        // เพิ่ม Amp Damage จาก status effects (ถ้ามี)
+        // ✅ เพิ่ม: รวม Amp Damage Aura
         if (statusEffectManager != null)
         {
-            // สามารถเพิ่ม method GetAmpDamageBonus() ใน StatusEffectManager ได้ในอนาคต
-            // totalAmpDamage += statusEffectManager.GetAmpDamageBonus();
-        }
+            float auraBonus = statusEffectManager.GetTotalAmpDamageBonus();
+            totalAmpDamage += auraBonus * 100f; // แปลง 0.15 → 15%
 
-        Debug.Log($"[GetEffectiveAmpDamage] {CharacterName}: Character={this.AmpDamage}, Equipment={equipmentManager?.GetAmpDamageBonus() ?? 0f}, Total={totalAmpDamage:F1}%");
+            if (auraBonus > 0)
+            {
+                Debug.Log($"💥 [Amp Damage Aura] {CharacterName}: Base={this.AmpDamage:F1}%, " +
+                         $"Aura=+{auraBonus * 100f:F1}%, Total={totalAmpDamage:F1}%");
+            }
+        }
 
         return totalAmpDamage;
     }
@@ -1657,15 +1660,22 @@ public class Character : NetworkBehaviour
     // ✅ โค้ดปัจจุบันถูกต้องแล้ว
     public float GetEffectiveReductionCoolDown()
     {
-        // ใช้ this.ReductionCoolDown ที่รวม equipment bonus แล้ว (เหมือน LifeSteal)
-        float totalCDR = this.ReductionCoolDown; // ค่านี้รวม equipment bonus แล้วจาก EquipmentManager
+        // ใช้ this.ReductionCoolDown ที่รวม equipment bonus แล้ว
+        float totalCDR = this.ReductionCoolDown;
 
+        // ✅ เพิ่ม: รวม Cooldown Reduction Aura
+        if (statusEffectManager != null)
+        {
+            float auraBonus = statusEffectManager.GetTotalCooldownReductionBonus();
+            totalCDR += auraBonus * 100f; // แปลง 0.15 → 15%
+
+            Debug.Log($"[CDR Aura] {CharacterName}: Base={this.ReductionCoolDown:F1}%, Aura=+{auraBonus * 100f:F1}%, Total={totalCDR:F1}%");
+        }
 
         float finalReduction = Mathf.Clamp(totalCDR, 0f, 75f);
-
         return finalReduction;
     }
-   
+
     public virtual float GetEffectiveAttackSpeed()
     {
         // รวม attack speed bonus เป็น %
@@ -1796,14 +1806,22 @@ public class Character : NetworkBehaviour
     // ใน Character.cs - แก้ไข GetEffectiveLifeSteal()
     public virtual float GetEffectiveLifeSteal()
     {
-        // ✅ ใช้ this.LifeSteal ที่รวม equipment bonus แล้ว - ไม่ต้องบวกซ้ำ
-        float totalLifeSteal = this.LifeSteal; // ค่านี้รวม equipment bonus แล้วจาก EquipmentManager
+        // ใช้ this.LifeSteal ที่รวม equipment bonus แล้ว
+        float totalLifeSteal = this.LifeSteal;
 
+        // ✅ เพิ่ม: รวม Life Steal Aura
+        if (statusEffectManager != null)
+        {
+            float auraBonus = statusEffectManager.GetTotalLifeStealBonus();
+            totalLifeSteal += auraBonus * 100f; // แปลง 0.10 → 10%
+
+            Debug.Log($"[Life Steal Aura] {CharacterName}: Base={this.LifeSteal:F1}%, Aura=+{auraBonus * 100f:F1}%, Total={totalLifeSteal:F1}%");
+        }
 
         return Mathf.Clamp(totalLifeSteal, 0f, 100f);
     }
 
-   
+
     public void UpdateCriticalDamageBonus(float newValue, bool forceNetworkSync = false)
     {
         float oldValue = criticalDamageBonus;
