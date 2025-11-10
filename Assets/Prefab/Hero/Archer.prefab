@@ -32,7 +32,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 1.6, y: 0.8}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &9004255372814543956
@@ -60,6 +60,7 @@ GameObject:
   - component: {fileID: -4456861678599351532}
   - component: {fileID: 8356410376698382899}
   - component: {fileID: 4358975556433316076}
+  - component: {fileID: 8581546270774230497}
   m_Layer: 6
   m_Name: Archer
   m_TagString: Player
@@ -76,7 +77,7 @@ RectTransform:
   m_GameObject: {fileID: 9004255372814543956}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -6.540983}
-  m_LocalScale: {x: 0.3, y: 0.3, z: 1}
+  m_LocalScale: {x: 0.7, y: 0.7, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4580049346742683631}
@@ -131,7 +132,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 9b6c56e4c3e96d34b8de23dc66fbe4a5, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 57f2dd1e218c4434d90acb5a8cb1957e, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -188,7 +189,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.93, y: 10.04, z: 0.2}
+  m_Size: {x: 2.93, y: 4.38, z: 0.2}
   m_Center: {x: 0, y: -0.39, z: 0}
 --- !u!114 &7532131204607746142
 MonoBehaviour:
@@ -278,6 +279,57 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingMagicDamageAura: 0
+  _MagicDamageAuraDuration: 0
+  _MagicDamageAuraRadius: 0
+  _MagicDamageAuraAmount: 0
+  _IsProvidingCooldownReductionAura: 0
+  _CooldownReductionAuraDuration: 0
+  _CooldownReductionAuraRadius: 0
+  _CooldownReductionAuraAmount: 0
+  _IsProvidingLifeStealAura: 0
+  _LifeStealAuraDuration: 0
+  _LifeStealAuraRadius: 0
+  _LifeStealAuraAmount: 0
+  _IsProvidingAmpDamageAura: 0
+  _AmpDamageAuraDuration: 0
+  _AmpDamageAuraRadius: 0
+  _AmpDamageAuraAmount: 0
+  _IsProvidingMagicArmorAura: 0
+  _MagicArmorAuraDuration: 0
+  _MagicArmorAuraRadius: 0
+  _MagicArmorAuraAmount: 0
+  _IsProvidingHealthRegenAura: 0
+  _HealthRegenAuraDuration: 0
+  _HealthRegenAuraRadius: 0
+  _HealthRegenAuraAmount: 0
+  _IsProvidingManaRegenAura: 0
+  _ManaRegenAuraDuration: 0
+  _ManaRegenAuraRadius: 0
+  _ManaRegenAuraAmount: 0
+  _IsProvidingHitRateAura: 0
+  _HitRateAuraDuration: 0
+  _HitRateAuraRadius: 0
+  _HitRateAuraAmount: 0
+  _IsProvidingEvasionAura: 0
+  _EvasionAuraDuration: 0
+  _EvasionAuraRadius: 0
+  _EvasionAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
+  _ReceivedMagicDamageBonus: 0
+  _ReceivedCooldownReductionBonus: 0
+  _ReceivedLifeStealBonus: 0
+  _ReceivedAmpDamageBonus: 0
+  _ReceivedMagicArmorBonus: 0
+  _ReceivedHealthRegenBonus: 0
+  _ReceivedManaRegenBonus: 0
+  _ReceivedHitRateBonus: 0
+  _ReceivedEvasionBonus: 0
   _IsProvidingAttackSpeedAura: 0
   _AttackSpeedAuraDuration: 0
   _AttackSpeedAuraRadius: 0
@@ -302,12 +354,6 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
-  _ReceivedAttackSpeedBonus: 0
-  _ReceivedDamageBonus: 0
-  _ReceivedMoveSpeedBonus: 0
-  _ReceivedProtectionBonus: 0
-  _ReceivedArmorBonus: 0
-  _ReceivedCriticalBonus: 0
 --- !u!114 &-2598280145371838362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -701,11 +747,40 @@ MonoBehaviour:
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
+  knockbackForce: 5
+  knockbackDuration: 0.3
+  knockbackCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _NetworkedPosition: {x: 0, y: 0, z: 0}
   _NetworkedVelocity: {x: 0, y: 0, z: 0}
   _NetworkedFlipX: 0
   _NetworkedYRotation: 0
   _NetworkedScale: {x: 0, y: 0, z: 0}
+  _NetworkedFerrisPoint: 0
+  currentFerrisPoint: 0
+  maxFerrisPoint: 100
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 0}
   cameraRotationSpeed: 50
@@ -794,3 +869,25 @@ MonoBehaviour:
   _CurrentFireRing: {fileID: 0}
   _EagleEyeAttackSpeedStacks: 0
   _EagleEyeStacksEndTime: 0
+--- !u!95 &8581546270774230497
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9004255372814543956}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: d32be59794c3e474290b7a3081c287ef, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

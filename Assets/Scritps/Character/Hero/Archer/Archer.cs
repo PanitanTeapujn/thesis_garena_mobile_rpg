@@ -79,7 +79,9 @@ public class Archer : Hero
     private GameObject fireVolleyIndicator;
     private GameObject infernoRainIndicator;
     private LineRenderer rangeCircle;
-
+    [Header("🎬 Animation")]
+    private Animator animator;
+    private const string ANIM_ATTACK = "Attack";
     // ========== Network Properties ==========
     [Networked] public bool IsFlameArrowActive { get; set; }
     [Networked] public bool IsShadowStepping { get; set; }
@@ -99,11 +101,18 @@ public class Archer : Hero
     [Networked] public int EagleEyeAttackSpeedStacks { get; set; }
     [Networked] public float EagleEyeStacksEndTime { get; set; }
     private bool hasEagleEye = true;
-
+    
     protected override void Start()
     {
         base.Start();
         AttackType = AttackType.Physical;
+
+        // ✅ Get Animator component
+        animator = GetComponent<Animator>();
+        if (animator == null)
+        {
+            Debug.LogWarning($"⚠️ Animator not found on {CharacterName}!");
+        }
 
         // ปรับ cooldown สำหรับ Archer
         skill1Cooldown = 10f;
@@ -159,6 +168,8 @@ public class Archer : Hero
         Character target = FindNearestEnemy(flameArrowRange);
         if (target != null)
         {
+            FaceTarget(target.transform);
+
             RPC_ExecuteFlameArrow(target.Object);
         }
         else
@@ -182,34 +193,66 @@ public class Archer : Hero
     {
         Debug.Log($"🏹 [Flame Arrow] Firing at {target.CharacterName}!");
         AudioManager.instance.PlaySFX(11, 0.2f);
-        // ยิงลูกศรเพลิง (visual)
+
         if (arrowPrefab != null && target != null)
         {
             Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
-            Vector3 direction = (target.transform.position + Vector3.up - startPos).normalized;
+            Vector3 targetPos = target.transform.position + Vector3.up;
+            Vector3 direction = (targetPos - startPos).normalized;
 
-            GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.LookRotation(direction));
+            // ✅ สร้างลูกธนูโดยไม่ใช้ LookRotation
+            GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
 
-            // ✅ เปลี่ยนสีลูกศรเป็นสีส้มแดง (ถ้าเป็น Sprite)
+            // ✅ เปลี่ยนสีลูกศรเป็นสีส้มแดง
             SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
             if (arrowSprite != null)
             {
                 arrowSprite.color = new Color(1f, 0.5f, 0f); // สีส้มแดง
+
+                // ✅ คำนวณมุมและ flip
+                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+                if (direction.x < 0)
+                {
+                    arrowSprite.flipY = true;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+                }
+                else
+                {
+                    arrowSprite.flipY = false;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, angle);
+                }
             }
 
-            float distance = Vector3.Distance(startPos, target.transform.position);
+            float distance = Vector3.Distance(startPos, targetPos);
             float travelTime = distance / arrowSpeed;
             float elapsed = 0f;
-            Vector3 arrowStartPos = arrow.transform.position;
 
-            while (elapsed < travelTime && target != null )
+            while (elapsed < travelTime && target != null)
             {
                 elapsed += Time.deltaTime;
                 float progress = elapsed / travelTime;
 
                 Vector3 currentTarget = target.transform.position + Vector3.up;
-                arrow.transform.position = Vector3.Lerp(arrowStartPos, currentTarget, progress);
-                arrow.transform.LookAt(currentTarget);
+                arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
+
+                // ✅ อัพเดทมุมระหว่างบิน
+                Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
+                float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
+
+                if (arrowSprite != null)
+                {
+                    if (newDirection.x < 0)
+                    {
+                        arrowSprite.flipY = true;
+                        arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle + 180f);
+                    }
+                    else
+                    {
+                        arrowSprite.flipY = false;
+                        arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle);
+                    }
+                }
 
                 yield return null;
             }
@@ -225,14 +268,11 @@ public class Archer : Hero
         }
 
         // สร้างดาเมจ (เฉพาะ server)
-        if (HasStateAuthority && target != null )
+        if (HasStateAuthority && target != null)
         {
             int damage = Mathf.RoundToInt(AttackDamage * flameArrowDamageMultiplier);
-
-            // ✅ Skill attack - ใช้ Amp Damage
             target.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
 
-            // มีโอกาส 80% ติด Burn
             if (Random.Range(0f, 1f) <= flameArrowBurnChance)
             {
                 StatusEffectManager targetStatus = target.GetComponent<StatusEffectManager>();
@@ -244,7 +284,6 @@ public class Archer : Hero
                 }
             }
 
-            // เพิ่ม Hit Rate ให้ตัวเอง
             HasHitRateBonus = true;
             HitRateBonusEndTime = Time.time + flameArrowHitRateDuration;
             HitRate += flameArrowHitRateBonus;
@@ -252,7 +291,34 @@ public class Archer : Hero
         }
     }
 
+    private void FaceTarget(Transform target)
+    {
+        if (target == null) return;
 
+        // คำนวณทิศทางไปหาเป้าหมาย
+        Vector3 direction = (target.position - transform.position).normalized;
+        direction.y = 0; // เอาแค่แนวนอน
+
+        // Flip character ตามทิศทาง X
+        if (direction.x > 0.1f)
+        {
+            // ศัตรูอยู่ทางขวา - หันขวา
+            Vector3 newScale = transform.localScale;
+            newScale.x = Mathf.Abs(newScale.x);
+            transform.localScale = newScale;
+            NetworkedFlipX = false;
+        }
+        else if (direction.x < -0.1f)
+        {
+            // ศัตรูอยู่ทางซ้าย - หันซ้าย
+            Vector3 newScale = transform.localScale;
+            newScale.x = -Mathf.Abs(newScale.x);
+            transform.localScale = newScale;
+            NetworkedFlipX = true;
+        }
+
+        Debug.Log($"🎯 Archer facing target: direction.x = {direction.x:F2}, flipX = {NetworkedFlipX}");
+    }
     // ========== 🌪️ Skill 2: Shadow Step (Reverse Dash) ==========
     public override void TryUseSkill2()
     {
@@ -324,7 +390,7 @@ public class Archer : Hero
     {
         Vector3 startPos = transform.position;
         AudioManager.instance.PlaySFX(12, 0.5f);
-
+        statusEffectManager.ApplyAttackSpeedAura(6f, 1f, 10f);
         // ตรวจสอบกำแพงก่อน dash
         float actualDashDistance = shadowStepDistance;
         RaycastHit wallHit;
@@ -901,11 +967,14 @@ public class Archer : Hero
 
             if (nearestEnemy != null)
             {
+                // ✅ หันหน้าไปหาศัตรูก่อนยิง
+                FaceTarget(nearestEnemy.transform);
+
                 // ยิงลูกศรไปหาเป้าหมาย
                 RPC_PerformArcherAttack(nearestEnemy.Object);
 
                 // คำนวณ cooldown reduction จาก Attack Speed
-                float cooldownReduction = GetEffectiveAttackSpeed(); // 0-0.9 (0%-90%)
+                float cooldownReduction = GetEffectiveAttackSpeed();
                 float finalAttackCooldown = AttackCooldown * (1f - cooldownReduction);
 
                 nextAttackTime = Time.time + finalAttackCooldown;
@@ -919,7 +988,6 @@ public class Archer : Hero
     // ========================================
     // 3. RPC_PerformArcherAttack - สร้างดาเมจและ Effect
     // ========================================
-
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_PerformArcherAttack(NetworkObject enemyObject)
     {
@@ -928,17 +996,101 @@ public class Archer : Hero
             Character enemy = enemyObject.GetComponent<Character>();
             if (enemy != null )
             {
-                // ✅ Basic attack - ไม่ใช้ Amp Damage
-                bool isBasicAttack = true;
+                // ✅ เก็บ reference ของเป้าหมาย
+                currentAttackTarget = enemyObject;
 
-                // สร้าง Physical Damage
-                enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, isBasicAttack);
+                // ✅ คำนวณ Attack Speed multiplier
+                float attackSpeedMultiplier = GetAttackSpeedMultiplierForUI();
 
-                Debug.Log($"🏹 [Archer Attack] Dealt {AttackDamage} physical damage");
-
-                // เรียก visual effect
-                RPC_OnArcherAttackHit(enemyObject);
+                // ✅ เล่น Attack Animation (Animation Event จะเรียก OnArrowRelease() เอง)
+                RPC_PlayAttackAnimation(attackSpeedMultiplier);
             }
+        }
+    }
+    // ========================================
+    // ✅ เพิ่ม RPC สำหรับเล่น Animation บนทุก Client
+    // ========================================
+
+    public void OnArrowRelease()
+    {
+        // เรียกเฉพาะฝั่ง Server
+        if (!HasStateAuthority) return;
+
+        Debug.Log("🏹 [Animation Event] Arrow Released!");
+
+        if (currentAttackTarget != null)
+        {
+            Character enemy = currentAttackTarget.GetComponent<Character>();
+            if (enemy != null)
+            {
+                // ยิงลูกธนู visual บนทุก Client
+                RPC_ShootArrowVisual(currentAttackTarget);
+
+                // รอให้ลูกธนูถึงแล้วค่อยสร้างดาเมจ
+                StartCoroutine(DelayedDamageAfterArrowHit(currentAttackTarget));
+            }
+
+            // ✅ Clear target หลังยิงเสร็จ
+            currentAttackTarget = null;
+        }
+    }
+
+    private NetworkObject currentAttackTarget; // เก็บ reference ของเป้าหมายปัจจุบัน
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShootArrowVisual(NetworkObject targetObject)
+    {
+        if (targetObject != null)
+        {
+            Character target = targetObject.GetComponent<Character>();
+            if (target != null)
+            {
+                StartCoroutine(ShootArrowVisual(target.transform));
+            }
+        }
+    }
+    private IEnumerator DelayedDamageAfterArrowHit(NetworkObject enemyObject)
+    {
+        if (enemyObject == null) yield break;
+
+        Character enemy = enemyObject.GetComponent<Character>();
+        if (enemy == null) yield break;
+
+        float distance = Vector3.Distance(transform.position, enemy.transform.position);
+        float arrowTravelTime = distance / arrowSpeed;
+
+        yield return new WaitForSeconds(arrowTravelTime);
+
+        if (enemy != null )
+        {
+            enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
+            Debug.Log($"🏹 Dealt {AttackDamage} damage");
+        }
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_PlayAttackAnimation(float speedMultiplier)
+    {
+        if (animator != null)
+        {
+            // ✅ ตั้งค่า Animation Speed ตาม Attack Speed
+            animator.speed = speedMultiplier;
+
+            // เล่น Attack Animation
+            animator.SetTrigger(ANIM_ATTACK);
+
+            Debug.Log($"🎬 Playing Attack animation for {CharacterName} at {speedMultiplier:F2}x speed");
+
+            // ✅ รีเซ็ต animation speed หลังจาก animation เสร็จ
+            StartCoroutine(ResetAnimationSpeed());
+        }
+    }
+    private IEnumerator ResetAnimationSpeed()
+    {
+        // รอให้ animation เล่นเสร็จ (ประมาณ 1 วินาที)
+        yield return new WaitForSeconds(1f);
+
+        if (animator != null)
+        {
+            animator.speed = 1f; // รีเซ็ตกลับเป็นความเร็วปกติ
         }
     }
 
@@ -947,26 +1099,7 @@ public class Archer : Hero
     // 4. RPC_OnArcherAttackHit - แสดง Visual Effect
     // ========================================
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
-    private void RPC_OnArcherAttackHit(NetworkObject enemyObject)
-    {
-        Debug.Log($"🏹 {CharacterName} arrow hit enemy!");
 
-        if (enemyObject != null)
-        {
-            Vector3 hitPosition = enemyObject.transform.position + Vector3.up;
-
-            // แสดง basic attack effect
-            if (basicAttackEffect != null)
-            {
-                GameObject hitFX = Instantiate(basicAttackEffect.gameObject, hitPosition, Quaternion.identity);
-                Destroy(hitFX, 1f);
-            }
-
-            // ยิงลูกศรจากตัวละครไปหาเป้าหมาย (visual only)
-            StartCoroutine(ShootArrowVisual(enemyObject.transform));
-        }
-    }
 
 
     // ========================================
@@ -976,35 +1109,79 @@ public class Archer : Hero
     private IEnumerator ShootArrowVisual(Transform target)
     {
         if (arrowPrefab == null || target == null) yield break;
+
         AudioManager.instance.PlaySFX(10, 0.5f);
 
         Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
-        Vector3 direction = (target.position + Vector3.up - startPos).normalized;
+        Vector3 targetPos = target.position + Vector3.up;
+        Vector3 direction = (targetPos - startPos).normalized;
 
-        // สร้างลูกศร
-        GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.LookRotation(direction));
+        // ✅ สร้างลูกธนูโดยไม่ใช้ Quaternion.LookRotation ก่อน
+        GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
 
-        // คำนวณเวลาบิน
-        float distance = Vector3.Distance(startPos, target.position);
+        // ✅ เช็ค Sprite Renderer
+        SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
+
+        // ✅ คำนวณมุมการหมุน (2D Sprite)
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+        if (arrowSprite != null)
+        {
+            // ✅ Flip ถ้าลูกธนูยิงไปทางซ้าย
+            if (direction.x < 0)
+            {
+                arrowSprite.flipY = true;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+            }
+            else
+            {
+                arrowSprite.flipY = false;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle);
+            }
+        }
+        else
+        {
+            // ✅ ถ้าเป็น 3D Model ใช้ LookRotation ปกติ
+            arrow.transform.rotation = Quaternion.LookRotation(direction);
+        }
+
+        float distance = Vector3.Distance(startPos, targetPos);
         float travelTime = distance / arrowSpeed;
         float elapsed = 0f;
-
-        Vector3 arrowStartPos = arrow.transform.position;
 
         while (elapsed < travelTime && target != null)
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / travelTime;
 
-            // อัพเดทตำแหน่งลูกศร
             Vector3 currentTarget = target.position + Vector3.up;
-            arrow.transform.position = Vector3.Lerp(arrowStartPos, currentTarget, progress);
-            arrow.transform.LookAt(currentTarget);
+            arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
+
+            // ✅ อัพเดททิศทางและมุมระหว่างบิน
+            Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
+            float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
+
+            if (arrowSprite != null)
+            {
+                if (newDirection.x < 0)
+                {
+                    arrowSprite.flipY = true;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle + 180f);
+                }
+                else
+                {
+                    arrowSprite.flipY = false;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle);
+                }
+            }
+            else
+            {
+                arrow.transform.rotation = Quaternion.LookRotation(newDirection);
+            }
 
             yield return null;
         }
 
-        // ทำลายลูกศรเมื่อถึงเป้าหมาย
         Destroy(arrow, 0.1f);
     }
 
