@@ -1362,7 +1362,7 @@ public class EnchanceLobby : MonoBehaviour
             DebugWhyCannotEnchant();
             return;
         }
-
+        AudioManager.instance.PlaySFX(27, 1f);
         int currentLevel = GetCurrentItemEnchantLevel();
         int nextLevel = currentLevel + 1;
         long cost = GetEnchantCost(nextLevel);
@@ -1588,6 +1588,7 @@ public class EnchanceLobby : MonoBehaviour
         if (enchantSuccessPanel == null || enchantResultItem == null) return;
 
         enchantSuccessPanel.SetActive(true);
+        AudioManager.instance.PlaySFX(25, 1f);
 
         // ตั้งค่า UI
         if (successItemIcon != null)
@@ -1613,6 +1614,7 @@ public class EnchanceLobby : MonoBehaviour
         Debug.Log($"[EnchanceLobby] Showing failure panel for {failedItem.ItemName}");
 
         enchantFailurePanel.SetActive(true);
+        AudioManager.instance.PlaySFX(26, 1f);
 
         // ตั้งค่า UI
         if (failureItemIcon != null)

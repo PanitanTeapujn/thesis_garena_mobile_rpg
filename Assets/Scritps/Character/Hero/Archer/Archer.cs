@@ -82,6 +82,15 @@ public class Archer : Hero
     [Header("🎬 Animation")]
     private Animator animator;
     private const string ANIM_ATTACK = "Attack";
+
+    [Header("🌟 Ferris Point Mode")]
+    [Networked] public bool IsInFerrisMode { get; set; }
+    private float ferrisModeDrainRate = 10f;
+    private float accumulatedDrain = 0f;
+    private float ferrisAttackRangeMultiplier = 1.5f;
+    private float ferrisDoubleShot = 0.40f;
+    public float flameArrowAOERadius = 4f;
+
     // ========== Network Properties ==========
     [Networked] public bool IsFlameArrowActive { get; set; }
     [Networked] public bool IsShadowStepping { get; set; }
@@ -119,7 +128,8 @@ public class Archer : Hero
         skill2Cooldown = 15f;
         skill3Cooldown = 18f;
         skill4Cooldown = 40f;
-
+        IsInFerrisMode = false;
+        accumulatedDrain = 0f;
         // เพิ่ม Hit Rate และ Evasion จาก Passive
         if (hasEagleEye)
         {
@@ -146,6 +156,10 @@ public class Archer : Hero
             ProcessTemporaryBuffs();
             ProcessEagleEyeStacks();
         }
+        if (IsInFerrisMode)
+        {
+            DrainFerrisPoints(Runner.DeltaTime);
+        }
     }
 
     // ========== 💚 Skill 1: Flame Arrow ==========
@@ -154,7 +168,6 @@ public class Archer : Hero
     {
         if (!CanUseSkill(skill1ManaCost)) return;
 
-        // คำนวณ cooldown reduction
         float effectiveReduction = GetEffectiveReductionCoolDown();
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
@@ -164,17 +177,195 @@ public class Archer : Hero
 
         UseMana(skill1ManaCost);
 
-        // หาเป้าหมาย
-        Character target = FindNearestEnemy(flameArrowRange);
-        if (target != null)
+        if (!IsInFerrisMode)
         {
-            FaceTarget(target.transform);
+            GainFerrisPoint(15);
+        }
 
-            RPC_ExecuteFlameArrow(target.Object);
+        if (IsInFerrisMode)
+        {
+            ExecuteFerrisModeFlameArrow();
         }
         else
         {
-            Debug.Log($"🏹 No target found for Flame Arrow");
+            Character target = FindNearestEnemy(flameArrowRange);
+            if (target != null)
+            {
+                FaceTarget(target.transform);
+                RPC_ExecuteFlameArrow(target.Object);
+            }
+            else
+            {
+                Debug.Log($"🏹 No target found for Flame Arrow");
+            }
+        }
+    }
+
+    private void ExecuteFerrisModeFlameArrow()
+    {
+        List<Character> nearestEnemies = FindNearestEnemies(flameArrowRange, 2);
+
+        if (nearestEnemies.Count == 0)
+        {
+            Debug.Log($"🌟 No targets found for Ferris Flame Arrow");
+            return;
+        }
+
+        if (nearestEnemies.Count == 1)
+        {
+            FaceTarget(nearestEnemies[0].transform);
+            RPC_ExecuteFerrisFlameArrow(nearestEnemies[0].Object, nearestEnemies[0].Object);
+        }
+        else
+        {
+            FaceTarget(nearestEnemies[0].transform);
+            RPC_ExecuteFerrisFlameArrow(nearestEnemies[0].Object, nearestEnemies[1].Object);
+        }
+    }
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    private void RPC_ExecuteFerrisFlameArrow(NetworkObject target1Object, NetworkObject target2Object)
+    {
+        if (target1Object == null) return;
+
+        Character target1 = target1Object.GetComponent<Character>();
+        Character target2 = target2Object?.GetComponent<Character>();
+
+        if (target1 != null)
+        {
+            StartCoroutine(ExecuteFerrisFlameArrowSequence(target1, target2));
+        }
+    }
+
+    private IEnumerator ExecuteFerrisFlameArrowSequence(Character target1, Character target2)
+    {
+        Debug.Log($"🌟 [Ferris Flame Arrow] Firing 2 arrows!");
+        AudioManager.instance.PlaySFX(11, 0.2f);
+
+        bool sameTarget = (target2 == null || target1 == target2);
+
+        StartCoroutine(ShootFerrisArrow(target1, 0f, sameTarget ? 1 : 0));
+
+        if (!sameTarget && target2 != null)
+        {
+            StartCoroutine(ShootFerrisArrow(target2, 0.1f, 1));
+        }
+        else if (sameTarget)
+        {
+            StartCoroutine(ShootFerrisArrow(target1, 0.1f, 2));
+        }
+
+        yield return new WaitForSeconds(0.5f);
+    }
+
+    private IEnumerator ShootFerrisArrow(Character target, float delay, int arrowIndex)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (arrowPrefab != null && target != null)
+        {
+            Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
+            Vector3 targetPos = target.transform.position + Vector3.up;
+            Vector3 direction = (targetPos - startPos).normalized;
+
+            GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
+
+            SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
+            if (arrowSprite != null)
+            {
+                arrowSprite.color = new Color(1f, 0.3f, 0f);
+                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+                if (direction.x < 0)
+                {
+                    arrowSprite.flipY = true;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+                }
+                else
+                {
+                    arrowSprite.flipY = false;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, angle);
+                }
+            }
+
+            float distance = Vector3.Distance(startPos, targetPos);
+            float travelTime = distance / arrowSpeed;
+            float elapsed = 0f;
+
+            while (elapsed < travelTime && target != null)
+            {
+                elapsed += Time.deltaTime;
+                float progress = elapsed / travelTime;
+
+                Vector3 currentTarget = target.transform.position + Vector3.up;
+                arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
+
+                Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
+                float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
+
+                if (arrowSprite != null)
+                {
+                    if (newDirection.x < 0)
+                    {
+                        arrowSprite.flipY = true;
+                        arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle + 180f);
+                    }
+                    else
+                    {
+                        arrowSprite.flipY = false;
+                        arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle);
+                    }
+                }
+
+                yield return null;
+            }
+
+            Destroy(arrow, 0.1f);
+
+            if (flameArrowEffect != null && target != null)
+            {
+                GameObject hitFX = Instantiate(flameArrowEffect.gameObject, target.transform.position + Vector3.up, Quaternion.identity);
+                Destroy(hitFX, 2f);
+            }
+        }
+
+        if (HasStateAuthority && target != null)
+        {
+            int damage = Mathf.RoundToInt(AttackDamage * flameArrowDamageMultiplier);
+
+            Collider[] hits = Physics.OverlapSphere(target.transform.position, flameArrowAOERadius);
+            foreach (Collider col in hits)
+            {
+                Character enemy = col.GetComponent<Character>();
+                if (enemy != null && enemy != this)
+                {
+                    bool isEnemy = false;
+                    if (this is Hero && enemy is NetworkEnemy) isEnemy = true;
+                    if (this is NetworkEnemy && enemy is Hero) isEnemy = true;
+
+                    if (isEnemy)
+                    {
+                        enemy.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
+
+                        if (Random.Range(0f, 1f) <= flameArrowBurnChance)
+                        {
+                            StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
+                            if (enemyStatus != null)
+                            {
+                                int burnDamagePerTick = flameArrowBurnDamage + Mathf.RoundToInt(AttackDamage * 0.15f);
+                                enemyStatus.ApplyBurn(burnDamagePerTick, flameArrowBurnDuration);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (arrowIndex == 0)
+            {
+                HasHitRateBonus = true;
+                HitRateBonusEndTime = Time.time + flameArrowHitRateDuration;
+                HitRate += flameArrowHitRateBonus;
+            }
         }
     }
 
@@ -290,7 +481,40 @@ public class Archer : Hero
             Debug.Log($"🎯 Gained +15% Hit Rate!");
         }
     }
+    private List<Character> FindNearestEnemies(float maxRange, int maxCount)
+    {
+        List<Character> enemies = new List<Character>();
+        List<Character> allEnemies = new List<Character>();
 
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, maxRange);
+        foreach (Collider col in hitColliders)
+        {
+            Character enemy = col.GetComponent<Character>();
+            if (enemy != null && enemy != this)
+            {
+                bool isEnemy = false;
+                if (this is Hero && enemy is NetworkEnemy) isEnemy = true;
+                if (this is NetworkEnemy && enemy is Hero) isEnemy = true;
+
+                if (isEnemy)
+                {
+                    allEnemies.Add(enemy);
+                }
+            }
+        }
+
+        allEnemies.Sort((a, b) =>
+            Vector3.Distance(transform.position, a.transform.position)
+            .CompareTo(Vector3.Distance(transform.position, b.transform.position))
+        );
+
+        for (int i = 0; i < Mathf.Min(maxCount, allEnemies.Count); i++)
+        {
+            enemies.Add(allEnemies[i]);
+        }
+
+        return enemies;
+    }
     private void FaceTarget(Transform target)
     {
         if (target == null) return;
@@ -332,6 +556,10 @@ public class Archer : Hero
         float finalCooldown = skill2Cooldown * reductionMultiplier;
         nextSkill2Time = Time.time + finalCooldown;
 
+        if (!IsInFerrisMode)
+        {
+            GainFerrisPoint(20);
+        }
         UseMana(skill2ManaCost);
 
         // คำนวณทิศทางตรงข้าม
@@ -390,7 +618,15 @@ public class Archer : Hero
     {
         Vector3 startPos = transform.position;
         AudioManager.instance.PlaySFX(12, 0.5f);
-        statusEffectManager.ApplyAttackSpeedAura(6f, 1f, 10f);
+        statusEffectManager.ApplyArmorBreak(6f, 10f);
+
+        // 🏹 ยิงธนูออกไปข้างหน้าก่อน Dash
+        if (HasStateAuthority)
+        {
+            Vector3 forwardDirection = -direction; // ยิงไปทางตรงข้ามกับทิศทาง dash
+            ShootShadowStepArrow(forwardDirection);
+        }
+
         // ตรวจสอบกำแพงก่อน dash
         float actualDashDistance = shadowStepDistance;
         RaycastHit wallHit;
@@ -476,6 +712,289 @@ public class Archer : Hero
         }
     }
 
+    // ========== เพิ่มฟังก์ชันใหม่ทั้งหมดหลัง CreateSmokeBomb ==========
+
+    // 🏹 ฟังก์ชันยิงธนูสำหรับ Shadow Step
+    private void ShootShadowStepArrow(Vector3 direction)
+    {
+        if (IsInFerrisMode)
+        {
+            // ยิงธนูไฟแบบ Flame Arrow
+            ShootFlameArrowForward(direction);
+            
+        }
+        else
+        {
+            // ยิงธนูธรรมดา
+            ShootNormalArrowForward(direction);
+        }
+    }
+
+    private void ShootFlameArrowForward(Vector3 direction)
+    {
+        float maxDistance = flameArrowRange;
+        Character targetInPath = FindEnemyInDirection(direction, maxDistance);
+
+        if (targetInPath != null)
+        {
+            RPC_ShootShadowStepFlameArrow(targetInPath.Object);
+        }
+        else
+        {
+            Vector3 targetPos = transform.position + direction * maxDistance;
+            RPC_ShootShadowStepFlameArrow(null, targetPos);
+        }
+    }
+
+    private void ShootNormalArrowForward(Vector3 direction)
+    {
+        float maxDistance = AttackRange * 1.5f;
+        Character targetInPath = FindEnemyInDirection(direction, maxDistance);
+
+        if (targetInPath != null)
+        {
+            RPC_ShootShadowStepNormalArrow(targetInPath.Object);
+        }
+        else
+        {
+            Vector3 targetPos = transform.position + direction * maxDistance;
+            RPC_ShootShadowStepNormalArrow(null, targetPos);
+        }
+    }
+
+    private Character FindEnemyInDirection(Vector3 direction, float maxDistance)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(transform.position, direction, maxDistance);
+        Character nearestEnemy = null;
+        float nearestDistance = maxDistance;
+
+        foreach (RaycastHit hit in hits)
+        {
+            Character enemy = hit.collider.GetComponent<Character>();
+            if (enemy != null && enemy != this)
+            {
+                bool isEnemy = false;
+                if (this is Hero && enemy is NetworkEnemy) isEnemy = true;
+                if (this is NetworkEnemy && enemy is Hero) isEnemy = true;
+
+                if (isEnemy)
+                {
+                    float distance = Vector3.Distance(transform.position, enemy.transform.position);
+                    if (distance < nearestDistance)
+                    {
+                        nearestDistance = distance;
+                        nearestEnemy = enemy;
+                    }
+                }
+            }
+        }
+
+        return nearestEnemy;
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShootShadowStepFlameArrow(NetworkObject targetObject, Vector3 fallbackPosition = default)
+    {
+        Character target = targetObject?.GetComponent<Character>();
+        Vector3 targetPos = target != null ? target.transform.position : fallbackPosition;
+
+        if (targetPos != default)
+        {
+            StartCoroutine(ExecuteShadowStepFlameArrow(target, targetPos));
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShootShadowStepNormalArrow(NetworkObject targetObject, Vector3 fallbackPosition = default)
+    {
+        Character target = targetObject?.GetComponent<Character>();
+        Vector3 targetPos = target != null ? target.transform.position : fallbackPosition;
+
+        if (targetPos != default)
+        {
+            StartCoroutine(ExecuteShadowStepNormalArrow(target, targetPos));
+        }
+    }
+
+    private IEnumerator ExecuteShadowStepFlameArrow(Character target, Vector3 targetPos)
+    {
+        if (arrowPrefab == null) yield break;
+
+        AudioManager.instance.PlaySFX(11, 0.2f);
+
+        Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
+        targetPos += Vector3.up;
+        Vector3 direction = (targetPos - startPos).normalized;
+
+        GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
+
+        SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
+        if (arrowSprite != null)
+        {
+            arrowSprite.color = new Color(1f, 0.5f, 0f); // สีส้มแดง
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+            if (direction.x < 0)
+            {
+                arrowSprite.flipY = true;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+            }
+            else
+            {
+                arrowSprite.flipY = false;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle);
+            }
+        }
+
+        float distance = Vector3.Distance(startPos, targetPos);
+        float travelTime = distance / arrowSpeed;
+        float elapsed = 0f;
+
+        while (elapsed < travelTime)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / travelTime;
+
+            Vector3 currentTarget = target != null ? target.transform.position + Vector3.up : targetPos;
+            arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
+
+            Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
+            float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
+
+            if (arrowSprite != null)
+            {
+                if (newDirection.x < 0)
+                {
+                    arrowSprite.flipY = true;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle + 180f);
+                }
+                else
+                {
+                    arrowSprite.flipY = false;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle);
+                }
+            }
+
+            yield return null;
+        }
+
+        Destroy(arrow, 0.1f);
+
+        if (flameArrowEffect != null)
+        {
+            GameObject hitFX = Instantiate(flameArrowEffect.gameObject, targetPos, Quaternion.identity);
+            Destroy(hitFX, 2f);
+        }
+
+        if (HasStateAuthority && target != null)
+        {
+            int damage = Mathf.RoundToInt(AttackDamage * flameArrowDamageMultiplier * 0.7f); // 70% ของดาเมจ Flame Arrow
+
+            Collider[] hits = Physics.OverlapSphere(target.transform.position, flameArrowAOERadius);
+            foreach (Collider col in hits)
+            {
+                Character enemy = col.GetComponent<Character>();
+                if (enemy != null && enemy != this)
+                {
+                    bool isEnemy = false;
+                    if (this is Hero && enemy is NetworkEnemy) isEnemy = true;
+                    if (this is NetworkEnemy && enemy is Hero) isEnemy = true;
+
+                    if (isEnemy)
+                    {
+                        enemy.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
+
+                        if (Random.Range(0f, 1f) <= flameArrowBurnChance * 0.5f)
+                        {
+                            StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
+                            if (enemyStatus != null)
+                            {
+                                int burnDamagePerTick = Mathf.RoundToInt(flameArrowBurnDamage * 0.7f);
+                                enemyStatus.ApplyBurn(burnDamagePerTick, flameArrowBurnDuration * 0.7f);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private IEnumerator ExecuteShadowStepNormalArrow(Character target, Vector3 targetPos)
+    {
+        if (arrowPrefab == null) yield break;
+
+        AudioManager.instance.PlaySFX(10, 0.3f);
+
+        Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
+        targetPos += Vector3.up;
+        Vector3 direction = (targetPos - startPos).normalized;
+
+        GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
+
+        SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
+        if (arrowSprite != null)
+        {
+            float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+            if (direction.x < 0)
+            {
+                arrowSprite.flipY = true;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+            }
+            else
+            {
+                arrowSprite.flipY = false;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle);
+            }
+        }
+
+        float distance = Vector3.Distance(startPos, targetPos);
+        float travelTime = distance / arrowSpeed;
+        float elapsed = 0f;
+
+        while (elapsed < travelTime)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / travelTime;
+
+            Vector3 currentTarget = target != null ? target.transform.position + Vector3.up : targetPos;
+            arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
+
+            Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
+            float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
+
+            if (arrowSprite != null)
+            {
+                if (newDirection.x < 0)
+                {
+                    arrowSprite.flipY = true;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle + 180f);
+                }
+                else
+                {
+                    arrowSprite.flipY = false;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle);
+                }
+            }
+
+            yield return null;
+        }
+
+        Destroy(arrow, 0.1f);
+
+        if (basicAttackEffect != null)
+        {
+            GameObject hitFX = Instantiate(basicAttackEffect.gameObject, targetPos, Quaternion.identity);
+            Destroy(hitFX, 2f);
+        }
+
+        if (HasStateAuthority && target != null)
+        {
+            int damage = Mathf.RoundToInt(AttackDamage * 1.2f); // 120% ของดาเมจปกติ
+            target.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
+        }
+    }
+
     private void CreateSmokeBomb(Vector3 position)
     {
         // สร้าง smoke bomb effect
@@ -522,6 +1041,10 @@ public class Archer : Hero
         float finalCooldown = skill3Cooldown * reductionMultiplier;
         nextSkill3Time = Time.time + finalCooldown;
 
+        if (!IsInFerrisMode)
+        {
+            GainFerrisPoint(30);
+        }
         UseMana(skill3ManaCost);
 
         // หาตำแหน่งเป้าหมาย (ศัตรูที่ใกล้ที่สุด)
@@ -597,6 +1120,10 @@ public class Archer : Hero
         float finalCooldown = skill4Cooldown * reductionMultiplier;
         nextSkill4Time = Time.time + finalCooldown;
 
+        if (!IsInFerrisMode)
+        {
+            GainFerrisPoint(40);
+        }
         UseMana(skill4ManaCost);
 
         // หาตำแหน่งเป้าหมาย
@@ -766,18 +1293,17 @@ public class Archer : Hero
 
     private void HandleEagleEyeOnHit(Character target, int damage, DamageType damageType, bool isCritical)
     {
-        // ตรวจสอบว่าเป็นการโจมตีจากตัวเอง
         if (!hasEagleEye || !HasStateAuthority) return;
-        if (target == this) return; // ไม่ใช่เราโดนโจมตี
+        if (target == this) return;
 
-        // 25% โอกาสยิงลูกศรเพิ่ม (เฉพาะ basic attack)
-        if (damageType == DamageType.Normal && Random.Range(0f, 1f) <= 0.25f)
+        float doubleShootChance = IsInFerrisMode ? ferrisDoubleShot : 0.25f;
+
+        if (damageType == DamageType.Normal && Random.Range(0f, 1f) <= doubleShootChance)
         {
-            Debug.Log($"🦅 Eagle Eye! Double Shot activated!");
+            Debug.Log($"🦅 Eagle Eye! Double Shot activated! (Chance: {doubleShootChance * 100}%)");
             StartCoroutine(DelayedExtraShot(target, 0.2f));
         }
 
-        // เช็ค Critical Hit
         if (isCritical)
         {
             EagleEyeAttackSpeedStacks = Mathf.Min(EagleEyeAttackSpeedStacks + 1, 3);
@@ -787,7 +1313,6 @@ public class Archer : Hero
             Debug.Log($"🦅 Eagle Eye! Attack Speed +{totalBonus * 100}% ({EagleEyeAttackSpeedStacks} stacks)");
         }
     }
-
     private IEnumerator DelayedExtraShot(Character target, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -943,8 +1468,8 @@ public class Archer : Hero
         if (!HasInputAuthority || !IsSpawned) return;
         if (Time.time < nextAttackTime) return;
 
-        // หาศัตรูในระยะโจมตี
-        Collider[] enemies = Physics.OverlapSphere(transform.position, AttackRange, LayerMask.GetMask("Enemy"));
+        float effectiveRange = IsInFerrisMode ? AttackRange * ferrisAttackRangeMultiplier : AttackRange;
+        Collider[] enemies = Physics.OverlapSphere(transform.position, effectiveRange, LayerMask.GetMask("Enemy"));
 
         if (enemies.Length > 0)
         {
@@ -967,23 +1492,38 @@ public class Archer : Hero
 
             if (nearestEnemy != null)
             {
-                // ✅ หันหน้าไปหาศัตรูก่อนยิง
                 FaceTarget(nearestEnemy.transform);
 
-                // ยิงลูกศรไปหาเป้าหมาย
-                RPC_PerformArcherAttack(nearestEnemy.Object);
+                if (IsInFerrisMode)
+                {
+                    RPC_PerformFerrisModeAttack(nearestEnemy.Object);
+                }
+                else
+                {
+                    RPC_PerformArcherAttack(nearestEnemy.Object);
+                }
 
-                // คำนวณ cooldown reduction จาก Attack Speed
                 float cooldownReduction = GetEffectiveAttackSpeed();
                 float finalAttackCooldown = AttackCooldown * (1f - cooldownReduction);
-
                 nextAttackTime = Time.time + finalAttackCooldown;
-
-                Debug.Log($"🏹 Archer attack! Cooldown Reduction: {cooldownReduction * 100f}%, Final Cooldown: {finalAttackCooldown:F2}s");
             }
         }
     }
 
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    private void RPC_PerformFerrisModeAttack(NetworkObject enemyObject)
+    {
+        if (enemyObject != null)
+        {
+            Character enemy = enemyObject.GetComponent<Character>();
+            if (enemy != null)
+            {
+                currentAttackTarget = enemyObject;
+                float attackSpeedMultiplier = GetAttackSpeedMultiplierForUI();
+                RPC_PlayAttackAnimation(attackSpeedMultiplier);
+            }
+        }
+    }
 
     // ========================================
     // 3. RPC_PerformArcherAttack - สร้างดาเมจและ Effect
@@ -1013,7 +1553,6 @@ public class Archer : Hero
 
     public void OnArrowRelease()
     {
-        // เรียกเฉพาะฝั่ง Server
         if (!HasStateAuthority) return;
 
         Debug.Log("🏹 [Animation Event] Arrow Released!");
@@ -1023,16 +1562,162 @@ public class Archer : Hero
             Character enemy = currentAttackTarget.GetComponent<Character>();
             if (enemy != null)
             {
-                // ยิงลูกธนู visual บนทุก Client
-                RPC_ShootArrowVisual(currentAttackTarget);
-
-                // รอให้ลูกธนูถึงแล้วค่อยสร้างดาเมจ
-                StartCoroutine(DelayedDamageAfterArrowHit(currentAttackTarget));
+                if (IsInFerrisMode)
+                {
+                    RPC_ShootFerrisModeArrows(currentAttackTarget);
+                    StartCoroutine(DelayedFerrisModeDamage(currentAttackTarget));
+                }
+                else
+                {
+                    RPC_ShootArrowVisual(currentAttackTarget);
+                    StartCoroutine(DelayedDamageAfterArrowHit(currentAttackTarget));
+                }
             }
 
-            // ✅ Clear target หลังยิงเสร็จ
             currentAttackTarget = null;
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShootFerrisModeArrows(NetworkObject targetObject)
+    {
+        if (targetObject != null)
+        {
+            Character target = targetObject.GetComponent<Character>();
+            if (target != null)
+            {
+                List<Character> targets = FindNearestEnemies(AttackRange * ferrisAttackRangeMultiplier, 2);
+
+                if (targets.Count == 0)
+                {
+                    targets.Add(target);
+                }
+
+                if (targets.Count == 1)
+                {
+                    StartCoroutine(ShootArrowVisual(targets[0].transform));
+                    StartCoroutine(ShootArrowVisual(targets[0].transform, 0.1f));
+                }
+                else
+                {
+                    StartCoroutine(ShootArrowVisual(targets[0].transform));
+                    StartCoroutine(ShootArrowVisual(targets[1].transform, 0.1f));
+                }
+            }
+        }
+    }
+
+    private IEnumerator DelayedFerrisModeDamage(NetworkObject enemyObject)
+    {
+        if (enemyObject == null) yield break;
+
+        Character enemy = enemyObject.GetComponent<Character>();
+        if (enemy == null) yield break;
+
+        float distance = Vector3.Distance(transform.position, enemy.transform.position);
+        float arrowTravelTime = distance / arrowSpeed;
+
+        yield return new WaitForSeconds(arrowTravelTime);
+
+        if (enemy != null)
+        {
+            List<Character> targets = FindNearestEnemies(AttackRange * ferrisAttackRangeMultiplier, 2);
+
+            if (targets.Count == 0)
+            {
+                targets.Add(enemy);
+            }
+
+            if (targets.Count == 1)
+            {
+                enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
+                enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
+
+                if (!IsInFerrisMode)
+                {
+                    GainFerrisPoint(3);
+                }
+            }
+            else
+            {
+                targets[0].TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
+                targets[1].TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
+
+                if (!IsInFerrisMode)
+                {
+                    GainFerrisPoint(4);
+                }
+            }
+        }
+    }
+
+    private IEnumerator ShootArrowVisual(Transform target, float delay = 0f)
+    {
+        if (delay > 0f)
+        {
+            yield return new WaitForSeconds(delay);
+        }
+
+        if (arrowPrefab == null || target == null) yield break;
+
+        AudioManager.instance.PlaySFX(10, 0.5f);
+
+        Vector3 startPos = arrowSpawnPoint != null ? arrowSpawnPoint.position : transform.position + Vector3.up;
+        Vector3 targetPos = target.position + Vector3.up;
+        Vector3 direction = (targetPos - startPos).normalized;
+
+        GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
+
+        SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+        if (arrowSprite != null)
+        {
+            if (direction.x < 0)
+            {
+                arrowSprite.flipY = true;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+            }
+            else
+            {
+                arrowSprite.flipY = false;
+                arrow.transform.rotation = Quaternion.Euler(0, 0, angle);
+            }
+        }
+
+        float distance = Vector3.Distance(startPos, targetPos);
+        float travelTime = distance / arrowSpeed;
+        float elapsed = 0f;
+
+        while (elapsed < travelTime && target != null)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / travelTime;
+
+            Vector3 currentTarget = target.position + Vector3.up;
+            arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
+
+            Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
+            float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
+
+            if (arrowSprite != null)
+            {
+                if (newDirection.x < 0)
+                {
+                    arrowSprite.flipY = true;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle + 180f);
+                }
+                else
+                {
+                    arrowSprite.flipY = false;
+                    arrow.transform.rotation = Quaternion.Euler(0, 0, newAngle);
+                }
+            }
+
+            yield return null;
+        }
+
+        Destroy(arrow, 0.1f);
     }
 
     private NetworkObject currentAttackTarget; // เก็บ reference ของเป้าหมายปัจจุบัน
@@ -1207,5 +1892,100 @@ public class Archer : Hero
         }
 
         return baseSpeed;
+    }
+
+    public override bool UsesFerrisPoint()
+    {
+        return true;
+    }
+
+    protected override void OnFerrisPointFull()
+    {
+        base.OnFerrisPointFull();
+        if (!IsInFerrisMode)
+        {
+            EnterFerrisMode();
+        }
+    }
+
+    private void EnterFerrisMode()
+    {
+        if (!HasStateAuthority) return;
+
+        IsInFerrisMode = true;
+        accumulatedDrain = 0f;
+
+        statusEffectManager.ApplyAttackSpeedAura(6f, 0.30f, 10f);
+        statusEffectManager.ApplyHitRateAura(6f, 0.15f, 10f);
+
+        RPC_ShowFerrisModeText();
+        Debug.Log($"🌟 [FERRIS MODE ACTIVATED] {CharacterName} - Double Arrows + 1.5x Range!");
+
+        if (HasInputAuthority)
+        {
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Archer", 1, true);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Archer", 2, true);
+            }
+        }
+    }
+
+    private void ExitFerrisMode()
+    {
+        if (!HasStateAuthority) return;
+
+        IsInFerrisMode = false;
+        CurrentFerrisPoint = 0;
+        accumulatedDrain = 0f;
+
+        RPC_ShowFerrisModeEndText();
+        Debug.Log($"🌟 [Ferris Mode Ended] {CharacterName}");
+
+        if (HasInputAuthority)
+        {
+            CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
+            if (uiManager != null)
+            {
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Archer", 1, false);
+            }
+        }
+    }
+
+    private void DrainFerrisPoints(float deltaTime)
+    {
+        if (!IsInFerrisMode) return;
+
+        accumulatedDrain += ferrisModeDrainRate * deltaTime;
+
+        if (accumulatedDrain >= 1f)
+        {
+            int drainAmount = Mathf.FloorToInt(accumulatedDrain);
+            CurrentFerrisPoint = Mathf.Max(0, CurrentFerrisPoint - drainAmount);
+            accumulatedDrain -= drainAmount;
+
+            if (CurrentFerrisPoint <= 0)
+            {
+                accumulatedDrain = 0f;
+                ExitFerrisMode();
+            }
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowFerrisModeText()
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1f;
+        Color ferrisColor = new Color(1f, 0.8f, 0f, 1f);
+        DamageTextManager.ShowCustomText(textPosition, "Ferris MODE", ferrisColor, 1f);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowFerrisModeEndText()
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1f;
+        Color endColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+        DamageTextManager.ShowCustomText(textPosition, "Ferris MODE End", endColor, 1.0f);
     }
 }

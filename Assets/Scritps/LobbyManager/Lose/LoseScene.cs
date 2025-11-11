@@ -13,6 +13,7 @@ public class LoseScene : MonoBehaviour
     void Start()
     {
         BackToLobby.onClick.AddListener(BackToLobbys);
+        AudioManager.instance.PlaySFX(29, 1f);
 
     }
 

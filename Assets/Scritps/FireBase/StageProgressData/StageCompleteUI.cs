@@ -1105,10 +1105,7 @@ public class StageCompleteUI : MonoBehaviour
     /// </summary>
     private void PlayVictorySound()
     {
-        if (victoryAudioSource != null && victorySound != null)
-        {
-            victoryAudioSource.PlayOneShot(victorySound);
-        }
+        AudioManager.instance.PlaySFX(28, 1f);
     }
 
     /// <summary>
