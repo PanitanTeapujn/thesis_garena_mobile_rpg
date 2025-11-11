@@ -14,10 +14,10 @@ public class LoadingPanelManager : MonoBehaviour
     public TextMeshProUGUI tipsText;
 
     [Header("Fade Manager Reference")]
-    public FadeManager fadeManager; // ✅ อ้างอิง FadeManager
+    public FadeManager fadeManager;
 
     [Header("Fake Loading Settings")]
-    public float totalLoadingTime = 5f; // ⏱️ 5 วินาที
+    public float totalLoadingTime = 5f;
 
     [Header("Loading Stages")]
     public string[] loadingMessages = {
@@ -40,17 +40,30 @@ public class LoadingPanelManager : MonoBehaviour
         "Tip: Character level affects available skills."
     };
 
+    [Header("Background Images")]
+    public Image backgroundImage;               // ✅ UI Image
+    public Sprite[] backgroundSprites;          // ✅ รูปพื้นหลังหลายรูป
+    public float backgroundChangeInterval = 3f; // ✅ เปลี่ยนทุก 3 วิ
+    private Coroutine bgCoroutine;
+
     private float currentProgress = 0f;
     private int currentStage = 0;
-    private float tipChangeInterval = 2f; // เปลี่ยน tip ทุก 2 วินาที
+    private float tipChangeInterval = 2f;
     private Coroutine loadingCoroutine;
     private Coroutine tipCoroutine;
 
     private void Start()
     {
         ShowLoadingPanel();
+
         loadingCoroutine = StartCoroutine(FakeLoadingProgress());
         tipCoroutine = StartCoroutine(UpdateTipDisplay());
+
+        // ✅ เริ่มเปลี่ยน BG แบบสุ่มเรื่อยๆ
+        if (backgroundSprites.Length > 0 && backgroundImage != null)
+        {
+            bgCoroutine = StartCoroutine(ChangeBackgroundLoop());
+        }
     }
 
     private void ShowLoadingPanel()
@@ -78,7 +91,49 @@ public class LoadingPanelManager : MonoBehaviour
         }
     }
 
-    // ✅ Loading แบบหลอกๆ 5 วินาที
+    // ✅ เปลี่ยนรูปพื้นหลังเรื่อยๆพร้อม Fade
+    private IEnumerator ChangeBackgroundLoop()
+    {
+        while (currentProgress < 1f)
+        {
+            Sprite nextSprite = backgroundSprites[Random.Range(0, backgroundSprites.Length)];
+            yield return StartCoroutine(FadeBackgroundTo(nextSprite));
+            yield return new WaitForSeconds(backgroundChangeInterval);
+        }
+    }
+
+    // ✅ Fade ภาพนุ่มๆ
+    private IEnumerator FadeBackgroundTo(Sprite newSprite)
+    {
+        if (backgroundImage == null) yield break;
+
+        float duration = 0.6f;
+        float t = 0f;
+
+        Color startColor = backgroundImage.color;
+        Color fadeOutColor = new Color(startColor.r, startColor.g, startColor.b, 0f);
+
+        // Fade Out
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            backgroundImage.color = Color.Lerp(startColor, fadeOutColor, t / duration);
+            yield return null;
+        }
+
+        backgroundImage.sprite = newSprite;
+
+        // Fade In
+        t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            backgroundImage.color = Color.Lerp(fadeOutColor, startColor, t / duration);
+            yield return null;
+        }
+    }
+
+    // ✅ Loading ปลอมแบบค่อยๆขึ้น
     private IEnumerator FakeLoadingProgress()
     {
         float elapsed = 0f;
@@ -88,39 +143,34 @@ public class LoadingPanelManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
 
-            // คำนวณ progress (0 → 1)
             currentProgress = Mathf.Clamp01(elapsed / totalLoadingTime);
 
-            // คำนวณ stage ปัจจุบัน
             currentStage = Mathf.FloorToInt(currentProgress * (totalStages - 1));
             currentStage = Mathf.Clamp(currentStage, 0, totalStages - 1);
 
-            // อัพเดท UI
             string message = loadingMessages[currentStage];
             string detail = $"{(currentProgress * 100f):F0}%";
 
             UpdateLoadingUI(currentProgress, message, detail);
 
-            yield return null; // รอ 1 frame
+            yield return null;
         }
 
-        // เสร็จสิ้น - แสดงข้อความสุดท้าย
         currentProgress = 1f;
         currentStage = totalStages - 1;
         UpdateLoadingUI(1f, loadingMessages[currentStage], "100%");
 
         yield return new WaitForSeconds(0.5f);
 
-        // ✅ เรียก FadeManager ให้ Fade เป็นสีดำ
+        // ✅ Fade Out ก่อนเข้าเกม
         if (fadeManager != null)
         {
             yield return fadeManager.StartCoroutine(fadeManager.FadeToBlack());
         }
 
-        // ซ่อน loading panel
         HideLoadingPanel();
 
-        // ✅ เรียก FadeManager ให้ Fade กลับมาโปร่งใส
+        // ✅ Fade In
         if (fadeManager != null)
         {
             yield return fadeManager.StartCoroutine(fadeManager.FadeFromBlack());
@@ -157,7 +207,7 @@ public class LoadingPanelManager : MonoBehaviour
         Debug.Log("[LoadingPanel] Loading complete!");
     }
 
-    // Public methods
+    // ✅ ใช้สำหรับบังคับปิด Loading
     public void ForceHideLoadingPanel()
     {
         if (loadingCoroutine != null)
@@ -170,6 +220,12 @@ public class LoadingPanelManager : MonoBehaviour
         {
             StopCoroutine(tipCoroutine);
             tipCoroutine = null;
+        }
+
+        if (bgCoroutine != null)
+        {
+            StopCoroutine(bgCoroutine);
+            bgCoroutine = null;
         }
 
         HideLoadingPanel();

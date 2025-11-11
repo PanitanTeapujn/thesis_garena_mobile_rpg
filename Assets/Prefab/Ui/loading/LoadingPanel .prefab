@@ -495,6 +495,14 @@ MonoBehaviour:
   - '"No two relics are the same. Each gear holds enchantments waiting to be discovered."  '
   - '"A full pouch weighs down even the bravest knight. Use the trash bag to lighten
     your burden."  '
+  backgroundImage: {fileID: 7558804782451724408}
+  backgroundSprites:
+  - {fileID: 21300000, guid: f846ee813902d644e9828633643f6657, type: 3}
+  - {fileID: 21300000, guid: 085d5e2d6a49e8043ae3acfcba8369b3, type: 3}
+  - {fileID: 21300000, guid: af535003476039e4c835afaa846230ef, type: 3}
+  - {fileID: 21300000, guid: 4d89d0e29d7b141438b3ffbe6cbb3658, type: 3}
+  - {fileID: 21300000, guid: 821a8954fa01375498380855e58d66b5, type: 3}
+  backgroundChangeInterval: 3
 --- !u!1 &4020193907521883276
 GameObject:
   m_ObjectHideFlags: 0
