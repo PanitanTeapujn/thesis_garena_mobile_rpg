@@ -82,7 +82,11 @@ public class Archer : Hero
     [Header("🎬 Animation")]
     private Animator animator;
     private const string ANIM_ATTACK = "Attack";
-
+    [Header("🎯 Attack Range Indicator")]
+    [SerializeField] private GameObject attackRangeIndicatorPrefab;
+    [SerializeField] private Material attackRangeMaterial;
+    private GameObject attackRangeIndicator;
+    private bool isShowingAttackRange = false;
     [Header("🌟 Ferris Point Mode")]
     [Networked] public bool IsInFerrisMode { get; set; }
     private float ferrisModeDrainRate = 10f;
@@ -110,13 +114,12 @@ public class Archer : Hero
     [Networked] public int EagleEyeAttackSpeedStacks { get; set; }
     [Networked] public float EagleEyeStacksEndTime { get; set; }
     private bool hasEagleEye = true;
-    
+
     protected override void Start()
     {
         base.Start();
         AttackType = AttackType.Physical;
 
-        // ✅ Get Animator component
         animator = GetComponent<Animator>();
         if (animator == null)
         {
@@ -130,23 +133,23 @@ public class Archer : Hero
         skill4Cooldown = 40f;
         IsInFerrisMode = false;
         accumulatedDrain = 0f;
-        // เพิ่ม Hit Rate และ Evasion จาก Passive
+
         if (hasEagleEye)
         {
-            HitRate += 0.2f; // +20%
-            EvasionRate += 0.15f; // +15%
+            HitRate += 0.2f;
+            EvasionRate += 0.15f;
         }
 
-        // สร้าง range indicators
+        // ✅ สร้าง Attack Range Indicator
         CreateRangeIndicators();
 
-        // Subscribe to combat events สำหรับ passive
         CombatManager.OnDamageTaken += HandleEagleEyeOnHit;
         CombatManager.OnCharacterDeath += HandleEagleEyeOnKill;
 
         Debug.Log($"🏹 Archer {CharacterName} initialized with Eagle Eye passive!");
     }
 
+    // ========== แก้ไข FixedUpdateNetwork - อัพเดทตำแหน่งวงกลม ==========
     public override void FixedUpdateNetwork()
     {
         base.FixedUpdateNetwork();
@@ -156,9 +159,31 @@ public class Archer : Hero
             ProcessTemporaryBuffs();
             ProcessEagleEyeStacks();
         }
+
         if (IsInFerrisMode)
         {
             DrainFerrisPoints(Runner.DeltaTime);
+        }
+
+        // ✅ อัพเดทตำแหน่งวงกลมตามตัวละคร
+        if (isShowingAttackRange && attackRangeIndicator != null)
+        {
+            LineRenderer lineRenderer = attackRangeIndicator.GetComponent<LineRenderer>();
+            if (lineRenderer != null)
+            {
+                int segments = lineRenderer.positionCount;
+                float range = IsInFerrisMode ? AttackRange * ferrisAttackRangeMultiplier : AttackRange;
+                float yOffset = 0.1f;
+
+                for (int i = 0; i < segments; i++)
+                {
+                    float angle = (360f / segments) * i * Mathf.Deg2Rad;
+                    float x = transform.position.x + Mathf.Cos(angle) * range;
+                    float z = transform.position.z + Mathf.Sin(angle) * range;
+
+                    lineRenderer.SetPosition(i, new Vector3(x, transform.position.y + yOffset, z));
+                }
+            }
         }
     }
 
@@ -331,7 +356,7 @@ public class Archer : Hero
 
         if (HasStateAuthority && target != null)
         {
-            int damage = Mathf.RoundToInt(AttackDamage * flameArrowDamageMultiplier);
+            int damage = Mathf.RoundToInt(MagicDamage * flameArrowDamageMultiplier);
 
             Collider[] hits = Physics.OverlapSphere(target.transform.position, flameArrowAOERadius);
             foreach (Collider col in hits)
@@ -345,14 +370,14 @@ public class Archer : Hero
 
                     if (isEnemy)
                     {
-                        enemy.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
+                        enemy.TakeDamageFromAttacker(0, damage, this, DamageType.Magic, false);
 
                         if (Random.Range(0f, 1f) <= flameArrowBurnChance)
                         {
                             StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
                             if (enemyStatus != null)
                             {
-                                int burnDamagePerTick = flameArrowBurnDamage + Mathf.RoundToInt(AttackDamage * 0.15f);
+                                int burnDamagePerTick = flameArrowBurnDamage + Mathf.RoundToInt(MagicDamage * 0.15f);
                                 enemyStatus.ApplyBurn(burnDamagePerTick, flameArrowBurnDuration);
                             }
                         }
@@ -391,16 +416,12 @@ public class Archer : Hero
             Vector3 targetPos = target.transform.position + Vector3.up;
             Vector3 direction = (targetPos - startPos).normalized;
 
-            // ✅ สร้างลูกธนูโดยไม่ใช้ LookRotation
             GameObject arrow = Instantiate(arrowPrefab, startPos, Quaternion.identity);
 
-            // ✅ เปลี่ยนสีลูกศรเป็นสีส้มแดง
             SpriteRenderer arrowSprite = arrow.GetComponent<SpriteRenderer>();
             if (arrowSprite != null)
             {
-                arrowSprite.color = new Color(1f, 0.5f, 0f); // สีส้มแดง
-
-                // ✅ คำนวณมุมและ flip
+                arrowSprite.color = new Color(1f, 0.5f, 0f);
                 float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
 
                 if (direction.x < 0)
@@ -427,7 +448,6 @@ public class Archer : Hero
                 Vector3 currentTarget = target.transform.position + Vector3.up;
                 arrow.transform.position = Vector3.Lerp(startPos, currentTarget, progress);
 
-                // ✅ อัพเดทมุมระหว่างบิน
                 Vector3 newDirection = (currentTarget - arrow.transform.position).normalized;
                 float newAngle = Mathf.Atan2(newDirection.y, newDirection.x) * Mathf.Rad2Deg;
 
@@ -450,7 +470,6 @@ public class Archer : Hero
 
             Destroy(arrow, 0.1f);
 
-            // แสดง flame hit effect
             if (flameArrowEffect != null && target != null)
             {
                 GameObject hitFX = Instantiate(flameArrowEffect.gameObject, target.transform.position + Vector3.up, Quaternion.identity);
@@ -458,18 +477,18 @@ public class Archer : Hero
             }
         }
 
-        // สร้างดาเมจ (เฉพาะ server)
+        // ✅ เปลี่ยนจาก AttackDamage เป็น MagicDamage
         if (HasStateAuthority && target != null)
         {
-            int damage = Mathf.RoundToInt(AttackDamage * flameArrowDamageMultiplier);
-            target.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
+            int damage = Mathf.RoundToInt(MagicDamage * flameArrowDamageMultiplier);
+            target.TakeDamageFromAttacker(0, damage, this, DamageType.Magic, false);
 
             if (Random.Range(0f, 1f) <= flameArrowBurnChance)
             {
                 StatusEffectManager targetStatus = target.GetComponent<StatusEffectManager>();
                 if (targetStatus != null)
                 {
-                    int burnDamagePerTick = flameArrowBurnDamage + Mathf.RoundToInt(AttackDamage * 0.15f);
+                    int burnDamagePerTick = flameArrowBurnDamage + Mathf.RoundToInt(MagicDamage * 0.15f);
                     targetStatus.ApplyBurn(burnDamagePerTick, flameArrowBurnDuration);
                     Debug.Log($"🔥 Applied Burn to {target.CharacterName}!");
                 }
@@ -1065,7 +1084,6 @@ public class Archer : Hero
         Debug.Log($"🎯 [Fire Volley] Firing at position {targetPosition}!");
         AudioManager.instance.PlaySFX(13, 0.5f);
 
-        // สร้าง visual effect
         if (fireVolleyEffect != null)
         {
             GameObject volleyFX = Instantiate(fireVolleyEffect.gameObject, targetPosition + Vector3.up * 1f, Quaternion.identity);
@@ -1074,25 +1092,24 @@ public class Archer : Hero
 
         yield return new WaitForSeconds(0.3f);
 
-        // สร้างดาเมจ (เฉพาะ server)
+        // ✅ เปลี่ยนเป็น MagicDamage
         if (HasStateAuthority)
         {
             List<Character> hitEnemies = FindEnemiesInArea(targetPosition, fireVolleyAOERadius, fireVolleyMaxTargets);
 
             foreach (Character enemy in hitEnemies)
             {
-                if (enemy != null )
+                if (enemy != null)
                 {
-                    int damage = Mathf.RoundToInt(AttackDamage * fireVolleyDamageMultiplier);
-                    enemy.TakeDamageFromAttacker(damage, 0, this, DamageType.Normal, false);
+                    int damage = Mathf.RoundToInt(MagicDamage * fireVolleyDamageMultiplier);
+                    enemy.TakeDamageFromAttacker(0, damage, this, DamageType.Magic, false);
 
-                    // มีโอกาส 70% ติด Burn
                     if (Random.Range(0f, 1f) <= fireVolleyBurnChance)
                     {
                         StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
                         if (enemyStatus != null)
                         {
-                            int burnDamagePerTick = fireVolleyBurnDamage + Mathf.RoundToInt(AttackDamage * 0.12f);
+                            int burnDamagePerTick = fireVolleyBurnDamage + Mathf.RoundToInt(MagicDamage * 0.12f);
                             enemyStatus.ApplyBurn(burnDamagePerTick, fireVolleyBurnDuration);
                             Debug.Log($"🔥 Applied Burn to {enemy.CharacterName}!");
                         }
@@ -1100,7 +1117,6 @@ public class Archer : Hero
                 }
             }
 
-            // เพิ่ม Attack Speed ให้ตัวเอง
             HasAttackSpeedBonus = true;
             AttackSpeedBonusEndTime = Time.time + fireVolleyAttackSpeedDuration;
             AttackSpeed += fireVolleyAttackSpeedBonus;
@@ -1140,63 +1156,58 @@ public class Archer : Hero
     }
 
     private IEnumerator ExecuteInfernoRain(Vector3 targetPosition)
+{
+    Debug.Log($"🔥 [INFERNO RAIN] Ultimate activated at {targetPosition}!");
+    AudioManager.instance.PlaySFX(14, 0.5f);
+
+    if (infernoRainEffect != null)
     {
-        Debug.Log($"🔥 [INFERNO RAIN] Ultimate activated at {targetPosition}!");
-        AudioManager.instance.PlaySFX(14, 0.5f);
+        GameObject infernoFX = Instantiate(infernoRainEffect.gameObject, targetPosition + Vector3.up * 1f, Quaternion.identity);
+        Destroy(infernoFX, 5f);
+    }
 
-        // สร้าง visual effect
-        if (infernoRainEffect != null)
+    yield return new WaitForSeconds(0.5f);
+
+    // ✅ เปลี่ยนเป็น MagicDamage
+    if (HasStateAuthority)
+    {
+        List<Character> hitEnemies = FindEnemiesInArea(targetPosition, infernoRainAOERadius, infernoRainMaxTargets);
+
+        foreach (Character enemy in hitEnemies)
         {
-            GameObject infernoFX = Instantiate(infernoRainEffect.gameObject, targetPosition + Vector3.up * 1f, Quaternion.identity);
-            Destroy(infernoFX, 5f);
-        }
-
-        yield return new WaitForSeconds(0.5f);
-
-        // สร้างดาเมจ (เฉพาะ server)
-        if (HasStateAuthority)
-        {
-            List<Character> hitEnemies = FindEnemiesInArea(targetPosition, infernoRainAOERadius, infernoRainMaxTargets);
-
-            foreach (Character enemy in hitEnemies)
+            if (enemy != null)
             {
-                if (enemy != null )
+                int damage = Mathf.RoundToInt(MagicDamage * infernoRainDamageMultiplier);
+
+                bool isCritical = Random.Range(0f, 1f) <= CriticalChance;
+                DamageType damageType = isCritical ? DamageType.Critical : DamageType.Magic;
+
+                if (isCritical)
                 {
-                    int damage = Mathf.RoundToInt(AttackDamage * infernoRainDamageMultiplier);
+                    damage = Mathf.RoundToInt(damage * (1f + CriticalDamageBonus));
+                    Debug.Log($"💥 CRITICAL HIT!");
+                }
 
-                    // Critical chance
-                    bool isCritical = Random.Range(0f, 1f) <= CriticalChance;
-                    DamageType damageType = isCritical ? DamageType.Critical : DamageType.Normal;
+                enemy.TakeDamageFromAttacker(0, damage, this, damageType, false);
 
-                    if (isCritical)
-                    {
-                        damage = Mathf.RoundToInt(damage * (1f + CriticalDamageBonus));
-                        Debug.Log($"💥 CRITICAL HIT!");
-                    }
-
-                    enemy.TakeDamageFromAttacker(damage, 0, this, damageType, false);
-
-                    // 100% ติด Enhanced Burn
-                    StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
-                    if (enemyStatus != null)
-                    {
-                        int burnDamagePerTick = infernoRainEnhancedBurnDamage + Mathf.RoundToInt(AttackDamage * 0.3f);
-                        enemyStatus.ApplyBurn(burnDamagePerTick, infernoRainEnhancedBurnDuration);
-                        Debug.Log($"🔥🔥 Applied Enhanced Burn to {enemy.CharacterName}!");
-                    }
+                StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
+                if (enemyStatus != null)
+                {
+                    int burnDamagePerTick = infernoRainEnhancedBurnDamage + Mathf.RoundToInt(MagicDamage * 0.3f);
+                    enemyStatus.ApplyBurn(burnDamagePerTick, infernoRainEnhancedBurnDuration);
+                    Debug.Log($"🔥🔥 Applied Enhanced Burn to {enemy.CharacterName}!");
                 }
             }
-
-            // สร้าง Fire Ring
-            CreateFireRing(targetPosition);
-
-            // เพิ่ม Evasion ให้ตัวเอง
-            HasEvasionBonus = true;
-            EvasionBonusEndTime = Time.time + infernoRainEvasionDuration;
-            EvasionRate += infernoRainEvasionBonus;
-            Debug.Log($"🌪️ Gained +20% Evasion from Ultimate!");
         }
+
+        CreateFireRing(targetPosition);
+
+        HasEvasionBonus = true;
+        EvasionBonusEndTime = Time.time + infernoRainEvasionDuration;
+        EvasionRate += infernoRainEvasionBonus;
+        Debug.Log($"🌪️ Gained +20% Evasion from Ultimate!");
     }
+}
 
     private void CreateFireRing(Vector3 position)
     {
@@ -1463,12 +1474,16 @@ public class Archer : Hero
 
         return true;
     }
+    // ========== แก้ไข TryAttack - แสดง Attack Range ==========
     public override void TryAttack()
     {
         if (!HasInputAuthority || !IsSpawned) return;
         if (Time.time < nextAttackTime) return;
 
         float effectiveRange = IsInFerrisMode ? AttackRange * ferrisAttackRangeMultiplier : AttackRange;
+
+        // ✅ แสดง Attack Range Indicator
+
         Collider[] enemies = Physics.OverlapSphere(transform.position, effectiveRange, LayerMask.GetMask("Enemy"));
 
         if (enemies.Length > 0)
@@ -1508,6 +1523,9 @@ public class Archer : Hero
                 nextAttackTime = Time.time + finalAttackCooldown;
             }
         }
+
+        // ✅ ซ่อน Attack Range หลัง 0.5 วินาที
+        StartCoroutine(HideAttackRangeAfterDelay(0.5f));
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -1987,5 +2005,24 @@ public class Archer : Hero
         Vector3 textPosition = transform.position + Vector3.up * 1f;
         Color endColor = new Color(0.5f, 0.5f, 0.5f, 1f);
         DamageTextManager.ShowCustomText(textPosition, "Ferris MODE End", endColor, 1.0f);
+    }
+    // ========== เพิ่ม Method สร้าง Attack Range Indicator ==========
+    // ========== แก้ไข CreateAttackRangeIndicator - ไม่สร้าง Auto ==========
+    // ========== แก้ไข CreateAttackRangeIndicator - สร้างวงกลมใน Code ==========
+    
+
+    private IEnumerator HideAttackRangeAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        HideAttackRangeIndicator();
+    }
+
+    private void HideAttackRangeIndicator()
+    {
+        if (attackRangeIndicator != null && isShowingAttackRange)
+        {
+            attackRangeIndicator.SetActive(false);
+            isShowingAttackRange = false;
+        }
     }
 }

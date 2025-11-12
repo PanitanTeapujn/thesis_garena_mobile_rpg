@@ -854,6 +854,9 @@ MonoBehaviour:
     type: 3}
   skillRangeIndicatorMaterial: {fileID: 2100000, guid: 9af8d7c8f940ef848b93ee10f9ee1ed8,
     type: 2}
+  attackRangeIndicatorPrefab: {fileID: 8713481322263856447, guid: 2ee5da25ffa43a342a7b029758749f76,
+    type: 3}
+  attackRangeMaterial: {fileID: 2100000, guid: 4bab0f95134663b4c9c3dd73939c0ff1, type: 2}
   _IsInFerrisMode: 0
   flameArrowAOERadius: 4
   _IsFlameArrowActive: 0
