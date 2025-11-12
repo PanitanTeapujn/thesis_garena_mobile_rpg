@@ -308,6 +308,8 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
+  _IsDebuffImmune: 0
+  _DebuffImmunityDuration: 0
 --- !u!114 &4927847923645176864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -385,7 +387,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4297e199231b094cb05365d7d51903e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dropSettings: {fileID: 11400000, guid: e4b96738aa5e9b747bccf12d2a9365c2, type: 2}
+  dropSettings: {fileID: 11400000, guid: 61bdef634916ddb47ae75b3271af3308, type: 2}
   goldDropEffectPrefab: {fileID: 0}
   gemsDropEffectPrefab: {fileID: 0}
   dropScatterRadius: 2
@@ -406,7 +408,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemDropSettings: {fileID: 11400000, guid: f63571b005f902f4597bea45c632801a, type: 2}
+  itemDropSettings: {fileID: 11400000, guid: 01723f4fee3d85e4f9063c0e66e69448, type: 2}
   collectRange: 10
   dropDelay: 0
   showDropLogs: 1
@@ -514,6 +516,7 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  reflectDamagePercent: 0
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3

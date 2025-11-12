@@ -239,7 +239,10 @@ public class CombatManager : NetworkBehaviour
         {
             AudioManager.instance.PlayEnemyHitSound(character);
         }
-
+        if (attacker != null && totalDamage > 0 && character.ReflectDamagePercent > 0f)
+        {
+            ApplyReflectDamage(attacker, totalDamage, character.ReflectDamagePercent);
+        }
         // Apply lifesteal เฉพาะการโจมตีธรรมดา
         if (attacker != null && totalDamage > 0 && isBasicAttack)
         {
@@ -283,6 +286,34 @@ public class CombatManager : NetworkBehaviour
         {
             HandleDeath();
         }
+    }
+    private void ApplyReflectDamage(Character attacker, int originalDamage, float reflectPercent)
+    {
+        int reflectDamage = Mathf.RoundToInt(originalDamage * reflectPercent);
+
+        if (reflectDamage <= 0) return;
+
+        Debug.Log($"⚡ [Reflect] {character.CharacterName} reflects {reflectDamage} damage back to {attacker.CharacterName}");
+
+        // Apply damage to attacker (ไม่มี life steal, ไม่มี knockback)
+        CombatManager attackerCombat = attacker.GetComponent<CombatManager>();
+        if (attackerCombat != null)
+        {
+            attackerCombat.TakeDamage(reflectDamage, DamageType.Normal, false);
+
+            // แสดง text
+            if (HasStateAuthority)
+            {
+                Vector3 textPosition = attacker.transform.position + Vector3.up * 2.5f;
+                RPC_ShowReflectDamageText(textPosition, reflectDamage);
+            }
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowReflectDamageText(Vector3 position, int damage)
+    {
+        DamageTextManager.ShowCustomText(position, $"⚡ REFLECT {damage}", new Color(1f, 0.3f, 0.3f, 1f), 0.8f);
     }
     public virtual void TakeDamage(int damage, DamageType damageType = DamageType.Normal, bool isCritical = false)
     {

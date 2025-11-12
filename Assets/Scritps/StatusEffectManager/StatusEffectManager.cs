@@ -211,7 +211,9 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== Component References ==========
     private Character character;
     private EquipmentManager equipmentManager;
-
+    [Header("🛡️ Debuff Immunity")]
+    [Networked] public bool IsDebuffImmune { get; set; }
+    [Networked] public float DebuffImmunityDuration { get; set; }
     protected virtual void Awake()
     {
         character = GetComponent<Character>();
@@ -248,7 +250,7 @@ public class StatusEffectManager : NetworkBehaviour
     // แก้ไข ApplyPoison() - เพิ่มการแสดงข้อความ
     public virtual void ApplyPoison(int damagePerTick, float duration)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         float totalResistance = GetMagicalResistance();
         float chanceReduction = totalResistance * 0.6f;
@@ -342,7 +344,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== ⚡ Stun System ==========
     public virtual void ApplyStun(float duration)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         float totalResistance = GetPhysicalResistance();
         float chanceReduction = totalResistance * 0.6f;
@@ -403,7 +405,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== ❄️ Freeze System ==========
     public virtual void ApplyFreeze(float duration)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         // ❄️ ใช้ Magic Armor แทน magicalResistance
         float totalResistance = GetMagicalResistance();
@@ -476,7 +478,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== 🔥 Burn System ==========
     public virtual void ApplyBurn(int damagePerTick, float duration)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         float totalResistance = GetMagicalResistance();
         float chanceReduction = totalResistance * 0.6f;
@@ -565,7 +567,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== 🩸 Bleed System ==========
     public virtual void ApplyBleed(int damagePerTick, float duration)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         float totalResistance = GetMagicalResistance();
         float chanceReduction = totalResistance * 0.6f;
@@ -656,7 +658,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== 🛡️ Armor Break System ==========
     public virtual void ApplyArmorBreak(float duration, float reduction = 0.5f)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         // 🛡️ ใช้ Physical Armor แทน physicalResistance
         float totalResistance = GetPhysicalResistance();
@@ -710,7 +712,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== 👁️ Blind System ==========
     public virtual void ApplyBlind(float duration, float reduction = 0.8f)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         float totalResistance = GetPhysicalResistance();
         float chanceReduction = totalResistance * 0.6f;
@@ -769,7 +771,7 @@ public class StatusEffectManager : NetworkBehaviour
     // ========== 💪 Weakness System ==========
     public virtual void ApplyWeakness(float duration, float reduction = 0.4f)
     {
-        if (!HasStateAuthority) return;
+        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
 
         float totalResistance = GetPhysicalResistance();
         float chanceReduction = totalResistance * 0.6f;
@@ -1212,8 +1214,36 @@ public class StatusEffectManager : NetworkBehaviour
             EvasionAuraDuration -= Runner.DeltaTime;
             if (EvasionAuraDuration <= 0) RemoveEvasionAura();
         }
+        if (IsDebuffImmune)
+        {
+            DebuffImmunityDuration -= Runner.DeltaTime;
+            if (DebuffImmunityDuration <= 0)
+            {
+                RemoveDebuffImmunity();
+            }
+        }
+    }
+    public virtual void ApplyDebuffImmunity(float duration)
+    {
+        if (!HasStateAuthority) return;
+
+        IsDebuffImmune = true;
+        DebuffImmunityDuration = duration;
+
+        Debug.Log($"🛡️ [Debuff Immunity] {character.CharacterName} is immune for {duration}s");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.Stun, true); // ใช้ Stun เป็น visual indicator
     }
 
+    public virtual void RemoveDebuffImmunity()
+    {
+        if (!HasStateAuthority) return;
+
+        IsDebuffImmune = false;
+        DebuffImmunityDuration = 0f;
+
+        Debug.Log($"🛡️ [Debuff Immunity] {character.CharacterName} immunity ended");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.Stun, false);
+    }
     // ========== Update Aura Effects (ตรวจสอบใครอยู่ในรัศมี) ==========
     private void UpdateAuraEffects()
     {

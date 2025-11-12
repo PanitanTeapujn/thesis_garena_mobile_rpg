@@ -151,7 +151,11 @@ public class Character : NetworkBehaviour
     [Header("🧪 Potion Usage")]
     [SerializeField] public float potionCooldown = 1f; // cooldown 1 วินาที
     private float[] lastPotionUseTime = new float[5]; // cooldown แยกแต่ละ slot
+                                                      // ใน Character.cs - เพิ่มใน region Stats
 
+    [Header("🛡️ Reflect Damage")]
+    [SerializeField] private float reflectDamagePercent = 0f;
+    public float ReflectDamagePercent { get { return reflectDamagePercent; } set { reflectDamagePercent = value; } }
     [Header("🔧 Auto-Fix Settings")]
     [SerializeField] private bool enableAutoFixInventory = true; // เปิด/ปิด auto-fix
     [SerializeField] private bool autoFixCompleted = false; // ป้องกันการ fix ซ้ำ
