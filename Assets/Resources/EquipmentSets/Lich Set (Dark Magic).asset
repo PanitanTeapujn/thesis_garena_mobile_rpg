@@ -45,7 +45,7 @@ MonoBehaviour:
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
   - requiredPieces: 4
     bonusEffects:
-    - bonusType: 14
+    - bonusType: 15
       bonusValue: 6
       isPercentage: 0
       bonusDescription: 

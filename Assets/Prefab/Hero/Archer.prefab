@@ -77,7 +77,7 @@ RectTransform:
   m_GameObject: {fileID: 9004255372814543956}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -6.540983}
-  m_LocalScale: {x: 0.7, y: 0.7, z: 1}
+  m_LocalScale: {x: 0.7, y: 0.7, z: 2.79}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 4580049346742683631}
@@ -132,12 +132,12 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 57f2dd1e218c4434d90acb5a8cb1957e, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 1f0da5ef841b12f468b1c7634dc129fe, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 3.4, y: 3.4}
+  m_Size: {x: 5, y: 5}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -854,6 +854,8 @@ MonoBehaviour:
     type: 3}
   skillRangeIndicatorMaterial: {fileID: 2100000, guid: 9af8d7c8f940ef848b93ee10f9ee1ed8,
     type: 2}
+  _IsInFerrisMode: 0
+  flameArrowAOERadius: 4
   _IsFlameArrowActive: 0
   _IsShadowStepping: 0
   _IsInvulnerable: 0

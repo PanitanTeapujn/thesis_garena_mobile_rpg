@@ -341,19 +341,7 @@ public class FireSlime : NetworkEnemy
         Debug.Log($"[Client] Fire attack effect at {position}");
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, attackRadius);
-
-        Gizmos.color = new Color(1f, 1f, 0f, 0.2f);
-        Gizmos.DrawWireSphere(transform.position, stopDistance);
-
-        // 🆕 แสดงตำแหน่งวงกลม
-        Gizmos.color = Color.cyan;
-        Vector3 telegraphPos = new Vector3(transform.position.x, telegraphYOffset, transform.position.z);
-        Gizmos.DrawWireSphere(telegraphPos, 0.2f);
-    }
+    
 
     protected override void RPC_OnDeath()
     {

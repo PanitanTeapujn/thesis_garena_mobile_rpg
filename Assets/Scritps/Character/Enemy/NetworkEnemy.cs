@@ -138,6 +138,9 @@ public class NetworkEnemy : Character
     public bool showDebugInfo = false;
     public bool showPatrolGizmos = true;     // 🆕 แสดง patrol area ใน Scene view
 
+    [Header("🎬 Animation")]
+    private Animator animator;
+    private const string ANIM_ATTACK = "attack";
 
 
     [Header("🎯 Dummy UI")]
@@ -247,7 +250,11 @@ public class NetworkEnemy : Character
             rb.linearDamping = 2.0f; // เพิ่ม drag เพื่อให้หยุดได้เร็วขึ้น
             rb.mass = 5f;   // ลด mass เพื่อให้เคลื่อนที่ได้ง่ายขึ้น
         }
-
+        animator = GetComponent<Animator>();
+        if (animator == null)
+        {
+            Debug.LogWarning($"⚠️ Animator not found on {CharacterName}!");
+        }
 
 
         LevelManager enemyLevel = GetComponent<LevelManager>();
@@ -1641,12 +1648,19 @@ public class NetworkEnemy : Character
     }
 
     // ========== 🎨 Debug Visualization ==========
-   
+
 
     #region // ========== Combat RPCs ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_PerformAttack(PlayerRef targetPlayer)
     {
+        // ✅ เล่น attack animation
+        if (animator != null)
+        {
+            animator.SetTrigger(ANIM_ATTACK);
+            Debug.Log($"🎬 {name} playing attack animation");
+        }
+
         // Find the target hero
         Hero targetHero = null;
         Hero[] heroes = FindObjectsOfType<Hero>();
@@ -1664,11 +1678,8 @@ public class NetworkEnemy : Character
         {
             Debug.Log($"Enemy {name} attempts to attack {targetHero.CharacterName}!");
 
-            // 🎯 ใช้ TakeDamageFromAttacker() แทน TakeDamage() เพื่อให้มีการเช็ค Hit/Miss
+            // ทำดาเมจ
             targetHero.TakeDamageFromAttacker(AttackDamage, MagicDamage, this, DamageType.Normal);
-
-            // 🎯 Status effects จะใส่เฉพาะเมื่อโจมตีโดนเท่านั้น (ย้ายไปใส่หลังจาก hit success)
-            // ลบส่วนนี้ออกจากที่นี่ แล้วย้ายไปใส่ใน OnSuccessfulAttack
         }
     }
 
