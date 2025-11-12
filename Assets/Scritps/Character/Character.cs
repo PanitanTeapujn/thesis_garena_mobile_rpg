@@ -1680,12 +1680,13 @@ public class Character : NetworkBehaviour
         return finalReduction;
     }
 
+    // ใน Character.cs - แทนที่ method เดิม
+
     public virtual float GetEffectiveAttackSpeed()
     {
-        // รวม attack speed bonus เป็น %
         float totalAttackSpeedBonus = 0f;
 
-        // 🆕 ใช้ค่า AttackSpeed ปัจจุบัน (รวม upgrades แล้ว)
+        // Base Attack Speed (จาก upgrades)
         if (characterStats != null)
         {
             float attackSpeedFromUpgrades = this.AttackSpeed - characterStats.attackSpeed;
@@ -1695,13 +1696,13 @@ public class Character : NetworkBehaviour
             }
         }
 
-        // Equipment bonus (เป็น %)
+        // Equipment bonus
         if (equipmentManager != null)
         {
             totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
         }
 
-        // Status effect bonus (เป็น %)
+        // Status effect bonus (Aura)
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
@@ -1709,9 +1710,22 @@ public class Character : NetworkBehaviour
             totalAttackSpeedBonus += auraBonus;
         }
 
-        // ✅ คำนวณ cooldown reduction ด้วย Diminishing Returns
-        float cooldownReduction = CalculateAttackSpeedReduction(totalAttackSpeedBonus);
+        // 🆕 Archer: Attack Speed Stack Bonus (จากการโจมตีปกติ)
+        if (this is Archer archer)
+        {
+            float stackBonus = archer.GetAttackSpeedBonusFromStacks();
+            totalAttackSpeedBonus += stackBonus;
 
+            // 🆕 Skill Attack Speed Bonus (Fire Volley)
+            if (archer.HasAttackSpeedBonusFromSkill)
+            {
+                float skillBonus = archer.AttackSpeedBonusFromSkillAmount * 100f;
+                totalAttackSpeedBonus += skillBonus;
+            }
+        }
+
+        // คำนวณ Diminishing Returns
+        float cooldownReduction = CalculateAttackSpeedReduction(totalAttackSpeedBonus);
 
         return cooldownReduction;
     }
@@ -1742,7 +1756,6 @@ public class Character : NetworkBehaviour
             float baseAttackSpeedFromStats = characterStats.attackSpeed;
             float currentAttackSpeed = this.AttackSpeed; // ค่าปัจจุบัน (รวม upgrades)
             float attackSpeedFromUpgrades = currentAttackSpeed - baseAttackSpeedFromStats;
-
             if (attackSpeedFromUpgrades > 0)
             {
                 totalAttackSpeedBonus += attackSpeedFromUpgrades; // แปลงเป็น %
@@ -1755,7 +1768,21 @@ public class Character : NetworkBehaviour
             totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
         }
 
-        // Status effect bonus (เป็น %)
+        // 🆕 Archer: Attack Speed Stack Bonus (จากการโจมตีปกติ)
+        if (this is Archer archer)
+        {
+            float stackBonus = archer.GetAttackSpeedBonusFromStacks(); // คืนค่าเป็น % แล้ว
+            totalAttackSpeedBonus += stackBonus;
+
+            // 🆕 Archer: Skill Attack Speed Bonus (Fire Volley)
+            if (archer.HasAttackSpeedBonusFromSkill)
+            {
+                float skillBonus = archer.AttackSpeedBonusFromSkillAmount * 100f;
+                totalAttackSpeedBonus += skillBonus;
+            }
+        }
+
+        // Status effect bonus (เป็น %) - Aura
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
@@ -1765,8 +1792,6 @@ public class Character : NetworkBehaviour
 
         // ✅ แปลง % เป็น multiplier สำหรับ UI
         float multiplier = 1f + (totalAttackSpeedBonus / 100f);
-
-
         return multiplier;
     }
 

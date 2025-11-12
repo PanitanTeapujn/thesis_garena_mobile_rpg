@@ -94,7 +94,19 @@ public class Archer : Hero
     private float ferrisAttackRangeMultiplier = 1.5f;
     private float ferrisDoubleShot = 0.40f;
     public float flameArrowAOERadius = 4f;
+    [Header("🌟 Attack Speed Stack System")]
+    [Networked] public int AttackSpeedStacks { get; set; }
+    [Networked] public float AttackSpeedStacksEndTime { get; set; }
+    private const int MAX_ATTACK_SPEED_STACKS = 100;
+    private const float STACK_DURATION = 7f;
+    private const float STACK_BONUS_PER_STACK = 0.01f; // 1% per stack
 
+    [Networked] public bool HasAttackSpeedBonusFromSkill { get; set; }
+    [Networked] public float AttackSpeedBonusFromSkillEndTime { get; set; }
+    [Networked] public float AttackSpeedBonusFromSkillAmount { get; set; }
+    [Networked] public int EagleEyeAttackSpeedStacks { get; set; }
+    [Networked] public float EagleEyeStacksEndTime { get; set; }
+    private bool hasEagleEye = true;
     // ========== Network Properties ==========
     [Networked] public bool IsFlameArrowActive { get; set; }
     [Networked] public bool IsShadowStepping { get; set; }
@@ -111,9 +123,7 @@ public class Archer : Hero
     [Networked] public NetworkObject CurrentFireRing { get; set; }
 
     // Passive tracking
-    [Networked] public int EagleEyeAttackSpeedStacks { get; set; }
-    [Networked] public float EagleEyeStacksEndTime { get; set; }
-    private bool hasEagleEye = true;
+  
 
     protected override void Start()
     {
@@ -158,6 +168,7 @@ public class Archer : Hero
         {
             ProcessTemporaryBuffs();
             ProcessEagleEyeStacks();
+            ProcessAttackSpeedStacks(); // 🆕 เพิ่มใหม่
         }
 
         if (IsInFerrisMode)
@@ -165,26 +176,8 @@ public class Archer : Hero
             DrainFerrisPoints(Runner.DeltaTime);
         }
 
-        // ✅ อัพเดทตำแหน่งวงกลมตามตัวละคร
-        if (isShowingAttackRange && attackRangeIndicator != null)
-        {
-            LineRenderer lineRenderer = attackRangeIndicator.GetComponent<LineRenderer>();
-            if (lineRenderer != null)
-            {
-                int segments = lineRenderer.positionCount;
-                float range = IsInFerrisMode ? AttackRange * ferrisAttackRangeMultiplier : AttackRange;
-                float yOffset = 0.1f;
-
-                for (int i = 0; i < segments; i++)
-                {
-                    float angle = (360f / segments) * i * Mathf.Deg2Rad;
-                    float x = transform.position.x + Mathf.Cos(angle) * range;
-                    float z = transform.position.z + Mathf.Sin(angle) * range;
-
-                    lineRenderer.SetPosition(i, new Vector3(x, transform.position.y + yOffset, z));
-                }
-            }
-        }
+        // อัพเดทตำแหน่งวงกลม
+      
     }
 
     // ========== 💚 Skill 1: Flame Arrow ==========
@@ -738,9 +731,8 @@ public class Archer : Hero
     {
         if (IsInFerrisMode)
         {
-            // ยิงธนูไฟแบบ Flame Arrow
+            // 🔥 ยิงธนูไฟแบบ Flame Arrow
             ShootFlameArrowForward(direction);
-            
         }
         else
         {
@@ -1092,7 +1084,6 @@ public class Archer : Hero
 
         yield return new WaitForSeconds(0.3f);
 
-        // ✅ เปลี่ยนเป็น MagicDamage
         if (HasStateAuthority)
         {
             List<Character> hitEnemies = FindEnemiesInArea(targetPosition, fireVolleyAOERadius, fireVolleyMaxTargets);
@@ -1117,10 +1108,11 @@ public class Archer : Hero
                 }
             }
 
-            HasAttackSpeedBonus = true;
-            AttackSpeedBonusEndTime = Time.time + fireVolleyAttackSpeedDuration;
-            AttackSpeed += fireVolleyAttackSpeedBonus;
-            Debug.Log($"⚡ Gained +15% Attack Speed!");
+            // 🆕 ใช้ Skill Attack Speed Bonus แยกออกจาก Stack System
+            HasAttackSpeedBonusFromSkill = true;
+            AttackSpeedBonusFromSkillEndTime = Time.time + fireVolleyAttackSpeedDuration;
+            AttackSpeedBonusFromSkillAmount = fireVolleyAttackSpeedBonus;
+            Debug.Log($"⚡ Gained +{fireVolleyAttackSpeedBonus * 100f:F0}% Attack Speed from Fire Volley!");
         }
     }
 
@@ -1351,6 +1343,8 @@ public class Archer : Hero
     }
 
     // ========== Helper Functions ==========
+    // ใน Archer.cs - แทนที่ ProcessTemporaryBuffs
+
     private void ProcessTemporaryBuffs()
     {
         // Process Hit Rate Bonus
@@ -1382,12 +1376,12 @@ public class Archer : Hero
             Debug.Log($"🌪️ Move Speed bonus expired");
         }
 
-        // Process Attack Speed Bonus
-        if (HasAttackSpeedBonus && Time.time >= AttackSpeedBonusEndTime)
+        // 🆕 Process Attack Speed Bonus From Skill (แยกจาก Stack)
+        if (HasAttackSpeedBonusFromSkill && Time.time >= AttackSpeedBonusFromSkillEndTime)
         {
-            AttackSpeed -= fireVolleyAttackSpeedBonus;
-            HasAttackSpeedBonus = false;
-            Debug.Log($"⚡ Attack Speed bonus expired");
+            HasAttackSpeedBonusFromSkill = false;
+            AttackSpeedBonusFromSkillAmount = 0f;
+            Debug.Log($"⚡ Attack Speed bonus from skill expired");
         }
 
         // Process Invulnerable
@@ -1625,6 +1619,8 @@ public class Archer : Hero
         }
     }
 
+    // ใน Archer.cs - แทนที่ method เดิม
+
     private IEnumerator DelayedFerrisModeDamage(NetworkObject enemyObject)
     {
         if (enemyObject == null) yield break;
@@ -1651,6 +1647,10 @@ public class Archer : Hero
                 enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
                 enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
 
+                // 🆕 เพิ่ม Stack 2 ครั้ง (เพราะยิง 2 นัด)
+                AddAttackSpeedStack();
+                AddAttackSpeedStack();
+
                 if (!IsInFerrisMode)
                 {
                     GainFerrisPoint(3);
@@ -1661,6 +1661,10 @@ public class Archer : Hero
                 targets[0].TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
                 targets[1].TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
 
+                // 🆕 เพิ่ม Stack 2 ครั้ง
+                AddAttackSpeedStack();
+                AddAttackSpeedStack();
+
                 if (!IsInFerrisMode)
                 {
                     GainFerrisPoint(4);
@@ -1668,7 +1672,6 @@ public class Archer : Hero
             }
         }
     }
-
     private IEnumerator ShootArrowVisual(Transform target, float delay = 0f)
     {
         if (delay > 0f)
@@ -1763,9 +1766,13 @@ public class Archer : Hero
 
         yield return new WaitForSeconds(arrowTravelTime);
 
-        if (enemy != null )
+        if (enemy != null)
         {
             enemy.TakeDamageFromAttacker(AttackDamage, 0, this, DamageType.Normal, true);
+
+            // 🆕 เพิ่ม Attack Speed Stack เมื่อโจมตีปกติโดน
+            AddAttackSpeedStack();
+
             Debug.Log($"🏹 Dealt {AttackDamage} damage");
         }
     }
@@ -1933,6 +1940,7 @@ public class Archer : Hero
         IsInFerrisMode = true;
         accumulatedDrain = 0f;
 
+        // 🆕 ใช้ Attack Speed Aura แทน (ไม่ทับ Skill Bonus)
         statusEffectManager.ApplyAttackSpeedAura(6f, 0.30f, 10f);
         statusEffectManager.ApplyHitRateAura(6f, 0.15f, 10f);
 
@@ -1949,7 +1957,6 @@ public class Archer : Hero
             }
         }
     }
-
     private void ExitFerrisMode()
     {
         if (!HasStateAuthority) return;
@@ -2024,5 +2031,36 @@ public class Archer : Hero
             attackRangeIndicator.SetActive(false);
             isShowingAttackRange = false;
         }
+    }
+    private void ProcessAttackSpeedStacks()
+    {
+        if (AttackSpeedStacks > 0 && Time.time >= AttackSpeedStacksEndTime)
+        {
+            AttackSpeedStacks = 0;
+            Debug.Log($"⚡ [Attack Speed Stacks] {CharacterName} stacks expired");
+        }
+    }
+
+    /// <summary>
+    /// 🆕 เพิ่ม Attack Speed Stack เมื่อโจมตีปกติโดนเป้าหมาย
+    /// </summary>
+    public void AddAttackSpeedStack()
+    {
+        if (!HasStateAuthority) return;
+
+        AttackSpeedStacks = Mathf.Min(AttackSpeedStacks + 1, MAX_ATTACK_SPEED_STACKS);
+        AttackSpeedStacksEndTime = Time.time + STACK_DURATION;
+
+        float totalBonus = AttackSpeedStacks * STACK_BONUS_PER_STACK;
+        Debug.Log($"⚡ [Attack Speed Stack] {CharacterName}: +1 stack → {AttackSpeedStacks}/{MAX_ATTACK_SPEED_STACKS} ({totalBonus * 100f:F0}%)");
+    }
+
+    /// <summary>
+    /// 🆕 คำนวณ Attack Speed จาก Stacks (สำหรับ GetEffectiveAttackSpeed)
+    /// </summary>
+    public float GetAttackSpeedBonusFromStacks()
+    {
+        float stackBonus = AttackSpeedStacks * STACK_BONUS_PER_STACK * 100f; // แปลงเป็น %
+        return stackBonus;
     }
 }
