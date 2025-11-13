@@ -1655,11 +1655,7 @@ public class NetworkEnemy : Character
     private void RPC_PerformAttack(PlayerRef targetPlayer)
     {
         // ✅ เล่น attack animation
-        if (animator != null)
-        {
-            animator.SetTrigger(ANIM_ATTACK);
-            Debug.Log($"🎬 {name} playing attack animation");
-        }
+       
 
         // Find the target hero
         Hero targetHero = null;

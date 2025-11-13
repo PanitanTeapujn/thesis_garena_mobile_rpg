@@ -29,7 +29,9 @@ public class WaterSlime : NetworkEnemy
     private GameObject currentTelegraph;
     private Vector3 patrolCenter;
     private Vector3 currentPatrolTarget;
-
+    private float circleAngle = 0f;
+    private float circleSpeed = 2f; // ความเร็วหมุนรอบ (รอบต่อวินาที)
+    private float circleDistance = 8f; // ระยะห่างจากผู้เล่น
     [Header("🎬 Animation")]
     private Animator animator;
     private const string ANIM_ATTACK = "attack"; // ใช้ animation attack สำหรับ heal
@@ -106,14 +108,22 @@ public class WaterSlime : NetworkEnemy
             }
             else
             {
-                // รอ cooldown - เดิน patrol
-                ProcessMovement();
+                // รอ cooldown - วนรอบผู้เล่น
+                CircleAroundPlayer();
             }
         }
         else
         {
-            // ไม่มีใครต้องการ Heal - เดินวนรอบปกติ
-            ProcessMovement();
+            // ✅ ไม่มีใครต้องการ Heal - วนรอบผู้เล่นแทนการ patrol
+            if (targetTransform != null)
+            {
+                CircleAroundPlayer();
+            }
+            else
+            {
+                // ไม่มีผู้เล่น - เดินวนรอบปกติ
+                ProcessMovement();
+            }
         }
     }
 
@@ -234,9 +244,16 @@ public class WaterSlime : NetworkEnemy
                 RetreatFromPlayer();
                 return;
             }
+
+            // ✅ ถ้าอยู่ในระยะปานกลาง ให้วนรอบ
+            if (distanceToPlayer < detectRange)
+            {
+                CircleAroundPlayer();
+                return;
+            }
         }
 
-        // เดินวนรอบ Patrol
+        // ไม่มีผู้เล่นใกล้ - เดินวนรอบ Patrol
         PatrolMovement();
     }
 
@@ -560,26 +577,68 @@ public class WaterSlime : NetworkEnemy
     }
 
     // ========== Debug Gizmos ==========
-    private void OnDrawGizmosSelected()
+    private void CircleAroundPlayer()
     {
-        // Healing radius
-        Gizmos.color = new Color(0.3f, 0.7f, 1f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, healingRadius);
+        if (targetTransform == null) return;
 
-        // Keep away distance
-        Gizmos.color = new Color(1f, 0.5f, 0f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, keepAwayDistance);
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
 
-        // Patrol radius
-        Gizmos.color = new Color(0f, 1f, 0f, 0.2f);
-        Gizmos.DrawWireSphere(patrolCenter, patrolRadius);
+        // คำนวณตำแหน่งเป้าหมายบนวงกลม
+        circleAngle += circleSpeed * Runner.DeltaTime;
+        if (circleAngle > 360f) circleAngle -= 360f;
 
-        // Current patrol target
-        if (Application.isPlaying)
+        // หาตำแหน่งบนวงกลมรอบผู้เล่น
+        float radians = circleAngle * Mathf.Deg2Rad;
+        Vector3 offset = new Vector3(
+            Mathf.Cos(radians) * circleDistance,
+            0,
+            Mathf.Sin(radians) * circleDistance
+        );
+
+        Vector3 targetPosition = targetTransform.position + offset;
+
+        // เดินไปยังตำแหน่งเป้าหมาย
+        Vector3 direction = (targetPosition - transform.position).normalized;
+        direction.y = 0;
+
+        // ✅ ปรับความเร็วตามระยะห่าง - ถ้าไกลมาก เดินเร็วขึ้น
+        float moveSpeed = MoveSpeed;
+        if (distanceToPlayer > keepAwayDistance * 2f)
         {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(currentPatrolTarget, 0.5f);
-            Gizmos.DrawLine(transform.position, currentPatrolTarget);
+            moveSpeed *= 1.5f; // เดินเร็วขึ้น 50% ถ้าไกลมาก
+        }
+
+        // ✅ เช็คว่าผู้เล่นใกล้เกินไปหรือไม่
+        if (distanceToPlayer < keepAwayDistance)
+        {
+            // ถ้าใกล้เกินไป ให้ถอยออกไปให้ห่างขึ้น
+            Vector3 retreatDirection = (transform.position - targetTransform.position).normalized;
+            retreatDirection.y = 0;
+            direction = retreatDirection;
+        }
+
+        // เช็คกำแพง
+        RaycastHit wallHit;
+        float moveDistance = moveSpeed * Runner.DeltaTime;
+
+        if (!Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            Vector3 newPosition = transform.position + direction * moveDistance;
+
+            if (rb != null)
+            {
+                rb.MovePosition(newPosition);
+            }
+
+            NetworkedPosition = newPosition;
+            FlipCharacterTowardsMovement(direction);
+        }
+        else
+        {
+            // ถ้าเจอกำแพง ให้หมุนไปทางอื่น
+            circleAngle += 45f; // กระโดดมุม 45 องศา
+            if (circleAngle > 360f) circleAngle -= 360f;
         }
     }
 }
