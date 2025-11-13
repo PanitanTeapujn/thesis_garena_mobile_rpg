@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 4927847923645176864}
   - component: {fileID: 4266108146747291927}
   - component: {fileID: 2926414130990135442}
+  - component: {fileID: 2917884676867094988}
   m_Layer: 7
   m_Name: Dummy
   m_TagString: Dummy
@@ -227,6 +228,57 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingMagicDamageAura: 0
+  _MagicDamageAuraDuration: 0
+  _MagicDamageAuraRadius: 0
+  _MagicDamageAuraAmount: 0
+  _IsProvidingCooldownReductionAura: 0
+  _CooldownReductionAuraDuration: 0
+  _CooldownReductionAuraRadius: 0
+  _CooldownReductionAuraAmount: 0
+  _IsProvidingLifeStealAura: 0
+  _LifeStealAuraDuration: 0
+  _LifeStealAuraRadius: 0
+  _LifeStealAuraAmount: 0
+  _IsProvidingAmpDamageAura: 0
+  _AmpDamageAuraDuration: 0
+  _AmpDamageAuraRadius: 0
+  _AmpDamageAuraAmount: 0
+  _IsProvidingMagicArmorAura: 0
+  _MagicArmorAuraDuration: 0
+  _MagicArmorAuraRadius: 0
+  _MagicArmorAuraAmount: 0
+  _IsProvidingHealthRegenAura: 0
+  _HealthRegenAuraDuration: 0
+  _HealthRegenAuraRadius: 0
+  _HealthRegenAuraAmount: 0
+  _IsProvidingManaRegenAura: 0
+  _ManaRegenAuraDuration: 0
+  _ManaRegenAuraRadius: 0
+  _ManaRegenAuraAmount: 0
+  _IsProvidingHitRateAura: 0
+  _HitRateAuraDuration: 0
+  _HitRateAuraRadius: 0
+  _HitRateAuraAmount: 0
+  _IsProvidingEvasionAura: 0
+  _EvasionAuraDuration: 0
+  _EvasionAuraRadius: 0
+  _EvasionAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
+  _ReceivedMagicDamageBonus: 0
+  _ReceivedCooldownReductionBonus: 0
+  _ReceivedLifeStealBonus: 0
+  _ReceivedAmpDamageBonus: 0
+  _ReceivedMagicArmorBonus: 0
+  _ReceivedHealthRegenBonus: 0
+  _ReceivedManaRegenBonus: 0
+  _ReceivedHitRateBonus: 0
+  _ReceivedEvasionBonus: 0
   _IsProvidingAttackSpeedAura: 0
   _AttackSpeedAuraDuration: 0
   _AttackSpeedAuraRadius: 0
@@ -251,12 +303,8 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
-  _ReceivedAttackSpeedBonus: 0
-  _ReceivedDamageBonus: 0
-  _ReceivedMoveSpeedBonus: 0
-  _ReceivedProtectionBonus: 0
-  _ReceivedArmorBonus: 0
-  _ReceivedCriticalBonus: 0
+  _IsDebuffImmune: 0
+  _DebuffImmunityDuration: 0
 --- !u!114 &4927847923645176864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -379,9 +427,36 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  reflectDamagePercent: 0
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
+  knockbackForce: 5
+  knockbackDuration: 0.3
+  knockbackCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _IsDead:
     _value: 0
   _NetworkedPosition: {x: 0, y: 0, z: 0}
@@ -414,6 +489,10 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  wallDetectionDistance: 1
   useCircling: 1
   circlingSpeed: 0.5
   isCollidingWithPlayer: 0
@@ -426,3 +505,25 @@ MonoBehaviour:
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: 0}
   ItemDrop: {fileID: 0}
+  useAdvancedAI: 1
+  behaviorChangeInterval: 3
+  circleRadius: 3
+  strafeSpeed: 0.7
+  retreatChance: 20
+  circleChance: 40
+  rushChance: 40
+--- !u!114 &2917884676867094988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be349c48670b6fa48b90f5d34ba68977, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyTag: 6
+  displayName: 
+  description: 

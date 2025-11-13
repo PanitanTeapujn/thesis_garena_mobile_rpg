@@ -70,7 +70,33 @@ public class BossSlime : NetworkEnemy
     private List<GameObject> activeSpikes = new List<GameObject>(); // 🆕 เก็บ spike objects
     private Vector3 originalPosition;
     private List<Hero> hitHeroes = new List<Hero>();
+    [Header("👻 Minion Summoning System")]
+    [Tooltip("ลิสต์ลูกน้องที่สามารถเสกได้")]
+    [SerializeField] private NetworkEnemy[] minionPrefabs; // ✅ เปลี่ยนเป็น Array
 
+    [Tooltip("จำนวนลูกน้องสูงสุดที่มีได้พร้อมกัน")]
+    [Range(1, 10)]
+    [SerializeField] private int maxMinions = 3;
+
+    [Tooltip("ระยะห่างจาก Boss ที่ลูกน้องจะถูกเสก")]
+    [Range(3f, 10f)]
+    [SerializeField] private float summonRadius = 5f;
+
+    [Tooltip("เสกครั้งแรกตอน Phase 2 หรือไม่")]
+    [SerializeField] private bool summonOnPhase2 = true;
+
+    [Tooltip("จำนวนลูกน้องที่จะเสกตอน Phase 2")]
+    [Range(1, 5)]
+    [SerializeField] private int phase2SummonCount = 2;
+
+    [Header("🎨 Summoning Effects")]
+    [SerializeField] private GameObject summonEffectPrefab;
+    [SerializeField] private ParticleSystem summonParticles;
+
+    // Private variables
+    private EnemySpawner enemySpawner;
+    private List<NetworkEnemy> summonedMinions = new List<NetworkEnemy>(); // ✅ เปลี่ยนชื่อ
+    private bool hasSpawnedPhase2Minions = false;
     private enum BossPhase
     {
         Phase1,
@@ -99,6 +125,8 @@ public class BossSlime : NetworkEnemy
         CurrentPhase = BossPhase.Phase1;
         originalPosition = transform.position;
         animator = GetComponent<Animator>();
+        enemySpawner = FindObjectOfType<EnemySpawner>();
+
         if (animator == null)
         {
             Debug.LogWarning($"⚠️ Animator not found on {CharacterName}!");
@@ -130,6 +158,8 @@ public class BossSlime : NetworkEnemy
         if (HasStateAuthority && !IsDead)
         {
             CheckPhaseTransition();
+            CleanupDeadMinions();
+
             ProcessBossAI();
         }
     }
@@ -144,6 +174,13 @@ public class BossSlime : NetworkEnemy
             hasEnteredPhase2 = true;
             CurrentPhase = BossPhase.Phase2;
             Debug.Log($"🐲 {CharacterName}: PHASE 2 ACTIVATED!");
+
+            // ✅ เสกลูกน้องทันที
+            if (summonOnPhase2 && !hasSpawnedPhase2Minions)
+            {
+                hasSpawnedPhase2Minions = true;
+                StartCoroutine(SummonMinions(phase2SummonCount));
+            }
 
             // บังคับใช้ Ultimate ทันที
             if (!isPerformingSkill)
@@ -165,6 +202,23 @@ public class BossSlime : NetworkEnemy
         }
 
         float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+
+        // ✅ เพิ่ม: เช็คว่าต้องเสกลูกน้องเพิ่มหรือไม่ (Phase 2 เท่านั้น)
+        if (CurrentPhase == BossPhase.Phase2)
+        {
+            int currentMinions = GetActiveMinionCount();
+            if (currentMinions < maxMinions)
+            {
+                // สุ่มโอกาส 20% ที่จะเสกลูกน้องแทนการใช้สกิล
+                if (Random.Range(0f, 100f) < 20f && Runner.SimulationTime >= NextSkillTime)
+                {
+                    Debug.Log($"[BossSlime] Summoning more minions ({currentMinions}/{maxMinions})");
+                    StartCoroutine(SummonMinions(1)); // เสกทีละ 1 ตัว
+                    NextSkillTime = Runner.SimulationTime + 8f; // Cooldown 8 วินาที
+                    return;
+                }
+            }
+        }
 
         // ตรวจสอบว่าพร้อมใช้สกิลหรือยัง
         if (Runner.SimulationTime >= NextSkillTime && distanceToPlayer <= 15f)
@@ -1218,13 +1272,30 @@ public class BossSlime : NetworkEnemy
     {
         ClearAllTelegraphs();
         ClearAllSpikes(); // 🆕 เพิ่มบรรทัดนี้
+        DestroyAllMinions();
+
         if (currentTelegraph != null)
         {
             Destroy(currentTelegraph);
         }
         base.RPC_OnDeath();
     }
+    private void DestroyAllMinions()
+    {
+        if (!HasStateAuthority) return;
 
+        Debug.Log($"[BossSlime] Boss died - Destroying {summonedMinions.Count} minions");
+
+        foreach (NetworkEnemy minion in summonedMinions)
+        {
+            if (minion != null && minion.Object != null)
+            {
+                Runner.Despawn(minion.Object);
+            }
+        }
+
+        summonedMinions.Clear();
+    }
     // ========== Debug Gizmos ==========
     private void OnDrawGizmosSelected()
     {
@@ -1242,6 +1313,135 @@ public class BossSlime : NetworkEnemy
             Gizmos.DrawLine(transform.position, transform.position + direction * dashDistance);
         }
     }
+    private IEnumerator SummonMinions(int count)
+    {
+        if (minionPrefabs == null || minionPrefabs.Length == 0)
+        {
+            Debug.LogError("[BossSlime] ❌ No minion prefabs assigned!");
+            yield break;
+        }
+
+        if (enemySpawner == null)
+        {
+            Debug.LogError("[BossSlime] ❌ EnemySpawner not found!");
+            yield break;
+        }
+
+        Debug.Log($"👻 [BossSlime] Summoning {count} minions...");
+
+        // Play summoning animation
+        if (animator != null)
+        {
+            animator.SetTrigger("attack");
+        }
+
+        // Show summoning effect at Boss position
+        if (summonEffectPrefab != null)
+        {
+            GameObject summonFX = Instantiate(summonEffectPrefab, transform.position, Quaternion.identity);
+            Destroy(summonFX, 2f);
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        for (int i = 0; i < count; i++)
+        {
+            // ✅ สุ่มเลือก minion prefab
+            NetworkEnemy randomMinionPrefab = minionPrefabs[Random.Range(0, minionPrefabs.Length)];
+
+            if (randomMinionPrefab == null)
+            {
+                Debug.LogWarning($"[BossSlime] ⚠️ Minion prefab at index is null!");
+                continue;
+            }
+
+            // สุ่มตำแหน่งรอบๆ Boss
+            Vector3 randomOffset = Random.insideUnitCircle.normalized * summonRadius;
+            Vector3 spawnPosition = transform.position + new Vector3(randomOffset.x, 0f, randomOffset.y);
+
+            // ✅ ใช้ SpawnSummonedEnemy() จาก EnemySpawner
+            NetworkEnemy minion = enemySpawner.SpawnSummonedEnemy(randomMinionPrefab, spawnPosition);
+
+            if (minion != null)
+            {
+                summonedMinions.Add(minion);
+
+                // Play spawn particle
+                if (summonParticles != null)
+                {
+                    ParticleSystem particles = Instantiate(summonParticles, spawnPosition, Quaternion.identity);
+                    Destroy(particles.gameObject, 2f);
+                }
+
+                Debug.Log($"✅ [BossSlime] Summoned {minion.CharacterName} ({i + 1}/{count}) at {spawnPosition}");
+            }
+
+            // Delay ระหว่างการเสก
+            if (i < count - 1)
+            {
+                yield return new WaitForSeconds(0.3f);
+            }
+        }
+
+        Debug.Log($"🎉 [BossSlime] Summoning complete! Total minions: {summonedMinions.Count}");
+
+        // Show message to all clients
+        RPC_ShowSummonMessage(count);
+    }
+
+    /// <summary>
+    /// ลบลูกน้องที่ตายออกจาก List
+    /// </summary>
+    private void CleanupDeadMinions()
+    {
+        for (int i = summonedMinions.Count - 1; i >= 0; i--)
+        {
+            if (summonedMinions[i] == null || summonedMinions[i].IsDead)
+            {
+                Debug.Log($"[BossSlime] Minion died - Remaining: {summonedMinions.Count - 1}");
+                summonedMinions.RemoveAt(i);
+            }
+        }
+    }
+
+    /// <summary>
+    /// เช็คว่ามีลูกน้องเหลืออยู่กี่ตัว
+    /// </summary>
+    private int GetActiveMinionCount()
+    {
+        CleanupDeadMinions();
+        return summonedMinions.Count;
+    }
+
+    /// <summary>
+    /// เสกลูกน้องเพิ่มถ้ามีน้อยกว่าจำนวนสูงสุด (สามารถเรียกใช้ใน AI Loop)
+    /// </summary>
+    private void TrySummonMoreMinions()
+    {
+        if (!HasStateAuthority) return;
+        if (minionPrefabs == null || minionPrefabs.Length == 0) return;
+        if (enemySpawner == null) return;
+
+        int currentCount = GetActiveMinionCount();
+        int neededCount = maxMinions - currentCount;
+
+        if (neededCount > 0 && !isPerformingSkill)
+        {
+            Debug.Log($"[BossSlime] Need to summon {neededCount} more minions");
+            StartCoroutine(SummonMinions(neededCount));
+        }
+    }
+
+    /// <summary>
+    /// RPC แสดงข้อความเสกลูกน้อง
+    /// </summary>
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowSummonMessage(int count)
+    {
+        Debug.Log($"💥 [BossSlime] Boss summoned {count} minions!");
+        // TODO: แสดง UI notification ให้ผู้เล่น
+    }
+
 }
 // ✅ เพิ่ม Helper Class สำหรับเก็บข้อมูล Spike
 [System.Serializable]

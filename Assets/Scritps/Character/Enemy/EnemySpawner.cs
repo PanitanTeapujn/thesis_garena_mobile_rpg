@@ -111,7 +111,8 @@ public class EnemySpawner : NetworkBehaviour
     private bool hasDummySpawned = false;
     private float lastDummyCheckTime = 0f;
     private const float DUMMY_CHECK_INTERVAL = 10f;
-
+    [Header("🏷️ Enemy Tag Filter")]
+    private EnemyTag[] requiredEnemyTags = new EnemyTag[] { };
     // ========== Unity Lifecycle ==========
     private void Start()
     {
@@ -141,6 +142,7 @@ public class EnemySpawner : NetworkBehaviour
         {
             requiredKillsForStage = 10;
         }
+        LoadRequiredEnemyTags();
 
         // ✅ รอ 6 วินาทีก่อน spawn ครั้งแรก
         firstSpawnTime = Time.time + 6f;
@@ -523,19 +525,86 @@ public class EnemySpawner : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        currentSessionKills++;
+        // ✅ เช็ค Enemy Tag
+        EnemyTagComponent tagComponent = deadEnemy.GetComponent<EnemyTagComponent>();
 
-        if (showDebugInfo)
+        bool shouldCount = false;
+        EnemyTag enemyTag = EnemyTag.Normal; // default
+
+        if (tagComponent != null)
         {
-            Debug.Log($"🔥 Enemy killed: {enemyTypeName} | Total: {currentSessionKills}/{requiredKillsForStage}");
+            enemyTag = tagComponent.enemyTag;
+            shouldCount = DoesEnemyCountForStage(enemyTag);
+        }
+        else
+        {
+            // ถ้าไม่มี Component ให้ถือว่าเป็น Normal
+            shouldCount = DoesEnemyCountForStage(EnemyTag.Normal);
+
+            if (showDebugInfo)
+            {
+                Debug.LogWarning($"⚠️ {enemyTypeName} has no EnemyTagComponent! Treating as Normal");
+            }
         }
 
+        // ✅ นับเฉพาะที่ shouldCount = true
+        if (shouldCount)
+        {
+            currentSessionKills++;
+
+            if (showDebugInfo || showSpawnInfo)
+            {
+                Debug.Log($"🔥 Enemy killed: {enemyTypeName} [{enemyTag}] | Total: {currentSessionKills}/{requiredKillsForStage}");
+            }
+        }
+        else
+        {
+            if (showDebugInfo || showSpawnInfo)
+            {
+                Debug.Log($"💨 Enemy killed (not counted): {enemyTypeName} [{enemyTag}] | Total: {currentSessionKills}/{requiredKillsForStage}");
+            }
+        }
+
+        // อัปเดต StageRewardTracker
         RPC_UpdateStageRewardTracker(enemyTypeName);
 
+        // เช็คการผ่านด่าน
         if (currentSessionKills >= requiredKillsForStage && !isStageCompleted)
         {
             ForceCheckStageCompletion();
         }
+    }
+    public NetworkEnemy SpawnSummonedEnemy(NetworkEnemy prefab, Vector3 position)
+    {
+        if (!HasStateAuthority)
+        {
+            Debug.LogWarning("[EnemySpawner] Only Host can spawn summoned enemies!");
+            return null;
+        }
+
+        NetworkEnemy summonedEnemy = Runner.Spawn(prefab, position, Quaternion.identity, PlayerRef.None);
+
+        if (summonedEnemy != null)
+        {
+            // ตั้ง Tag เป็น Summoned
+            EnemyTagComponent tagComponent = summonedEnemy.GetComponent<EnemyTagComponent>();
+
+            if (tagComponent == null)
+            {
+                tagComponent = summonedEnemy.gameObject.AddComponent<EnemyTagComponent>();
+            }
+
+            tagComponent.SetTag(EnemyTag.Summoned);
+
+            activeEnemies.Add(summonedEnemy);
+
+            if (showDebugInfo)
+            {
+                Debug.Log($"👻 Boss summoned: {prefab.name} [Tag: Summoned - Won't count]");
+            }
+        }
+
+        return summonedEnemy;
     }
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -813,4 +882,74 @@ public class EnemySpawner : NetworkBehaviour
 
         Debug.Log("[EnemySpawner] All enemies cleared");
     }
+    private void LoadRequiredEnemyTags()
+    {
+        string normalizedSceneName = currentStageName.ToLower();
+        string tagsString = PlayerPrefs.GetString($"RequiredTags_{normalizedSceneName}", "");
+
+        if (string.IsNullOrEmpty(tagsString))
+        {
+            requiredEnemyTags = new EnemyTag[] { };
+            Debug.Log($"[EnemySpawner] No specific tags - counting all combat enemies");
+        }
+        else
+        {
+            string[] tagNames = tagsString.Split(',');
+            List<EnemyTag> tagList = new List<EnemyTag>();
+
+            foreach (string tagName in tagNames)
+            {
+                try
+                {
+                    EnemyTag tag = (EnemyTag)System.Enum.Parse(typeof(EnemyTag), tagName.Trim());
+                    tagList.Add(tag);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"[EnemySpawner] Failed to parse tag: {tagName}");
+                }
+            }
+
+            requiredEnemyTags = tagList.ToArray();
+            Debug.Log($"[EnemySpawner] Loaded tags: {string.Join(", ", requiredEnemyTags)}");
+        }
+    }
+
+    /// <summary>
+    /// แสดง Required Tags เป็น String
+    /// </summary>
+    private string GetRequiredTagsString()
+    {
+        if (requiredEnemyTags == null || requiredEnemyTags.Length == 0)
+        {
+            return "All Combat Enemies (Normal, Boss, MiniBoss, Elite)";
+        }
+
+        return string.Join(", ", requiredEnemyTags);
+    }
+
+    /// <summary>
+    /// เช็คว่า Enemy Tag นี้นับในด่านนี้หรือไม่
+    /// </summary>
+    private bool DoesEnemyCountForStage(EnemyTag tag)
+    {
+        // ถ้าไม่ได้กำหนด tags = นับทุกตัวที่เป็น combat enemy
+        if (requiredEnemyTags == null || requiredEnemyTags.Length == 0)
+        {
+            return tag == EnemyTag.Normal ||
+                   tag == EnemyTag.Boss ||
+                   tag == EnemyTag.MiniBoss ||
+                   tag == EnemyTag.Elite;
+        }
+
+        // ถ้ากำหนดไว้ = ต้องตรงกับที่กำหนดเท่านั้น
+        foreach (EnemyTag requiredTag in requiredEnemyTags)
+        {
+            if (tag == requiredTag)
+                return true;
+        }
+
+        return false;
+    }
+
 }

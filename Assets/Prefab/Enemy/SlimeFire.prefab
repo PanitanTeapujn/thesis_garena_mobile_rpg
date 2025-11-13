@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: -6063038309682278596}
   - component: {fileID: 3146736404170834553}
   - component: {fileID: 7364249741495068857}
+  - component: {fileID: 1439882736733460204}
   m_Layer: 7
   m_Name: SlimeFire
   m_TagString: SlimeFire
@@ -233,6 +234,57 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingMagicDamageAura: 0
+  _MagicDamageAuraDuration: 0
+  _MagicDamageAuraRadius: 0
+  _MagicDamageAuraAmount: 0
+  _IsProvidingCooldownReductionAura: 0
+  _CooldownReductionAuraDuration: 0
+  _CooldownReductionAuraRadius: 0
+  _CooldownReductionAuraAmount: 0
+  _IsProvidingLifeStealAura: 0
+  _LifeStealAuraDuration: 0
+  _LifeStealAuraRadius: 0
+  _LifeStealAuraAmount: 0
+  _IsProvidingAmpDamageAura: 0
+  _AmpDamageAuraDuration: 0
+  _AmpDamageAuraRadius: 0
+  _AmpDamageAuraAmount: 0
+  _IsProvidingMagicArmorAura: 0
+  _MagicArmorAuraDuration: 0
+  _MagicArmorAuraRadius: 0
+  _MagicArmorAuraAmount: 0
+  _IsProvidingHealthRegenAura: 0
+  _HealthRegenAuraDuration: 0
+  _HealthRegenAuraRadius: 0
+  _HealthRegenAuraAmount: 0
+  _IsProvidingManaRegenAura: 0
+  _ManaRegenAuraDuration: 0
+  _ManaRegenAuraRadius: 0
+  _ManaRegenAuraAmount: 0
+  _IsProvidingHitRateAura: 0
+  _HitRateAuraDuration: 0
+  _HitRateAuraRadius: 0
+  _HitRateAuraAmount: 0
+  _IsProvidingEvasionAura: 0
+  _EvasionAuraDuration: 0
+  _EvasionAuraRadius: 0
+  _EvasionAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
+  _ReceivedMagicDamageBonus: 0
+  _ReceivedCooldownReductionBonus: 0
+  _ReceivedLifeStealBonus: 0
+  _ReceivedAmpDamageBonus: 0
+  _ReceivedMagicArmorBonus: 0
+  _ReceivedHealthRegenBonus: 0
+  _ReceivedManaRegenBonus: 0
+  _ReceivedHitRateBonus: 0
+  _ReceivedEvasionBonus: 0
   _IsProvidingAttackSpeedAura: 0
   _AttackSpeedAuraDuration: 0
   _AttackSpeedAuraRadius: 0
@@ -257,12 +309,8 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
-  _ReceivedAttackSpeedBonus: 0
-  _ReceivedDamageBonus: 0
-  _ReceivedMoveSpeedBonus: 0
-  _ReceivedProtectionBonus: 0
-  _ReceivedArmorBonus: 0
-  _ReceivedCriticalBonus: 0
+  _IsDebuffImmune: 0
+  _DebuffImmunityDuration: 0
 --- !u!114 &4927847923645176864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -447,6 +495,7 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  reflectDamagePercent: 0
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
@@ -567,3 +616,18 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1439882736733460204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be349c48670b6fa48b90f5d34ba68977, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyTag: 0
+  displayName: 
+  description: 

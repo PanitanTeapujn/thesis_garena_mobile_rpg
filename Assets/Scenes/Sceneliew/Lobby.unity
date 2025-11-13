@@ -55264,6 +55264,7 @@ MonoBehaviour:
       sceneToLoad: PlayRoom1
       selectButton: {fileID: 882755276}
       requiredEnemyKills: 15
+      requiredEnemyTags: 
       requiredPreviousStages: []
       isFirstStage: 1
       stageDescription: kill10 slime
@@ -55272,6 +55273,7 @@ MonoBehaviour:
       sceneToLoad: Playroom2
       selectButton: {fileID: 430931129}
       requiredEnemyKills: 15
+      requiredEnemyTags: 
       requiredPreviousStages:
       - PlayRoom1
       isFirstStage: 0
@@ -55281,6 +55283,7 @@ MonoBehaviour:
       sceneToLoad: Playroom3
       selectButton: {fileID: 959851598}
       requiredEnemyKills: 20
+      requiredEnemyTags: 
       requiredPreviousStages:
       - PlayRoom2
       isFirstStage: 0
@@ -55290,6 +55293,7 @@ MonoBehaviour:
       sceneToLoad: Playroom4
       selectButton: {fileID: 1989910536}
       requiredEnemyKills: 1
+      requiredEnemyTags: 01000000
       requiredPreviousStages:
       - PlayRoom3
       isFirstStage: 0
@@ -55302,6 +55306,7 @@ MonoBehaviour:
       sceneToLoad: Snow2_1
       selectButton: {fileID: 1636583853}
       requiredEnemyKills: 20
+      requiredEnemyTags: 
       requiredPreviousStages: []
       isFirstStage: 1
       stageDescription: Snow2_1

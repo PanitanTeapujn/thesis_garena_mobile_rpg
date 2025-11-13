@@ -12,6 +12,10 @@ public class SubStagePanel
 
     [Header("🎯 Progression Settings")]
     public int requiredEnemyKills;
+    [Header("🏷️ Enemy Tag Requirements")]
+    [Tooltip("ระบุประเภทศัตรูที่ต้องกำจัด (ถ้าเว้นว่าง = นับทุก Enemy)")]
+
+    public EnemyTag[] requiredEnemyTags = new EnemyTag[] { };
     public string[] requiredPreviousStages;
     public bool isFirstStage = false;
 
@@ -38,12 +42,44 @@ public class StageSelectionManager : MonoBehaviour
 
         [Header("🎯 Progression Settings")]
         public int requiredEnemyKills;
+        [Header("🏷️ Enemy Tag Requirements")]
+        [Tooltip("ระบุประเภทศัตรูที่ต้องกำจัด (ถ้าเว้นว่าง = นับทุก Enemy)")]
+        public EnemyTag[] requiredEnemyTags = new EnemyTag[] { };
         public string[] requiredPreviousStages;
         public bool isFirstStage = false;
 
         [Header("📋 Stage Detail")]
         [TextArea(3, 6)]
         public string stageDescription = ""; // คำอธิบายด่าน
+
+        public bool DoesTagCountForThisStage(EnemyTag tag)
+        {
+            if (requiredEnemyTags == null || requiredEnemyTags.Length == 0)
+            {
+                return tag == EnemyTag.Normal ||
+                       tag == EnemyTag.Boss ||
+                       tag == EnemyTag.MiniBoss ||
+                       tag == EnemyTag.Elite;
+            }
+
+            foreach (EnemyTag requiredTag in requiredEnemyTags)
+            {
+                if (tag == requiredTag)
+                    return true;
+            }
+
+            return false;
+        }
+        public string GetRequirementDescription()
+        {
+            if (requiredEnemyTags == null || requiredEnemyTags.Length == 0)
+            {
+                return $"Defeat {requiredEnemyKills} enemies";
+            }
+
+            string tagNames = string.Join(", ", System.Array.ConvertAll(requiredEnemyTags, t => t.ToString()));
+            return $"Defeat {requiredEnemyKills} {tagNames}";
+        }
     }
 
     [System.Serializable]
@@ -368,10 +404,8 @@ public class StageSelectionManager : MonoBehaviour
 
         SubStagePanel selectedSubStage = mainStagePanels[mainIndex].subStagePanels[subIndex];
 
-        // อัปเดต Status Panel
         UpdateStatusDisplay(selectedSubStage);
 
-        // ✅ เช็คว่าปลดล็อกแล้วหรือยัง
         if (!IsSubStageUnlocked(selectedSubStage))
         {
             Debug.LogWarning($"SubStage {selectedSubStage.sceneToLoad} is still locked!");
@@ -386,11 +420,36 @@ public class StageSelectionManager : MonoBehaviour
 
         string normalizedSceneName = selectedSubStage.sceneToLoad.ToLower();
         PlayerPrefs.SetInt($"RequiredKills_{normalizedSceneName}", selectedSubStage.requiredEnemyKills);
+
+        // ✅ เพิ่มบรรทัดนี้
+        SaveEnemyTagRequirements(selectedSubStage);
+
         PlayerPrefs.Save();
 
         Debug.Log($"Selected sub-stage: {selectedSubStage.subStageName} -> {selectedSubStage.sceneToLoad}");
+        Debug.Log($"Enemy Tag Requirements: {selectedSubStage.GetRequirementDescription()}"); // ✅ เพิ่ม
 
         OnStageSelected?.Invoke(selectedSubStage.sceneToLoad);
+    }
+    void SaveEnemyTagRequirements(SubStagePanel subStage)
+    {
+        string normalizedSceneName = subStage.sceneToLoad.ToLower();
+
+        if (subStage.requiredEnemyTags == null || subStage.requiredEnemyTags.Length == 0)
+        {
+            // ไม่มีการระบุ Tag = นับทุกตัว
+            PlayerPrefs.SetString($"RequiredTags_{normalizedSceneName}", "");
+            Debug.Log($"💾 No specific tags for {normalizedSceneName} - will count all combat enemies");
+        }
+        else
+        {
+            // แปลง EnemyTag[] เป็น string
+            string[] tagNames = System.Array.ConvertAll(subStage.requiredEnemyTags, t => t.ToString());
+            string tagsString = string.Join(",", tagNames);
+            PlayerPrefs.SetString($"RequiredTags_{normalizedSceneName}", tagsString);
+
+            Debug.Log($"💾 Saved required tags for {normalizedSceneName}: {tagsString}");
+        }
     }
     void UpdateStatusDisplay(SubStagePanel subStage)
     {
@@ -399,25 +458,24 @@ public class StageSelectionManager : MonoBehaviour
         bool isUnlocked = IsSubStageUnlocked(subStage);
         bool isCompleted = StageProgressManager.IsStageCompleted(subStage.sceneToLoad);
 
-        // ✅ Debug
-        Debug.Log($"[StatusDisplay] Stage: {subStage.sceneToLoad}, Completed: {isCompleted}, Unlocked: {isUnlocked}");
-
-        // ชื่อด่าน
         if (statusStageNameText != null)
         {
             statusStageNameText.text = subStage.subStageName;
         }
 
-        // คำอธิบายด่าน
         if (statusDescriptionText != null)
         {
             if (!string.IsNullOrEmpty(subStage.stageDescription))
-                statusDescriptionText.text = subStage.stageDescription;
+            {
+                // ✅ เพิ่มข้อมูลเงื่อนไข
+                statusDescriptionText.text = subStage.stageDescription + "\n\n" + subStage.GetRequirementDescription();
+            }
             else
-                statusDescriptionText.text = "No description available.";
+            {
+                statusDescriptionText.text = subStage.GetRequirementDescription();
+            }
         }
 
-        // สถานะด่าน
         if (statusText != null)
         {
             if (isCompleted)
@@ -437,7 +495,6 @@ public class StageSelectionManager : MonoBehaviour
             }
         }
 
-        // ไอคอนสถานะ
         if (statusIcon != null)
         {
             if (isCompleted)
@@ -448,6 +505,7 @@ public class StageSelectionManager : MonoBehaviour
                 statusIcon.color = Color.black;
         }
     }
+
     // ✅ เพิ่ม Coroutine ใหม่
     private System.Collections.IEnumerator WaitForDataThenUpdateStages()
     {
