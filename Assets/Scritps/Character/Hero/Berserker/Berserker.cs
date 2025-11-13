@@ -189,7 +189,7 @@ public class Berserker : Hero
         // Visual effect
         RPC_ShowBerserkBurst();
         RPC_ShowBerserkAura(true);
-
+        ResetAllSkillCooldowns();
         // เปลี่ยน skill icons
         if (HasInputAuthority)
         {
@@ -316,9 +316,13 @@ public class Berserker : Hero
     /// <summary>
     /// คำนวณ Base Damage สำหรับ Berserker พร้อม Rage Bonus
     /// </summary>
+    // ใน Berserker.cs - แก้ไข CalculateBerserkerBaseDamage
+
     private int CalculateBerserkerBaseDamage()
     {
-        int baseDamage = AttackDamage;
+        // ✅ เพิ่ม Level Scaling (เหมือน Assassin)
+        int levelBonus = GetCurrentLevel() * 5; // +5 per level (เพราะ Berserker เน้น Physical)
+        int baseDamage = AttackDamage + levelBonus;
 
         // Apply Rage bonus
         var (attackBonus, _) = GetRageBonus();
@@ -329,6 +333,8 @@ public class Berserker : Hero
         {
             baseDamage = Mathf.RoundToInt(baseDamage * 1.5f); // +50% in Berserk
         }
+
+        Debug.Log($"🪓 [Damage Calc] ATK={AttackDamage} + Lv{GetCurrentLevel()}×5 = {baseDamage} (Rage: {attackBonus:P0}, Berserk: {IsInBerserkMode})");
 
         return baseDamage;
     }
@@ -2004,6 +2010,18 @@ public class Berserker : Hero
         // คืนตำแหน่งกล้องกลับเดิม
         mainCam.transform.position = originalPos;
     }
+    private void ResetAllSkillCooldowns()
+    {
+        if (!HasStateAuthority) return;
 
+        nextSkill1Time = 0f;
+        nextSkill2Time = 0f;
+        nextSkill3Time = 0f;
+        nextSkill4Time = 0f;
+
+        Debug.Log($"🌙 [Shadow Mode] All skill cooldowns RESET! Ready for combo!");
+
+        // แจ้ง UI
+    }
     #endregion
 }
