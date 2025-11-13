@@ -349,7 +349,7 @@ public class Archer : Hero
 
         if (HasStateAuthority && target != null)
         {
-            int damage = Mathf.RoundToInt(MagicDamage * flameArrowDamageMultiplier);
+            int damage = GetScaledSkillDamageWithAmp(flameArrowDamageMultiplier);
 
             Collider[] hits = Physics.OverlapSphere(target.transform.position, flameArrowAOERadius);
             foreach (Collider col in hits)
@@ -473,7 +473,7 @@ public class Archer : Hero
         // ✅ เปลี่ยนจาก AttackDamage เป็น MagicDamage
         if (HasStateAuthority && target != null)
         {
-            int damage = Mathf.RoundToInt(MagicDamage * flameArrowDamageMultiplier);
+            int damage = GetScaledSkillDamageWithAmp(flameArrowDamageMultiplier);
             target.TakeDamageFromAttacker(0, damage, this, DamageType.Magic, false);
 
             if (Random.Range(0f, 1f) <= flameArrowBurnChance)
@@ -1092,7 +1092,7 @@ public class Archer : Hero
             {
                 if (enemy != null)
                 {
-                    int damage = Mathf.RoundToInt(MagicDamage * fireVolleyDamageMultiplier);
+                    int damage = GetScaledSkillDamageWithAmp(fireVolleyDamageMultiplier);
                     enemy.TakeDamageFromAttacker(0, damage, this, DamageType.Magic, false);
 
                     if (Random.Range(0f, 1f) <= fireVolleyBurnChance)
@@ -1169,9 +1169,9 @@ public class Archer : Hero
         {
             if (enemy != null)
             {
-                int damage = Mathf.RoundToInt(MagicDamage * infernoRainDamageMultiplier);
+                    int damage = GetScaledSkillDamageWithAmp(infernoRainDamageMultiplier);
 
-                bool isCritical = Random.Range(0f, 1f) <= CriticalChance;
+                    bool isCritical = Random.Range(0f, 1f) <= CriticalChance;
                 DamageType damageType = isCritical ? DamageType.Critical : DamageType.Magic;
 
                 if (isCritical)
@@ -1943,7 +1943,7 @@ public class Archer : Hero
         // 🆕 ใช้ Attack Speed Aura แทน (ไม่ทับ Skill Bonus)
         statusEffectManager.ApplyAttackSpeedAura(6f, 0.30f, 10f);
         statusEffectManager.ApplyHitRateAura(6f, 0.15f, 10f);
-
+        ResetAllSkillCooldowns();
         RPC_ShowFerrisModeText();
         Debug.Log($"🌟 [FERRIS MODE ACTIVATED] {CharacterName} - Double Arrows + 1.5x Range!");
 
@@ -1974,6 +1974,7 @@ public class Archer : Hero
             if (uiManager != null)
             {
                 SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Archer", 1, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Archer", 2, false);
             }
         }
     }
@@ -2062,5 +2063,42 @@ public class Archer : Hero
     {
         float stackBonus = AttackSpeedStacks * STACK_BONUS_PER_STACK * 100f; // แปลงเป็น %
         return stackBonus;
+    }
+    private void ResetAllSkillCooldowns()
+    {
+        if (!HasStateAuthority) return;
+
+        nextSkill1Time = 0f;
+        nextSkill2Time = 0f;
+        nextSkill3Time = 0f;
+        nextSkill4Time = 0f;
+
+        Debug.Log($"🌙 [Shadow Mode] All skill cooldowns RESET! Ready for combo!");
+
+        // แจ้ง UI
+    }
+    private int CalculateArcherBaseDamage()
+    {
+        int levelBonus = GetCurrentLevel() * 4; // +4 per level
+        int baseDamage = MagicDamage + levelBonus;
+
+        Debug.Log($"🏹 [Damage Calc] MAGIC={MagicDamage} + Lv{GetCurrentLevel()}×4 = {baseDamage}");
+
+        return baseDamage;
+    }
+
+    /// <summary>
+    /// คำนวณ Skill Damage พร้อม Amp Damage
+    /// </summary>
+    private int GetScaledSkillDamageWithAmp(float multiplier)
+    {
+        int baseDamage = CalculateArcherBaseDamage();
+        int skillDamage = Mathf.RoundToInt(baseDamage * multiplier);
+
+        // Apply Amp Damage
+        int finalDamage = ApplyAmpDamageToSkill(skillDamage);
+
+
+        return finalDamage;
     }
 }

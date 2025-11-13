@@ -175,7 +175,7 @@ public class BloodKnight : Hero
         RPC_ShowBloodTranceBurst();
         RPC_ShowBloodTranceAura(true);
         statusEffectManager.ApplyLifeStealAura(6f, 0.20f, 20f);
-
+        ResetAllSkillCooldowns();
         // ✅ เพิ่มการอัปเดต UI Icon (ถ้ามี skill icons ที่ต้อง upgrade)
         if (HasInputAuthority)
         {
@@ -1443,6 +1443,18 @@ public class BloodKnight : Hero
             Destroy(currentBloodStorm);
         }
     }
+    private void ResetAllSkillCooldowns()
+    {
+        if (!HasStateAuthority) return;
 
+        nextSkill1Time = 0f;
+        nextSkill2Time = 0f;
+        nextSkill3Time = 0f;
+        nextSkill4Time = 0f;
+
+        Debug.Log($"🌙 [Shadow Mode] All skill cooldowns RESET! Ready for combo!");
+
+        // แจ้ง UI
+    }
     #endregion
 }

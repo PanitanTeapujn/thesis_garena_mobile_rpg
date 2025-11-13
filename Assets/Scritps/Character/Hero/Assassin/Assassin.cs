@@ -51,6 +51,16 @@ public class Assassin : Hero
 
     // Passive tracking
     private bool hasVenomMastery = true; // Passive เปิดตลอด
+    [Header("🌟 Skill 3 Chain Settings")]
+    [SerializeField] private float chainInterval = 0.3f; // เวลาระหว่างการวาร์ปแต่ละครั้ง
+    [SerializeField] private float chainTeleportSpeed = 30f; // ความเร็วการเคลื่อนที่
+    [SerializeField] private int maxChainTargets = 6; // จำนวน chain สูงสุด
+
+    [Header("🐍 Venom Mastery Settings")]
+    [SerializeField] private int manaRestoreOnPoisonKill = 15; // Mana ที่คืนเมื่อฆ่าด้วยพิษ
+    [SerializeField] private float poisonDurationExtension = 2f; // เวลาที่เพิ่มเมื่อติดพิษซ้ำ
+    [SerializeField] private float maxPoisonDuration = 15f; // duration สูงสุด
+    private List<Character> chainedTargets = new List<Character>(); // เก็บศัตรูที่โดน chain แล้ว
 
     protected override void Start()
     {
@@ -68,6 +78,8 @@ public class Assassin : Hero
         Skill3UsesRemaining = 0;
         CanDashAgain = false;
         accumulatedDrain = 0f;
+        StatusEffectManager.OnStatusDamage += HandlePoisonKillForManaRestore;
+
         Debug.Log($"🐍 Assassin {CharacterName} initialized with Venom Mastery!");
     }
 
@@ -345,62 +357,37 @@ public class Assassin : Hero
     private void ApplyToxicDashEffects(Character enemy)
     {
         int directDamage = GetScaledSkillDamage(0.6f);
-        int poisonDamage = GetScaledPoisonDamage(0.3f);
+
+        // ✅ NERF: 0.3f → 0.21f (-30%)
+        int poisonDamage = GetScaledPoisonDamage(0.21f);
 
         enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
 
         Vector3 dashDirection = GetDashDirection();
         enemy.ApplyKnockback(dashDirection, 4f, 0.3f);
-        Debug.Log($"🌫️ [Toxic Dash Knockback] {enemy.CharacterName} knocked back!");
 
         enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
-       
+
+        // ✅ Extend poison duration
+        ExtendPoisonDuration(enemy);
 
         if (hasVenomMastery && Random.Range(0f, 100f) < 25f)
         {
             SpreadPoisonToNearby(enemy, 4f);
         }
 
-        // ✅ เก็บ Ferris Point ต่อศัตรูที่โดน
         if (!IsInShadowMode)
         {
-            GainFerrisPoint(5); // +5 points per enemy hit
+            GainFerrisPoint(5);
         }
 
-        Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName} (with Amp)! Direct: {directDamage}, Poison: {poisonDamage}/s");
+        Debug.Log($"🌫️ Toxic Dash hit {enemy.CharacterName}! Direct: {directDamage}, Poison: {poisonDamage}/s");
     }
-
     // ========== 💣 Skill 3: Shadow Assassination - FIXED ==========
     public override void TryUseSkill3()
     {
         if (!CanUseSkill(skill3ManaCost)) return;
 
-        // ตรวจสอบเป้าหมายก่อน
-        Collider[] enemies = Physics.OverlapSphere(transform.position, 8f, LayerMask.GetMask("Enemy"));
-        Character targetEnemy = null;
-        float nearestDistance = float.MaxValue;
-
-        foreach (Collider col in enemies)
-        {
-            Character enemy = col.GetComponent<Character>();
-            if (enemy != null)
-            {
-                float distance = Vector3.Distance(transform.position, enemy.transform.position);
-                if (distance < nearestDistance)
-                {
-                    nearestDistance = distance;
-                    targetEnemy = enemy;
-                }
-            }
-        }
-
-        if (targetEnemy == null)
-        {
-            Debug.Log("❌ No target found for Shadow Assassination!");
-            return;
-        }
-
-        // ✅ คำนวณ cooldown reduction
         float effectiveReduction = GetEffectiveReductionCoolDown();
         float reductionMultiplier = 1f - (effectiveReduction / 100f);
         reductionMultiplier = Mathf.Clamp(reductionMultiplier, 0.1f, 1f);
@@ -408,59 +395,472 @@ public class Assassin : Hero
 
         if (!IsInShadowMode)
         {
-            // ✅ Normal Mode - ใช้ 1 ครั้ง
-            nextSkill3Time = Time.time + finalCooldown;
-            UseMana(skill3ManaCost);
-
-            if (statusEffectManager != null)
-            {
-                statusEffectManager.ApplyCriticalAura(6f, 0.4f, 12f);
-            }
-
-            Vector3 originalPos = transform.position;
-            NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
-            if (targetNetworkObject != null)
-            {
-                RPC_PerformShadowAssassinationAll(targetEnemy.transform.position, targetNetworkObject, originalPos);
-            }
-
-            Debug.Log($"🗡️ [Shadow Assassination Normal] {CharacterName} - Single use");
+            // ✅ Normal Mode: Single Target
+            ExecuteNormalModeShadowAssassination(finalCooldown);
         }
         else
         {
-            // ✅ Shadow Mode - ใช้ได้ 3 ครั้ง
-            if (Skill3UsesRemaining > 0)
+            // ✅ Ferris Mode: Chain 6x
+            ExecuteFerrisModeShadowAssassination(finalCooldown);
+        }
+    }
+    private void ExecuteNormalModeShadowAssassination(float finalCooldown)
+    {
+        // หาเป้าหมายใกล้ที่สุด
+        Character target = FindNearestEnemy(8f);
+
+        if (target == null)
+        {
+            Debug.Log("❌ No target found for Shadow Assassination!");
+            return;
+        }
+
+        // ใช้ Mana
+        UseMana(skill3ManaCost);
+
+        // ✅ ไม่ติด cooldown ก่อน (จะติดหลังถ้าไม่ฆ่าศัตรูที่ติดพิษ)
+        // nextSkill3Time จะถูกตั้งใน RPC_ExecuteNormalAssassination
+
+        // Apply Critical Aura
+        if (statusEffectManager != null)
+        {
+            statusEffectManager.ApplyCriticalAura(6f, 0.4f, 12f);
+        }
+
+        Vector3 originalPos = transform.position;
+        NetworkObject targetNetworkObject = target.GetComponent<NetworkObject>();
+
+        if (targetNetworkObject != null)
+        {
+            RPC_ExecuteNormalAssassination(targetNetworkObject, originalPos, finalCooldown);
+        }
+
+        Debug.Log($"🗡️ [Shadow Assassination Normal] {CharacterName} targeting {target.CharacterName}");
+    }
+
+    /// <summary>
+    /// Ferris Mode: วาร์ปโจมตี 6 ครั้ง
+    /// </summary>
+    private void ExecuteFerrisModeShadowAssassination(float finalCooldown)
+    {
+        // หาศัตรูทั้งหมดในระยะ
+        List<Character> targets = FindNearestEnemies(8f, maxChainTargets);
+
+        if (targets.Count == 0)
+        {
+            Debug.Log("❌ No targets found for Ferris Shadow Assassination!");
+            return;
+        }
+
+        // ใช้ Mana
+        UseMana(skill3ManaCost);
+
+        // ✅ ติด cooldown ทันที (Ferris Mode ไม่รีเซ็ต)
+        nextSkill3Time = Time.time + finalCooldown;
+
+        // สร้าง list ของ NetworkObject
+        List<NetworkObject> targetObjects = new List<NetworkObject>();
+        foreach (Character target in targets)
+        {
+            NetworkObject netObj = target.GetComponent<NetworkObject>();
+            if (netObj != null)
             {
-                UseMana(skill3ManaCost);
+                targetObjects.Add(netObj);
+            }
+        }
 
-                
+        Vector3 originalPos = transform.position;
+        RPC_ExecuteChainAssassination(targetObjects.ToArray(), originalPos);
 
-                Vector3 originalPos = transform.position;
-                NetworkObject targetNetworkObject = targetEnemy.GetComponent<NetworkObject>();
-                if (targetNetworkObject != null)
-                {
-                    RPC_PerformShadowAssassinationAll(targetEnemy.transform.position, targetNetworkObject, originalPos);
-                }
+        Debug.Log($"🌙 [Ferris Shadow Assassination] {CharacterName} chaining {targets.Count} targets!");
+    }
 
-                Skill3UsesRemaining--;
 
-                // ถ้ายังเหลือ uses ไม่ต้องติด cooldown
-                if (Skill3UsesRemaining > 0)
-                {
-                    Debug.Log($"🌙 [Shadow Assassination {3 - Skill3UsesRemaining}/3] {CharacterName} - {Skill3UsesRemaining} uses remaining!");
-                }
-                else
-                {
-                    // ใช้ครั้งสุดท้ายแล้ว ติด cooldown
-                    nextSkill3Time = Time.time + finalCooldown;
-                    Debug.Log($"🌙 [Shadow Assassination 3/3] {CharacterName} - All uses consumed! Cooldown applied!");
-                }
+    // ========== 6. RPC: Normal Mode Assassination ==========
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    private void RPC_ExecuteNormalAssassination(NetworkObject targetObject, Vector3 originalPosition, float cooldown)
+    {
+        StartCoroutine(ExecuteNormalAssassinationSequence(targetObject, originalPosition, cooldown));
+    }
+
+    // ใน Assassin.cs - แก้ไข ExecuteNormalAssassinationSequence
+
+    // ใน Assassin.cs - แก้ไข ExecuteNormalAssassinationSequence
+
+    private IEnumerator ExecuteNormalAssassinationSequence(NetworkObject targetObject, Vector3 originalPosition, float cooldown)
+    {
+        if (targetObject == null) yield break;
+
+        Character target = targetObject.GetComponent<Character>();
+        if (target == null) yield break;
+
+        AudioManager.instance.PlaySFX(3, 1f);
+        IsAssassinating = true;
+
+        // คำนวณตำแหน่งหลังเป้าหมาย
+        Vector3 targetPos = target.transform.position;
+        Vector3 directionToTarget = (targetPos - originalPosition).normalized;
+        Vector3 backPosition = targetPos - directionToTarget * 2.5f;
+        backPosition.y = targetPos.y;
+
+        // ✅ ตรวจสอบกำแพง
+        RaycastHit wallCheck;
+        Vector3 teleportDirection = (backPosition - originalPosition).normalized;
+        float teleportDistance = Vector3.Distance(originalPosition, backPosition);
+
+        if (Physics.Raycast(originalPosition, teleportDirection, out wallCheck, teleportDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            backPosition = originalPosition + teleportDirection * Mathf.Max(0.5f, wallCheck.distance - 0.5f);
+        }
+
+        // Phase 1: Teleport
+        Debug.Log($"🗡️ [Shadow Assassination] {CharacterName} teleporting to {target.CharacterName}!");
+
+        SetVisibility(false);
+        yield return new WaitForSeconds(0.2f);
+
+        if (HasInputAuthority)
+        {
+            if (rb != null) rb.MovePosition(backPosition);
+            NetworkedPosition = backPosition;
+        }
+        else
+        {
+            transform.position = backPosition;
+        }
+
+        SetVisibility(true);
+        yield return new WaitForSeconds(0.1f);
+
+        // Phase 2: Attack
+        if (HasStateAuthority && target != null)
+        {
+            // ✅ เช็คว่าเป้าหมายติดพิษหรือไม่ (ก่อนโจมตี)
+            bool wasTargetPoisoned = CheckIfTargetPoisoned(target);
+
+            // โจมตี
+            PerformExecutionAttack(target);
+
+            // ✅ ถ้าเป้าหมายติดพิษ → คืน Mana + Reset CD ทันที (ไม่ต้องรอฆ่า)
+            if (wasTargetPoisoned)
+            {
+                // คืน 50% Mana
+                int manaRestore = Mathf.RoundToInt(skill3ManaCost * 0.5f);
+                CurrentMana = Mathf.Min(CurrentMana + manaRestore, MaxMana);
+
+                // ✅ ไม่ติด cooldown (reset ทันที)
+                // nextSkill3Time ไม่ถูกตั้งค่า = สามารถใช้ทันที
+
+                Debug.Log($"✅ [Execute Success] Hit poisoned enemy! +{manaRestore} Mana, CD Reset!");
+                RPC_ShowExecuteSuccessText(manaRestore);
             }
             else
             {
-                Debug.Log("❌ No Shadow Assassination uses remaining!");
+                // ✅ ถ้าไม่ติดพิษ → ติด cooldown ปกติ
+                nextSkill3Time = Time.time + cooldown;
+                Debug.Log($"⚠️ [Execute Normal] Target not poisoned. Cooldown applied: {cooldown:F1}s");
             }
         }
+
+        IsAssassinating = false;
+    }
+    private void ResetAllSkillCooldowns()
+    {
+        if (!HasStateAuthority) return;
+
+        nextSkill1Time = 0f;
+        nextSkill2Time = 0f;
+        nextSkill3Time = 0f;
+        nextSkill4Time = 0f;
+
+        Debug.Log($"🌙 [Shadow Mode] All skill cooldowns RESET! Ready for combo!");
+
+        // แจ้ง UI
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowExecuteSuccessText(int manaRestore)
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1.5f;
+        Color successColor = new Color(1f, 0.8f, 0f, 1f); // ทอง
+        DamageTextManager.ShowCustomText(textPosition, $"EXECUTE! +{manaRestore} MANA", successColor, 1f);
+    }
+
+
+    // ========== 7. RPC: Ferris Mode Chain Assassination ==========
+
+    [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
+    private void RPC_ExecuteChainAssassination(NetworkObject[] targetObjects, Vector3 originalPosition)
+    {
+        StartCoroutine(ExecuteChainAssassinationSequence(targetObjects, originalPosition));
+    }
+
+    private IEnumerator ExecuteChainAssassinationSequence(NetworkObject[] targetObjects, Vector3 originalPosition)
+    {
+        if (targetObjects == null || targetObjects.Length == 0) yield break;
+
+        // ✅ เล่นเสียงครั้งแรก (ดังที่สุด)
+        AudioManager.instance.PlaySFX(3, 1f);
+
+        IsAssassinating = true;
+        chainedTargets.Clear();
+
+        Debug.Log($"🌙 [Chain Start] Assassinating {targetObjects.Length} targets!");
+
+        // ✅ ตรวจสอบว่าเป้าหมายเหลือตัวเดียวหรือไม่
+        List<Character> aliveTargets = new List<Character>();
+        foreach (NetworkObject netObj in targetObjects)
+        {
+            if (netObj != null)
+            {
+                Character target = netObj.GetComponent<Character>();
+                if (target != null && target.CurrentHp > 0)
+                {
+                    aliveTargets.Add(target);
+                }
+            }
+        }
+
+        bool isSingleTarget = aliveTargets.Count == 1;
+
+        // Chain loop - สูงสุด 6 ครั้ง
+        for (int i = 0; i < maxChainTargets; i++)
+        {
+            Character currentTarget = null;
+
+            if (isSingleTarget && aliveTargets.Count > 0)
+            {
+                // ✅ เป้าหมายเดียว (Boss) → ตีซ้ำที่ตัวเดียว
+                currentTarget = aliveTargets[0];
+            }
+            else
+            {
+                // ✅ หลายเป้าหมาย → หาเป้าหมายที่ยังไม่โดน
+                currentTarget = FindUnchainedTarget(aliveTargets);
+            }
+
+            if (currentTarget == null)
+            {
+                Debug.Log($"🌙 [Chain {i + 1}/6] No more targets!");
+                break;
+            }
+
+            // บันทึกว่าโดนแล้ว (ถ้าไม่ใช่ single target)
+            if (!isSingleTarget && !chainedTargets.Contains(currentTarget))
+            {
+                chainedTargets.Add(currentTarget);
+            }
+
+            // ✅ วาร์พไปหาเป้าหมาย (แบบหายตัว)
+            yield return StartCoroutine(TeleportToTarget(currentTarget, i + 1));
+
+            // โจมตี
+            if (HasStateAuthority && currentTarget != null)
+            {
+                PerformChainAttack(currentTarget, i + 1);
+            }
+
+            // รอก่อน chain ครั้งต่อไป
+            yield return new WaitForSeconds(chainInterval);
+
+            // เช็คว่าเป้าหมายตายหรือยัง
+            if (currentTarget.CurrentHp <= 0)
+            {
+                aliveTargets.Remove(currentTarget);
+
+                if (aliveTargets.Count == 0)
+                {
+                    Debug.Log($"🌙 [Chain {i + 1}/6] All targets eliminated!");
+                    break;
+                }
+            }
+        }
+
+        IsAssassinating = false;
+        chainedTargets.Clear();
+
+        Debug.Log($"🌙 [Chain Complete] Ferris Shadow Assassination finished!");
+    }
+    private IEnumerator TeleportToTarget(Character target, int chainNumber)
+    {
+        if (target == null) yield break;
+
+        Vector3 startPos = transform.position;
+        Vector3 targetPos = target.transform.position;
+
+        // ✅ คำนวณตำแหน่งด้านหลัง + สูงขึ้น
+        Vector3 direction = (startPos - targetPos).normalized; // ทิศทางจากศัตรูมาหาเรา
+        Vector3 behindTarget = targetPos + direction * 2f;     // อยู่ด้านหลังศัตรู 2m
+        behindTarget.y = targetPos.y + 1.5f;                   // ✅ สูงขึ้น 1.5m
+
+        // ✅ Phase 1: หายตัว
+        SetVisibility(false);
+
+        // ✅ เล่นเสียงวาร์ป (ดังลดลงเรื่อยๆ)
+        float volume = Mathf.Lerp(0.8f, 0.3f, (chainNumber - 1) / (float)maxChainTargets);
+        AudioManager.instance.PlaySFX(3, volume);
+
+        yield return new WaitForSeconds(0.15f);
+
+        // ✅ Phase 2: Teleport ไปตำแหน่งใหม่
+        if (HasInputAuthority)
+        {
+            if (rb != null) rb.MovePosition(behindTarget);
+            NetworkedPosition = behindTarget;
+        }
+        else
+        {
+            transform.position = behindTarget;
+        }
+
+        yield return new WaitForSeconds(0.05f);
+
+        // ✅ Phase 3: ปรากฏตัว
+        SetVisibility(true);
+
+        // แสดง teleport effect
+        RPC_ShowTeleportEffect(behindTarget, chainNumber);
+
+        Debug.Log($"🌙 [Teleport {chainNumber}/6] Warped to {target.CharacterName} at height {behindTarget.y - targetPos.y}m");
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowTeleportEffect(Vector3 position, int chainNumber)
+    {
+        if (shadowAssassinEffect != null)
+        {
+            GameObject effect = Instantiate(shadowAssassinEffect.gameObject, position, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+
+                // สีเปลี่ยนตามจำนวน chain (ม่วง → ชมพู → แดง)
+                Color[] colors = new Color[]
+                {
+                new Color(0.8f, 0.3f, 1f, 1f),   // ม่วง
+                new Color(0.7f, 0.2f, 1f, 1f),   // ม่วงเข้ม
+                new Color(0.9f, 0.2f, 0.8f, 1f), // ชมพู
+                new Color(1f, 0.2f, 0.6f, 1f),   // ชมพูแดง
+                new Color(1f, 0.3f, 0.3f, 1f),   // แดง
+                new Color(1f, 0.5f, 0f, 1f)      // ส้ม
+                };
+
+                main.startColor = colors[Mathf.Clamp(chainNumber - 1, 0, 5)];
+                main.startLifetime = 0.6f;
+                main.startSize = 1.5f + (chainNumber * 0.3f); // ใหญ่ขึ้นทุกครั้ง
+            }
+
+            Destroy(effect, 1.2f);
+        }
+    }
+
+    /// <summary>
+    /// เคลื่อนที่ไปหาเป้าหมาย (เห็นตัวตลอด)
+    /// </summary>
+    
+
+    /// <summary>
+    /// โจมตีในระหว่าง Chain
+    /// </summary>
+    private void PerformChainAttack(Character target, int chainNumber)
+    {
+        if (target == null) return;
+
+        bool isPoisoned = CheckIfTargetPoisoned(target);
+
+        // ✅ คำนวณดาเมจ
+        int baseDamage = CalculateExecutionDamage();
+
+        // ดาเมจตามสถานะพิษ
+        float damageMultiplier = isPoisoned ? 1.25f : 1.0f; // 125% / 100%
+        int finalDamage = Mathf.RoundToInt(baseDamage * damageMultiplier);
+
+        int physicalDamage = Mathf.RoundToInt(finalDamage * 0.3f);
+        int magicDamage = Mathf.RoundToInt(finalDamage * 0.7f);
+
+        target.TakeDamageFromAttacker(physicalDamage, magicDamage, this, DamageType.Critical, false);
+
+        // ✅ ใส่พิษ + Extend Duration
+        if (MagicDamage > AttackDamage)
+        {
+            int poisonDamage = GetScaledPoisonDamage(0.4f);
+            target.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 10f);
+
+            if (isPoisoned)
+            {
+                ExtendPoisonDuration(target);
+            }
+        }
+        else
+        {
+            target.ApplyStatusEffect(StatusEffectType.Bleed, 8, 8f);
+        }
+
+        Debug.Log($"🌙 [Chain {chainNumber}/6] Hit {target.CharacterName}: {finalDamage} damage (Poisoned: {isPoisoned}, {damageMultiplier * 100}%)");
+
+        // แสดง particle
+        RPC_ShowChainHitEffect(target.transform.position, chainNumber);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowChainHitEffect(Vector3 position, int chainNumber)
+    {
+        if (shadowAssassinEffect != null)
+        {
+            GameObject effect = Instantiate(shadowAssassinEffect.gameObject, position + Vector3.up * 1f, Quaternion.identity);
+
+            ParticleSystem ps = effect.GetComponent<ParticleSystem>();
+            if (ps != null)
+            {
+                ParticleSystem.MainModule main = ps.main;
+
+                // สีเปลี่ยนตามจำนวน chain
+                Color[] colors = new Color[]
+                {
+                new Color(0.8f, 0.3f, 1f, 1f),  // ม่วง
+                new Color(0.6f, 0.2f, 1f, 1f),  // ม่วงเข้ม
+                new Color(0.9f, 0.2f, 0.8f, 1f), // ชมพู
+                new Color(1f, 0.2f, 0.5f, 1f),  // แดงชมพู
+                new Color(1f, 0.3f, 0.3f, 1f),  // แดง
+                new Color(1f, 0.5f, 0f, 1f)     // ส้ม
+                };
+
+                main.startColor = colors[Mathf.Clamp(chainNumber - 1, 0, 5)];
+                main.startLifetime = 0.8f;
+                main.startSize = 1f + (chainNumber * 0.2f); // ใหญ่ขึ้นทุกครั้ง
+            }
+
+            Destroy(effect, 1.5f);
+        }
+    }
+
+    /// <summary>
+    /// หาเป้าหมายที่ยังไม่โดน chain
+    /// </summary>
+    private Character FindUnchainedTarget(List<Character> targets)
+    {
+        foreach (Character target in targets)
+        {
+            if (target != null && target.CurrentHp > 0 && !chainedTargets.Contains(target))
+            {
+                return target;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// เช็คว่าเป้าหมายติดพิษหรือไม่
+    /// </summary>
+    private bool CheckIfTargetPoisoned(Character target)
+    {
+        if (target == null) return false;
+
+        StatusEffectManager targetStatus = target.GetComponent<StatusEffectManager>();
+        return targetStatus != null && targetStatus.IsPoisoned;
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.All)]
@@ -630,54 +1030,49 @@ public class Assassin : Hero
     {
         AudioManager.instance.PlaySFX(4, 1f);
 
-        // สร้าง visual effect ด้วย Particle System
+        // ✅ รัศมีจริง 6m
+        float plagueRadius = 6f;
+        float duration = 10f;
+
         GameObject plagueEffect = null;
         if (plagueOutbreakEffect != null)
         {
             plagueEffect = Instantiate(plagueOutbreakEffect.gameObject, position, Quaternion.identity);
-            plagueEffect.transform.localScale = Vector3.one * 5f; // ขยายให้ใหญ่มาก
+
+            // ✅ ลดขนาด scale ลง - ปรับให้ตรงกับรัศมี 6m
+            plagueEffect.transform.localScale = Vector3.one * 1.2f; // เปลี่ยนจาก 3f → 1.2f
 
             ParticleSystem ps = plagueEffect.GetComponent<ParticleSystem>();
             if (ps != null)
             {
                 ParticleSystem.MainModule main = ps.main;
-                main.startColor = new Color(0.2f, 0.8f, 0.2f, 0.8f); // เขียวพิษ
-                main.startLifetime = 20f; // ยาวเท่ากับ duration
+                main.startColor = new Color(0.2f, 0.8f, 0.2f, 0.8f);
+                main.startLifetime = duration;
                 main.loop = true;
 
-                // ปรับ shape ให้เป็นวงกลมใหญ่
                 ParticleSystem.ShapeModule shape = ps.shape;
                 shape.shapeType = ParticleSystemShapeType.Circle;
-                shape.radius = 12f;
+                shape.radius = plagueRadius; // ✅ ตั้งเป็น 6m ตามรัศมีจริง
             }
         }
-        else
-        {
-            Debug.LogWarning("PlagueOutbreakEffect is not assigned!");
-        }
 
-        float duration = 20f;
         float tickInterval = 1f;
         float nextTick = 0f;
         float elapsed = 0f;
 
-        // ✅ Super Poison damage ใหม่
-        int superPoisonDamage = GetScaledPoisonDamage(0.8f);
+        int superPoisonDamage = GetScaledPoisonDamage(0.56f);
 
         IsInPlagueCloud = true;
         PlagueCloudEndTime = Time.time + duration;
 
-        Debug.Log($"☠️ [Plague Outbreak] {CharacterName} creates massive poison cloud! ({superPoisonDamage} damage/s)");
+        Debug.Log($"☠️ [Plague Outbreak] Radius: {plagueRadius}m, Duration: {duration}s, Poison: {superPoisonDamage}/s");
 
-        // ✅ ให้ team auras
         if (statusEffectManager != null)
         {
-            statusEffectManager.ApplyCriticalAura(12f, 0.4f, 20f);
-            Debug.Log($"💚 [Plague Outbreak] Team Auras activated!");
+            statusEffectManager.ApplyCriticalAura(plagueRadius, 0.4f, duration);
         }
 
-        // เพิ่ม secondary effects ทุก 3 วินาที
-        StartCoroutine(CreatePlagueWaves(position, duration));
+        StartCoroutine(CreatePlagueWaves(position, duration, plagueRadius)); // ✅ ส่งรัศมีไปด้วย
 
         while (elapsed < duration)
         {
@@ -685,9 +1080,8 @@ public class Assassin : Hero
 
             if (elapsed >= nextTick)
             {
-                Collider[] enemies = Physics.OverlapSphere(position, 12f, LayerMask.GetMask("Enemy"));
+                Collider[] enemies = Physics.OverlapSphere(position, plagueRadius, LayerMask.GetMask("Enemy"));
 
-                // ✅ เก็บจำนวนศัตรูที่โดน
                 int enemiesHitThisTick = 0;
 
                 foreach (Collider col in enemies)
@@ -696,11 +1090,9 @@ public class Assassin : Hero
                     if (enemy != null)
                     {
                         enemy.ApplyStatusEffect(StatusEffectType.Poison, superPoisonDamage, 5f);
-                        enemy.ApplyStatusEffect(StatusEffectType.Blind, 0, 8f, 0.8f);
                         enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 8f, 0.5f);
-                        enemy.ApplyStatusEffect(StatusEffectType.ArmorBreak, 0, 8f, 0.6f);
 
-                        int directDamage = GetScaledSkillDamage(0.3f);
+                        int directDamage = GetScaledSkillDamage(0.21f);
                         enemy.TakeDamageFromAttacker(0, directDamage, this, DamageType.Magic, false);
 
                         CreatePoisonHitEffect(enemy.transform.position);
@@ -708,17 +1100,16 @@ public class Assassin : Hero
                         if (Random.Range(0f, 100f) < 20f)
                         {
                             enemy.ApplyStatusEffect(StatusEffectType.Stun, 0, 2f);
-                            Debug.Log($"☠️ {enemy.CharacterName} stunned by plague cloud!");
                         }
 
                         enemiesHitThisTick++;
+                        ExtendPoisonDuration(enemy);
                     }
                 }
 
-                // ✅ เก็บ Ferris Point ตามจำนวนศัตรูที่โดน
                 if (!IsInShadowMode && enemiesHitThisTick > 0)
                 {
-                    GainFerrisPoint(enemiesHitThisTick * 2); // +2 points per enemy per tick
+                    GainFerrisPoint(enemiesHitThisTick * 2);
                 }
 
                 nextTick += tickInterval;
@@ -726,6 +1117,7 @@ public class Assassin : Hero
 
             yield return null;
         }
+
         IsInPlagueCloud = false;
         RPC_HideRangeIndicatorAll();
 
@@ -736,7 +1128,7 @@ public class Assassin : Hero
 
         Debug.Log($"☠️ [Plague Outbreak] Effect ended");
     }
-    private IEnumerator CreatePlagueWaves(Vector3 center, float duration)
+    private IEnumerator CreatePlagueWaves(Vector3 center, float duration, float radius)
     {
         float elapsed = 0f;
         int waveCount = 0;
@@ -747,11 +1139,14 @@ public class Assassin : Hero
             elapsed += 3f;
             waveCount++;
 
-            // สร้างคลื่นพิษ
+            // ✅ ปรับขนาด wave ให้ตรงกับรัศมีจริง
             if (toxicDashEffect != null)
             {
                 GameObject wave = Instantiate(toxicDashEffect.gameObject, center, Quaternion.identity);
-                wave.transform.localScale = Vector3.one * (2f + waveCount * 0.5f);
+
+                // ✅ คำนวณ scale จากรัศมี: radius * 2 / 10 (เพราะ default size คือ 10)
+                float waveScale = (radius * 2f) / 10f; // 6m * 2 / 10 = 1.2
+                wave.transform.localScale = Vector3.one * waveScale;
 
                 ParticleSystem ps = wave.GetComponent<ParticleSystem>();
                 if (ps != null)
@@ -764,10 +1159,11 @@ public class Assassin : Hero
                 Destroy(wave, 3f);
             }
 
-            Debug.Log($"🌊 Plague wave {waveCount} created!");
+            Debug.Log($"🌊 Plague wave {waveCount} created! Radius: {radius}m");
         }
     }
 
+   
     private void CreatePoisonHitEffect(Vector3 position)
     {
         if (poisonInfusionEffect != null)
@@ -799,11 +1195,13 @@ public class Assassin : Hero
             Character enemy = col.GetComponent<Character>();
             if (enemy != null && enemy != sourceEnemy && spreadCount < 3)
             {
-                // ✅ ใช้สูตรใหม่
-                int spreadDamage = GetScaledPoisonDamage(0.2f); // 20% ของ base formula
+                // ✅ NERF: 0.2f → 0.14f (-30%)
+                int spreadDamage = GetScaledPoisonDamage(0.14f);
                 enemy.ApplyStatusEffect(StatusEffectType.Poison, spreadDamage, 5f);
 
-                // โอกาสใส่ weakness
+                // ✅ Extend poison duration
+                ExtendPoisonDuration(enemy);
+
                 if (Random.Range(0f, 100f) < 50f)
                 {
                     enemy.ApplyStatusEffect(StatusEffectType.Weakness, 0, 4f, 0.2f);
@@ -814,6 +1212,7 @@ public class Assassin : Hero
             }
         }
     }
+
 
     // ========== Override Attack for Poison Infusion ==========
     public override void TryAttack()
@@ -879,50 +1278,46 @@ public class Assassin : Hero
             {
                 bool isBasicAttack = true;
 
-                Debug.Log($"🐍 [Assassin Attack] shouldPoison: {shouldPoison}, forceCritical: {forceCritical}, isBasicAttack: {isBasicAttack}");
                 bool shouldKnockback = Random.Range(0f, 100f) < 100f;
-
                 if (shouldKnockback)
                 {
                     Vector3 knockbackDir = (enemy.transform.position - transform.position).normalized;
                     enemy.ApplyKnockback(knockbackDir, 10f, 0.7f);
-                    Debug.Log($"🐍 [Knockback] Basic attack knocked back {enemy.CharacterName}!");
                 }
 
                 enemy.TakeDamageFromAttacker(AttackDamage, this, DamageType.Normal, isBasicAttack);
 
                 if (shouldPoison)
                 {
-                    int poisonDamage = GetScaledPoisonDamage(0.4f);
+                    // ✅ NERF: 0.4f → 0.28f (-30%)
+                    int poisonDamage = GetScaledPoisonDamage(0.28f);
                     enemy.ApplyStatusEffect(StatusEffectType.Poison, poisonDamage, 8f);
+
+                    // ✅ Extend poison duration
+                    ExtendPoisonDuration(enemy);
 
                     if (hasVenomMastery)
                     {
                         int bonusDamage = GetScaledSkillDamage(0.2f);
                         enemy.TakeDamageFromAttacker(0, bonusDamage, this, DamageType.Magic, false);
-                        Debug.Log($"🐍 [Venom Mastery] poison bonus (with Amp): {bonusDamage}");
                     }
 
                     if (hasVenomMastery && Random.Range(0f, 100f) < 30f)
                     {
                         SpreadPoisonToNearby(enemy, 4f);
                     }
-
-                    Debug.Log($"🐍 Applied poison: {poisonDamage} damage/s for 8s");
                 }
 
                 if (forceCritical)
                 {
                     int critDamage = GetScaledSkillDamage(0.8f);
                     enemy.TakeDamageFromAttacker(0, critDamage, this, DamageType.Critical, false);
-                    Debug.Log($"🐍 [Poison Infusion] Final strike (with Amp): {critDamage} damage");
                 }
 
-                // ✅ เก็บ Ferris Point จาก basic attack
                 if (!IsInShadowMode)
                 {
-                    int ferrisGain = shouldPoison ? 3 : 2; // เพิ่มถ้ามี poison
-                    if (forceCritical) ferrisGain += 2; // เพิ่มถ้าเป็น critical
+                    int ferrisGain = shouldPoison ? 3 : 2;
+                    if (forceCritical) ferrisGain += 2;
                     GainFerrisPoint(ferrisGain);
                 }
 
@@ -993,13 +1388,11 @@ public class Assassin : Hero
     }
     private void CreateRangeIndicator()
     {
-        // ใช้ Particle System แทน LineRenderer
         if (plagueOutbreakEffect != null)
         {
             plagueRangeIndicator = Instantiate(plagueOutbreakEffect.gameObject, transform);
             plagueRangeIndicator.name = $"{CharacterName}_PlagueRangeIndicator";
 
-            // ปรับขนาดและสี
             ParticleSystem ps = plagueRangeIndicator.GetComponent<ParticleSystem>();
             if (ps != null)
             {
@@ -1010,7 +1403,7 @@ public class Assassin : Hero
 
                 ParticleSystem.ShapeModule shape = ps.shape;
                 shape.shapeType = ParticleSystemShapeType.Circle;
-                shape.radius = 12f; // รัศมี ultimate
+                shape.radius = 6f; // ✅ ตั้งเป็น 6m ตามรัศมีจริง
             }
 
             plagueRangeIndicator.SetActive(false);
@@ -1043,6 +1436,8 @@ public class Assassin : Hero
         CanDashAgain = false;
         accumulatedDrain = 0f;
         statusEffectManager.ApplyMoveSpeedAura(6f, 0.50f, 10f);
+        ResetAllSkillCooldowns();
+
         RPC_ShowShadowModeText();
         Debug.Log($"🌙 [SHADOW MODE ACTIVATED] {CharacterName} - Skill 3: 3 uses, Skill 2: Double Dash!");
         if (HasInputAuthority)
@@ -1160,12 +1555,12 @@ public class Assassin : Hero
 
         plagueRangeIndicator.transform.position = center;
 
-        // ปรับขนาดตามรัศมี
+        // ✅ ปรับขนาดตามรัศมี (6m)
         ParticleSystem ps = plagueRangeIndicator.GetComponent<ParticleSystem>();
         if (ps != null)
         {
             ParticleSystem.ShapeModule shape = ps.shape;
-            shape.radius = radius;
+            shape.radius = radius; // 6m
         }
 
         plagueRangeIndicator.SetActive(true);
@@ -1295,23 +1690,18 @@ public class Assassin : Hero
 
     private int GetScaledPoisonDamage(float multiplier)
     {
-        // คำนวณ base damage
         int magicPortion = Mathf.RoundToInt(MagicDamage * 0.7f);
         int physicalPortion = Mathf.RoundToInt(AttackDamage * 0.3f);
         int levelBonus = GetCurrentLevel() * 10;
 
         int baseDamage = magicPortion + physicalPortion + levelBonus;
+
+        // ✅ ลดดาเมจ 30% (multiplier ถูกลดไว้แล้วตอนเรียก)
         int scaledDamage = Mathf.RoundToInt(baseDamage * multiplier);
-
-        // ✅ FIXED: Apply Amp Damage ให้ poison damage (เป็น skill effect)
         int finalDamage = ApplyAmpDamageToSkill(scaledDamage);
-
-        Debug.Log($"🐍 [Poison Damage] Base: {baseDamage} × {multiplier} = {scaledDamage} → With Amp: {finalDamage}");
-        Debug.Log($"    (Magic: {magicPortion}, Physical: {physicalPortion}, Level: {levelBonus})");
 
         return Mathf.Max(1, finalDamage);
     }
-
     private int GetScaledSkillDamage(float multiplier)
     {
         // คำนวณ base damage
@@ -1576,7 +1966,6 @@ public class Assassin : Hero
             Debug.Log($"⏱️ [Grace Period Expired] Skill 2 cooldown applied: {finalCooldown:F1}s");
         }
     }
-    // เพิ่มก่อน OnDestroy()
     
 
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
@@ -1609,5 +1998,115 @@ public class Assassin : Hero
         {
             Destroy(plagueRangeIndicator);
         }
+        StatusEffectManager.OnStatusDamage -= HandlePoisonKillForManaRestore;
+
+    }
+    private void HandlePoisonKillForManaRestore(Character target, int damage, DamageType damageType)
+    {
+        if (!HasStateAuthority) return;
+        if (target == null || target == this) return;
+
+        // เช็คว่าศัตรูตายด้วยพิษหรือไม่
+        if (damageType == DamageType.Poison && target.CurrentHp <= 0)
+        {
+            // คืน Mana
+            CurrentMana = Mathf.Min(CurrentMana + manaRestoreOnPoisonKill, MaxMana);
+
+            Debug.Log($"🐍 [Venom Mastery] {target.CharacterName} died from poison! Restored {manaRestoreOnPoisonKill} Mana → {CurrentMana}/{MaxMana}");
+
+            // แสดงข้อความ
+            RPC_ShowManaRestoreText(manaRestoreOnPoisonKill);
+        }
+    }
+
+    /// <summary>
+    /// ✅ ENHANCED: เมื่อใส่พิษซ้ำ → duration +2s (max 15s)
+    /// </summary>
+    private void ExtendPoisonDuration(Character target)
+    {
+        if (!HasStateAuthority) return;
+        if (target == null) return;
+
+        StatusEffectManager targetStatus = target.GetComponent<StatusEffectManager>();
+        if (targetStatus != null && targetStatus.IsPoisoned)
+        {
+            // เพิ่ม duration แต่ไม่เกิน max
+            float newDuration = Mathf.Min(
+                targetStatus.PoisonDuration + poisonDurationExtension,
+                maxPoisonDuration
+            );
+
+            targetStatus.PoisonDuration = newDuration;
+
+            Debug.Log($"🐍 [Venom Mastery] Extended poison on {target.CharacterName}: +{poisonDurationExtension}s → {newDuration:F1}s (max: {maxPoisonDuration}s)");
+        }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowManaRestoreText(int amount)
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1.5f;
+        Color manaColor = new Color(0.3f, 0.6f, 1f, 1f); // น้ำเงิน
+        DamageTextManager.ShowCustomText(textPosition, $"+{amount} MANA", manaColor, 0.8f);
+    }
+    private Character FindNearestEnemy(float range)
+    {
+        Collider[] enemies = Physics.OverlapSphere(transform.position, range, LayerMask.GetMask("Enemy"));
+
+        Character nearestEnemy = null;
+        float nearestDistance = float.MaxValue;
+
+        foreach (Collider col in enemies)
+        {
+            Character enemy = col.GetComponent<Character>();
+            if (enemy != null && enemy.CurrentHp > 0)
+            {
+                float distance = Vector3.Distance(transform.position, enemy.transform.position);
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestEnemy = enemy;
+                }
+            }
+        }
+
+        return nearestEnemy;
+    }
+
+    /// <summary>
+    /// หาศัตรูหลายตัวที่ใกล้ที่สุดภายในระยะที่กำหนด (สำหรับ Ferris Mode)
+    /// </summary>
+    private List<Character> FindNearestEnemies(float range, int maxCount)
+    {
+        Collider[] enemies = Physics.OverlapSphere(transform.position, range, LayerMask.GetMask("Enemy"));
+
+        List<Character> validEnemies = new List<Character>();
+
+        // เก็บศัตรูที่ยังมีชีวิต
+        foreach (Collider col in enemies)
+        {
+            Character enemy = col.GetComponent<Character>();
+            if (enemy != null && enemy.CurrentHp > 0)
+            {
+                validEnemies.Add(enemy);
+            }
+        }
+
+        // เรียงตามระยะทาง (ใกล้ไปไกล)
+        validEnemies.Sort((a, b) =>
+        {
+            float distA = Vector3.Distance(transform.position, a.transform.position);
+            float distB = Vector3.Distance(transform.position, b.transform.position);
+            return distA.CompareTo(distB);
+        });
+
+        // ตัดให้เหลือแค่ maxCount ตัว
+        if (validEnemies.Count > maxCount)
+        {
+            validEnemies = validEnemies.GetRange(0, maxCount);
+        }
+
+        Debug.Log($"🎯 Found {validEnemies.Count} enemies within {range}m range");
+        return validEnemies;
     }
 }

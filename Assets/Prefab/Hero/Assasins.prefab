@@ -261,6 +261,7 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  reflectDamagePercent: 0
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
@@ -295,6 +296,9 @@ MonoBehaviour:
   _NetworkedFlipX: 0
   _NetworkedYRotation: 0
   _NetworkedScale: {x: 0, y: 0, z: 0}
+  _NetworkedFerrisPoint: 0
+  currentFerrisPoint: 0
+  maxFerrisPoint: 100
   moveDirection: {x: 0, y: 0, z: 0}
   cameraTransform: {fileID: 0}
   cameraRotationSpeed: 50
@@ -315,14 +319,18 @@ MonoBehaviour:
   dashSpeed: 20
   toxicBombPrefab: {fileID: 0}
   plagueCloudPrefab: {fileID: 0}
+  _IsInShadowMode: 0
+  _Skill3UsesRemaining: 0
+  _CanDashAgain: 0
+  _DashGracePeriodEnd: 0
   skillRangeIndicatorMaterial: {fileID: 0}
   poisonInfusionEffect: {fileID: 4033287822461114141, guid: a164e676dbbd6e54587237e619372c98,
     type: 3}
   toxicDashEffect: {fileID: 720325515038598322, guid: 709b0bd6b0b625249a98409dd7a87343,
     type: 3}
-  shadowAssassinEffect: {fileID: 3891973445508218817, guid: e190bf97c041e58448af6b043116cba0,
+  shadowAssassinEffect: {fileID: 5911206648629905745, guid: 1eb833340b41fb444b576c4dced8d4dc,
     type: 3}
-  plagueOutbreakEffect: {fileID: 2100541099862133063, guid: 05ce920d629922a4eb4795ef7494ce5c,
+  plagueOutbreakEffect: {fileID: 9110354499124891491, guid: 09d0fcb8ee0127943b70d40694b23c09,
     type: 3}
   basicAttackEffect: {fileID: 2629628210209888467, guid: ca6705a3f9070d14d819d179493bcfa0,
     type: 3}
@@ -334,6 +342,12 @@ MonoBehaviour:
   _IsDashing: 0
   _IsAssassinating: 0
   _IsInvisible: 0
+  chainInterval: 0.3
+  chainTeleportSpeed: 30
+  maxChainTargets: 6
+  manaRestoreOnPoisonKill: 15
+  poisonDurationExtension: 2
+  maxPoisonDuration: 15
 --- !u!114 &1314459988218318116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -395,6 +409,57 @@ MonoBehaviour:
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingMagicDamageAura: 0
+  _MagicDamageAuraDuration: 0
+  _MagicDamageAuraRadius: 0
+  _MagicDamageAuraAmount: 0
+  _IsProvidingCooldownReductionAura: 0
+  _CooldownReductionAuraDuration: 0
+  _CooldownReductionAuraRadius: 0
+  _CooldownReductionAuraAmount: 0
+  _IsProvidingLifeStealAura: 0
+  _LifeStealAuraDuration: 0
+  _LifeStealAuraRadius: 0
+  _LifeStealAuraAmount: 0
+  _IsProvidingAmpDamageAura: 0
+  _AmpDamageAuraDuration: 0
+  _AmpDamageAuraRadius: 0
+  _AmpDamageAuraAmount: 0
+  _IsProvidingMagicArmorAura: 0
+  _MagicArmorAuraDuration: 0
+  _MagicArmorAuraRadius: 0
+  _MagicArmorAuraAmount: 0
+  _IsProvidingHealthRegenAura: 0
+  _HealthRegenAuraDuration: 0
+  _HealthRegenAuraRadius: 0
+  _HealthRegenAuraAmount: 0
+  _IsProvidingManaRegenAura: 0
+  _ManaRegenAuraDuration: 0
+  _ManaRegenAuraRadius: 0
+  _ManaRegenAuraAmount: 0
+  _IsProvidingHitRateAura: 0
+  _HitRateAuraDuration: 0
+  _HitRateAuraRadius: 0
+  _HitRateAuraAmount: 0
+  _IsProvidingEvasionAura: 0
+  _EvasionAuraDuration: 0
+  _EvasionAuraRadius: 0
+  _EvasionAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
+  _ReceivedMagicDamageBonus: 0
+  _ReceivedCooldownReductionBonus: 0
+  _ReceivedLifeStealBonus: 0
+  _ReceivedAmpDamageBonus: 0
+  _ReceivedMagicArmorBonus: 0
+  _ReceivedHealthRegenBonus: 0
+  _ReceivedManaRegenBonus: 0
+  _ReceivedHitRateBonus: 0
+  _ReceivedEvasionBonus: 0
   _IsProvidingAttackSpeedAura: 0
   _AttackSpeedAuraDuration: 0
   _AttackSpeedAuraRadius: 0
@@ -419,12 +484,8 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
-  _ReceivedAttackSpeedBonus: 0
-  _ReceivedDamageBonus: 0
-  _ReceivedMoveSpeedBonus: 0
-  _ReceivedProtectionBonus: 0
-  _ReceivedArmorBonus: 0
-  _ReceivedCriticalBonus: 0
+  _IsDebuffImmune: 0
+  _DebuffImmunityDuration: 0
 --- !u!114 &-2598280145371838362
 MonoBehaviour:
   m_ObjectHideFlags: 0
