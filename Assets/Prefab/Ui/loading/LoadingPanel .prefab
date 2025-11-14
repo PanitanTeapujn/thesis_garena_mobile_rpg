@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7301902631536987307}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: GameObject
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -47,7 +47,7 @@ GameObject:
   - component: {fileID: 125406724724260283}
   - component: {fileID: 847568001110227206}
   - component: {fileID: 5782566858654498290}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: LoadingIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -121,7 +121,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8636878941714135652}
   - component: {fileID: 5040946872639884016}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'ProgressBar '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -212,7 +212,7 @@ GameObject:
   - component: {fileID: 4743639698020625749}
   - component: {fileID: 5071772145621784334}
   - component: {fileID: 5110448378441709428}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -287,7 +287,7 @@ GameObject:
   - component: {fileID: 3106708406636233237}
   - component: {fileID: 2589424247725330081}
   - component: {fileID: 638097917363078344}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'GameTitle '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -423,9 +423,9 @@ GameObject:
   m_Component:
   - component: {fileID: 38435546837018803}
   - component: {fileID: 776721446977592399}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'LoadingPanel '
-  m_TagString: Untagged
+  m_TagString: Background
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -514,7 +514,7 @@ GameObject:
   - component: {fileID: 5725487204194002314}
   - component: {fileID: 2298764234266303224}
   - component: {fileID: 2477174616507743107}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: Handle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -589,7 +589,7 @@ GameObject:
   - component: {fileID: 4982261473303349542}
   - component: {fileID: 3256734460791892304}
   - component: {fileID: 6224181485993839238}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'LoadingTips '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -726,7 +726,7 @@ GameObject:
   - component: {fileID: 6982531028414409914}
   - component: {fileID: 6475408273923659369}
   - component: {fileID: 80760700638280328}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'LoadingText '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -863,7 +863,7 @@ GameObject:
   - component: {fileID: 2779722191431096458}
   - component: {fileID: 8424886995276001132}
   - component: {fileID: 7558804782451724408}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'Background '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -939,7 +939,7 @@ GameObject:
   - component: {fileID: 3027820776356466388}
   - component: {fileID: 417888828221595802}
   - component: {fileID: 6061337179301803701}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'ProgressText '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1076,7 +1076,7 @@ GameObject:
   - component: {fileID: 8381524591647837415}
   - component: {fileID: 1444218493282600233}
   - component: {fileID: 2541541303967258402}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: Fill
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1149,7 +1149,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4095199521719120044}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'ProgressContainer '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1185,7 +1185,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2755317158941784096}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: Fill Area
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1222,7 +1222,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4192770138373324247}
   - component: {fileID: 2391049368093824079}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: 'MainContainer '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1291,7 +1291,7 @@ GameObject:
   - component: {fileID: 5366064898571604653}
   - component: {fileID: 9022940351778173204}
   - component: {fileID: 5406776356258566469}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: Background
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1364,7 +1364,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 9094284599211569611}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: Handle Slide Area
   m_TagString: Untagged
   m_Icon: {fileID: 0}

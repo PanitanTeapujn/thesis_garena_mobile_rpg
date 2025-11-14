@@ -535,6 +535,10 @@ MonoBehaviour:
   ConformX: 1
   ConformY: 1
   Logging: 0
+  excludeBackgroundChildren: 1
+  backgroundLayerName: Background
+  useTagInsteadOfLayer: 0
+  backgroundTagName: Background
 --- !u!1 &219326886
 GameObject:
   m_ObjectHideFlags: 0
@@ -1716,7 +1720,7 @@ GameObject:
   - component: {fileID: 828173695}
   - component: {fileID: 828173697}
   - component: {fileID: 828173696}
-  m_Layer: 5
+  m_Layer: 9
   m_Name: BG
   m_TagString: Untagged
   m_Icon: {fileID: 0}

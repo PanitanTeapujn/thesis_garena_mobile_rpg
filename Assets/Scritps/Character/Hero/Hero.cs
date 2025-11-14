@@ -35,6 +35,9 @@ public class Hero : Character
     public Transform cameraTransform;
     public float cameraRotationSpeed = 50f;
     public Vector3 cameraOffset = new Vector3(0, 12, -13);
+    private float lastCameraFlipTime = 0f;
+    private float cameraFlipCooldown = 0.3f;
+    private float lastRotationInput = 0f; // ✅ เก็บค่า input ก่อนหน้า
 
     public float cameraFollowSpeed = 8f;
     public float cameraRotationSmoothTime = 0.1f;
@@ -480,11 +483,24 @@ public class Hero : Character
     {
         if (!HasInputAuthority || cameraTransform == null) return;
 
-        if (Mathf.Abs(networkInputData.cameraRotationInput) > 0.1f)
+        float rotationInput = networkInputData.cameraRotationInput;
+
+        Debug.Log($"📷 Input: {rotationInput:F2}, Current Angle: {currentCameraAngle}°, Camera Euler Y: {cameraTransform.eulerAngles.y}°");
+
+        if (Mathf.Abs(rotationInput) > 0.5f && Time.time >= lastCameraFlipTime + cameraFlipCooldown)
         {
-            // ลด sensitivity เล็กน้อยเพื่อให้ smooth
-            float rotationSpeed = cameraRotationSpeed * 0.7f;
-            currentCameraAngle += networkInputData.cameraRotationInput * rotationSpeed * Runner.DeltaTime;
+            float oldAngle = currentCameraAngle;
+
+            // Flip 180°
+            currentCameraAngle += 180f;
+
+            // Normalize
+            currentCameraAngle = currentCameraAngle % 360f;
+            if (currentCameraAngle < 0f) currentCameraAngle += 360f;
+
+            lastCameraFlipTime = Time.time;
+
+            Debug.Log($"✅ Flipped! {oldAngle}° → {currentCameraAngle}°");
         }
     }
 

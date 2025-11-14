@@ -6,44 +6,47 @@ using Fusion;
 public class WaterSlime : NetworkEnemy
 {
     [Header("🌊 Water Slime Healing Settings")]
-    [SerializeField] private float healingRadius = 10f;          // รัศมีการรักษา
+    [SerializeField] private float healingRadius = 6f;           // รัศมีการรักษา
     [SerializeField] private float healingCooldown = 12f;        // ความถี่การรักษา
     [SerializeField] private float telegraphDuration = 1.8f;     // เวลาแสดง telegraph
     [SerializeField] private float healingPercentage = 0.2f;     // รักษา 20% ของ Max HP
-    [SerializeField] private bool removeDebuffs = true;          // ลบ Debuff หรือไม่
+    [SerializeField] private float postHealCooldown = 1.5f;      // เวลา cooldown หลัง heal
 
     [Header("🎨 Visual Effects")]
     [SerializeField] private GameObject healingTelegraphPrefab;  // Prefab วงกลมสีฟ้า
     [SerializeField] private ParticleSystem healingWaveEffect;   // Particle คลื่นน้ำ
-    [SerializeField] private Color telegraphColor = new Color(0.3f, 0.7f, 1f, 0.5f); // สีฟ้าใส
+    [SerializeField] private Color telegraphColor = new Color(0.3f, 0.7f, 1f, 0.5f);
     [SerializeField] private float telegraphYOffset = -1.16f;
 
-    [Header("🎯 Movement Behavior")]
-    [SerializeField] private float keepAwayDistance = 8f;        // ระยะห่างขั้นต่ำจากผู้เล่น
-    [SerializeField] private float patrolRadius = 12f;           // รัศมีการเดินวน
-    [SerializeField] private float retreatSpeed = 1.2f;          // ความเร็วตอนถอย
+    [Header("🎯 Heal Behavior")]
+    [SerializeField] private float stopDistance = 8f;            // ระยะที่จะหยุดเพื่อ heal
+
+    [Header("🎬 Animation")]
+    private Animator animator;
+    private const string ANIM_ATTACK = "attack";
 
     // Private variables
     private float nextHealTime = 0f;
     private bool isHealing = false;
     private GameObject currentTelegraph;
-    private Vector3 patrolCenter;
-    private Vector3 currentPatrolTarget;
-    private float circleAngle = 0f;
-    private float circleSpeed = 2f; // ความเร็วหมุนรอบ (รอบต่อวินาที)
-    private float circleDistance = 8f; // ระยะห่างจากผู้เล่น
-    [Header("🎬 Animation")]
-    private Animator animator;
-    private const string ANIM_ATTACK = "attack"; // ใช้ animation attack สำหรับ heal
+    private Vector3 originalPosition;
+    private bool wasMovementEnabled = true;
+
+    private enum HealPhase
+    {
+        None,
+        Telegraph,
+        Execute,
+        Cooldown
+    }
+    private HealPhase currentPhase = HealPhase.None;
 
     protected override void Start()
     {
         base.Start();
         SetupWaterSlimeStats();
-        patrolCenter = transform.position;
-        GenerateNewPatrolTarget();
+        originalPosition = transform.position;
 
-        // Get Animator
         animator = GetComponent<Animator>();
         if (animator == null)
         {
@@ -58,17 +61,13 @@ public class WaterSlime : NetworkEnemy
         CharacterName = "Water Slime";
         AttackType = AttackType.Magic;
 
-        // Water Slime stats - ตายง่าย
         MaxHp = 100;
         CurrentHp = MaxHp;
         Armor = 5;
         MagicArmor = 5;
-        MoveSpeed = 3.5f;
-        AttackRange = 0f; // ไม่โจมตี
+        MoveSpeed = 3f;
+        AttackRange = 0f;
         detectRange = 15f;
-
-        // เปลี่ยนสี
-        
     }
 
     public override void FixedUpdateNetwork()
@@ -81,306 +80,44 @@ public class WaterSlime : NetworkEnemy
         }
     }
 
-    // ========== AI System ==========
-    // ========== แก้ไข ProcessWaterSlimeAI ==========
+    // ========== AI System - เหมือน FireSlime ==========
     private void ProcessWaterSlimeAI()
     {
         if (isHealing) return;
 
-        FindNearestPlayer();
-
-        // ✅ เช็คว่ามีศัตรูที่ต้องการ Heal หรือไม่
-        Character injuredAlly = FindInjuredAlly();
-
-        if (injuredAlly != null)
+        // หา target
+        if (targetTransform == null)
         {
-            float distanceToAlly = Vector3.Distance(transform.position, injuredAlly.transform.position);
-
-            // ✅ ถ้าอยู่ในระยะ Heal แล้ว ให้ Heal
-            if (distanceToAlly <= healingRadius && Runner.SimulationTime >= nextHealTime)
-            {
-                StartCoroutine(PerformHealingWave());
-            }
-            // ✅ ถ้ายังไม่ถึงระยะ ให้เดินเข้าไปใกล้
-            else if (distanceToAlly > healingRadius)
-            {
-                MoveTowardsAlly(injuredAlly);
-            }
-            else
-            {
-                // รอ cooldown - วนรอบผู้เล่น
-                CircleAroundPlayer();
-            }
-        }
-        else
-        {
-            // ✅ ไม่มีใครต้องการ Heal - วนรอบผู้เล่นแทนการ patrol
-            if (targetTransform != null)
-            {
-                CircleAroundPlayer();
-            }
-            else
-            {
-                // ไม่มีผู้เล่น - เดินวนรอบปกติ
-                ProcessMovement();
-            }
-        }
-    }
-
-    // ========== เพิ่ม Method ใหม่: หาเพื่อนที่บาดเจ็บ ==========
-    private Character FindInjuredAlly()
-    {
-        Collider[] enemies = Physics.OverlapSphere(transform.position, detectRange, LayerMask.GetMask("Enemy"));
-
-        Character mostInjured = null;
-        float lowestHPPercent = 0.8f; // หาคนที่ HP < 80%
-
-        foreach (Collider col in enemies)
-        {
-            Character enemy = col.GetComponent<Character>();
-            if (enemy != null && enemy != this )
-            {
-                float hpPercent = enemy.GetHealthPercentage();
-                if (hpPercent < lowestHPPercent)
-                {
-                    lowestHPPercent = hpPercent;
-                    mostInjured = enemy;
-                }
-            }
-        }
-
-        return mostInjured;
-    }
-
-    // ========== เพิ่ม Method ใหม่: เดินเข้าไปหาเพื่อน ==========
-    private void MoveTowardsAlly(Character ally)
-    {
-        if (ally == null) return;
-
-        Vector3 direction = (ally.transform.position - transform.position).normalized;
-        direction.y = 0;
-
-        if (targetTransform != null)
-        {
-            float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
-
-            if (distanceToPlayer < keepAwayDistance)
-            {
-                Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x);
-                direction = (direction + perpendicular * 0.5f).normalized;
-            }
-        }
-
-        float moveDistance = MoveSpeed * Runner.DeltaTime;
-        RaycastHit wallHit;
-
-        // ✅ แก้ไข: เช็คกำแพงก่อน และหาทางเลี่ยว
-        if (Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            Vector3 avoidDirection = FindAlternativeDirection(direction);
-
-            if (avoidDirection != Vector3.zero)
-            {
-                direction = avoidDirection;
-            }
-            else
-            {
-                // ไม่มีทางเลี่ยว - หยุดเคลื่อนที่
-                return;
-            }
-        }
-
-        // ✅ Double check (safety)
-        if (!Physics.Raycast(transform.position, direction, moveDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            Vector3 newPosition = transform.position + direction * moveDistance;
-
-            if (rb != null)
-            {
-                rb.MovePosition(newPosition);
-            }
-
-            NetworkedPosition = newPosition;
-            FlipCharacterTowardsMovement(direction);
-        }
-    }
-
-
-    // ========== เพิ่ม Method: หาทางเลี่ยวกำแพง ==========
-    private Vector3 FindAlternativeDirection(Vector3 blockedDirection)
-    {
-        // ✅ ลองหลายมุมเพื่อหาทางเลี่ยว
-        float[] angles = { 30f, -30f, 45f, -45f, 60f, -60f, 90f, -90f, 120f, -120f };
-        float checkDistance = MoveSpeed * Runner.DeltaTime * 1.5f;
-
-        foreach (float angle in angles)
-        {
-            Vector3 altDir = Quaternion.Euler(0, angle, 0) * blockedDirection;
-
-            RaycastHit hit;
-            if (!Physics.Raycast(transform.position, altDir.normalized, out hit, checkDistance,
-                LayerMask.GetMask("Wall", "Obstacle", "Default")))
-            {
-                Debug.Log($"[WaterSlime] Found alternative path at {angle}°");
-                return altDir.normalized;
-            }
-        }
-
-        Debug.LogWarning("[WaterSlime] No alternative direction found!");
-        return Vector3.zero;
-    }
-
-    // ========== Movement System ==========
-    private void ProcessMovement()
-    {
-        if (targetTransform != null)
-        {
-            float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
-
-            // ถ้าผู้เล่นใกล้เกินไป ให้ค่อยๆ ถอยออกไป
-            if (distanceToPlayer < keepAwayDistance)
-            {
-                RetreatFromPlayer();
-                return;
-            }
-
-            // ✅ ถ้าอยู่ในระยะปานกลาง ให้วนรอบ
-            if (distanceToPlayer < detectRange)
-            {
-                CircleAroundPlayer();
-                return;
-            }
-        }
-
-        // ไม่มีผู้เล่นใกล้ - เดินวนรอบ Patrol
-        PatrolMovement();
-    }
-
-    private void RetreatFromPlayer()
-    {
-        if (targetTransform == null) return;
-
-        Vector3 directionAway = (transform.position - targetTransform.position).normalized;
-        directionAway.y = 0;
-
-        float retreatDistance = retreatSpeed * Runner.DeltaTime;
-
-        // ✅ เพิ่ม: เช็ค multiple directions ถ้าทางหลักโดนกำแพง
-        RaycastHit wallHit;
-        Vector3 finalDirection = directionAway;
-
-        if (Physics.Raycast(transform.position, directionAway, out wallHit, retreatDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            // ✅ ถ้าทางหลังมีกำแพง ลองหาทางข้าง
-            finalDirection = FindAlternativeDirection(directionAway);
-
-            if (finalDirection == Vector3.zero)
-            {
-                // ✅ ไม่มีทางหนี - อยู่กับที่
-                Debug.LogWarning($"[WaterSlime] Trapped! Cannot retreat from player");
-                return;
-            }
-        }
-
-        // ✅ Double check ก่อน move (safety check)
-        if (!Physics.Raycast(transform.position, finalDirection, retreatDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            Vector3 newPosition = transform.position + finalDirection * retreatDistance;
-
-            if (rb != null)
-            {
-                rb.MovePosition(newPosition);
-            }
-
-            NetworkedPosition = newPosition;
-            FlipCharacterTowardsMovement(finalDirection);
-        }
-    }
-
-    private void PatrolMovement()
-    {
-        float distanceToTarget = Vector3.Distance(transform.position, currentPatrolTarget);
-
-        if (distanceToTarget <= 1f)
-        {
-            GenerateNewPatrolTarget();
-        }
-
-        Vector3 direction = (currentPatrolTarget - transform.position).normalized;
-        direction.y = 0;
-
-        float moveDistance = MoveSpeed * Runner.DeltaTime;
-
-        // ✅ เพิ่ม: เช็คกำแพงก่อน move
-        RaycastHit wallHit;
-
-        if (Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            // เจอกำแพง - สร้าง patrol target ใหม่
-            GenerateNewPatrolTarget();
+            FindNearestPlayer();
             return;
         }
 
-        // ✅ Double check
-        if (!Physics.Raycast(transform.position, direction, moveDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
+
+        // ✅ ถ้าอยู่ในระยะ heal และพร้อมใช้สกิล → Heal
+        if (distanceToPlayer <= stopDistance && Runner.SimulationTime >= nextHealTime)
         {
-            Vector3 newPosition = transform.position + direction * moveDistance;
-
-            if (rb != null)
-            {
-                rb.MovePosition(newPosition);
-            }
-
-            NetworkedPosition = newPosition;
-            FlipCharacterTowardsMovement(direction);
+            StartCoroutine(PerformHealingSequence());
         }
     }
 
-    private void GenerateNewPatrolTarget()
-    {
-        Vector2 randomDirection = Random.insideUnitCircle.normalized;
-        float randomDistance = Random.Range(patrolRadius * 0.5f, patrolRadius);
-
-        currentPatrolTarget = patrolCenter + new Vector3(randomDirection.x, 0, randomDirection.y) * randomDistance;
-    }
-
-    // ========== Healing System ==========
-    // ========== แก้ไข ShouldHeal - ไม่ต้องใช้แล้ว แต่เก็บไว้สำหรับเช็คเพิ่มเติม ==========
-    private bool ShouldHeal()
-    {
-        // เช็คว่ามีศัตรูที่ต้องการ Heal ในระยะ healingRadius หรือไม่
-        Collider[] enemies = Physics.OverlapSphere(transform.position, healingRadius, LayerMask.GetMask("Enemy"));
-
-        foreach (Collider col in enemies)
-        {
-            Character enemy = col.GetComponent<Character>();
-            if (enemy != null && enemy != this )
-            {
-                if (enemy.GetHealthPercentage() < 0.8f)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private IEnumerator PerformHealingWave()
+    // ========== Healing Sequence - เหมือน FireSlime ==========
+    private IEnumerator PerformHealingSequence()
     {
         isHealing = true;
+        currentPhase = HealPhase.Telegraph;
+
+        // ✅ หยุดการเคลื่อนที่
         StopMovement();
+        originalPosition = transform.position;
 
-        Debug.Log($"🌊 {CharacterName}: Starting Healing Wave!");
-
-        // Telegraph
+        // 🔵 Phase 1: Telegraph
+        Debug.Log($"🌊 {CharacterName}: Telegraph Phase");
         yield return StartCoroutine(ShowHealingTelegraph());
+
+        // 🌊 Phase 2: Execute
+        currentPhase = HealPhase.Execute;
+        Debug.Log($"🌊 {CharacterName}: Execute Healing!");
 
         // Play animation
         if (animator != null)
@@ -390,32 +127,75 @@ public class WaterSlime : NetworkEnemy
 
         yield return new WaitForSeconds(0.3f);
 
-        // Execute healing
         ExecuteHealingWave();
 
-        yield return new WaitForSeconds(1f);
+        // 💤 Phase 3: Cooldown
+        currentPhase = HealPhase.Cooldown;
+        Debug.Log($"🌊 {CharacterName}: Cooldown Phase");
+        yield return new WaitForSeconds(postHealCooldown);
 
+        // ✅ เปิดการเคลื่อนที่ใหม่
         ResumeMovement();
+
+        // รีเซ็ต
         isHealing = false;
+        currentPhase = HealPhase.None;
         nextHealTime = Runner.SimulationTime + healingCooldown;
 
-        Debug.Log($"🌊 {CharacterName}: Healing Wave complete!");
+        Debug.Log($"🌊 {CharacterName}: Ready for next heal");
     }
 
+    // ========== Movement Control ==========
+    private void StopMovement()
+    {
+        wasMovementEnabled = MoveSpeed > 0;
+        if (wasMovementEnabled)
+        {
+            MoveSpeed = 0f;
+        }
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+        }
+
+        targetTransform = null;
+
+        Debug.Log($"🌊 {CharacterName}: Movement STOPPED");
+    }
+
+    private void ResumeMovement()
+    {
+        if (wasMovementEnabled)
+        {
+            if (characterStats != null)
+            {
+                MoveSpeed = characterStats.moveSpeed;
+            }
+        }
+
+        Debug.Log($"🌊 {CharacterName}: Movement RESUMED");
+    }
+
+    // ========== Telegraph ==========
     private IEnumerator ShowHealingTelegraph()
     {
-        Vector3 telegraphPos = new Vector3(transform.position.x, telegraphYOffset, transform.position.z);
+        Vector3 telegraphPosition = new Vector3(
+            transform.position.x,
+            telegraphYOffset,
+            transform.position.z
+        );
 
         if (healingTelegraphPrefab != null)
         {
-            currentTelegraph = Instantiate(healingTelegraphPrefab, telegraphPos, Quaternion.identity);
+            currentTelegraph = Instantiate(healingTelegraphPrefab, telegraphPosition, Quaternion.identity);
         }
         else
         {
-            currentTelegraph = CreateProceduralHealingTelegraph(telegraphPos);
+            currentTelegraph = CreateProceduralHealingTelegraph(telegraphPosition);
         }
 
-        RPC_ShowTelegraph(telegraphPos);
+        RPC_ShowTelegraph(telegraphPosition);
 
         float elapsed = 0f;
         Vector3 startScale = new Vector3(0.1f, 0.05f, 0.1f);
@@ -425,11 +205,17 @@ public class WaterSlime : NetworkEnemy
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / telegraphDuration;
+            float smoothProgress = 1f - Mathf.Pow(1f - progress, 3f);
 
             if (currentTelegraph != null)
             {
-                currentTelegraph.transform.position = telegraphPos;
-                currentTelegraph.transform.localScale = Vector3.Lerp(startScale, targetScale, progress);
+                currentTelegraph.transform.position = new Vector3(
+                    originalPosition.x,
+                    telegraphYOffset,
+                    originalPosition.z
+                );
+
+                currentTelegraph.transform.localScale = Vector3.Lerp(startScale, targetScale, smoothProgress);
 
                 // Pulse effect
                 float pulse = Mathf.Sin(elapsed * 8f) * 0.15f + 0.85f;
@@ -452,9 +238,10 @@ public class WaterSlime : NetworkEnemy
         }
     }
 
+    // ========== Execute Healing ==========
     private void ExecuteHealingWave()
     {
-        // Show healing effect
+        // แสดง particle effect
         if (healingWaveEffect != null)
         {
             GameObject healFX = Instantiate(healingWaveEffect.gameObject, transform.position, Quaternion.identity);
@@ -463,7 +250,7 @@ public class WaterSlime : NetworkEnemy
             if (ps != null)
             {
                 ParticleSystem.MainModule main = ps.main;
-                main.startColor = new Color(0.3f, 0.7f, 1f, 0.8f); // สีฟ้าน้ำ
+                main.startColor = new Color(0.3f, 0.7f, 1f, 0.8f);
                 main.startLifetime = 2f;
 
                 ParticleSystem.ShapeModule shape = ps.shape;
@@ -474,7 +261,9 @@ public class WaterSlime : NetworkEnemy
             Destroy(healFX, 3f);
         }
 
-        // หาศัตรูในรัศมี
+        RPC_ShowHealingEffect(transform.position);
+
+        // ✅ หาศัตรูทั้งหมดในรัศมี (ไม่เช็ค HP)
         Collider[] enemies = Physics.OverlapSphere(transform.position, healingRadius, LayerMask.GetMask("Enemy"));
 
         int healedCount = 0;
@@ -484,7 +273,7 @@ public class WaterSlime : NetworkEnemy
             Character enemy = col.GetComponent<Character>();
             if (enemy != null && enemy != this )
             {
-                // คำนวณ HP ที่จะรักษา
+                // ✅ Heal ทุกคนในระยะ ไม่เช็ค HP
                 int healAmount = Mathf.RoundToInt(enemy.MaxHp * healingPercentage);
                 int newHP = Mathf.Min(enemy.CurrentHp + healAmount, enemy.MaxHp);
                 int actualHealed = newHP - enemy.CurrentHp;
@@ -494,18 +283,13 @@ public class WaterSlime : NetworkEnemy
                     enemy.CurrentHp = newHP;
                     healedCount++;
 
-                    // แสดง healing text
                     RPC_ShowHealingText(enemy.transform.position, actualHealed);
 
                     Debug.Log($"🌊 Healed {enemy.CharacterName} for {actualHealed} HP!");
                 }
-
-                // ลบ Debuffs
-               
             }
         }
 
-        RPC_ShowHealingEffect(transform.position);
         Debug.Log($"🌊 Healing Wave: Healed {healedCount} enemies!");
     }
 
@@ -538,40 +322,6 @@ public class WaterSlime : NetworkEnemy
         return telegraph;
     }
 
-    private void StopMovement()
-    {
-        MoveSpeed = 0f;
-        if (rb != null)
-        {
-            rb.linearVelocity = Vector3.zero;
-        }
-    }
-
-    private void ResumeMovement()
-    {
-        if (characterStats != null)
-        {
-            MoveSpeed = characterStats.moveSpeed;
-        }
-    }
-
-    protected void FlipCharacterTowardsMovement(Vector3 moveDirection)
-    {
-        if (moveDirection.magnitude < 0.3f) return;
-
-        Vector3 newScale = transform.localScale;
-        if (moveDirection.x > 0.3f)
-        {
-            newScale.x = Mathf.Abs(newScale.x);
-        }
-        else if (moveDirection.x < -0.3f)
-        {
-            newScale.x = -Mathf.Abs(newScale.x);
-        }
-
-        transform.localScale = newScale;
-    }
-
     // ========== RPCs ==========
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowTelegraph(Vector3 position)
@@ -593,8 +343,7 @@ public class WaterSlime : NetworkEnemy
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     private void RPC_ShowHealingText(Vector3 position, int healAmount)
     {
-        // แสดง floating text "+HP"
-        Color healColor = new Color(0.3f, 1f, 0.5f, 1f); // เขียวสดใส
+        Color healColor = new Color(0.3f, 1f, 0.5f, 1f);
         DamageTextManager.ShowCustomText(position + Vector3.up * 2f, $"+{healAmount} HP", healColor, 1f);
     }
 
@@ -606,79 +355,5 @@ public class WaterSlime : NetworkEnemy
         }
 
         base.RPC_OnDeath();
-    }
-
-    // ========== Debug Gizmos ==========
-    private void CircleAroundPlayer()
-    {
-        if (targetTransform == null) return;
-
-        float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
-
-        circleAngle += circleSpeed * Runner.DeltaTime;
-        if (circleAngle > 360f) circleAngle -= 360f;
-
-        float radians = circleAngle * Mathf.Deg2Rad;
-        Vector3 offset = new Vector3(
-            Mathf.Cos(radians) * circleDistance,
-            0,
-            Mathf.Sin(radians) * circleDistance
-        );
-
-        Vector3 targetPosition = targetTransform.position + offset;
-        Vector3 direction = (targetPosition - transform.position).normalized;
-        direction.y = 0;
-
-        float moveSpeed = MoveSpeed;
-        if (distanceToPlayer > keepAwayDistance * 2f)
-        {
-            moveSpeed *= 1.5f;
-        }
-
-        if (distanceToPlayer < keepAwayDistance)
-        {
-            Vector3 retreatDirection = (transform.position - targetTransform.position).normalized;
-            retreatDirection.y = 0;
-            direction = retreatDirection;
-        }
-
-        float moveDistance = moveSpeed * Runner.DeltaTime;
-
-        // ✅ แก้ไข: เช็คกำแพงอย่างละเอียด
-        RaycastHit wallHit;
-
-        if (Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            // ✅ เจอกำแพง - หาทางเลี่ยว
-            Vector3 alternativeDir = FindAlternativeDirection(direction);
-
-            if (alternativeDir != Vector3.zero)
-            {
-                direction = alternativeDir;
-            }
-            else
-            {
-                // ✅ ไม่มีทางเลี่ยว - กระโดดมุม
-                circleAngle += 90f;
-                if (circleAngle > 360f) circleAngle -= 360f;
-                return; // ข้ามการ move ในเฟรมนี้
-            }
-        }
-
-        // ✅ Double check อีกครั้งก่อน move (safety check)
-        if (!Physics.Raycast(transform.position, direction, moveDistance,
-            LayerMask.GetMask("Wall", "Obstacle", "Default")))
-        {
-            Vector3 newPosition = transform.position + direction * moveDistance;
-
-            if (rb != null)
-            {
-                rb.MovePosition(newPosition);
-            }
-
-            NetworkedPosition = newPosition;
-            FlipCharacterTowardsMovement(direction);
-        }
     }
 }

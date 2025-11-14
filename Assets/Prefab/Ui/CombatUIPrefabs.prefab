@@ -16515,6 +16515,12 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -225
       objectReference: {fileID: 0}
+    - target: {fileID: 2732662413267756993, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 0aa5880bcb0075645865b06ef7c4ae70,
+        type: 3}
     - target: {fileID: 2996167704018542337, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
       propertyPath: m_SizeDelta.x
@@ -16911,6 +16917,16 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 21300000, guid: 8a05b4f2e49ced9478fa48213ec5ea33,
         type: 3}
+    - target: {fileID: 5652139234263796293, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 150
+      objectReference: {fileID: 0}
+    - target: {fileID: 5652139234263796293, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
+        type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 150
+      objectReference: {fileID: 0}
     - target: {fileID: 5848333364473479658, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
       propertyPath: m_fontSize
@@ -17164,6 +17180,12 @@ PrefabInstance:
       propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
       value: 1801810542
       objectReference: {fileID: 0}
+    - target: {fileID: 8629744404659453404, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 84487d73ca4b791498332d8f6858417f,
+        type: 3}
     - target: {fileID: 8770316873676049503, guid: 626b7f9b95e2a3e43b3ecd78d6590652,
         type: 3}
       propertyPath: m_fontSize

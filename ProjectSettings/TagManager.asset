@@ -12,6 +12,7 @@ TagManager:
   - Slime
   - Dummy
   - SlimeFire
+  - Background
   layers:
   - Default
   - TransparentFX
@@ -22,7 +23,7 @@ TagManager:
   - Player
   - Enemy
   - Ground
-  - 
+  - Background
   - 
   - 
   - 
