@@ -83,17 +83,50 @@ public class EnemyDropManager : NetworkBehaviour
         long goldDropped = dropSettings.CalculateGoldDrop(enemyLevel);
         int gemsDropped = dropSettings.CalculateGemsDrop(enemyLevel);
 
-        // Apply drops
-        ApplyDrops(goldDropped, gemsDropped);
+        // ✅ หา players ทั้งหมดในฉาก (ไม่จำกัดระยะ)
+        List<Character> allPlayers = FindAllPlayers();
 
-        // Create visual effects
-        CreateDropVisuals(goldDropped, gemsDropped);
+        if (allPlayers.Count == 0)
+        {
+            Debug.LogWarning("[EnemyDropManager] No players in scene!");
+            return;
+        }
+
+        // Apply drops ให้ทุกคน
+        ApplyDropsToAllPlayers(goldDropped, gemsDropped, allPlayers);
+
+        // Create visual effects (ถ้ามี player ใกล้)
+        List<Character> nearbyPlayers = FindNearbyPlayers();
+        if (nearbyPlayers.Count > 0)
+        {
+            CreateDropVisuals(goldDropped, gemsDropped);
+        }
 
         // Log results
         if (showDropLogs || dropSettings.showDropLogs)
         {
-          //  Debug.Log($"[EnemyDropManager] {enemy.CharacterName} (Level {enemyLevel}) dropped: {goldDropped} gold, {gemsDropped} gems");
+            Debug.Log($"[EnemyDropManager] {enemy.CharacterName} (Level {enemyLevel}) dropped: {goldDropped} gold, {gemsDropped} gems to {allPlayers.Count} players");
         }
+    }
+
+    // ✅ Method ใหม่: หา players ทั้งหมดในฉาก (ไม่จำกัดระยะ)
+    private List<Character> FindAllPlayers()
+    {
+        List<Character> allPlayers = new List<Character>();
+
+        // หา Hero ทั้งหมดในเกม
+        Hero[] heroes = FindObjectsOfType<Hero>();
+
+        foreach (Hero hero in heroes)
+        {
+            if (hero != null && hero.IsSpawned && hero.CurrentHp > 0)
+            {
+                allPlayers.Add(hero);
+            }
+        }
+
+        Debug.Log($"[FindAllPlayers] Found {allPlayers.Count} alive players");
+        return allPlayers;
     }
 
     private void ApplyDrops(long goldDropped, int gemsDropped)
@@ -141,7 +174,11 @@ public class EnemyDropManager : NetworkBehaviour
     private List<Character> FindNearbyPlayers()
     {
         List<Character> nearbyPlayers = new List<Character>();
-        Collider[] playerColliders = Physics.OverlapSphere(transform.position, collectRange, LayerMask.GetMask("Player"));
+        Collider[] playerColliders = Physics.OverlapSphere(
+            transform.position,
+            collectRange,
+            LayerMask.GetMask("Player")
+        );
 
         foreach (Collider col in playerColliders)
         {
@@ -151,7 +188,49 @@ public class EnemyDropManager : NetworkBehaviour
                 nearbyPlayers.Add(character);
             }
         }
+
         return nearbyPlayers;
+    }
+    private void ApplyDropsToAllPlayers(long goldDropped, int gemsDropped, List<Character> players)
+    {
+        if (players.Count == 0) return;
+
+        // แบ่งเงินและเพชรให้ players ทั้งหมด
+        if (goldDropped > 0)
+        {
+            long goldPerPlayer = goldDropped / players.Count;
+            if (goldPerPlayer > 0)
+            {
+                foreach (var player in players)
+                {
+                    CurrencyManager.AddGoldStatic(goldPerPlayer);
+                    RPC_ShowGoldPickup(player.Object, goldPerPlayer);
+
+                    Debug.Log($"[EnemyDropManager] Gave {goldPerPlayer} gold to {player.CharacterName}");
+                }
+
+                // บันทึกลง StageRewardTracker
+                StageRewardTracker.AddGoldReward(goldDropped);
+            }
+        }
+
+        if (gemsDropped > 0)
+        {
+            int gemsPerPlayer = gemsDropped / players.Count;
+            if (gemsPerPlayer > 0)
+            {
+                foreach (var player in players)
+                {
+                    CurrencyManager.AddGemsStatic(gemsPerPlayer);
+                    RPC_ShowGemsPickup(player.Object, gemsPerPlayer);
+
+                    Debug.Log($"[EnemyDropManager] Gave {gemsPerPlayer} gems to {player.CharacterName}");
+                }
+
+                // บันทึกลง StageRewardTracker
+                StageRewardTracker.AddGemsReward(gemsDropped);
+            }
+        }
     }
 
     private int GetEnemyLevel()

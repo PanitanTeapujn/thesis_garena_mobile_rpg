@@ -16,14 +16,13 @@ public class NetworkRunnerHandler : MonoBehaviour
 
     private async void Start()
     {
-        Debug.LogError("[MOBILE] NetworkRunnerHandler Start - Platform: " + Application.platform);
-        Debug.LogError("[MOBILE] Internet: " + Application.internetReachability);
+        Debug.Log($"[NetworkRunnerHandler] Start - Platform: {Application.platform}");
 
         // หา PlayerSpawner
         _spawner = FindObjectOfType<PlayerSpawner>();
         if (_spawner == null)
         {
-            Debug.LogError("PlayerSpawner not found! Please add PlayerSpawner to scene.");
+            Debug.LogError("PlayerSpawner not found!");
             return;
         }
 
@@ -45,38 +44,36 @@ public class NetworkRunnerHandler : MonoBehaviour
         runner.AddCallbacks(_spawner);
         runner.AddCallbacks(_inputController);
 
-        // 🔄 กำหนด SessionName ตามโหมด
-        string gameModeSetting = PlayerPrefs.GetString("GameMode", "Coop");
-        bool isSolo = gameModeSetting == "Solo";
-        string sessionName = isSolo ? "Solo_" + Random.Range(100000, 999999) : "MainRoom";
+        // ✅ บังคับใช้ Single Mode บน Mobile
+        GameMode gameMode = GameMode.Single;
+        string sessionName = "Solo_" + Random.Range(100000, 999999);
 
-        Debug.Log($"Game mode: {(isSolo ? "Solo" : "Co-op")}, Session name: {sessionName}");
+        Debug.Log($"[NetworkRunnerHandler] Starting Single Player Mode");
 
         var startGameArgs = new StartGameArgs()
         {
-            GameMode =GameMode.Single,
+            GameMode = gameMode,
             SessionName = sessionName,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         };
 
-        Debug.Log($"Starting game with mode: {startGameArgs.GameMode}, session: {startGameArgs.SessionName}");
-
         try
         {
             await runner.StartGame(startGameArgs);
-            _cachedRunner = runner; // ✅ เก็บไว้ใช้
+            _cachedRunner = runner;
 
-            Debug.Log($"Game started successfully - IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
+            Debug.Log($"✅ Game started - IsServer: {runner.IsServer}, LocalPlayer: {runner.LocalPlayer}");
 
+            // ✅ Single mode = เป็น Server เสมอ
             if (runner.IsServer)
             {
-                Debug.Log("Running as Server - Setting up EnemySpawner");
+                Debug.Log("Setting up EnemySpawner...");
                 SetupEnemySpawner(runner);
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Error starting game: {e.Message}");
+            Debug.LogError($"❌ Error starting game: {e.Message}\n{e.StackTrace}");
         }
     }
 

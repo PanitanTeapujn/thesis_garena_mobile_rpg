@@ -64,6 +64,8 @@ public class BossSlime : NetworkEnemy
     private const string ANIM_SKILL1 = "skill1";
     private const string ANIM_SKILL2 = "skill2";
     // Private variables
+    public bool isDashing = false; // ✅ เพิ่มตัวนี้
+
     private bool isPerformingSkill = false;
     private GameObject currentTelegraph;
     private List<GameObject> activeTelegraphs = new List<GameObject>();
@@ -159,8 +161,20 @@ public class BossSlime : NetworkEnemy
         {
             CheckPhaseTransition();
             CleanupDeadMinions();
-
             ProcessBossAI();
+
+            // ✅ CRITICAL: อัพเดท NetworkedPosition ทุก frame
+            NetworkedPosition = transform.position;
+
+            if (rb != null)
+            {
+                NetworkedVelocity = rb.linearVelocity;
+            }
+        }
+        else
+        {
+            // Remote client
+            ApplyNetworkState();
         }
     }
 
@@ -529,7 +543,6 @@ public class BossSlime : NetworkEnemy
         {
             hitHeroes.Clear();
 
-            // หา target ใหม่ทุกครั้ง
             if (targetTransform == null)
             {
                 FindNearestPlayer();
@@ -550,13 +563,17 @@ public class BossSlime : NetworkEnemy
             // Telegraph
             yield return StartCoroutine(ShowDashTelegraph(dashStartPos, directionToPlayer));
 
-            // Play skill1 animation
             RPC_PlayAnimation("skill1");
-
             yield return new WaitForSeconds(0.2f);
+
+            // ✅ เปิด flag ก่อน Dash
+            isDashing = true;
 
             // Execute dash
             yield return StartCoroutine(ExecuteDash(dashStartPos, directionToPlayer));
+
+            // ✅ ปิด flag หลัง Dash
+            isDashing = false;
 
             // Small delay between dashes
             if (i < dashCount - 1)
@@ -568,8 +585,7 @@ public class BossSlime : NetworkEnemy
         yield return new WaitForSeconds(1f);
     }
 
-    // ========== Dash Telegraph ========== (แก้ไขส่วนนี้)
-    // ========== Dash Telegraph ========== (แก้ไขใหม่)
+   
     private IEnumerator ShowDashTelegraph(Vector3 startPos, Vector3 direction)
     {
         Vector3 telegraphPos = new Vector3(startPos.x, telegraphYOffset, startPos.z);
@@ -639,26 +655,35 @@ public class BossSlime : NetworkEnemy
 
     private IEnumerator ExecuteDash(Vector3 startPos, Vector3 direction)
     {
-        // ✅ เพิ่ม: เช็คกำแพงก่อน Dash (เหมือน Assassin)
+        Debug.Log($"🐲 [Dash Start] From: {startPos}, Direction: {direction}");
+
+        // ✅ 1. เช็คกำแพงก่อน Dash
         float actualDashDistance = dashDistance;
         RaycastHit wallHit;
 
-        if (Physics.Raycast(startPos, direction, out wallHit, dashDistance,
+        if (Physics.Raycast(
+            startPos + Vector3.up * 0.5f,
+            direction,
+            out wallHit,
+            dashDistance,
             LayerMask.GetMask("Wall", "Obstacle", "Default")))
         {
             actualDashDistance = Mathf.Max(0.5f, wallHit.distance - 0.5f);
             Debug.Log($"⚠️ Boss Wall detected at {wallHit.distance}m, reducing dash to {actualDashDistance}m");
         }
 
-        // ✅ ใช้ actualDashDistance แทน dashDistance
         Vector3 endPos = startPos + direction * actualDashDistance;
 
+        Debug.Log($"🐲 [Dash] Target position: {endPos} (Distance: {actualDashDistance}m)");
+
+        // ✅ 2. Play effect
         if (dashEffect != null)
         {
             dashEffect.Play();
         }
 
         float elapsed = 0f;
+        Vector3 lastSafePosition = startPos;
 
         while (elapsed < dashDuration)
         {
@@ -666,13 +691,16 @@ public class BossSlime : NetworkEnemy
             float progress = elapsed / dashDuration;
             float smoothProgress = Mathf.Sin(progress * Mathf.PI * 0.5f);
 
-            Vector3 currentPos = Vector3.Lerp(startPos, endPos, smoothProgress);
+            Vector3 targetPos = Vector3.Lerp(startPos, endPos, smoothProgress);
 
-            // ✅ เพิ่ม: Safety check ระหว่าง Dash (เหมือน Assassin)
-            Vector3 moveVector = currentPos - transform.position;
+            // ✅ 3. Safety check ระหว่าง Dash
+            Vector3 moveVector = targetPos - transform.position;
             if (moveVector.magnitude > 0.1f)
             {
-                if (Physics.Raycast(transform.position, moveVector.normalized, moveVector.magnitude,
+                if (Physics.Raycast(
+                    transform.position + Vector3.up * 0.5f,
+                    moveVector.normalized,
+                    moveVector.magnitude,
                     LayerMask.GetMask("Wall", "Obstacle", "Default")))
                 {
                     Debug.LogWarning("🛑 Boss hit wall during dash! Stopping.");
@@ -680,17 +708,57 @@ public class BossSlime : NetworkEnemy
                 }
             }
 
-            transform.position = currentPos;
+            // ✅ 4. CRITICAL: ใช้ rb.MovePosition + sync NetworkedPosition
+            if (rb != null)
+            {
+                rb.MovePosition(targetPos);
+            }
+            else
+            {
+                transform.position = targetPos;
+            }
 
-            CheckDashCollision(currentPos, direction);
+            // ✅ 5. Sync to network (สำคัญมาก!)
+            if (HasStateAuthority)
+            {
+                NetworkedPosition = targetPos;
+            }
+
+            lastSafePosition = targetPos;
+
+            // Check collision
+            CheckDashCollision(targetPos, direction);
 
             yield return null;
         }
 
+        // ✅ 6. บังคับให้อยู่ตำแหน่งสุดท้าย
+        if (rb != null)
+        {
+            rb.MovePosition(endPos);
+            rb.linearVelocity = Vector3.zero; // ✅ หยุด velocity
+        }
+        else
+        {
+            transform.position = endPos;
+        }
+
+        // ✅ 7. Sync ตำแหน่งสุดท้าย
+        if (HasStateAuthority)
+        {
+            NetworkedPosition = endPos;
+        }
+
+        Debug.Log($"🐲 [Dash Complete] Final position: {transform.position}, Expected: {endPos}");
+
+        // Stop effect
         if (dashEffect != null)
         {
             dashEffect.Stop();
         }
+
+        // ✅ 8. รอให้ network sync เสร็จ
+        yield return new WaitForSeconds(0.1f);
     }
 
     // ========== (ถ้าต้องการ) เพิ่ม Stun หลัง Knockback ==========

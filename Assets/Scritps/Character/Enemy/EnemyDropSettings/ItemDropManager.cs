@@ -98,11 +98,12 @@ public class ItemDropManager : NetworkBehaviour
     {
         if (!HasStateAuthority) return;
 
-        // หา players ใกล้เคียง
-        List<Character> nearbyPlayers = FindNearbyPlayers();
-        if (nearbyPlayers.Count == 0)
+        // ✅ หา players ทั้งหมดในฉาก (ไม่จำกัดระยะ)
+        List<Character> allPlayers = FindAllPlayers();
+
+        if (allPlayers.Count == 0)
         {
-            Debug.Log("[ItemDropManager] No players nearby for item drops");
+            Debug.Log("[ItemDropManager] No players in scene for item drops");
             return;
         }
 
@@ -118,8 +119,8 @@ public class ItemDropManager : NetworkBehaviour
             return;
         }
 
-        // Apply drops
-        ApplyItemDrops(dropResults, nearbyPlayers);
+        // Apply drops ให้ player สุ่ม 1 คน (หรือทุกคนถ้าต้องการ)
+        ApplyItemDrops(dropResults, allPlayers);
 
         // Log results
         if (showDropLogs || itemDropSettings.showDropLogs)
@@ -127,6 +128,27 @@ public class ItemDropManager : NetworkBehaviour
             LogDropResults(dropResults, enemyLevel);
         }
     }
+
+    // ✅ Method ใหม่: หา players ทั้งหมดในฉาก
+    private List<Character> FindAllPlayers()
+    {
+        List<Character> allPlayers = new List<Character>();
+
+        // หา Hero ทั้งหมดในเกม
+        Hero[] heroes = FindObjectsOfType<Hero>();
+
+        foreach (Hero hero in heroes)
+        {
+            if (hero != null && hero.IsSpawned && hero.CurrentHp > 0)
+            {
+                allPlayers.Add(hero);
+            }
+        }
+
+        Debug.Log($"[FindAllPlayers] Found {allPlayers.Count} alive players for item drops");
+        return allPlayers;
+    }
+
 
     private List<ItemDropResult> CalculateItemDrops(int enemyLevel)
     {
@@ -225,7 +247,11 @@ public class ItemDropManager : NetworkBehaviour
     private List<Character> FindNearbyPlayers()
     {
         List<Character> nearbyPlayers = new List<Character>();
-        Collider[] playerColliders = Physics.OverlapSphere(transform.position, collectRange, LayerMask.GetMask("Player"));
+        Collider[] playerColliders = Physics.OverlapSphere(
+            transform.position,
+            collectRange,
+            LayerMask.GetMask("Player")
+        );
 
         foreach (Collider col in playerColliders)
         {
@@ -238,7 +264,6 @@ public class ItemDropManager : NetworkBehaviour
 
         return nearbyPlayers;
     }
-
     private int GetEnemyLevel()
     {
         return enemyLevelManager?.CurrentLevel ?? 1;

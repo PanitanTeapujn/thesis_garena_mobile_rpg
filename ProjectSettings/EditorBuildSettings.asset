@@ -38,16 +38,16 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SceneMan/Mountain4.unity
     guid: a53044e3e7919024981793acd07672e8
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom1.unity
     guid: 03674728668858f42ad1b6ed1d782739
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom2.unity
     guid: 05b9461f61b3878459eb32179265848d
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom3.unity
     guid: 3d8a7b799cbf090488f86ba08e461736
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom4.unity
     guid: c7248ced9e660684196a72986a274197
   - enabled: 1

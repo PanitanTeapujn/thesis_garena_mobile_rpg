@@ -166,7 +166,6 @@ public class NetworkEnemy : Character
     [Header("💰 Drop System")]
     public EnemyDropManager dropManager;
     public ItemDropManager ItemDrop;
-    // Check if properly spawned
     [Header("🧹 Pickup Text Cleanup")]
     private float nextPickupCleanupTime = 0f;
     private const float PICKUP_CLEANUP_INTERVAL = 10f;
@@ -303,7 +302,6 @@ public class NetworkEnemy : Character
         }
     }
   
-    // ใน NetworkEnemy.cs - override InitializeStats เพื่อไม่ให้เรียก equipment methods
     private void LoadDummyLevelFromFirebase()
     {
         if (persistentData?.multiCharacterData == null)
@@ -518,8 +516,11 @@ public class NetworkEnemy : Character
         {
             // ✅ ใช้ ScriptableObject เป็นหลักสำหรับ enemy (ไม่ต้องใช้ equipment)
             CharacterName = characterStats.characterName;
+
+            // ✅ CRITICAL: ตั้ง HP ให้ชัดเจน
             MaxHp = characterStats.maxHp;
-            CurrentHp = MaxHp;
+            CurrentHp = MaxHp; // ✅ เพิ่มบรรทัดนี้
+
             MaxMana = characterStats.maxMana;
             CurrentMana = MaxMana;
             AttackDamage = characterStats.attackDamage;
@@ -536,11 +537,15 @@ public class NetworkEnemy : Character
             ReductionCoolDown = characterStats.reductionCoolDown;
             AttackType = characterStats.attackType;
 
-            // 🆕 Enemy ไม่ต้องใช้ InitializeEquipmentSlots()
-            Debug.Log($"[NetworkEnemy] Stats initialized for {CharacterName} (no equipment)");
+            // ✅ Log เพื่อ debug
+            Debug.Log($"[InitializeStats] {CharacterName} - HP: {CurrentHp}/{MaxHp}, ATK: {AttackDamage}");
+        }
+        else
+        {
+            Debug.LogError($"[InitializeStats] {gameObject.name} has NO characterStats!");
         }
     }
-   
+
     private void UpdateDummyUIPositionAndRotation()
     {
         if (dummyUIInstance == null) return;
@@ -589,15 +594,41 @@ public class NetworkEnemy : Character
     // Called when spawned by Fusion
     public override void Spawned()
     {
-        Debug.Log($"Enemy Spawned - HasStateAuthority: {HasStateAuthority}");
+        Debug.Log($"[Enemy Spawned] {CharacterName} - HasStateAuthority: {HasStateAuthority}");
 
         if (HasStateAuthority)
         {
+            // ✅ 1. Initialize HP FIRST
+            if (IsDummy)
+            {
+                InitializeDummySystem(); // ตั้ง HP สูงมาก
+            }
+            else
+            {
+                // Enemy ปกติ - ใช้ stats จาก ScriptableObject
+                if (characterStats != null)
+                {
+                    MaxHp = characterStats.maxHp;
+                    CurrentHp = MaxHp;
+                    Debug.Log($"[Enemy] {CharacterName} HP set to {CurrentHp}/{MaxHp}");
+                }
+                else
+                {
+                    Debug.LogError($"[Enemy] {CharacterName} has NO characterStats!");
+                    MaxHp = 100;
+                    CurrentHp = 100;
+                }
+            }
+
+            // ✅ 2. Sync to Network
             NetworkedMaxHp = MaxHp;
             NetworkedCurrentHp = CurrentHp;
             IsDead = false;
 
-            // ✅ เปลี่ยนจาก Patrolling เป็น Chasing ทันที
+            // ✅ 3. Log final stats
+            Debug.Log($"[Enemy] {CharacterName} spawned with HP: {CurrentHp}/{MaxHp}, IsDead: {IsDead}");
+
+            // 4. เปลี่ยนจาก Patrolling เป็น Chasing ทันที
             CurrentState = EnemyState.Chasing;
             StateTimer = 0f;
             totalPatrolTime = 0f;
@@ -621,6 +652,11 @@ public class NetworkEnemy : Character
                 Debug.Log($"{CharacterName}: Spawned and immediately chasing player!");
             }
         }
+        else
+        {
+            // ✅ Remote client - รอ HP จาก server
+            Debug.Log($"[Enemy] {CharacterName} spawned as REMOTE");
+        }
     }
     // ========== Network Update ==========
     public override void FixedUpdateNetwork()
@@ -631,14 +667,25 @@ public class NetworkEnemy : Character
 
         if (!IsSpawned) return;
 
+        // ✅ เช็ค HP ก่อนทำอะไร
         if (HasStateAuthority)
         {
+            // ✅ CRITICAL: ป้องกัน Enemy ตายทันทีเพราะ HP = 0
+            if (CurrentHp <= 0 && !IsDead && Runner.SimulationTime > 1f)
+            {
+                Debug.LogWarning($"[Enemy] {CharacterName} has 0 HP but not marked dead! Fixing...");
+
+                // ✅ ถ้าเพิ่งเกิดไม่ถึง 1 วินาที ให้ฟื้น HP
+                IsDead = true;
+                RPC_OnDeath();
+            }
+
             if (!IsDead)
             {
                 // 🎯 Dummy ปล่อย Debuff
                 if (IsDummy)
                 {
-
+                    // Dummy logic...
                 }
                 else
                 {
@@ -646,13 +693,6 @@ public class NetworkEnemy : Character
                     FindNearestPlayer();
                     ImprovedMoveTowardsTarget();
                     TryAttackTarget();
-                }
-
-                // Check death
-                if (CurrentHp <= 0 && !IsDead)
-                {
-                    IsDead = true;
-                    RPC_OnDeath();
                 }
             }
 
@@ -669,13 +709,13 @@ public class NetworkEnemy : Character
             ApplyNetworkState();
         }
     }
-  
+
 
     // ✅ เพิ่ม method ใหม่: ใส่ Debuff ตาม Level
-   
+
 
     // ✅ เลือก Debuff ตาม Level
-   
+
 
     // ✅ คำนวณระยะเวลา Debuff
     private float CalculateDebuffDuration(int level)
@@ -1515,9 +1555,16 @@ public class NetworkEnemy : Character
     // ========== Network State Application ==========
     protected virtual void ApplyNetworkState()
     {
+        // ✅ เพิ่ม: ข้าม sync ถ้ากำลัง Dash
+        if (this is BossSlime boss && boss.isDashing)
+        {
+            return; // ไม่ sync ระหว่าง Dash
+        }
+
         float positionDistance = Vector3.Distance(transform.position, NetworkedPosition);
 
-        if (positionDistance > 0.1f)
+        // ✅ เพิ่ม threshold
+        if (positionDistance > 0.5f) // เปลี่ยนจาก 0.1f → 0.5f
         {
             if (rb != null)
             {
@@ -1525,22 +1572,22 @@ public class NetworkEnemy : Character
             }
 
             float lerpRate = positionDistance > 2f ? 50f : 20f;
-            transform.position = Vector3.Lerp(
+
+            Vector3 newPos = Vector3.Lerp(
                 transform.position,
                 NetworkedPosition,
                 Runner.DeltaTime * lerpRate
             );
-        }
 
-        // Scale synchronization สำหรับ flip
-        float scaleDistance = Vector3.Distance(transform.localScale, NetworkedScale);
-        if (scaleDistance > 0.01f)
-        {
-            transform.localScale = Vector3.Lerp(
-                transform.localScale,
-                NetworkedScale,
-                Runner.DeltaTime * 15f
-            );
+            // ✅ ใช้ rb.MovePosition
+            if (rb != null)
+            {
+                rb.MovePosition(newPos);
+            }
+            else
+            {
+                transform.position = newPos;
+            }
         }
     }
 
