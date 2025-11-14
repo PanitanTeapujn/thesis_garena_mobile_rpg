@@ -635,15 +635,30 @@ public class BossSlime : NetworkEnemy
             currentTelegraph = null;
         }
     }
+    // ใน BossSlime.cs - แก้ไข ExecuteDash method
+
     private IEnumerator ExecuteDash(Vector3 startPos, Vector3 direction)
     {
+        // ✅ เพิ่ม: เช็คกำแพงก่อน Dash (เหมือน Assassin)
+        float actualDashDistance = dashDistance;
+        RaycastHit wallHit;
+
+        if (Physics.Raycast(startPos, direction, out wallHit, dashDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            actualDashDistance = Mathf.Max(0.5f, wallHit.distance - 0.5f);
+            Debug.Log($"⚠️ Boss Wall detected at {wallHit.distance}m, reducing dash to {actualDashDistance}m");
+        }
+
+        // ✅ ใช้ actualDashDistance แทน dashDistance
+        Vector3 endPos = startPos + direction * actualDashDistance;
+
         if (dashEffect != null)
         {
             dashEffect.Play();
         }
 
         float elapsed = 0f;
-        Vector3 endPos = startPos + direction * dashDistance;
 
         while (elapsed < dashDuration)
         {
@@ -652,6 +667,19 @@ public class BossSlime : NetworkEnemy
             float smoothProgress = Mathf.Sin(progress * Mathf.PI * 0.5f);
 
             Vector3 currentPos = Vector3.Lerp(startPos, endPos, smoothProgress);
+
+            // ✅ เพิ่ม: Safety check ระหว่าง Dash (เหมือน Assassin)
+            Vector3 moveVector = currentPos - transform.position;
+            if (moveVector.magnitude > 0.1f)
+            {
+                if (Physics.Raycast(transform.position, moveVector.normalized, moveVector.magnitude,
+                    LayerMask.GetMask("Wall", "Obstacle", "Default")))
+                {
+                    Debug.LogWarning("🛑 Boss hit wall during dash! Stopping.");
+                    break;
+                }
+            }
+
             transform.position = currentPos;
 
             CheckDashCollision(currentPos, direction);

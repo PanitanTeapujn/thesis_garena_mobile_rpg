@@ -469,7 +469,7 @@ MonoBehaviour:
   detailText: {fileID: 6061337179301803701}
   tipsText: {fileID: 6224181485993839238}
   fadeManager: {fileID: 0}
-  totalLoadingTime: 1
+  totalLoadingTime: 2
   loadingMessages:
   - Initializing Firebase...
   - Loading Player Data...

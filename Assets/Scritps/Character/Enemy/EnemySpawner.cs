@@ -219,9 +219,10 @@ public class EnemySpawner : NetworkBehaviour
             UpdateNextSpawnTime();
         }
     }
+    // แก้ไข SelectRandomEnemyByWeight() ให้ไม่สนใจ currentCount ใน batch เดียวกัน
+
     private void SpawnBatch()
     {
-        // คำนวณจำนวนที่จะ spawn
         int availableSlots = maxTotalEnemies - activeEnemies.Count;
         int enemiesToSpawn = Random.Range(minEnemiesPerSpawn, maxEnemiesPerSpawn + 1);
         enemiesToSpawn = Mathf.Min(enemiesToSpawn, availableSlots);
@@ -230,9 +231,13 @@ public class EnemySpawner : NetworkBehaviour
 
         List<string> spawnedList = new List<string>();
 
+        // ✅ เก็บจำนวนชั่วคราวสำหรับ batch นี้
+        Dictionary<string, int> tempSpawnCount = new Dictionary<string, int>();
+
         for (int i = 0; i < enemiesToSpawn; i++)
         {
-            EnemySpawnData selectedEnemy = SelectRandomEnemyByWeight();
+            // ✅ สุ่มใหม่ทุกครั้ง โดยใช้ weight อย่างเดียว (ไม่สน currentCount)
+            EnemySpawnData selectedEnemy = SelectRandomEnemyByWeightForBatch(); // ✅ เปลี่ยนตรงนี้
 
             if (selectedEnemy == null) continue;
 
@@ -251,6 +256,8 @@ public class EnemySpawner : NetworkBehaviour
             {
                 activeEnemies.Add(enemy);
                 spawnedEnemyTypes[enemy.Object] = selectedEnemy.enemyName;
+
+                // ✅ อัพเดท count หลังจาก spawn สำเร็จแล้ว
                 selectedEnemy.currentCount++;
                 selectedEnemy.lastSpawnTime = Time.time;
 
@@ -260,7 +267,6 @@ public class EnemySpawner : NetworkBehaviour
 
         if (showSpawnInfo && spawnedList.Count > 0)
         {
-            // นับจำนวนแต่ละประเภท
             Dictionary<string, int> counts = new Dictionary<string, int>();
             foreach (string name in spawnedList)
             {
@@ -281,6 +287,59 @@ public class EnemySpawner : NetworkBehaviour
         }
     }
 
+    // ✅ Method ใหม่: สุ่มตาม weight เท่านั้น (ไม่เช็ค maxCount)
+    private EnemySpawnData SelectRandomEnemyByWeightOnly()
+    {
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+            return null;
+
+        List<EnemySpawnData> weightedList = new List<EnemySpawnData>();
+
+        foreach (EnemySpawnData enemy in enemyPrefabs)
+        {
+            if (enemy.enemyPrefab == null) continue;
+
+            // ✅ ไม่เช็ค currentCount และ cooldown ใน batch spawn
+            // เช็คแค่ว่ามี prefab หรือไม่
+
+            for (int i = 0; i < enemy.spawnWeight; i++)
+            {
+                weightedList.Add(enemy);
+            }
+        }
+
+        if (weightedList.Count == 0)
+            return null;
+
+        return weightedList[Random.Range(0, weightedList.Count)];
+    }
+    private EnemySpawnData SelectRandomEnemyByWeightForBatch()
+    {
+        if (enemyPrefabs == null || enemyPrefabs.Length == 0)
+            return null;
+
+        List<EnemySpawnData> weightedList = new List<EnemySpawnData>();
+
+        foreach (EnemySpawnData enemy in enemyPrefabs)
+        {
+            if (enemy.enemyPrefab == null) continue;
+
+            // ✅ เช็คแค่ maxCount (ถ้ามี)
+            if (enemy.maxCount > 0 && enemy.currentCount >= enemy.maxCount) continue;
+
+            // ✅ ไม่เช็ค cooldown ใน batch spawn
+
+            for (int i = 0; i < enemy.spawnWeight; i++)
+            {
+                weightedList.Add(enemy);
+            }
+        }
+
+        if (weightedList.Count == 0)
+            return null;
+
+        return weightedList[Random.Range(0, weightedList.Count)];
+    }
     // ========== Spawn Logic ==========
     private void SpawnRandomEnemy()
     {
@@ -373,33 +432,51 @@ public class EnemySpawner : NetworkBehaviour
 
         for (int attempt = 0; attempt < maxSpawnAttempts; attempt++)
         {
+            // ✅ สุ่มระยะและมุมใหม่ทุกครั้ง
             float randomDistance = Random.Range(minSpawnDistanceFromPlayer, maxSpawnDistanceFromPlayer);
-            float randomAngle = Random.Range(0f, 360f);
+            float randomAngle = Random.Range(0f, 360f); // ✅ สุ่ม 0-360 องศา
+
             Vector3 direction = Quaternion.Euler(0, randomAngle, 0) * Vector3.forward;
 
-            // ✅ ใช้ตำแหน่ง Y ของผู้เล่นเป็นจุดเริ่มต้น
+            // ✅ คำนวณตำแหน่งใหม่
             Vector3 spawnPosition = targetPlayer.position + direction * randomDistance;
 
             // เช็คกำแพง
             if (checkWallsBeforeSpawn)
             {
                 if (IsPositionBlockedByWall(targetPlayer.position, spawnPosition))
-                    continue;
+                {
+                    if (showDebugInfo)
+                    {
+                        Debug.Log($"❌ Attempt {attempt + 1}: Wall blocked at distance {randomDistance:F1}m, angle {randomAngle:F0}°");
+                    }
+                    continue; // ลองใหม่
+                }
             }
 
-            // ✅ เช็คพื้น (บังคับเสมอ ไม่สนใจ flag)
+            // ✅ หาพื้น
             Vector3 groundPosition = FindGroundPosition(spawnPosition);
 
-            // ✅ ถ้าได้ตำแหน่งกลับมา ให้ใช้เลย (ไม่เช็คว่าเป็น Vector3.zero)
+            if (showDebugInfo)
+            {
+                Debug.Log($"✅ Spawn attempt {attempt + 1}: Distance={randomDistance:F1}m, Angle={randomAngle:F0}°, Y={groundPosition.y:F2}");
+            }
+
             return groundPosition;
         }
 
-        // Fallback: ใช้ตำแหน่งผู้เล่น + offset
+        // Fallback: ถ้าลองหมดแล้วไม่ได้
         Vector3 fallbackPosition = targetPlayer.position +
                                    (Quaternion.Euler(0, Random.Range(0f, 360f), 0) * Vector3.forward) *
                                    maxSpawnDistanceFromPlayer;
 
         Vector3 finalPosition = FindGroundPosition(fallbackPosition);
+
+        if (showDebugInfo)
+        {
+            Debug.LogWarning($"⚠️ Used fallback position: {finalPosition}");
+        }
+
         return finalPosition;
     }
 
@@ -424,18 +501,22 @@ public class EnemySpawner : NetworkBehaviour
         RaycastHit hit;
         Vector3 startPos = position + Vector3.up * 10f;
 
-        // ✅ เพิ่ม Layer: "Ground", "Default", "Floor"
         LayerMask groundLayers = LayerMask.GetMask("Default", "Ground", "Floor");
 
         if (Physics.Raycast(startPos, Vector3.down, out hit, 20f, groundLayers))
         {
-            // ✅ ปรับตำแหน่งให้สูงจากพื้น 0.5 เมตร
-            Vector3 groundPosition = hit.point + Vector3.up * 0.5f;
+            // ✅ ใช้ตำแหน่ง Y ของผู้เล่น + offset
+            List<Transform> players = GetAllPlayerTransforms();
+            float targetY = players.Count > 0 ? players[0].position.y : hit.point.y;
+
+            // ✅ เพิ่ม offset สำหรับ enemy ตัวใหญ่ (ปรับได้ตามต้องการ)
+            float enemyOffset = 1.9f; // เพิ่มจาก 0.5f → 1.9f เพื่อให้ไม่จมดิน
+
+            Vector3 groundPosition = new Vector3(hit.point.x, targetY + enemyOffset, hit.point.z);
 
             if (showDebugInfo)
             {
-                Debug.Log($"✅ Found ground at Y={hit.point.y:F2}, spawning at Y={groundPosition.y:F2}");
-                Debug.DrawLine(startPos, hit.point, Color.green, 2f);
+                Debug.Log($"✅ Enemy spawn Y={groundPosition.y:F2} (Player Y={targetY:F2} + Offset={enemyOffset})");
             }
 
             return groundPosition;
@@ -444,26 +525,30 @@ public class EnemySpawner : NetworkBehaviour
         // 2. ถ้าไม่เจอพื้นด้วย Raycast ลองใช้ SphereCast
         if (Physics.SphereCast(startPos, 0.5f, Vector3.down, out hit, 20f, groundLayers))
         {
-            Vector3 groundPosition = hit.point + Vector3.up * 0.5f;
+            List<Transform> players = GetAllPlayerTransforms();
+            float targetY = players.Count > 0 ? players[0].position.y : hit.point.y;
+            float enemyOffset = 1.9f;
+
+            Vector3 groundPosition = new Vector3(hit.point.x, targetY + enemyOffset, hit.point.z);
 
             if (showDebugInfo)
             {
-                Debug.Log($"✅ Found ground (sphere) at Y={hit.point.y:F2}");
+                Debug.Log($"✅ Found ground (sphere), Y={groundPosition.y:F2}");
             }
 
             return groundPosition;
         }
 
-        // 3. ถ้ายังไม่เจอ ใช้ตำแหน่งผู้เล่นแทน
-        List<Transform> players = GetAllPlayerTransforms();
-        if (players.Count > 0)
+        // 3. Fallback: ใช้ตำแหน่ง Y ของผู้เล่น
+        List<Transform> fallbackPlayers = GetAllPlayerTransforms();
+        if (fallbackPlayers.Count > 0)
         {
-            Vector3 playerGroundPos = players[0].position;
-            playerGroundPos.y += 0.5f; // สูงจากผู้เล่นนิดหน่อย
+            float enemyOffset = 1.9f;
+            Vector3 playerGroundPos = new Vector3(position.x, fallbackPlayers[0].position.y + enemyOffset, position.z);
 
             if (showDebugInfo)
             {
-                Debug.LogWarning($"⚠️ No ground found, using player Y position: {playerGroundPos.y:F2}");
+                Debug.LogWarning($"⚠️ No ground found, using player Y + offset: {playerGroundPos.y:F2}");
             }
 
             return playerGroundPos;
@@ -472,11 +557,11 @@ public class EnemySpawner : NetworkBehaviour
         if (showDebugInfo)
         {
             Debug.LogError($"❌ No ground found at all! Using original position");
-            Debug.DrawLine(startPos, startPos + Vector3.down * 20f, Color.red, 2f);
         }
 
-        return position; // ใช้ตำแหน่งเดิม (แทนที่จะ return Vector3.zero)
+        return position;
     }
+
     private List<Transform> GetAllPlayerTransforms()
     {
         List<Transform> playerTransforms = new List<Transform>();

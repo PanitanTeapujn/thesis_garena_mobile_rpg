@@ -3108,7 +3108,7 @@ public class Character : NetworkBehaviour
         KnockbackEndTime = Time.time + duration;
 
         Vector3 knockbackDirection = direction.normalized;
-        knockbackDirection.y = 0; // ไม่ให้กระเด้งขึ้นบน
+        knockbackDirection.y = 0;
 
         float elapsed = 0f;
 
@@ -3117,11 +3117,13 @@ public class Character : NetworkBehaviour
             elapsed += Time.deltaTime;
             float progress = elapsed / duration;
 
-            // ใช้ curve เพื่อให้ knockback ดู smooth
             float curveValue = knockbackCurve.Evaluate(progress);
             Vector3 knockbackVelocity = knockbackDirection * force * curveValue;
 
-            // ✅ ตรวจสอบกำแพงก่อน apply knockback
+            // ✅ คำนวณตำแหน่งใหม่
+            Vector3 newPosition = transform.position + knockbackVelocity * Time.deltaTime;
+
+            // ✅ เช็ค 1: กำแพง/Obstacle
             RaycastHit wallHit;
             if (Physics.Raycast(transform.position, knockbackVelocity.normalized, out wallHit,
                 knockbackVelocity.magnitude * Time.deltaTime, LayerMask.GetMask("Wall", "Obstacle", "Default")))
@@ -3130,13 +3132,17 @@ public class Character : NetworkBehaviour
                 break;
             }
 
+            // ✅ เช็ค 2: ขอบแมพ (ตรวจสอบว่ามีพื้นหรือไม่)
+            if (!IsGroundBelow(newPosition))
+            {
+                Debug.LogWarning($"[Knockback] {CharacterName} would fall off map! Stopping knockback");
+                break;
+            }
+
             // Apply knockback
             if (rb != null)
             {
-                Vector3 newPosition = transform.position + knockbackVelocity * Time.deltaTime;
                 rb.MovePosition(newPosition);
-
-                // Sync position (optional - ถ้าใช้วิธีที่ 2)
                 SyncKnockbackPosition(newPosition);
             }
 
@@ -3145,6 +3151,24 @@ public class Character : NetworkBehaviour
 
         IsBeingKnockedBack = false;
         Debug.Log($"[Knockback] {CharacterName} knockback ended");
+    }
+
+    // ✅ เพิ่ม method ตรวจสอบพื้น
+    private bool IsGroundBelow(Vector3 position)
+    {
+        // ยิง Raycast ลงไปหาพื้น
+        RaycastHit hit;
+        Vector3 rayStart = position + Vector3.up * 0.5f; // เริ่มจากเหนือตัวละครนิดหน่อย
+
+        // ✅ เช็คว่ามีพื้นอยู่ใกล้ๆ หรือไม่ (ภายใน 2 เมตร)
+        if (Physics.Raycast(rayStart, Vector3.down, out hit, 2f,
+            LayerMask.GetMask("Default", "Ground", "Floor")))
+        {
+            return true; // มีพื้น = ปลอดภัย
+        }
+
+        // ✅ ถ้าไม่เจอพื้น = อันตราย (ขอบแมพ)
+        return false;
     }
 
     /// <summary>

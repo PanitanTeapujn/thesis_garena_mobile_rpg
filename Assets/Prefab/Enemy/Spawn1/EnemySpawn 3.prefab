@@ -120,7 +120,7 @@ Transform:
   m_GameObject: {fileID: 4887578928855140605}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.51, z: 0}
+  m_LocalPosition: {x: 0, y: 2.51, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -151,23 +151,23 @@ MonoBehaviour:
     enemyName: 
     spawnWeight: 5
     maxCount: -1
-    spawnCooldown: 1
+    spawnCooldown: 5
     currentCount: 0
     lastSpawnTime: 0
   - enemyPrefab: {fileID: 3146736404170834553, guid: d007969deee58184ab2703244b9aced6,
       type: 3}
     enemyName: 
     spawnWeight: 3
-    maxCount: 3
-    spawnCooldown: 2
+    maxCount: -1
+    spawnCooldown: 5
     currentCount: 0
     lastSpawnTime: 0
   - enemyPrefab: {fileID: 2335039710452873401, guid: 3973eab3e8058d74098b9520dfb07322,
       type: 3}
     enemyName: 
     spawnWeight: 2
-    maxCount: 2
-    spawnCooldown: 3
+    maxCount: 5
+    spawnCooldown: 5
     currentCount: 0
     lastSpawnTime: 0
   maxTotalEnemies: 20

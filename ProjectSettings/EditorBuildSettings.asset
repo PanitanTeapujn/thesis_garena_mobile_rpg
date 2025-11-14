@@ -27,11 +27,20 @@ EditorBuildSettings:
     path: Assets/Scenes/Sceneliew/CoopRoom.unity
     guid: 6597d93f6795a4e4aa8e577517b0928c
   - enabled: 1
+    path: Assets/Scenes/SceneMan/Mountain1.unity
+    guid: 7dc067ff822598c4d86ca4044ad0d38f
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Mountain2.unity
+    guid: bc61a8fbadd91c34d923f2f48edd5e17
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Mountain3.unity
+    guid: 7b07c53e46c2d84459ab43c01c4acacb
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Mountain4.unity
+    guid: a53044e3e7919024981793acd07672e8
+  - enabled: 1
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom1.unity
     guid: 03674728668858f42ad1b6ed1d782739
-  - enabled: 1
-    path: Assets/Scenes/Sceneliew/LoseScene.unity
-    guid: 46d766acbb9760647b12752426b29582
   - enabled: 1
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom2.unity
     guid: 05b9461f61b3878459eb32179265848d
@@ -44,5 +53,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SceneMan/Snow1.unity
     guid: a993f523e2b43a345b9d308e1869905f
+  - enabled: 1
+    path: Assets/Scenes/Sceneliew/LoseScene.unity
+    guid: 46d766acbb9760647b12752426b29582
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0

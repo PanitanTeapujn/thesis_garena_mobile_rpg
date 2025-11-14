@@ -157,29 +157,42 @@ public class WaterSlime : NetworkEnemy
     {
         if (ally == null) return;
 
-        // คำนวณทิศทางไปหาเพื่อน
         Vector3 direction = (ally.transform.position - transform.position).normalized;
         direction.y = 0;
 
-        // ✅ เช็คว่ามีผู้เล่นขวางทางหรือไม่
         if (targetTransform != null)
         {
             float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
 
-            // ถ้าผู้เล่นใกล้เกินไป ให้หาทางเลี่ยว
             if (distanceToPlayer < keepAwayDistance)
             {
-                // หาทางเลี่ยวโดยเดินวงรอบผู้เล่น
-                Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x); // หมุน 90 องศา
+                Vector3 perpendicular = new Vector3(-direction.z, 0, direction.x);
                 direction = (direction + perpendicular * 0.5f).normalized;
             }
         }
 
-        // เช็คกำแพง
-        RaycastHit wallHit;
         float moveDistance = MoveSpeed * Runner.DeltaTime;
+        RaycastHit wallHit;
 
-        if (!Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
+        // ✅ แก้ไข: เช็คกำแพงก่อน และหาทางเลี่ยว
+        if (Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            Vector3 avoidDirection = FindAlternativeDirection(direction);
+
+            if (avoidDirection != Vector3.zero)
+            {
+                direction = avoidDirection;
+            }
+            else
+            {
+                // ไม่มีทางเลี่ยว - หยุดเคลื่อนที่
+                return;
+            }
+        }
+
+        // ✅ Double check (safety)
+        if (!Physics.Raycast(transform.position, direction, moveDistance,
             LayerMask.GetMask("Wall", "Obstacle", "Default")))
         {
             Vector3 newPosition = transform.position + direction * moveDistance;
@@ -192,42 +205,30 @@ public class WaterSlime : NetworkEnemy
             NetworkedPosition = newPosition;
             FlipCharacterTowardsMovement(direction);
         }
-        else
-        {
-            // ถ้าเจอกำแพง ให้หาทางเลี่ยว
-            Vector3 avoidDirection = FindAlternativeDirection(direction);
-            if (avoidDirection != Vector3.zero)
-            {
-                Vector3 newPosition = transform.position + avoidDirection * moveDistance;
-
-                if (rb != null)
-                {
-                    rb.MovePosition(newPosition);
-                }
-
-                NetworkedPosition = newPosition;
-                FlipCharacterTowardsMovement(avoidDirection);
-            }
-        }
     }
+
 
     // ========== เพิ่ม Method: หาทางเลี่ยวกำแพง ==========
     private Vector3 FindAlternativeDirection(Vector3 blockedDirection)
     {
-        float[] angles = { 45f, -45f, 90f, -90f, 135f, -135f };
+        // ✅ ลองหลายมุมเพื่อหาทางเลี่ยว
+        float[] angles = { 30f, -30f, 45f, -45f, 60f, -60f, 90f, -90f, 120f, -120f };
+        float checkDistance = MoveSpeed * Runner.DeltaTime * 1.5f;
 
         foreach (float angle in angles)
         {
             Vector3 altDir = Quaternion.Euler(0, angle, 0) * blockedDirection;
 
             RaycastHit hit;
-            if (!Physics.Raycast(transform.position, altDir.normalized, out hit, MoveSpeed * Runner.DeltaTime * 2f,
+            if (!Physics.Raycast(transform.position, altDir.normalized, out hit, checkDistance,
                 LayerMask.GetMask("Wall", "Obstacle", "Default")))
             {
+                Debug.Log($"[WaterSlime] Found alternative path at {angle}°");
                 return altDir.normalized;
             }
         }
 
+        Debug.LogWarning("[WaterSlime] No alternative direction found!");
         return Vector3.zero;
     }
 
@@ -261,18 +262,34 @@ public class WaterSlime : NetworkEnemy
     {
         if (targetTransform == null) return;
 
-        // คำนวณทิศทางถอยหลัง
         Vector3 directionAway = (transform.position - targetTransform.position).normalized;
         directionAway.y = 0;
 
-        // เช็คกำแพง
-        RaycastHit wallHit;
         float retreatDistance = retreatSpeed * Runner.DeltaTime;
 
-        if (!Physics.Raycast(transform.position, directionAway, out wallHit, retreatDistance,
+        // ✅ เพิ่ม: เช็ค multiple directions ถ้าทางหลักโดนกำแพง
+        RaycastHit wallHit;
+        Vector3 finalDirection = directionAway;
+
+        if (Physics.Raycast(transform.position, directionAway, out wallHit, retreatDistance,
             LayerMask.GetMask("Wall", "Obstacle", "Default")))
         {
-            Vector3 newPosition = transform.position + directionAway * retreatDistance;
+            // ✅ ถ้าทางหลังมีกำแพง ลองหาทางข้าง
+            finalDirection = FindAlternativeDirection(directionAway);
+
+            if (finalDirection == Vector3.zero)
+            {
+                // ✅ ไม่มีทางหนี - อยู่กับที่
+                Debug.LogWarning($"[WaterSlime] Trapped! Cannot retreat from player");
+                return;
+            }
+        }
+
+        // ✅ Double check ก่อน move (safety check)
+        if (!Physics.Raycast(transform.position, finalDirection, retreatDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            Vector3 newPosition = transform.position + finalDirection * retreatDistance;
 
             if (rb != null)
             {
@@ -280,9 +297,7 @@ public class WaterSlime : NetworkEnemy
             }
 
             NetworkedPosition = newPosition;
-
-            // Flip character
-            FlipCharacterTowardsMovement(directionAway);
+            FlipCharacterTowardsMovement(finalDirection);
         }
     }
 
@@ -299,15 +314,32 @@ public class WaterSlime : NetworkEnemy
         direction.y = 0;
 
         float moveDistance = MoveSpeed * Runner.DeltaTime;
-        Vector3 newPosition = transform.position + direction * moveDistance;
 
-        if (rb != null)
+        // ✅ เพิ่ม: เช็คกำแพงก่อน move
+        RaycastHit wallHit;
+
+        if (Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
         {
-            rb.MovePosition(newPosition);
+            // เจอกำแพง - สร้าง patrol target ใหม่
+            GenerateNewPatrolTarget();
+            return;
         }
 
-        NetworkedPosition = newPosition;
-        FlipCharacterTowardsMovement(direction);
+        // ✅ Double check
+        if (!Physics.Raycast(transform.position, direction, moveDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            Vector3 newPosition = transform.position + direction * moveDistance;
+
+            if (rb != null)
+            {
+                rb.MovePosition(newPosition);
+            }
+
+            NetworkedPosition = newPosition;
+            FlipCharacterTowardsMovement(direction);
+        }
     }
 
     private void GenerateNewPatrolTarget()
@@ -583,11 +615,9 @@ public class WaterSlime : NetworkEnemy
 
         float distanceToPlayer = Vector3.Distance(transform.position, targetTransform.position);
 
-        // คำนวณตำแหน่งเป้าหมายบนวงกลม
         circleAngle += circleSpeed * Runner.DeltaTime;
         if (circleAngle > 360f) circleAngle -= 360f;
 
-        // หาตำแหน่งบนวงกลมรอบผู้เล่น
         float radians = circleAngle * Mathf.Deg2Rad;
         Vector3 offset = new Vector3(
             Mathf.Cos(radians) * circleDistance,
@@ -596,32 +626,48 @@ public class WaterSlime : NetworkEnemy
         );
 
         Vector3 targetPosition = targetTransform.position + offset;
-
-        // เดินไปยังตำแหน่งเป้าหมาย
         Vector3 direction = (targetPosition - transform.position).normalized;
         direction.y = 0;
 
-        // ✅ ปรับความเร็วตามระยะห่าง - ถ้าไกลมาก เดินเร็วขึ้น
         float moveSpeed = MoveSpeed;
         if (distanceToPlayer > keepAwayDistance * 2f)
         {
-            moveSpeed *= 1.5f; // เดินเร็วขึ้น 50% ถ้าไกลมาก
+            moveSpeed *= 1.5f;
         }
 
-        // ✅ เช็คว่าผู้เล่นใกล้เกินไปหรือไม่
         if (distanceToPlayer < keepAwayDistance)
         {
-            // ถ้าใกล้เกินไป ให้ถอยออกไปให้ห่างขึ้น
             Vector3 retreatDirection = (transform.position - targetTransform.position).normalized;
             retreatDirection.y = 0;
             direction = retreatDirection;
         }
 
-        // เช็คกำแพง
-        RaycastHit wallHit;
         float moveDistance = moveSpeed * Runner.DeltaTime;
 
-        if (!Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
+        // ✅ แก้ไข: เช็คกำแพงอย่างละเอียด
+        RaycastHit wallHit;
+
+        if (Physics.Raycast(transform.position, direction, out wallHit, moveDistance,
+            LayerMask.GetMask("Wall", "Obstacle", "Default")))
+        {
+            // ✅ เจอกำแพง - หาทางเลี่ยว
+            Vector3 alternativeDir = FindAlternativeDirection(direction);
+
+            if (alternativeDir != Vector3.zero)
+            {
+                direction = alternativeDir;
+            }
+            else
+            {
+                // ✅ ไม่มีทางเลี่ยว - กระโดดมุม
+                circleAngle += 90f;
+                if (circleAngle > 360f) circleAngle -= 360f;
+                return; // ข้ามการ move ในเฟรมนี้
+            }
+        }
+
+        // ✅ Double check อีกครั้งก่อน move (safety check)
+        if (!Physics.Raycast(transform.position, direction, moveDistance,
             LayerMask.GetMask("Wall", "Obstacle", "Default")))
         {
             Vector3 newPosition = transform.position + direction * moveDistance;
@@ -633,12 +679,6 @@ public class WaterSlime : NetworkEnemy
 
             NetworkedPosition = newPosition;
             FlipCharacterTowardsMovement(direction);
-        }
-        else
-        {
-            // ถ้าเจอกำแพง ให้หมุนไปทางอื่น
-            circleAngle += 45f; // กระโดดมุม 45 องศา
-            if (circleAngle > 360f) circleAngle -= 360f;
         }
     }
 }

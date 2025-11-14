@@ -55257,11 +55257,11 @@ MonoBehaviour:
   statusIcon: {fileID: 0}
   mainStagePanels:
   - panel: {fileID: 947627144}
-    stageName: MapFire
+    stageName: Mountain
     subStagePanels:
     - panel: {fileID: 882755272}
-      subStageName: MapFire 1-1
-      sceneToLoad: PlayRoom1
+      subStageName: Mountain1-1
+      sceneToLoad: Mountain1
       selectButton: {fileID: 882755276}
       requiredEnemyKills: 15
       requiredEnemyTags: 
@@ -55269,33 +55269,33 @@ MonoBehaviour:
       isFirstStage: 1
       stageDescription: kill10 slime
     - panel: {fileID: 430931127}
-      subStageName: MapFire 1-2
-      sceneToLoad: Playroom2
+      subStageName: Mountain1-2
+      sceneToLoad: Mountain2
       selectButton: {fileID: 430931129}
       requiredEnemyKills: 15
       requiredEnemyTags: 
       requiredPreviousStages:
-      - PlayRoom1
+      - Mountain1
       isFirstStage: 0
       stageDescription: kill15 slime
     - panel: {fileID: 959851596}
-      subStageName: MapFire 1-3
-      sceneToLoad: Playroom3
+      subStageName: Mountain1-3
+      sceneToLoad: Mountain3
       selectButton: {fileID: 959851598}
       requiredEnemyKills: 20
       requiredEnemyTags: 
       requiredPreviousStages:
-      - PlayRoom2
+      - Mountain2
       isFirstStage: 0
       stageDescription: 
     - panel: {fileID: 1989910534}
-      subStageName: MapFire 1-4
-      sceneToLoad: Playroom4
+      subStageName: Mountain1-4
+      sceneToLoad: Mountain4
       selectButton: {fileID: 1989910536}
       requiredEnemyKills: 1
       requiredEnemyTags: 01000000
       requiredPreviousStages:
-      - PlayRoom3
+      - Mountain3
       isFirstStage: 0
       stageDescription: 
   - panel: {fileID: 38986222}
