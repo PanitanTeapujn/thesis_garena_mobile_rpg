@@ -430,8 +430,8 @@ MonoBehaviour:
   shadowAlpha: 0.5
   shadowOffset: {x: 0.1, y: -0.3, z: 0}
   shadowScale: {x: 1, y: 0.6, z: 1}
-  shadowRotation: {x: 0, y: 0, z: 0}
-  skewX: 0
+  shadowRotation: {x: 48, y: 0, z: 0}
+  skewX: 0.18
   followTarget: 1
   mirrorFlip: 0
   sameFacing: 1
