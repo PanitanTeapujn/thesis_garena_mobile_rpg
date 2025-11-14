@@ -543,28 +543,38 @@ public class Assassin : Hero
             // โจมตี
             PerformExecutionAttack(target);
 
-            // ✅ ถ้าเป้าหมายติดพิษ → คืน Mana + Reset CD ทันที (ไม่ต้องรอฆ่า)
+            // ✅ ถ้าเป้าหมายติดพิษ → คืน Mana + ลด CD 50% (ไม่ต้องฆ่า)
             if (wasTargetPoisoned)
             {
                 // คืน 50% Mana
                 int manaRestore = Mathf.RoundToInt(skill3ManaCost * 0.5f);
                 CurrentMana = Mathf.Min(CurrentMana + manaRestore, MaxMana);
 
-                // ✅ ไม่ติด cooldown (reset ทันที)
-                // nextSkill3Time ไม่ถูกตั้งค่า = สามารถใช้ทันที
+                // ✅ ลด Cooldown 50% (ไม่ใช่รีเซ็ตเป็น 0)
+                float reducedCooldown = cooldown * 0.5f; // เหลือแค่ 50%
+                nextSkill3Time = Time.time + reducedCooldown;
 
-                Debug.Log($"✅ [Execute Success] Hit poisoned enemy! +{manaRestore} Mana, CD Reset!");
-                RPC_ShowExecuteSuccessText(manaRestore);
+                Debug.Log($"✅ [Execute Success] Hit poisoned enemy! +{manaRestore} Mana, CD reduced by 50% (now {reducedCooldown:F1}s)");
+                RPC_ShowExecuteSuccessText(manaRestore, reducedCooldown);
             }
             else
             {
-                // ✅ ถ้าไม่ติดพิษ → ติด cooldown ปกติ
+                // ✅ ถ้าไม่ติดพิษ → ติด cooldown เต็ม
                 nextSkill3Time = Time.time + cooldown;
-                Debug.Log($"⚠️ [Execute Normal] Target not poisoned. Cooldown applied: {cooldown:F1}s");
+                Debug.Log($"⚠️ [Execute Normal] Target not poisoned. Full cooldown: {cooldown:F1}s");
             }
         }
 
         IsAssassinating = false;
+    }
+
+    // ✅ แก้ไข RPC แสดงข้อความ
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_ShowExecuteSuccessText(int manaRestore, float cooldownRemaining)
+    {
+        Vector3 textPosition = transform.position + Vector3.up * 1.5f;
+        Color successColor = new Color(1f, 0.8f, 0f, 1f); // ทอง
+        DamageTextManager.ShowCustomText(textPosition, $"EXECUTE!\n+{manaRestore} MANA\n-50% CD ({cooldownRemaining:F1}s)", successColor, 1.2f);
     }
     private void ResetAllSkillCooldowns()
     {
