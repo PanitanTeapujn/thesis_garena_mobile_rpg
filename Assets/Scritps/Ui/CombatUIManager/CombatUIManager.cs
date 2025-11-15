@@ -768,67 +768,113 @@ public class CombatUIManager : MonoBehaviour
         return null;
     }
 
+    // ✅ แก้ไข SetupButtonEvents() ใน CombatUIManager.cs
+    // แทนที่ method เดิมด้วย code นี้:
+
     private void SetupButtonEvents()
     {
+        Debug.Log("=== Setting up UI Button Events ===");
+
+        // ✅ ตรวจสอบ inputController ให้แน่ใจว่ามีจริง
         if (inputController == null)
         {
-            Debug.LogError("InputController still not found when setting up buttons!");
-            return;
+            Debug.LogWarning("❌ InputController is NULL! Trying to find it...");
+            inputController = FindObjectOfType<SingleInputController>();
+
+            if (inputController == null)
+            {
+                // ✅ สร้างใหม่ถ้ายังไม่มี (safety fallback)
+                Debug.LogWarning("⚠️ Creating new SingleInputController...");
+                GameObject obj = new GameObject("SingleInputController");
+                inputController = obj.AddComponent<SingleInputController>();
+                DontDestroyOnLoad(obj);
+            }
         }
 
-        Debug.Log("=== Setting up UI Button Events ===");
+        // ✅ รอให้ InputController พร้อม
+        if (inputController != null && movementJoystick != null && cameraJoystick != null)
+        {
+            inputController.UpdateJoystickReferences(movementJoystick, cameraJoystick);
+            Debug.Log("✅ InputController joystick references updated");
+        }
+        else
+        {
+            Debug.LogError($"❌ Missing references! IC:{inputController != null}, MJ:{movementJoystick != null}, CJ:{cameraJoystick != null}");
+        }
+
         SetupPotionButtons();
         SetupDeleteButton();
+
+        // Attack Button
         if (attackButton != null)
         {
             attackButton.onClick.RemoveAllListeners();
             attackButton.onClick.AddListener(() => {
                 Debug.Log("Attack button pressed");
-                inputController.SetAttackPressed();
+                if (inputController != null)
+                    inputController.SetAttackPressed();
+                else
+                    Debug.LogError("❌ Cannot attack - InputController is NULL!");
             });
             Debug.Log("✅ Attack button event setup complete");
         }
         else Debug.LogWarning("❌ Attack button not assigned in Inspector!");
 
+        // Skill 1 Button
         if (skill1Button != null)
         {
             skill1Button.onClick.RemoveAllListeners();
             skill1Button.onClick.AddListener(() => {
                 Debug.Log("Skill1 button pressed");
-                inputController.SetSkill1Pressed();
+                if (inputController != null)
+                    inputController.SetSkill1Pressed();
+                else
+                    Debug.LogError("❌ Cannot use skill1 - InputController is NULL!");
             });
             Debug.Log("✅ Skill1 button event setup complete");
         }
         else Debug.LogWarning("❌ Skill1 button not assigned in Inspector!");
 
+        // Skill 2 Button
         if (skill2Button != null)
         {
             skill2Button.onClick.RemoveAllListeners();
             skill2Button.onClick.AddListener(() => {
                 Debug.Log("Skill2 button pressed");
-                inputController.SetSkill2Pressed();
+                if (inputController != null)
+                    inputController.SetSkill2Pressed();
+                else
+                    Debug.LogError("❌ Cannot use skill2 - InputController is NULL!");
             });
             Debug.Log("✅ Skill2 button event setup complete");
         }
         else Debug.LogWarning("❌ Skill2 button not assigned in Inspector!");
 
+        // Skill 3 Button
         if (skill3Button != null)
         {
             skill3Button.onClick.RemoveAllListeners();
             skill3Button.onClick.AddListener(() => {
                 Debug.Log("Skill3 button pressed");
-                inputController.SetSkill3Pressed();
+                if (inputController != null)
+                    inputController.SetSkill3Pressed();
+                else
+                    Debug.LogError("❌ Cannot use skill3 - InputController is NULL!");
             });
             Debug.Log("✅ Skill3 button event setup complete");
         }
         else Debug.LogWarning("❌ Skill3 button not assigned in Inspector!");
 
+        // Skill 4 Button
         if (skill4Button != null)
         {
             skill4Button.onClick.RemoveAllListeners();
             skill4Button.onClick.AddListener(() => {
                 Debug.Log("Skill4 button pressed");
-                inputController.SetSkill4Pressed();
+                if (inputController != null)
+                    inputController.SetSkill4Pressed();
+                else
+                    Debug.LogError("❌ Cannot use skill4 - InputController is NULL!");
             });
             Debug.Log("✅ Skill4 button event setup complete");
         }
@@ -857,6 +903,7 @@ public class CombatUIManager : MonoBehaviour
             Debug.Log("✅ Inventory close button event setup complete");
         }
         else Debug.LogWarning("❌ Inventory close button not assigned in Inspector!");
+
         if (setBonusButton != null)
         {
             setBonusButton.onClick.RemoveAllListeners();
@@ -866,9 +913,8 @@ public class CombatUIManager : MonoBehaviour
             });
             Debug.Log("✅ Set Bonus button event setup complete");
         }
-        Debug.Log("=== UI Button Events Setup Complete ===");
 
-      
+        Debug.Log("=== UI Button Events Setup Complete ===");
     }
     private void SetupDeleteButton()
     {

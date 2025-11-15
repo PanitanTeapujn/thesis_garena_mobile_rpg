@@ -1,5 +1,51 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4853169401193764526
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 448698209107648749}
+  - component: {fileID: 7743658261526682813}
+  m_Layer: 0
+  m_Name: OnHostMigration
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &448698209107648749
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4853169401193764526}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1125669822291881738}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7743658261526682813
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4853169401193764526}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 921b7cdc678ed704182eebe408338f04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  migrationTimeout: 10
+  autoMigrationEnabled: 1
 --- !u!1 &8202185733760812409
 GameObject:
   m_ObjectHideFlags: 0
@@ -29,7 +75,8 @@ Transform:
   m_LocalPosition: {x: 592, y: 1296, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 448698209107648749}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1563853270004637505
@@ -48,3 +95,5 @@ MonoBehaviour:
     type: 3}
   enemySpawnerPrefab: {fileID: 4887578928855140605, guid: b9bcc00d65d67b04baa71eadf27f66c5,
     type: 3}
+  hostMigrationManagerPrefab: {fileID: 4853169401193764526}
+  enableHostMigration: 1

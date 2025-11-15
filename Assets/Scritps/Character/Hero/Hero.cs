@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Fusion;
 using UnityEngine.SceneManagement;
+using System.Linq;
 
 public class Hero : Character
 {
@@ -107,11 +108,8 @@ public class Hero : Character
     // ========== Hero Death Handling ==========
     private void HandleCharacterDeath(Character deadCharacter)
     {
-        // เฉพาะ Hero ที่เป็นเจ้าของเท่านั้นที่ไป LoseScene
-        if (deadCharacter == this && HasInputAuthority)
-        {
-            SceneManager.LoadScene("LoseScene");
-        }
+        // ✅ ไม่ต้องทำอะไรที่นี่แล้ว - logic ย้ายไป RPC_OnDeath
+        Debug.Log($"[Hero] HandleCharacterDeath called for {deadCharacter.CharacterName} (deprecated)");
     }
     // ใน Hero.cs ต้องมี methods เหล่านี้:
 
@@ -485,7 +483,7 @@ public class Hero : Character
 
         float rotationInput = networkInputData.cameraRotationInput;
 
-        Debug.Log($"📷 Input: {rotationInput:F2}, Current Angle: {currentCameraAngle}°, Camera Euler Y: {cameraTransform.eulerAngles.y}°");
+        /*Debug.Log($"📷 Input: {rotationInput:F2}, Current Angle: {currentCameraAngle}°, Camera Euler Y: {cameraTransform.eulerAngles.y}°");*/
 
         if (Mathf.Abs(rotationInput) > 0.5f && Time.time >= lastCameraFlipTime + cameraFlipCooldown)
         {
@@ -920,8 +918,232 @@ public class Hero : Character
     [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
     protected override void RPC_OnDeath()
     {
+        Debug.Log($"[Hero] ========================================");
+        Debug.Log($"[Hero] RPC_OnDeath called for {CharacterName}");
+        Debug.Log($"  - HasInputAuthority: {HasInputAuthority}");
+        Debug.Log($"  - Runner.IsServer: {Object.Runner.IsServer}");
+        Debug.Log($"  - Runner.GameMode: {Object.Runner.GameMode}");
+        Debug.Log($"[Hero] ========================================");
+
         base.RPC_OnDeath(); // เรียก base logic ก่อน
-        SceneManager.LoadScene("Lobby");
+
+        // ✅ เฉพาะ local player ที่ตาย
+        if (HasInputAuthority)
+        {
+            Debug.Log($"[Hero] 💀 Local player {CharacterName} died");
+
+            // ✅ ตรวจสอบ GameMode
+            if (Object.Runner.GameMode == GameMode.Single)
+            {
+                // Solo mode - ไป LoseScene ทันที
+                Debug.Log("[Hero] Solo mode - going to LoseScene");
+                StartCoroutine(GoToLoseSceneDelayed(1f));
+            }
+            else
+            {
+                // ✅ Multiplayer mode - เข้า Spectator Mode
+                Debug.Log("[Hero] 🎥 Multiplayer mode - entering SPECTATOR MODE");
+                EnterSpectatorMode();
+
+                // ✅ แจ้ง GameManager ว่ามีคนตาย
+                GameStateManager.Instance?.OnPlayerDied(Object.InputAuthority);
+            }
+        }
+        else
+        {
+            Debug.Log($"[Hero] Remote player {CharacterName} died (not local)");
+        }
+    }
+
+    /// <summary>
+    /// ✅ เข้า Spectator Mode
+    /// </summary>
+    private void EnterSpectatorMode()
+    {
+        Debug.Log("[Hero] 🎥 Entering Spectator Mode...");
+
+        // ซ่อนตัวละคร (optional)
+        HideDeadCharacter();
+
+        // เปิด SpectatorUI
+        SpectatorManager spectatorManager = FindObjectOfType<SpectatorManager>();
+
+        if (spectatorManager == null)
+        {
+            // สร้าง SpectatorManager ถ้ายังไม่มี
+            GameObject managerObj = new GameObject("SpectatorManager");
+            spectatorManager = managerObj.AddComponent<SpectatorManager>();
+        }
+
+        spectatorManager.EnterSpectatorMode(this);
+
+        Debug.Log("[Hero] ✅ Spectator Mode activated");
+    }
+    private void HideDeadCharacter()
+    {
+        // ตัวเลือก 1: ทำให้โปร่งใส
+        var renderers = GetComponentsInChildren<Renderer>();
+        foreach (var renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                var mat = renderer.material;
+                if (mat != null)
+                {
+                    Color color = mat.color;
+                    color.a = 0.3f; // โปร่งใส 70%
+                    mat.color = color;
+                }
+            }
+        }
+
+        // ตัวเลือก 2: ย้ายลงใต้พื้น (หรือปิดการแสดงผล)
+        // transform.position = new Vector3(transform.position.x, -1000f, transform.position.z);
+
+        // ปิด Collider
+        var colliders = GetComponentsInChildren<Collider>();
+        foreach (var col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        Debug.Log("[Hero] Dead character hidden/faded");
+    }
+    private IEnumerator HandleHostDeath()
+    {
+        Debug.Log("[Hero] ========================================");
+        Debug.Log("[Hero] 🔄 Host Migration Process Started");
+        Debug.Log("[Hero] ========================================");
+
+        // รอให้ players อื่นเห็นว่า Host ตาย
+
+        yield return new WaitForSeconds(1f);
+
+        // ✅ ตรวจสอบว่ามี player อื่นในห้องหรือไม่
+        var activePlayerCount = Object.Runner.ActivePlayers.Count();
+
+        Debug.Log($"[Hero] Active players in room: {activePlayerCount}");
+
+        if (activePlayerCount <= 1)
+        {
+            // ไม่มีคนอื่นในห้อง - shutdown ได้เลย
+            Debug.Log("[Hero] No other players - shutting down session");
+            StartCoroutine(GoToLoseSceneDelayed(0.5f));
+        }
+        else
+        {
+            // มีคนอื่นในห้อง - ให้ Fusion ทำ Host Migration
+            Debug.Log($"[Hero] {activePlayerCount - 1} other players in room - requesting host migration");
+
+            // ✅ Request Host Migration
+            RequestHostMigration();
+
+            // รอให้ Host Migration เสร็จ
+            yield return new WaitForSeconds(2f);
+
+            // หลัง Host Migration เสร็จ - ส่ง Host เดิมไป LoseScene
+            Debug.Log("[Hero] Host migration completed - old host going to LoseScene");
+            StartCoroutine(GoToLoseSceneDelayed(0.5f));
+        }
+    }
+    private IEnumerator GoToLoseSceneDelayed(float delay)
+    {
+        Debug.Log($"[Hero] Going to LoseScene in {delay} seconds...");
+
+        yield return new WaitForSeconds(delay);
+
+        Debug.Log("[Hero] Loading LoseScene...");
+        SceneManager.LoadScene("LoseScene");
+    }
+
+    private void RequestHostMigration()
+    {
+        if (Object.Runner == null || !Object.Runner.IsServer)
+        {
+            Debug.LogWarning("[Hero] Cannot request host migration - not server!");
+            return;
+        }
+
+        Debug.Log("[Hero] 🔄 Requesting Fusion to migrate host...");
+
+        // ✅ หา player คนต่อไปที่จะเป็น Host
+        PlayerRef newHost = FindNextHost();
+
+        // ✅ เช็คว่าไม่ใช่ default (PlayerId != -1)
+        if (newHost.PlayerId != -1)
+        {
+            Debug.Log($"[Hero] ✅ New host selected: Player {newHost}");
+
+            // ✅ Notify server ให้ทำ Host Migration
+            RPC_NotifyHostMigration(newHost);
+        }
+        else
+        {
+            Debug.LogError("[Hero] ❌ No valid player found for host migration!");
+        }
+    }
+
+
+    /// <summary>
+    /// ✅ หา player คนต่อไปที่จะเป็น Host
+    /// </summary>
+    private PlayerRef FindNextHost()
+    {
+        var currentPlayer = Object.Runner.LocalPlayer;
+
+        foreach (var player in Object.Runner.ActivePlayers)
+        {
+            // หา player ที่ไม่ใช่ตัวเอง และยังมีชีวิตอยู่
+            if (player != currentPlayer)
+            {
+                // ตรวจสอบว่า player นี้ยังมีชีวิตอยู่หรือไม่
+                Hero[] heroes = FindObjectsOfType<Hero>();
+                foreach (var hero in heroes)
+                {
+                    if (hero.Object != null &&
+                        hero.Object.InputAuthority == player 
+                       )
+                    {
+                        Debug.Log($"[Hero] Found alive player for new host: {player}");
+                        return player;
+                    }
+                }
+            }
+        }
+
+        // ถ้าไม่เจอคนที่มีชีวิต - ส่ง player แรกที่เจอ
+        foreach (var player in Object.Runner.ActivePlayers)
+        {
+            if (player != currentPlayer)
+            {
+                return player;
+            }
+        }
+
+        // ✅ แทน IsValid ด้วยการเช็คว่ามี player อื่นหรือไม่
+        // ถ้าไม่มี player อื่นเลย - return default (PlayerId = -1)
+        return default(PlayerRef);
+    }
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_NotifyHostMigration(PlayerRef newHost)
+    {
+        Debug.Log($"[Hero] ========================================");
+        Debug.Log($"[Hero] 🔄 HOST MIGRATION NOTIFICATION");
+        Debug.Log($"  - New Host: Player {newHost}");
+        Debug.Log($"  - Local Player: {Object.Runner.LocalPlayer}");
+        Debug.Log($"[Hero] ========================================");
+
+        // แสดง notification ให้ players รู้
+        if (Object.Runner.LocalPlayer == newHost)
+        {
+            Debug.Log("[Hero] 👑 YOU are the new host!");
+            ShowHostMigrationNotification("You are now the host!");
+        }
+        else
+        {
+            Debug.Log($"[Hero] Player {newHost} is now the host");
+            ShowHostMigrationNotification($"Player {newHost} is now the host");
+        }
     }
 
     protected override bool CanDie()
@@ -929,6 +1151,13 @@ public class Hero : Character
         return NetworkedCurrentHp <= 0; // Hero-specific validation
     }
 
+    private void ShowHostMigrationNotification(string message)
+    {
+        Debug.Log($"[Hero] 📢 {message}");
+
+        // TODO: แสดง UI notification ถ้ามี
+        // เช่น: NotificationManager.Show(message);
+    }
 
 
 

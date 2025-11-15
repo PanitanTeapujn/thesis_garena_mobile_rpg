@@ -168,10 +168,12 @@ public class WaitingRoomManager : MonoBehaviour
     {
         string selectedStage = PlayerPrefs.GetString("SelectedStage", "PlayRoom1_1");
 
-        // ✅ เช็คใน Lobby เท่านั้น (เพราะ StageProgressManager อยู่ที่นั่น)
-        // ระบบจะบันทึกสถานะใน PlayerPrefs แล้ว
+        Debug.Log($"[WaitingRoomManager] 🎮 Starting Party game:");
+        Debug.Log($"  - Scene: {selectedStage}");
+        Debug.Log($"  - Runner mode: {runner.GameMode}"); // ✅ เพิ่ม debug
+        Debug.Log($"  - IsServer: {runner.IsServer}");
+        Debug.Log($"  - Local player: {runner.LocalPlayer}");
 
-        Debug.Log($"[WaitingRoomManager] Starting game with selected substage: {selectedStage}");
         runner.LoadScene(selectedStage);
     }
 

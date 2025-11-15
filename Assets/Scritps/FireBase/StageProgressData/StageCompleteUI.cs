@@ -1031,74 +1031,136 @@ public class StageCompleteUI : MonoBehaviour
     /// </summary>
     private void BackToLobby()
     {
+      
         Debug.Log("[StageCompleteUI] Going back to lobby...");
+        Debug.Log("[StageCompleteUI] ========================================");
 
         // ✅ แน่ใจว่า timeScale กลับเป็น 1 ก่อน
         Time.timeScale = 1f;
+
+        // Flush quests
         DailyQuestTracker.FlushProgressToQuests();
 
         StartCoroutine(BackToLobbyWithTransition());
+    }
+
+    private IEnumerator BackToLobbyWithTransition()
+    {
+        // ✅ แน่ใจว่า timeScale เป็น 1 ตั้งแต่เริ่มต้น
+        Time.timeScale = 1f;
+
+        // Fade out panel ก่อน
+        yield return StartCoroutine(FadeOutPanel());
 
         // 🆕 Force reset rewards ก่อนกลับ Lobby
         StageRewardTracker.ForceResetRewards();
 
-        // ทำความสะอาด Network Components เหมือน LoseScene
+        // ✅ ทำความสะอาด Network Components อย่างถูกต้อง
         CleanupNetworkComponents();
 
+        // ✅ รอ 1 frame ให้ cleanup เสร็จ
+        yield return null;
+
         // โหลด Lobby Scene
+        Debug.Log("[StageCompleteUI] Loading Lobby scene...");
         SceneManager.LoadScene("Lobby");
     }
-   private IEnumerator BackToLobbyWithTransition()
-{
-    // ✅ แน่ใจว่า timeScale เป็น 1 ตั้งแต่เริ่มต้น
-    Time.timeScale = 1f;
-    
-    // Fade out panel ก่อน
-    yield return StartCoroutine(FadeOutPanel());
+    private void CleanupNetworkComponents()
+    {
+        Debug.Log("========================================");
+        Debug.Log("[StageCompleteUI] 🧹 Starting network cleanup...");
+        Debug.Log("========================================");
 
-    // 🆕 Force reset rewards ก่อนกลับ Lobby
-    StageRewardTracker.ForceResetRewards();
+        // ✅ 1. Cleanup PlayerSpawner ก่อน
+        PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
+        if (spawner != null)
+        {
+            Debug.Log("[StageCompleteUI] Calling PlayerSpawner.CleanupOnGameExit()");
+            spawner.CleanupOnGameExit();
+        }
 
-    // ทำความสะอาด Network Components เหมือน LoseScene
-    CleanupNetworkComponents();
+        // ✅ 2. Shutdown และ DESTROY NetworkRunner
+        NetworkRunner runner = FindObjectOfType<NetworkRunner>();
+        if (runner != null)
+        {
+            Debug.Log("[StageCompleteUI] Found NetworkRunner - shutting down...");
 
-    // รอหน่วงเวลานิดหนึ่งก่อนโหลด scene
-    yield return new WaitForSeconds(0.5f);
+            // Remove all callbacks ก่อน shutdown
+            var allCallbacks = FindObjectsOfType<MonoBehaviour>();
+            foreach (var obj in allCallbacks)
+            {
+                if (obj is INetworkRunnerCallbacks)
+                {
+                    runner.RemoveCallbacks(obj as INetworkRunnerCallbacks);
+                    Debug.Log($"[StageCompleteUI] Removed callback: {obj.GetType().Name}");
+                }
+            }
 
-    // โหลด Lobby Scene
-    SceneManager.LoadScene("Lobby");
-}
+            // Shutdown
+            if (runner.IsRunning)
+            {
+                runner.Shutdown();
+                Debug.Log("[StageCompleteUI] NetworkRunner shutdown complete");
+            }
+
+            // ✅ CRITICAL: ทำลาย GameObject ด้วย
+            Destroy(runner.gameObject);
+            Debug.Log("[StageCompleteUI] ✅ NetworkRunner GameObject DESTROYED");
+        }
+        else
+        {
+            Debug.Log("[StageCompleteUI] No NetworkRunner found (already cleaned?)");
+        }
+
+        // ✅ 3. ทำลาย SingleInputController
+        SingleInputController inputController = FindObjectOfType<SingleInputController>();
+        if (inputController != null)
+        {
+            Debug.Log("[StageCompleteUI] Destroying SingleInputController");
+            Destroy(inputController.gameObject);
+        }
+
+        // ✅ 4. ลบ NetworkObjects ทั้งหมด
+        NetworkObject[] networkObjects = FindObjectsOfType<NetworkObject>();
+        Debug.Log($"[StageCompleteUI] Found {networkObjects.Length} NetworkObjects to destroy");
+
+        foreach (var obj in networkObjects)
+        {
+            if (obj != null && obj.gameObject != null)
+            {
+                Debug.Log($"[StageCompleteUI] Destroying NetworkObject: {obj.gameObject.name}");
+                Destroy(obj.gameObject);
+            }
+        }
+
+        // ✅ 5. ลบ CombatUIManager (ถ้ามี DontDestroyOnLoad)
+        CombatUIManager combatUI = FindObjectOfType<CombatUIManager>();
+        if (combatUI != null)
+        {
+            Debug.Log("[StageCompleteUI] Destroying CombatUIManager");
+            Destroy(combatUI.gameObject);
+        }
+
+        // ✅ 6. ลบ NetworkRunnerHandler (ถ้ามี)
+        NetworkRunnerHandler runnerHandler = FindObjectOfType<NetworkRunnerHandler>();
+        if (runnerHandler != null)
+        {
+            Debug.Log("[StageCompleteUI] Destroying NetworkRunnerHandler");
+            Destroy(runnerHandler.gameObject);
+        }
+
+        // ✅ 7. Reset Time Scale ให้แน่ใจ
+        Time.timeScale = 1f;
+
+        Debug.Log("========================================");
+        Debug.Log("[StageCompleteUI] ✅ Network cleanup completed!");
+        Debug.Log("========================================");
+    }
 
     /// <summary>
     /// ทำความสะอาด Network Components - คัดลอกจาก LoseScene
     /// </summary>
-    private void CleanupNetworkComponents()
-    {
-        // Shutdown NetworkRunner
-        NetworkRunner runner = FindObjectOfType<NetworkRunner>();
-        if (runner != null)
-        {
-            Debug.Log("Shutting down NetworkRunner from StageCompleteUI");
-            runner.Shutdown();
-        }
-
-        // Cleanup PlayerSpawner
-        PlayerSpawner spawner = FindObjectOfType<PlayerSpawner>();
-        if (spawner != null)
-        {
-            spawner.CleanupOnGameExit();
-        }
-
-        // ลบ NetworkObjects ที่เหลืออยู่
-        NetworkObject[] networkObjects = FindObjectsOfType<NetworkObject>();
-        foreach (var obj in networkObjects)
-        {
-            if (obj != null)
-            {
-                Destroy(obj.gameObject);
-            }
-        }
-    }
+   
 
     /// <summary>
     /// เล่นเสียงชัยชนะ

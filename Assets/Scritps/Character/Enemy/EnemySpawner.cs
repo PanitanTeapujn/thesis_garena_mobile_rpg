@@ -653,12 +653,16 @@ public class EnemySpawner : NetworkBehaviour
         // อัปเดต StageRewardTracker
         RPC_UpdateStageRewardTracker(enemyTypeName);
 
+        // ✅ เพิ่มบรรทัดนี้: เช็คว่าศัตรูตายหมดหรือยัง
+        CheckAllEnemiesDefeated();
+
         // เช็คการผ่านด่าน
         if (currentSessionKills >= requiredKillsForStage && !isStageCompleted)
         {
             ForceCheckStageCompletion();
         }
     }
+
     public NetworkEnemy SpawnSummonedEnemy(NetworkEnemy prefab, Vector3 position)
     {
         if (!HasStateAuthority)
@@ -1036,5 +1040,65 @@ public class EnemySpawner : NetworkBehaviour
 
         return false;
     }
+    private void CheckAllEnemiesDefeated()
+    {
+        // นับจำนวนศัตรูที่ยังมีชีวิต
+        int aliveEnemies = 0;
 
+        foreach (var enemy in activeEnemies)
+        {
+            // ✅ แก้ไข: ใช้ IsEnemyAlive() แทน IsDead
+            if (enemy != null && IsEnemyAlive(enemy))
+            {
+                aliveEnemies++;
+            }
+        }
+
+        Debug.Log($"[EnemySpawner] Alive enemies: {aliveEnemies}");
+
+        // ✅ ถ้าไม่มีศัตรูเหลือแล้ว และไม่มี wave ที่จะ spawn แล้ว
+        if (aliveEnemies == 0 && !HasMoreWaves())
+        {
+            Debug.Log("[EnemySpawner] 🏆 ALL ENEMIES DEFEATED!");
+
+            // ✅ แจ้ง GameStateManager
+            GameStateManager gameState = FindObjectOfType<GameStateManager>();
+
+            if (gameState != null)
+            {
+                gameState.OnAllEnemiesDefeated();
+            }
+            else
+            {
+                Debug.LogWarning("[EnemySpawner] GameStateManager not found!");
+
+                // Fallback - แสดง StageCompleteUI โดยตรง
+                StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
+                if (stageCompleteUI != null)
+                {
+                    stageCompleteUI.ShowStageComplete(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// ✅ เช็คว่ายังมี wave ที่จะ spawn หรือไม่
+    /// </summary>
+    private bool HasMoreWaves()
+    {
+        // ถ้าไม่มีระบบ wave - return false
+        return false;
+    }
+
+    /// <summary>
+    /// ✅ Helper method: เช็คว่า Enemy ยังมีชีวิตหรือไม่
+    /// </summary>
+    private bool IsEnemyAlive(NetworkEnemy enemy)
+    {
+        if (enemy == null) return false;
+
+        // NetworkEnemy มี IsDead property
+        return !enemy.IsDead;
+    }
 }

@@ -360,7 +360,6 @@ public class LobbyManager : MonoBehaviour
         PlayerPrefs.SetString("GameMode", "Party");
         PlayerPrefs.SetString("IsHost", "true");
         PlayerPrefs.SetString("GameMode", "Coop");
-        CleanupNetworkComponents(); // ✅ เพิ่มบรรทัดนี้
 
         SceneManager.LoadScene("WaitingRoom");
     }

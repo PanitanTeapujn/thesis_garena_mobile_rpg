@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Collections;
 using TMPro;
+using System.Linq;
 
 public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
@@ -83,10 +84,9 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             if (_runner != null)
             {
                 _runner.AddCallbacks(this);
-                Debug.Log($"[PlayerSpawner] ✅ Registered with NetworkRunner. IsServer: {_runner.IsServer}");
+                Debug.Log($"[PlayerSpawner] ✅ Registered - IsServer: {_runner.IsServer}, Players: {_runner.ActivePlayers.Count()}"); // ✅ เพิ่ม debug
             }
         }
-
     }
     private void InitializePrefabDictionary()
     {
@@ -150,24 +150,35 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     #endregion
 
     #region Player Join/Leave Callbacks
+    // ✅ แทนที่ OnPlayerJoined() method ใน PlayerSpawner.cs
+
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        Debug.Log($"[PlayerSpawner] 🎮 Player joined: {player}, IsServer: {runner.IsServer}");
+        Debug.Log($"[PlayerSpawner] ========================================");
+        Debug.Log($"[PlayerSpawner] 🎮 Player joined:");
+        Debug.Log($"  - Player: {player}");
+        Debug.Log($"  - IsServer: {runner.IsServer}");
+        Debug.Log($"  - IsClient: {runner.IsClient}");
+        Debug.Log($"  - LocalPlayer: {runner.LocalPlayer}");
+        Debug.Log($"  - GameMode: {runner.GameMode}");
+        Debug.Log($"[PlayerSpawner] ========================================");
 
         _runner = runner;
 
+        // ✅ เฉพาะ Server/Host เท่านั้นที่ spawn
         if (!runner.IsServer)
         {
-            Debug.Log($"[PlayerSpawner] Not server - skipping spawn");
+            Debug.Log($"[PlayerSpawner] ⏭️ Client detected - waiting for server to spawn");
             return;
         }
+
+        Debug.Log($"[PlayerSpawner] ✅ Server confirmed - processing spawn for {player}");
 
         // Single player mode
         if (runner.GameMode == GameMode.Single)
         {
-            Debug.Log($"[PlayerSpawner] Single mode - forcing spawn");
+            Debug.Log($"[PlayerSpawner] Single mode - forcing spawn for local player");
 
-            // ✅ ใช้เฉพาะ PersistentPlayerData
             string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
             PlayerSelectionData.CharacterType selectedCharacter;
 
@@ -177,7 +188,6 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             }
             else
             {
-                // ❌ ลบการใช้ PlayerSelectionData.GetSelectedCharacter()
                 selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
                 Debug.LogWarning($"[PlayerSpawner] Failed to parse, using default: {selectedCharacter}");
             }
@@ -186,26 +196,37 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        // Clean up old data
-        CleanupPlayerData(player);
+        // ✅ Party Mode - Host spawn ให้ทุกคน
+        Debug.Log($"[PlayerSpawner] 🌐 Party Mode - processing Player {player}");
 
-        // Spawn NetworkPlayerManager
+        CleanupPlayerData(player);
         SpawnPlayerManager(runner, player);
 
-        // Spawn character with delay
-        if (player != runner.LocalPlayer)
+        // ✅ ตรวจสอบว่าเป็น Local Player หรือ Remote Player
+        if (player == runner.LocalPlayer)
         {
-            StartCoroutine(DelayedSpawn(player));
+            Debug.Log($"[PlayerSpawner] 🏠 This is LOCAL PLAYER (Host) - spawning immediately");
 
-            if (!spawnedCharacters.ContainsKey(runner.LocalPlayer))
+            // ✅ Host spawn ทันที (ไม่ต้องรอ RPC)
+            string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
+            PlayerSelectionData.CharacterType selectedCharacter;
+
+            if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out selectedCharacter))
             {
-                Debug.Log($"[PlayerSpawner] Also spawning host player");
-                StartCoroutine(DelayedSpawn(runner.LocalPlayer));
+                Debug.Log($"[PlayerSpawner] Host character: {selectedCharacter}");
+                SpawnCharacterForPlayer(player, selectedCharacter);
+            }
+            else
+            {
+                Debug.LogError($"[PlayerSpawner] Failed to parse host character!");
             }
         }
         else
         {
-            StartCoroutine(DelayedSpawn(player));
+            Debug.Log($"[PlayerSpawner] 🌐 This is REMOTE PLAYER - waiting for RPC...");
+
+            // ✅ Remote player รอ RPC (จะถูกเรียกจาก NetworkPlayerManager.RPC_RequestCharacterSpawn)
+            // ไม่ต้องทำอะไรตรงนี้ - RPC จะเรียก SpawnCharacterForPlayer เอง
         }
     }
 
@@ -280,6 +301,8 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
     #endregion
 
     #region Character Spawning
+    // ✅ แทนที่ DelayedSpawn() method ใน PlayerSpawner.cs
+
     IEnumerator DelayedSpawn(PlayerRef player)
     {
         Debug.Log($"[DelayedSpawn] ========================================");
@@ -295,58 +318,78 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
         spawnRequests.Add(player.ToString());
 
-        // ✅ เพิ่ม timeout counter
+        // ✅ รอให้ NetworkPlayerManager พร้อม
         float timeout = 5f;
         float elapsed = 0f;
 
+        NetworkPlayerManager playerManager = null;
+
         while (elapsed < timeout)
         {
-            yield return new WaitForSeconds(0.5f);
-            elapsed += 0.5f;
+            // ✅ หา NetworkPlayerManager ของ player นี้
+            NetworkPlayerManager[] managers = FindObjectsOfType<NetworkPlayerManager>();
 
-            // ✅ ตรวจสอบว่า PersistentPlayerData พร้อมหรือยัง
-            if (PersistentPlayerData.Instance != null && PersistentPlayerData.Instance.isDataLoaded)
+            foreach (var manager in managers)
+            {
+                if (manager.Object != null && manager.Object.InputAuthority == player)
+                {
+                    playerManager = manager;
+                    Debug.Log($"[DelayedSpawn] ✅ Found NetworkPlayerManager for {player}");
+                    break;
+                }
+            }
+
+            if (playerManager != null)
             {
                 break;
             }
 
+            yield return new WaitForSeconds(0.1f);
+            elapsed += 0.1f;
+
             if (elapsed >= timeout)
             {
-                Debug.LogError($"[DelayedSpawn] ⏰ TIMEOUT waiting for PersistentPlayerData!");
+                Debug.LogError($"[DelayedSpawn] ⏰ TIMEOUT waiting for NetworkPlayerManager!");
                 spawnRequests.Remove(player.ToString());
                 yield break;
             }
         }
 
-        Debug.Log($"[DelayedSpawn] 1️⃣ Getting active character from PersistentPlayerData...");
-
-        // ✅ ดึง character type
-        string activeCharacter = PersistentPlayerData.Instance.GetCurrentActiveCharacter();
-        Debug.Log($"[DelayedSpawn] 2️⃣ Active character string: '{activeCharacter}'");
-
-        // ✅ Validate character type
-        if (string.IsNullOrEmpty(activeCharacter))
-        {
-            Debug.LogError($"[DelayedSpawn] ❌ Active character is NULL or empty!");
-            activeCharacter = "Assassin";
-        }
-
+        // ✅ ดึง character type จาก NetworkPlayerManager
         PlayerSelectionData.CharacterType selectedCharacter;
 
-        // ✅ Parse enum
-        if (System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out selectedCharacter))
+        if (playerManager != null && playerManager.HasSpawnedCharacter)
         {
-            Debug.Log($"[DelayedSpawn] ✅ Parse SUCCESS: {selectedCharacter} (int: {(int)selectedCharacter})");
+            // ✅ ใช้ character type ที่ถูก sync มาแล้ว
+            selectedCharacter = (PlayerSelectionData.CharacterType)playerManager.SelectedCharacterType;
+            Debug.Log($"[DelayedSpawn] ✅ Using synced character: {selectedCharacter} for Player {player}");
         }
         else
         {
-            Debug.LogError($"[DelayedSpawn] ❌ Failed to parse '{activeCharacter}' - using Assassin");
-            selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
+            // ✅ Fallback: ถ้าเป็น local player ให้ใช้จาก PersistentPlayerData
+            if (player == _runner.LocalPlayer)
+            {
+                Debug.Log($"[DelayedSpawn] Using local player character from PersistentPlayerData");
+
+                string activeCharacter = PersistentPlayerData.Instance?.GetCurrentActiveCharacter() ?? "Assassin";
+
+                if (!System.Enum.TryParse<PlayerSelectionData.CharacterType>(activeCharacter, out selectedCharacter))
+                {
+                    Debug.LogError($"[DelayedSpawn] ❌ Failed to parse '{activeCharacter}' - using Assassin");
+                    selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
+                }
+            }
+            else
+            {
+                // ✅ Remote player แต่ยังไม่มี manager - ใช้ default
+                Debug.LogWarning($"[DelayedSpawn] ⚠️ No character type found for {player} - using Assassin");
+                selectedCharacter = PlayerSelectionData.CharacterType.Assassin;
+            }
         }
 
-        // ✅ ตรวจสอบ prefab
-        Debug.Log($"[DelayedSpawn] 5️⃣ Checking prefab availability for {selectedCharacter}...");
+        Debug.Log($"[DelayedSpawn] 🎯 Final character for Player {player}: {selectedCharacter}");
 
+        // ✅ ตรวจสอบ prefab
         if (!IsPrefabAvailable(selectedCharacter))
         {
             Debug.LogError($"[DelayedSpawn] ❌ Prefab not available for {selectedCharacter}!");
@@ -362,7 +405,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        Debug.Log($"[DelayedSpawn] 6️⃣ About to spawn: {selectedCharacter}");
+        Debug.Log($"[DelayedSpawn] 6️⃣ About to spawn: {selectedCharacter} for Player {player}");
 
         // ✅ Spawn character
         SpawnCharacterForPlayer(player, selectedCharacter);

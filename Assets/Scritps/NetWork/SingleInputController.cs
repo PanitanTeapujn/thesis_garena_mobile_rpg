@@ -130,25 +130,49 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         if (runner == null)
         {
             runner = FindObjectOfType<NetworkRunner>();
+            if (runner != null)
+            {
+                Debug.Log($"[SingleInputController] ✅ Found NetworkRunner - IsRunning: {runner.IsRunning}");
+            }
             return;
         }
 
         if (!runner.IsRunning)
+        {
+            // Debug ทุก 2 วินาที
+            if (Time.time % 2f < Time.deltaTime)
+            {
+                Debug.LogWarning("[SingleInputController] ⚠️ NetworkRunner is NOT running!");
+            }
             return;
+        }
 
         if (movementJoystick == null || cameraJoystick == null)
         {
             FindJoysticks();
+
+            // Debug ทุก 2 วินาที
+            if (Time.time % 2f < Time.deltaTime)
+            {
+                Debug.LogWarning($"[SingleInputController] ⚠️ Missing joysticks! Movement:{movementJoystick != null}, Camera:{cameraJoystick != null}");
+            }
             return;
         }
 
-        // อ่านค่า input จาก Joystick
-        localInput.movementInput = new Vector2(
+        // ✅ อ่านค่า input จาก Joystick
+        Vector2 movementInput = new Vector2(
             movementJoystick.Horizontal,
             movementJoystick.Vertical
         );
 
+        localInput.movementInput = movementInput;
         localInput.cameraRotationInput = cameraJoystick.Horizontal;
+
+        // ✅ Debug input ทุก 0.5 วินาที (เฉพาะเมื่อมี input)
+        if (movementInput.magnitude > 0.1f && Time.time % 0.5f < Time.deltaTime)
+        {
+            Debug.Log($"[Input] Movement: {movementInput}, Camera: {cameraJoystick.Horizontal:F2}");
+        }
 
         // คำนวณทิศทางการมอง
         if (localInput.movementInput.magnitude > 0.1f)
@@ -199,7 +223,8 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         {
             potion5Pressed = false;
         }
-        // Set input states - แต่ละสกิลทำงานอิสระ
+
+        // Set input states
         localInput.attack = attackPressed;
         localInput.skill1 = skill1Pressed;
         localInput.skill2 = skill2Pressed;
@@ -211,6 +236,23 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         localInput.potion3 = potion3Pressed;
         localInput.potion4 = potion4Pressed;
         localInput.potion5 = potion5Pressed;
+    }
+    private void OnGUI()
+    {
+        if (Event.current.type != EventType.Repaint) return;
+
+        GUIStyle style = new GUIStyle();
+        style.fontSize = 16;
+        style.normal.textColor = Color.yellow;
+
+        string debugText = $"[Input Debug]\n";
+        debugText += $"Runner: {(runner != null ? "✅" : "❌")}\n";
+        debugText += $"Running: {(runner != null && runner.IsRunning ? "✅" : "❌")}\n";
+        debugText += $"Movement Joy: {(movementJoystick != null ? "✅" : "❌")}\n";
+        debugText += $"Camera Joy: {(cameraJoystick != null ? "✅" : "❌")}\n";
+        debugText += $"Input: ({localInput.movementInput.x:F2}, {localInput.movementInput.y:F2})";
+
+        GUI.Label(new Rect(10, 100, 400, 200), debugText, style);
     }
     public void SetPotion1Pressed()
     {

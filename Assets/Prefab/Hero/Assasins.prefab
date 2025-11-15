@@ -328,8 +328,7 @@ MonoBehaviour:
     type: 3}
   toxicDashEffect: {fileID: 720325515038598322, guid: 709b0bd6b0b625249a98409dd7a87343,
     type: 3}
-  shadowAssassinEffect: {fileID: 5911206648629905745, guid: 1eb833340b41fb444b576c4dced8d4dc,
-    type: 3}
+  shadowAssassinEffect: {fileID: 0}
   plagueOutbreakEffect: {fileID: 9110354499124891491, guid: 09d0fcb8ee0127943b70d40694b23c09,
     type: 3}
   basicAttackEffect: {fileID: 2629628210209888467, guid: ca6705a3f9070d14d819d179493bcfa0,
@@ -397,7 +396,7 @@ MonoBehaviour:
   _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
-  _OriginalMoveSpeed: 0
+  _OriginalMoveSpeedForFreeze: 0
   _IsStunned: 0
   _StunDuration: 0
   _IsArmorBreak: 0
@@ -406,6 +405,10 @@ MonoBehaviour:
   _IsBlind: 0
   _BlindDuration: 0
   _BlindAmount: 0
+  _IsSlowed: 0
+  _SlowDuration: 0
+  _SlowAmount: 0
+  _OriginalMoveSpeedForSlow: 0
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
