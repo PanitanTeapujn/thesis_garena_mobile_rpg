@@ -1047,37 +1047,57 @@ public class EnemySpawner : NetworkBehaviour
 
         foreach (var enemy in activeEnemies)
         {
-            // ✅ แก้ไข: ใช้ IsEnemyAlive() แทน IsDead
             if (enemy != null && IsEnemyAlive(enemy))
             {
                 aliveEnemies++;
             }
         }
 
+        // ✅ Debug ข้อมูลทุกครั้งที่เช็ค
+        Debug.Log($"[EnemySpawner] ========================================");
         Debug.Log($"[EnemySpawner] Alive enemies: {aliveEnemies}");
+        Debug.Log($"[EnemySpawner] Current kills: {currentSessionKills}/{requiredKillsForStage}");
+        Debug.Log($"[EnemySpawner] Required tags: {GetRequiredTagsString()}");
+        Debug.Log($"[EnemySpawner] ========================================");
 
-        // ✅ ถ้าไม่มีศัตรูเหลือแล้ว และไม่มี wave ที่จะ spawn แล้ว
-        if (aliveEnemies == 0 && !HasMoreWaves())
+        // ✅ เงื่อนไขใหม่: ต้องตรงทั้ง 2 ข้อ
+        // 1. ไม่มีศัตรูเหลือ
+        // 2. ฆ่าครบตามที่กำหนดแล้ว (currentSessionKills >= requiredKillsForStage)
+
+        bool noEnemiesLeft = (aliveEnemies == 0 && !HasMoreWaves());
+        bool killedEnough = (currentSessionKills >= requiredKillsForStage);
+
+        if (noEnemiesLeft)
         {
-            Debug.Log("[EnemySpawner] 🏆 ALL ENEMIES DEFEATED!");
-
-            // ✅ แจ้ง GameStateManager
-            GameStateManager gameState = FindObjectOfType<GameStateManager>();
-
-            if (gameState != null)
+            if (killedEnough)
             {
-                gameState.OnAllEnemiesDefeated();
+                // ✅ ผ่านด่านจริงๆ
+                Debug.Log($"[EnemySpawner] 🏆 STAGE COMPLETED! Killed {currentSessionKills}/{requiredKillsForStage}");
+
+                GameStateManager gameState = FindObjectOfType<GameStateManager>();
+                if (gameState != null)
+                {
+                    gameState.OnAllEnemiesDefeated();
+                }
+                else
+                {
+                    Debug.LogWarning("[EnemySpawner] GameStateManager not found!");
+
+                    // Fallback - แสดง StageCompleteUI โดยตรง
+                    StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
+                    if (stageCompleteUI != null)
+                    {
+                        stageCompleteUI.ShowStageComplete(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+                    }
+                }
             }
             else
             {
-                Debug.LogWarning("[EnemySpawner] GameStateManager not found!");
+                // ⚠️ ศัตรูตายหมด แต่ยังฆ่าไม่ครบ
+                Debug.LogWarning($"[EnemySpawner] ⚠️ All enemies dead but not enough kills: {currentSessionKills}/{requiredKillsForStage}");
+                Debug.LogWarning($"[EnemySpawner] Stage will NOT complete - need {requiredKillsForStage - currentSessionKills} more kills");
 
-                // Fallback - แสดง StageCompleteUI โดยตรง
-                StageCompleteUI stageCompleteUI = FindObjectOfType<StageCompleteUI>();
-                if (stageCompleteUI != null)
-                {
-                    stageCompleteUI.ShowStageComplete(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
-                }
+                // ✅ ไม่ทำอะไร - รอให้ spawn ศัตรูตัวต่อไป
             }
         }
     }
