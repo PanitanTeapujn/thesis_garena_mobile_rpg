@@ -2498,7 +2498,7 @@ PrefabInstance:
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
       propertyPath: sceneBGMMapping.Array.size
-      value: 7
+      value: 11
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
@@ -2567,8 +2567,28 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
+      propertyPath: sceneBGMMapping.Array.data[7].bgmIndex
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[8].bgmIndex
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[9].bgmIndex
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
       propertyPath: sceneBGMMapping.Array.data[0].sceneName
       value: StartGame
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[10].bgmIndex
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
@@ -2599,6 +2619,26 @@ PrefabInstance:
         type: 3}
       propertyPath: sceneBGMMapping.Array.data[6].sceneName
       value: PlayRoom4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[7].sceneName
+      value: Mountain1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[8].sceneName
+      value: Mountain2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[9].sceneName
+      value: Mountain3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[10].sceneName
+      value: Mountain4
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
@@ -2648,6 +2688,26 @@ PrefabInstance:
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
       propertyPath: sceneBGMMapping.Array.data[6].fadeInDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[7].fadeInDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[8].fadeInDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[9].fadeInDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
+        type: 3}
+      propertyPath: sceneBGMMapping.Array.data[10].fadeInDuration
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,

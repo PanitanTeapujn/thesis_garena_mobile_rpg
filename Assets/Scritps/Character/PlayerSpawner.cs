@@ -67,7 +67,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
         {
             CreateDefaultSpawnPointsRuntime();
         }
-      
+
     }
 
     private void OnEnable()
@@ -86,7 +86,7 @@ public class PlayerSpawner : MonoBehaviour, INetworkRunnerCallbacks
                 Debug.Log($"[PlayerSpawner] ✅ Registered with NetworkRunner. IsServer: {_runner.IsServer}");
             }
         }
-        
+
     }
     private void InitializePrefabDictionary()
     {

@@ -105,7 +105,7 @@ GameObject:
   - component: {fileID: 4145889400217059357}
   - component: {fileID: 5007749454147549919}
   m_Layer: 0
-  m_Name: EnemySpawn 1
+  m_Name: enemymountain1-3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -151,16 +151,32 @@ MonoBehaviour:
     enemyName: 
     spawnWeight: 5
     maxCount: -1
-    spawnCooldown: 1
+    spawnCooldown: 5
+    currentCount: 0
+    lastSpawnTime: 0
+  - enemyPrefab: {fileID: 3146736404170834553, guid: d007969deee58184ab2703244b9aced6,
+      type: 3}
+    enemyName: 
+    spawnWeight: 3
+    maxCount: -1
+    spawnCooldown: 5
+    currentCount: 0
+    lastSpawnTime: 0
+  - enemyPrefab: {fileID: 2335039710452873401, guid: 3973eab3e8058d74098b9520dfb07322,
+      type: 3}
+    enemyName: 
+    spawnWeight: 2
+    maxCount: 5
+    spawnCooldown: 5
     currentCount: 0
     lastSpawnTime: 0
   maxTotalEnemies: 20
-  spawnInterval: 2
+  spawnInterval: 5
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2
   enableBatchSpawning: 1
-  minEnemiesPerSpawn: 1
-  maxEnemiesPerSpawn: 1
+  minEnemiesPerSpawn: 2
+  maxEnemiesPerSpawn: 7
   spawnAroundPlayers: 1
   minSpawnDistanceFromPlayer: 8
   maxSpawnDistanceFromPlayer: 15
@@ -188,7 +204,7 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SortKey: 1847687270
+  SortKey: 3452150452
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []

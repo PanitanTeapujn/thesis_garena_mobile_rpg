@@ -17,8 +17,8 @@ public enum StatusEffectType
     ArmorBreak,
     Blind,
     Weakness,
-
-         // ========== 🌟 TEAM AURA BUFFS ==========
+    Slow,
+    // ========== 🌟 TEAM AURA BUFFS ==========
     AttackSpeedAura,    // +30% attack speed รัศมี 5m
     DamageAura,         // +20% damage รัศมี 5m  
     MoveSpeedAura,      // +15% move speed รัศมี 5m
@@ -67,7 +67,7 @@ public class StatusEffectManager : NetworkBehaviour
 
     [Networked] public bool IsFrozen { get; set; }
     [Networked] public float FreezeDuration { get; set; }
-    [Networked] public float OriginalMoveSpeed { get; set; }
+    [Networked] public float OriginalMoveSpeedForFreeze  { get; set; }
     #endregion
 
 #region Physical Effects
@@ -82,7 +82,10 @@ public class StatusEffectManager : NetworkBehaviour
     [Networked] public bool IsBlind { get; set; }
     [Networked] public float BlindDuration { get; set; }
     [Networked] public float BlindAmount { get; set; } // 0.8 = 80% reduction
-
+    [Networked] public bool IsSlowed { get; set; }
+    [Networked] public float SlowDuration { get; set; }
+    [Networked] public float SlowAmount { get; set; } // 0.3 = 30% slow
+    [Networked] public float OriginalMoveSpeedForSlow { get; set; } // 🆕 เก็บ speed เดิม
     [Networked] public bool IsWeak { get; set; }
     [Networked] public float WeaknessDuration { get; set; }
     [Networked] public float WeaknessAmount { get; set; } // 0.4 = 40% reduction
@@ -235,6 +238,7 @@ public class StatusEffectManager : NetworkBehaviour
             ProcessArmorBreakEffect();
             ProcessBlindEffect();
             ProcessWeaknessEffect();
+            ProcessSlowEffect();
             ProcessAllAuras();
             float currentTime = (float)Runner.SimulationTime;
             if (currentTime >= nextAuraCheckTime)
@@ -247,7 +251,74 @@ public class StatusEffectManager : NetworkBehaviour
     }
     #region DeBuff
     // ========== 🧪 Poison System ==========
-    // แก้ไข ApplyPoison() - เพิ่มการแสดงข้อความ
+    public virtual void ApplySlow(float duration, float slowAmount = 0.3f)
+    {
+        if (!HasStateAuthority || IsDebuffImmune) return;
+
+        float totalResistance = GetPhysicalResistance();
+        float chanceReduction = totalResistance * 0.6f;
+
+        if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
+        {
+            Debug.Log($"[Slow Resisted] {character.CharacterName} resisted slow with {character.Armor} Armor!");
+            RPC_ShowStatusResistText(StatusEffectType.Slow);
+            return;
+        }
+
+        float durationReduction = totalResistance / 100f;
+        duration = duration * (1f - durationReduction);
+
+        bool wasAlreadySlowed = IsSlowed;
+
+        IsSlowed = true;
+        SlowDuration = Mathf.Max(0.5f, duration);
+        SlowAmount = slowAmount;
+
+        if (!wasAlreadySlowed)
+        {
+            // 🆕 เก็บ original speed ก่อน slow (ไม่แก้ไข character.MoveSpeed)
+            OriginalMoveSpeedForSlow = character.MoveSpeed;
+
+            Debug.Log($"[ApplySlow] {character.CharacterName} slowed! " +
+                     $"Original Speed: {OriginalMoveSpeedForSlow:F1}, " +
+                     $"Slow: {slowAmount * 100f:F0}%, Duration: {SlowDuration:F1}s");
+
+            // ✅ แสดงข้อความ
+            RPC_ShowStatusEffectText(StatusEffectType.Slow, 0, duration, slowAmount);
+        }
+
+        Debug.Log($"[ApplySlow] {character.CharacterName} slowed by {slowAmount * 100f:F0}% for {SlowDuration:F1}s!");
+        OnStatusEffectChanged?.Invoke(character, StatusEffectType.Slow, true);
+    }
+
+    private void ProcessSlowEffect()
+    {
+        if (!IsSlowed) return;
+
+        if (SlowDuration > 0)
+        {
+            SlowDuration -= Runner.DeltaTime;
+            if (SlowDuration <= 0)
+            {
+                RemoveSlow();
+            }
+        }
+    }
+
+    public virtual void RemoveSlow()
+    {
+        if (!HasStateAuthority) return;
+
+        if (IsSlowed)
+        {
+            IsSlowed = false;
+            SlowDuration = 0f;
+            SlowAmount = 0f;
+
+            Debug.Log($"[RemoveSlow] {character.CharacterName} is no longer slowed! Speed: {character.GetEffectiveMoveSpeed():F1}");
+            OnStatusEffectChanged?.Invoke(character, StatusEffectType.Slow, false);
+        }
+    }
     public virtual void ApplyPoison(int damagePerTick, float duration)
     {
         if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
@@ -403,18 +474,20 @@ public class StatusEffectManager : NetworkBehaviour
     }
 
     // ========== ❄️ Freeze System ==========
+    // ========== ❄️ Freeze System ==========
     public virtual void ApplyFreeze(float duration)
     {
-        if (!HasStateAuthority || IsDebuffImmune) return; // 🆕 เพิ่มการเช็ค
+        if (!HasStateAuthority || IsDebuffImmune) return;
 
-        // ❄️ ใช้ Magic Armor แทน magicalResistance
+        // ❄️ ใช้ Magic Armor
         float totalResistance = GetMagicalResistance();
 
         // ตรวจสอบโอกาสป้องกัน
         float chanceReduction = totalResistance * 0.6f;
         if (UnityEngine.Random.Range(0f, 100f) < chanceReduction)
         {
-            Debug.Log($"[Freeze Resisted] {character.CharacterName} resisted freeze with {character.MagicArmor} Magic Armor! ({chanceReduction:F1}% chance)");
+            Debug.Log($"[Freeze Resisted] {character.CharacterName} resisted freeze with {character.MagicArmor} Magic Armor!");
+            RPC_ShowStatusResistText(StatusEffectType.Freeze);
             return;
         }
 
@@ -428,22 +501,25 @@ public class StatusEffectManager : NetworkBehaviour
 
         if (!wasAlreadyFrozen)
         {
-            // ✅ เก็บ original speed เพื่อ restore (แต่ไม่แก้ไข character.MoveSpeed)
-            OriginalMoveSpeed = character.MoveSpeed;
+            // ✅ เก็บ original speed แบบเดียวกับ Slow (ไม่แก้ไข character.MoveSpeed)
+            OriginalMoveSpeedForFreeze = character.MoveSpeed;
 
-            // ✅ หยุด movement แทน
+            // ✅ หยุด velocity
             if (character.rb != null)
             {
                 character.rb.linearVelocity = Vector3.zero;
             }
 
-            Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen! Magic Armor: {character.MagicArmor}, Original Speed: {OriginalMoveSpeed:F1}, Effective Speed: {character.GetEffectiveMoveSpeed():F1}");
+            Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen! " +
+                     $"Original Speed: {OriginalMoveSpeedForFreeze:F1}, " +
+                     $"Duration: {FreezeDuration:F1}s");
+
+            // ✅ แสดงข้อความ
+            RPC_ShowStatusEffectText(StatusEffectType.Freeze, 0, duration);
         }
 
-        Debug.Log($"[ApplyFreeze] {character.CharacterName} frozen for {FreezeDuration:F1}s (reduced by Magic Armor)!");
         OnStatusEffectChanged?.Invoke(character, StatusEffectType.Freeze, true);
     }
-
     private void ProcessFreezeEffect()
     {
         if (!IsFrozen) return;
@@ -467,10 +543,12 @@ public class StatusEffectManager : NetworkBehaviour
             IsFrozen = false;
             FreezeDuration = 0f;
 
-            // ❌ ลบบรรทัดนี้ออก (ไม่ต้อง restore เพราะไม่ได้แก้ไข)
+            // ❌ ลบบรรทัดนี้ออก (ไม่ต้อง restore เพราะไม่ได้แก้ไข):
             // character.MoveSpeed = OriginalMoveSpeed;
 
-            Debug.Log($"[RemoveFreeze] {character.CharacterName} is no longer frozen! Speed: {character.GetEffectiveMoveSpeed():F1}");
+            Debug.Log($"[RemoveFreeze] {character.CharacterName} is no longer frozen! " +
+                     $"Speed: {character.GetEffectiveMoveSpeed():F1}");
+
             OnStatusEffectChanged?.Invoke(character, StatusEffectType.Freeze, false);
         }
     }
@@ -1759,6 +1837,8 @@ public class StatusEffectManager : NetworkBehaviour
         if (IsArmorBreak) RemoveArmorBreak();
         if (IsBlind) RemoveBlind();
         if (IsWeak) RemoveWeakness();
+        if (IsSlowed) RemoveSlow();  // 🆕 เพิ่มบรรทัดนี้
+
     }
 
     // ========== Status Effect Getters ==========
@@ -1769,12 +1849,12 @@ public class StatusEffectManager : NetworkBehaviour
 
     public bool HasPhysicalEffect()
     {
-        return IsStunned || IsArmorBreak || IsBlind || IsWeak;
+        return IsStunned || IsArmorBreak || IsBlind || IsWeak || IsSlowed;
     }
 
     public bool HasDebuff()
     {
-        return IsArmorBreak || IsBlind || IsWeak || IsFrozen || IsStunned;
+        return IsArmorBreak || IsBlind || IsWeak || IsFrozen || IsStunned || IsSlowed;
     }
 
     public bool HasDamageOverTime()
@@ -1797,7 +1877,10 @@ public class StatusEffectManager : NetworkBehaviour
         return effectType == StatusEffectType.Stun ||
                effectType == StatusEffectType.ArmorBreak ||
                effectType == StatusEffectType.Blind ||
-               effectType == StatusEffectType.Weakness;
+
+               effectType == StatusEffectType.Weakness ||
+           effectType == StatusEffectType.Slow; 
+
     }
 
     // ========== Debug Methods ==========
@@ -1918,6 +2001,10 @@ public class StatusEffectManager : NetworkBehaviour
             case StatusEffectType.Freeze:
                 message = "FROZEN";
                 color = new Color(0.5f, 0.7f, 1f, 1f); // ฟ้าน้ำแข็ง
+                break;
+            case StatusEffectType.Slow:
+                message = $"SLOWED (-{reduction * 100:F0}%)";
+                color = new Color(0.6f, 0.8f, 1f, 1f); // ฟ้าอ่อน
                 break;
         }
 

@@ -1298,6 +1298,9 @@ public class Character : NetworkBehaviour
             case StatusEffectType.Weakness:
                 statusEffectManager.ApplyWeakness(duration, amount > 0 ? amount : 0.4f);
                 break;
+            case StatusEffectType.Slow:
+                statusEffectManager.ApplySlow(duration, amount > 0 ? amount : 0.3f);
+                break;
         }
     }
 
@@ -1326,6 +1329,8 @@ public class Character : NetworkBehaviour
                 return statusEffectManager.IsBlind;
             case StatusEffectType.Weakness:
                 return statusEffectManager.IsWeak;
+            case StatusEffectType.Slow:
+                return statusEffectManager.IsSlowed;
 
             case StatusEffectType.AttackSpeedAura:
                 return statusEffectManager.IsProvidingAttackSpeedAura;
@@ -1614,10 +1619,18 @@ public class Character : NetworkBehaviour
             baseMoveSpeed *= moveSpeedMultiplier;
         }
 
-        // ✅ รวม Freeze effect (ใช้ระบบเดิม)
+        // ✅ แก้ไข Freeze effect - ลดความเร็ว 100% (ไม่เคลื่อนที่เลย)
         if (HasStatusEffect(StatusEffectType.Freeze))
         {
-            baseMoveSpeed *= 0.3f; // ลดความเร็วเหลือ 30% เมื่อ freeze
+            baseMoveSpeed = 0f; // หยุดเคลื่อนที่เลย
+            Debug.Log($"[Freeze Effect] {CharacterName}: Cannot move (frozen)");
+        }
+        // ✅ Slow effect (ถ้าไม่โดน Freeze)
+        else if (HasStatusEffect(StatusEffectType.Slow) && statusEffectManager != null)
+        {
+            float slowReduction = statusEffectManager.SlowAmount;
+            baseMoveSpeed *= (1f - slowReduction);
+            Debug.Log($"[Slow Effect] {CharacterName}: Speed reduced by {slowReduction * 100f:F0}%");
         }
 
         return baseMoveSpeed;
@@ -1682,6 +1695,8 @@ public class Character : NetworkBehaviour
 
     // ใน Character.cs - แทนที่ method เดิม
 
+    // ใน Character.cs - แทนที่ method เดิม
+
     public virtual float GetEffectiveAttackSpeed()
     {
         float totalAttackSpeedBonus = 0f;
@@ -1710,18 +1725,24 @@ public class Character : NetworkBehaviour
             totalAttackSpeedBonus += auraBonus;
         }
 
-        // 🆕 Archer: Attack Speed Stack Bonus (จากการโจมตีปกติ)
+        // 🆕 Archer: Attack Speed Stack Bonus
         if (this is Archer archer)
         {
             float stackBonus = archer.GetAttackSpeedBonusFromStacks();
             totalAttackSpeedBonus += stackBonus;
 
-            // 🆕 Skill Attack Speed Bonus (Fire Volley)
             if (archer.HasAttackSpeedBonusFromSkill)
             {
                 float skillBonus = archer.AttackSpeedBonusFromSkillAmount * 100f;
                 totalAttackSpeedBonus += skillBonus;
             }
+        }
+
+        // ✅ 🆕 Freeze effect - ลด Attack Speed 30%
+        if (HasStatusEffect(StatusEffectType.Freeze))
+        {
+            totalAttackSpeedBonus -= 30f; // ลด 30%
+            Debug.Log($"[Freeze Effect] {CharacterName}: Attack Speed reduced by 30%");
         }
 
         // คำนวณ Diminishing Returns
@@ -1747,34 +1768,28 @@ public class Character : NetworkBehaviour
     }
     public float GetAttackSpeedMultiplierForUI()
     {
-        // รวม attack speed bonus เป็น %
         float totalAttackSpeedBonus = 0f;
 
-        // 🆕 เพิ่ม bonus จาก base AttackSpeed (DEX upgrades)
+        // Base + Equipment + Aura (เหมือนเดิม)
         if (characterStats != null)
         {
-            float baseAttackSpeedFromStats = characterStats.attackSpeed;
-            float currentAttackSpeed = this.AttackSpeed; // ค่าปัจจุบัน (รวม upgrades)
-            float attackSpeedFromUpgrades = currentAttackSpeed - baseAttackSpeedFromStats;
+            float attackSpeedFromUpgrades = this.AttackSpeed - characterStats.attackSpeed;
             if (attackSpeedFromUpgrades > 0)
             {
-                totalAttackSpeedBonus += attackSpeedFromUpgrades; // แปลงเป็น %
+                totalAttackSpeedBonus += attackSpeedFromUpgrades;
             }
         }
 
-        // Equipment bonus (เป็น %)
         if (equipmentManager != null)
         {
             totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
         }
 
-        // 🆕 Archer: Attack Speed Stack Bonus (จากการโจมตีปกติ)
         if (this is Archer archer)
         {
-            float stackBonus = archer.GetAttackSpeedBonusFromStacks(); // คืนค่าเป็น % แล้ว
+            float stackBonus = archer.GetAttackSpeedBonusFromStacks();
             totalAttackSpeedBonus += stackBonus;
 
-            // 🆕 Archer: Skill Attack Speed Bonus (Fire Volley)
             if (archer.HasAttackSpeedBonusFromSkill)
             {
                 float skillBonus = archer.AttackSpeedBonusFromSkillAmount * 100f;
@@ -1782,7 +1797,6 @@ public class Character : NetworkBehaviour
             }
         }
 
-        // Status effect bonus (เป็น %) - Aura
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
@@ -1790,7 +1804,13 @@ public class Character : NetworkBehaviour
             totalAttackSpeedBonus += auraBonus;
         }
 
-        // ✅ แปลง % เป็น multiplier สำหรับ UI
+        // ✅ 🆕 Freeze effect - ลด Attack Speed 30%
+        if (HasStatusEffect(StatusEffectType.Freeze))
+        {
+            totalAttackSpeedBonus -= 30f;
+        }
+
+        // แปลง % เป็น multiplier
         float multiplier = 1f + (totalAttackSpeedBonus / 100f);
         return multiplier;
     }

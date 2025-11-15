@@ -9,22 +9,23 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5694989325660922505}
-  - component: {fileID: 2401407176684378722}
   - component: {fileID: 1553336482753763871}
-  - component: {fileID: 3046474799503590416}
   - component: {fileID: 1153582897584543797}
-  - component: {fileID: 2102208964661930907}
   - component: {fileID: -7581183126895598035}
   - component: {fileID: 2866443350649548657}
   - component: {fileID: 4927847923645176864}
   - component: {fileID: 4266108146747291927}
   - component: {fileID: -400204652379301390}
   - component: {fileID: 8283572041256556508}
-  - component: {fileID: 3960793821190387862}
-  - component: {fileID: 7967094845495911163}
+  - component: {fileID: -6063038309682278596}
+  - component: {fileID: 7364249741495068857}
+  - component: {fileID: 1439882736733460204}
+  - component: {fileID: 7423450335762357605}
+  - component: {fileID: 8503789705935841021}
+  - component: {fileID: 7161541478957988965}
   m_Layer: 7
-  m_Name: Slime
-  m_TagString: Slime
+  m_Name: IceSlime
+  m_TagString: SlimeFire
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -37,68 +38,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8670071803579099242}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.59, y: 0, z: 0}
+  m_LocalRotation: {x: -0, y: 0.99877346, z: -0, w: 0.049514133}
+  m_LocalPosition: {x: -2.6727166, y: 0, z: -0.13250129}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &2401407176684378722
-SpriteRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8670071803579099242}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 0
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: 383efcfeb807a214abc4f37660e7c5bf, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 0
-  m_FlipY: 0
-  m_DrawMode: 0
-  m_Size: {x: 9.17, y: 4.12}
-  m_AdaptiveModeThreshold: 0.5
-  m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
-  m_MaskInteraction: 0
-  m_SpriteSortPoint: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 174.324, z: 0}
 --- !u!54 &1553336482753763871
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -126,27 +72,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!65 &3046474799503590416
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8670071803579099242}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.71, y: 1.98, z: 0.2}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &1153582897584543797
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -159,160 +84,19 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SortKey: 3584358169
+  SortKey: 2207903098
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []
   NetworkedBehaviours:
-  - {fileID: 2102208964661930907}
   - {fileID: -7581183126895598035}
   - {fileID: 2866443350649548657}
   - {fileID: 4927847923645176864}
   - {fileID: 4266108146747291927}
   - {fileID: -400204652379301390}
   - {fileID: 8283572041256556508}
+  - {fileID: 7423450335762357605}
   ForceRemoteRenderTimeframe: 0
---- !u!114 &2102208964661930907
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8670071803579099242}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: feac6e8f6808d0346bfb478d061467d3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  characterStats: {fileID: 11400000, guid: c674cc0d041dd1f488c6443eb64e5b31, type: 2}
-  characterName: Slime
-  currentHp: 0
-  maxHp: 0
-  currentMana: 0
-  maxMana: 0
-  attackDamage: 0
-  magicDamage: 0
-  armor: 0
-  moveSpeed: 0
-  attackRange: 0
-  attackCooldown: 0
-  criticalChance: 5
-  criticalDamageBonus: 0
-  hitRate: 0
-  evasionRate: 0
-  attackSpeed: 0
-  reductionCoolDown: 0
-  lifeSteal: 0
-  ampDamage: 0
-  magicArmor: 0
-  manaRegen: 0
-  healthRegen: 0
-  _NetworkedMagicArmor: 0
-  _NetworkedManaRegen: 0
-  _NetworkedHealthRegen: 0
-  attackType: 0
-  _NetworkedCurrentHp: 0
-  _NetworkedMaxHp: 0
-  _NetworkedCurrentMana: 0
-  _NetworkedMaxMana: 0
-  _IsNetworkStateReady: 0
-  _IsStatsReady: 0
-  _NetworkedLifeSteal: 0
-  isStatsLoaded: 0
-  isSpawnComplete: 0
-  baseHealthRegenPerSecond: 0.2
-  baseManaRegenPerSecond: 0.5
-  maxHealthRegenPerTick: 50
-  maxManaRegenPerTick: 100
-  rb: {fileID: 0}
-  characterEquippedItems: []
-  potionSlots: []
-  potionStackCounts: 
-  potionCooldown: 1
-  reflectDamagePercent: 0
-  enableAutoFixInventory: 1
-  autoFixCompleted: 0
-  autoFixDelay: 3
-  knockbackForce: 5
-  knockbackDuration: 0.3
-  knockbackCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  _IsDead:
-    _value: 0
-  _NetworkedPosition: {x: 0, y: 0, z: 0}
-  _NetworkedVelocity: {x: 0, y: 0, z: 0}
-  _NetworkedScale: {x: 0, y: 0, z: 0}
-  _PatrolCenter: {x: 0, y: 0, z: 0}
-  _PatrolTarget: {x: 0, y: 0, z: 0}
-  _PatrolWaitTimer: 0
-  detectRange: 10
-  attackCheckInterval: 0.5
-  IsDummy: 0
-  DummyLevel: 1
-  isLobbyDummy: 0
-  _CurrentState: 0
-  _StateTimer: 0
-  backOffDistance: 3
-  backOffTime: 1
-  positionTime: 0.5
-  rushSpeed: 3
-  patrolRange: 5
-  patrolSpeed: 1
-  minPatrolWaitTime: 0
-  maxPatrolWaitTime: 10
-  patrolTargetRadius: 7
-  returnToCenter: 0
-  maxPatrolTime: 30
-  individualPatrolWaitTime: 0
-  minDistanceToPlayer: 1
-  enemySpacing: 2
-  enemyLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  wallLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  wallDetectionDistance: 1
-  useCircling: 1
-  circlingSpeed: 0.5
-  isCollidingWithPlayer: 0
-  showDebugInfo: 0
-  showPatrolGizmos: 1
-  dummyUIPrefab: {fileID: 0}
-  dummyDebuffCooldown: 8
-  collisionDamageCooldown: 2
-  collisionDamageMultiplier: 0.5
-  dropManager: {fileID: -400204652379301390}
-  ItemDrop: {fileID: 0}
-  useAdvancedAI: 1
-  behaviorChangeInterval: 3
-  circleRadius: 3
-  strafeSpeed: 0.7
-  retreatChance: 20
-  circleChance: 40
-  rushChance: 40
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -467,7 +251,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4a8b97a0c716d9439f53ca84e72817e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterRenderer: {fileID: 2401407176684378722}
+  characterRenderer: {fileID: 0}
   originalColor: {r: 0, g: 0, b: 0, a: 0}
   poisonColor: {r: 0.35936022, g: 0, b: 1, a: 1}
   burnColor: {r: 1, g: 0.3, b: 0, a: 1}
@@ -553,11 +337,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemDropSettings: {fileID: 11400000, guid: f66943f869bb3fb46b655dec6739abf5, type: 2}
+  itemDropSettings: {fileID: 11400000, guid: f63571b005f902f4597bea45c632801a, type: 2}
   collectRange: 10
   dropDelay: 0
   showDropLogs: 1
---- !u!114 &3960793821190387862
+--- !u!114 &-6063038309682278596
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -571,18 +355,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetSpriteRenderer: {fileID: 0}
   shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
-  shadowAlpha: 0.7
+  shadowAlpha: 0.5
   shadowOffset: {x: 0.1, y: -0.3, z: 0}
   shadowScale: {x: 1, y: 0.6, z: 1}
   shadowRotation: {x: 0, y: 0, z: 0}
-  skewX: 0.06
+  skewX: 0
   followTarget: 1
   mirrorFlip: 0
   sameFacing: 1
   useSameSprite: 1
   customShadowSprite: {fileID: 0}
   shadowMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
---- !u!114 &7967094845495911163
+--- !u!95 &7364249741495068857
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 38335178e88b329439551ada7b4aa9e3, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1439882736733460204
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -597,3 +403,237 @@ MonoBehaviour:
   enemyTag: 0
   displayName: 
   description: 
+--- !u!114 &7423450335762357605
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea8ca7a9c78a7a34c8e83c57a1a496c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterStats: {fileID: 11400000, guid: af6dc3783b37bfe43a1ba961d8bac3d4, type: 2}
+  characterName: 
+  currentHp: 0
+  maxHp: 0
+  currentMana: 0
+  maxMana: 0
+  attackDamage: 0
+  magicDamage: 0
+  armor: 0
+  moveSpeed: 0
+  attackRange: 0
+  attackCooldown: 0
+  criticalChance: 0
+  criticalDamageBonus: 0
+  hitRate: 0
+  evasionRate: 0
+  attackSpeed: 0
+  reductionCoolDown: 0
+  lifeSteal: 0
+  ampDamage: 0
+  magicArmor: 0
+  manaRegen: 0
+  healthRegen: 0
+  _NetworkedMagicArmor: 0
+  _NetworkedManaRegen: 0
+  _NetworkedHealthRegen: 0
+  attackType: 0
+  _NetworkedCurrentHp: 0
+  _NetworkedMaxHp: 0
+  _NetworkedCurrentMana: 0
+  _NetworkedMaxMana: 0
+  _IsNetworkStateReady: 0
+  _IsStatsReady: 0
+  _NetworkedLifeSteal: 0
+  isStatsLoaded: 0
+  isSpawnComplete: 0
+  baseHealthRegenPerSecond: 0.2
+  baseManaRegenPerSecond: 0.5
+  maxHealthRegenPerTick: 50
+  maxManaRegenPerTick: 100
+  rb: {fileID: 0}
+  characterEquippedItems: []
+  potionSlots: []
+  potionStackCounts: 
+  potionCooldown: 1
+  reflectDamagePercent: 0
+  enableAutoFixInventory: 1
+  autoFixCompleted: 0
+  autoFixDelay: 3
+  knockbackForce: 5
+  knockbackDuration: 0.3
+  knockbackCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  _IsDead:
+    _value: 0
+  _NetworkedPosition: {x: 0, y: 0, z: 0}
+  _NetworkedVelocity: {x: 0, y: 0, z: 0}
+  _NetworkedScale: {x: 0, y: 0, z: 0}
+  _PatrolCenter: {x: 0, y: 0, z: 0}
+  _PatrolTarget: {x: 0, y: 0, z: 0}
+  _PatrolWaitTimer: 0
+  detectRange: 50
+  attackCheckInterval: 0.5
+  IsDummy: 0
+  DummyLevel: 1
+  isLobbyDummy: 0
+  _CurrentState: 0
+  _StateTimer: 0
+  backOffDistance: 3
+  backOffTime: 1
+  positionTime: 0.5
+  rushSpeed: 3
+  patrolRange: 8
+  patrolSpeed: 0.5
+  minPatrolWaitTime: 1
+  maxPatrolWaitTime: 4
+  patrolTargetRadius: 1
+  returnToCenter: 1
+  maxPatrolTime: 30
+  individualPatrolWaitTime: 0
+  minDistanceToPlayer: 1
+  enemySpacing: 2
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  wallDetectionDistance: 1
+  useCircling: 1
+  circlingSpeed: 0.5
+  isCollidingWithPlayer: 0
+  showDebugInfo: 0
+  showPatrolGizmos: 1
+  dummyUIPrefab: {fileID: 0}
+  dummyDebuffCooldown: 8
+  collisionDamageCooldown: 2
+  collisionDamageMultiplier: 0.5
+  dropManager: {fileID: 0}
+  ItemDrop: {fileID: 0}
+  useAdvancedAI: 1
+  behaviorChangeInterval: 3
+  circleRadius: 3
+  strafeSpeed: 0.7
+  retreatChance: 20
+  circleChance: 40
+  rushChance: 40
+  attackRadius: 3
+  attackAngle: 180
+  attackCooldown: 3
+  telegraphDuration: 1.5
+  freezeExecuteDelay: 0.5
+  postAttackCooldown: 1
+  telegraphPrefab: {fileID: 6498250624653367633, guid: 7335bf4e62420dc4cbba25b2c5a4ce16,
+    type: 3}
+  iceAttackEffect: {fileID: 8977316153704399556, guid: 3ccb59f6f612a754e9c3d0874ea315ca,
+    type: 3}
+  telegraphColor: {r: 0, g: 0.39370108, b: 1, a: 0.5}
+  telegraphYOffset: -1.16
+  stopDistance: 4
+  useStatusEffect: 1
+  slowAmount: 0.5
+  slowDuration: 2
+  freezeDuration: 1.5
+--- !u!212 &8503789705935841021
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_CastShadows: 0
+  m_ReceiveShadows: 0
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 0
+  m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 0
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_Sprite: {fileID: -702094921, guid: 00c8a8712e0f7c24b97067234b8c2435, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_FlipX: 0
+  m_FlipY: 0
+  m_DrawMode: 0
+  m_Size: {x: 5.12, y: 5.12}
+  m_AdaptiveModeThreshold: 0.5
+  m_SpriteTileMode: 0
+  m_WasSpriteAssigned: 1
+  m_MaskInteraction: 0
+  m_SpriteSortPoint: 0
+--- !u!65 &7161541478957988965
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.5318773, y: 2.3537824, z: 0}
+  m_Center: {x: -0.045579553, y: 0.32967523, z: -0.1}

@@ -15,15 +15,15 @@ public static class PlayerSelectionData
     private const CharacterType DEFAULT_CHARACTER = CharacterType.Assassin;
 
     // บันทึกการเลือกตัวละคร
-   /* public static void SaveCharacterSelection(CharacterType character)
+    public static void SaveCharacterSelection(CharacterType character)
     {
         PlayerPrefs.SetInt("SelectedCharacter", (int)character);
         PlayerPrefs.Save();
         Debug.Log($"[PlayerSelectionData] Saved character: {character} (index: {(int)character})");
-    }*/
+    }
 
     // ดึงข้อมูลตัวละครที่เลือก
-   /* public static CharacterType GetSelectedCharacter()
+    public static CharacterType GetSelectedCharacter()
     {
         if (PlayerPrefs.HasKey("SelectedCharacter"))
         {
@@ -35,7 +35,7 @@ public static class PlayerSelectionData
 
         Debug.Log($"[PlayerSelectionData] No saved character, using default: {DEFAULT_CHARACTER}");
         return DEFAULT_CHARACTER;
-    }*/
+    }
 
     // ✅ เพิ่ม method สำหรับ clear saved data
     public static void ClearSavedSelection()
