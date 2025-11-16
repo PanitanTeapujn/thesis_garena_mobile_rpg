@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 5694989325660922505}
   - component: {fileID: 2401407176684378722}
   - component: {fileID: 1553336482753763871}
-  - component: {fileID: 3046474799503590416}
   - component: {fileID: 1153582897584543797}
   - component: {fileID: -7581183126895598035}
   - component: {fileID: 2866443350649548657}
@@ -19,11 +18,14 @@ GameObject:
   - component: {fileID: 4266108146747291927}
   - component: {fileID: -400204652379301390}
   - component: {fileID: 8283572041256556508}
-  - component: {fileID: 1925022699066192109}
-  - component: {fileID: 628438453581785132}
+  - component: {fileID: -6063038309682278596}
+  - component: {fileID: 7364249741495068857}
+  - component: {fileID: 1439882736733460204}
+  - component: {fileID: 327155025939304031}
+  - component: {fileID: 4258539476575828701}
   m_Layer: 7
-  m_Name: BossSlime
-  m_TagString: Enemy
+  m_Name: iceboss
+  m_TagString: SlimeFire
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -37,7 +39,7 @@ Transform:
   m_GameObject: {fileID: 8670071803579099242}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.59, y: 0.55, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -125,27 +127,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 112
   m_CollisionDetection: 0
---- !u!65 &3046474799503590416
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8670071803579099242}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 2.71, y: 3.99, z: 0.2}
-  m_Center: {x: 0.56, y: 0, z: 0}
 --- !u!114 &1153582897584543797
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,7 +139,7 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SortKey: 1326422454
+  SortKey: 72419462
   ObjectInterest: 1
   Flags: 262145
   NestedObjects: []
@@ -169,7 +150,7 @@ MonoBehaviour:
   - {fileID: 4266108146747291927}
   - {fileID: -400204652379301390}
   - {fileID: 8283572041256556508}
-  - {fileID: 1925022699066192109}
+  - {fileID: 327155025939304031}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &-7581183126895598035
 MonoBehaviour:
@@ -183,6 +164,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cfc344034a9b794999c4d1479162654, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  dummyBaseDropChance: 15
+  dummyDropChancePerKDamage: 0.5
+  dummyMaxDropChance: 50
+  dummyBaseGoldAmount: 10
+  dummyGoldPerTenKDamage: 5
+  dummyMaxGoldPerHit: 500
+  dummyGoldDropCooldown: 2
 --- !u!114 &2866443350649548657
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -213,7 +201,7 @@ MonoBehaviour:
   _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
-  _OriginalMoveSpeed: 0
+  _OriginalMoveSpeedForFreeze: 0
   _IsStunned: 0
   _StunDuration: 0
   _IsArmorBreak: 0
@@ -222,9 +210,64 @@ MonoBehaviour:
   _IsBlind: 0
   _BlindDuration: 0
   _BlindAmount: 0
+  _IsSlowed: 0
+  _SlowDuration: 0
+  _SlowAmount: 0
+  _OriginalMoveSpeedForSlow: 0
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
+  _IsProvidingMagicDamageAura: 0
+  _MagicDamageAuraDuration: 0
+  _MagicDamageAuraRadius: 0
+  _MagicDamageAuraAmount: 0
+  _IsProvidingCooldownReductionAura: 0
+  _CooldownReductionAuraDuration: 0
+  _CooldownReductionAuraRadius: 0
+  _CooldownReductionAuraAmount: 0
+  _IsProvidingLifeStealAura: 0
+  _LifeStealAuraDuration: 0
+  _LifeStealAuraRadius: 0
+  _LifeStealAuraAmount: 0
+  _IsProvidingAmpDamageAura: 0
+  _AmpDamageAuraDuration: 0
+  _AmpDamageAuraRadius: 0
+  _AmpDamageAuraAmount: 0
+  _IsProvidingMagicArmorAura: 0
+  _MagicArmorAuraDuration: 0
+  _MagicArmorAuraRadius: 0
+  _MagicArmorAuraAmount: 0
+  _IsProvidingHealthRegenAura: 0
+  _HealthRegenAuraDuration: 0
+  _HealthRegenAuraRadius: 0
+  _HealthRegenAuraAmount: 0
+  _IsProvidingManaRegenAura: 0
+  _ManaRegenAuraDuration: 0
+  _ManaRegenAuraRadius: 0
+  _ManaRegenAuraAmount: 0
+  _IsProvidingHitRateAura: 0
+  _HitRateAuraDuration: 0
+  _HitRateAuraRadius: 0
+  _HitRateAuraAmount: 0
+  _IsProvidingEvasionAura: 0
+  _EvasionAuraDuration: 0
+  _EvasionAuraRadius: 0
+  _EvasionAuraAmount: 0
+  _ReceivedAttackSpeedBonus: 0
+  _ReceivedDamageBonus: 0
+  _ReceivedMoveSpeedBonus: 0
+  _ReceivedProtectionBonus: 0
+  _ReceivedArmorBonus: 0
+  _ReceivedCriticalBonus: 0
+  _ReceivedMagicDamageBonus: 0
+  _ReceivedCooldownReductionBonus: 0
+  _ReceivedLifeStealBonus: 0
+  _ReceivedAmpDamageBonus: 0
+  _ReceivedMagicArmorBonus: 0
+  _ReceivedHealthRegenBonus: 0
+  _ReceivedManaRegenBonus: 0
+  _ReceivedHitRateBonus: 0
+  _ReceivedEvasionBonus: 0
   _IsProvidingAttackSpeedAura: 0
   _AttackSpeedAuraDuration: 0
   _AttackSpeedAuraRadius: 0
@@ -249,12 +292,8 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
-  _ReceivedAttackSpeedBonus: 0
-  _ReceivedDamageBonus: 0
-  _ReceivedMoveSpeedBonus: 0
-  _ReceivedProtectionBonus: 0
-  _ReceivedArmorBonus: 0
-  _ReceivedCriticalBonus: 0
+  _IsDebuffImmune: 0
+  _DebuffImmunityDuration: 0
 --- !u!114 &4927847923645176864
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -314,7 +353,7 @@ MonoBehaviour:
     baseExpToNextLevel: 100
     expGrowthRate: 1.2
     maxLevel: 100
-    baseEnemyExp: 500
+    baseEnemyExp: 25
     enemyExpLevelMultiplier: 1.1
   _CurrentLevel: 1
   _CurrentExp: 0
@@ -332,7 +371,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4297e199231b094cb05365d7d51903e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dropSettings: {fileID: 11400000, guid: 61bdef634916ddb47ae75b3271af3308, type: 2}
+  dropSettings: {fileID: 11400000, guid: e4b96738aa5e9b747bccf12d2a9365c2, type: 2}
   goldDropEffectPrefab: {fileID: 0}
   gemsDropEffectPrefab: {fileID: 0}
   dropScatterRadius: 2
@@ -353,11 +392,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemDropSettings: {fileID: 11400000, guid: 01723f4fee3d85e4f9063c0e66e69448, type: 2}
-  collectRange: 15
+  itemDropSettings: {fileID: 11400000, guid: f63571b005f902f4597bea45c632801a, type: 2}
+  collectRange: 10
   dropDelay: 0
   showDropLogs: 1
---- !u!114 &1925022699066192109
+--- !u!114 &-6063038309682278596
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -366,10 +405,72 @@ MonoBehaviour:
   m_GameObject: {fileID: 8670071803579099242}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 44a22d979ccf3bd4aac05e671f584ba8, type: 3}
+  m_Script: {fileID: 11500000, guid: ef4fbc8716eb4ce49986489ebf9ed273, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterStats: {fileID: 11400000, guid: 7b7f958db7052fb49a9f8f451934b7ca, type: 2}
+  targetSpriteRenderer: {fileID: 0}
+  shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
+  shadowAlpha: 0.5
+  shadowOffset: {x: 0.1, y: -0.3, z: 0}
+  shadowScale: {x: 1, y: 0.6, z: 1}
+  shadowRotation: {x: 0, y: 0, z: 0}
+  skewX: 0
+  followTarget: 1
+  mirrorFlip: 0
+  sameFacing: 1
+  useSameSprite: 1
+  customShadowSprite: {fileID: 0}
+  shadowMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+--- !u!95 &7364249741495068857
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 0}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1439882736733460204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be349c48670b6fa48b90f5d34ba68977, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enemyTag: 1
+  displayName: 
+  description: 
+--- !u!114 &327155025939304031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8670071803579099242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90413db04b1ae884eb61705a0bef7442, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterStats: {fileID: 11400000, guid: b03c9c2b006b4184b814a32de9accff1, type: 2}
   characterName: 
   currentHp: 0
   maxHp: 0
@@ -414,9 +515,36 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  reflectDamagePercent: 0
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
+  knockbackForce: 5
+  knockbackDuration: 0.3
+  knockbackCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   _IsDead:
     _value: 0
   _NetworkedPosition: {x: 0, y: 0, z: 0}
@@ -425,8 +553,11 @@ MonoBehaviour:
   _PatrolCenter: {x: 0, y: 0, z: 0}
   _PatrolTarget: {x: 0, y: 0, z: 0}
   _PatrolWaitTimer: 0
-  detectRange: 10
+  detectRange: 50
   attackCheckInterval: 0.5
+  IsDummy: 0
+  DummyLevel: 1
+  isLobbyDummy: 0
   _CurrentState: 0
   _StateTimer: 0
   backOffDistance: 3
@@ -446,70 +577,124 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  wallDetectionDistance: 1
   useCircling: 1
   circlingSpeed: 0.5
   isCollidingWithPlayer: 0
   showDebugInfo: 0
   showPatrolGizmos: 1
+  dummyUIPrefab: {fileID: 0}
+  dummyDebuffCooldown: 8
   collisionDamageCooldown: 2
   collisionDamageMultiplier: 0.5
   dropManager: {fileID: 0}
   ItemDrop: {fileID: 0}
-  currentPhase: 0
-  phaseTransitionDelay: 2
-  isInPhaseTransition: 0
-  bossLevel: 15
-  bossScale: 2.5
-  bossSpeedMultiplier: 1.2
-  multiAttackRadius: 8
-  maxMultiTargets: 3
-  slamDamageMultiplier: 1.5
-  canSummonMinions: 1
-  minionPrefabs: []
-  maxMinions: 6
-  summonCooldown: 15
-  hasElementalPowers: 1
-  elementalAttackChance: 40
-  auraDamageMultiplier: 1.3
-  rageThreshold: 0.75
-  desperateThreshold: 0.25
-  immunityDuration: 3
-  isImmune: 0
-  crownEffect: {fileID: 8330877085987332212, guid: 6c064513aa7cae142b65066943c8fdbd,
+  useAdvancedAI: 1
+  behaviorChangeInterval: 3
+  circleRadius: 3
+  strafeSpeed: 0.7
+  retreatChance: 20
+  circleChance: 40
+  rushChance: 40
+  phase2HPThreshold: 0.6
+  halfCircleAttackCooldown: 3
+  jumpSlamCooldown: 4
+  dashWithTrailCooldown: 5
+  iceProjectileCooldown: 3
+  iceMirrorComboCooldown: 10
+  enhancedJumpSlamCooldown: 4
+  cloneDashCooldown: 5
+  cloneProjectileCooldown: 5
+  halfCircleEffect: {fileID: 1215030772492927087, guid: 46009f57772e5e743bec9df57a49ed66,
     type: 3}
-  phaseTransitionFX: {fileID: 5748945079150391416, guid: c50f9e2c685970e4c8ebcd5fc8c7b3e4,
+  halfCircleRadius: 4
+  halfCircleAngle: 180
+  halfCircleTelegraphDuration: 1.5
+  halfCircleTelegraphPrefab: {fileID: 7781193255935803762, guid: adccc253975914f42a8c1c9fb88c19c2,
     type: 3}
-  rageAura: {fileID: 7440191685052868192, guid: 5a936c83b1746f14f9100db745e94f04,
+  jumpHeight: 5
+  jumpDuration: 1
+  slamRadius: 5
+  slamTelegraphDuration: 1.5
+  freezeDuration: 3
+  slamTelegraphPrefab: {fileID: 4332660487222771301, guid: c0e37f7f1db3aab40bcaa1deb4ff5f7b,
     type: 3}
-  elementalAura: {fileID: 4321358288067726026, guid: 460babe280fe4aa41adc3fefd46f0c0b,
+  jumpSlamEffect: {fileID: 5374757574983774937, guid: b1ae5055f08b8284d9e996465d1d37e3,
     type: 3}
-  bossLight: {fileID: 0}
-  showBossHealthBar: 1
-  _NetworkedPhase: 0
-  _ActiveMinionsCount: 0
-  _IsPerformingSpecialAttack: 0
---- !u!114 &628438453581785132
-MonoBehaviour:
+  dashDistance: 10
+  dashDuration: 0.4
+  dashWidth: 2.5
+  dashTelegraphDuration: 1.2
+  dashTelegraphPrefab: {fileID: 7340584436085235738, guid: 4a993dd54464e144d9ce2e40337585f1,
+    type: 3}
+  iceTrailPrefab: {fileID: 7748002622316875709, guid: ca284c260f1a6da4783f236c9613a400,
+    type: 3}
+  iceTrailLifetime: 6
+  slowAmount: 0.5
+  slowDuration: 2
+  dashEffect: {fileID: 2100541099862133063, guid: 05ce920d629922a4eb4795ef7494ce5c,
+    type: 3}
+  dashEndSlowAoERadius: 5
+  dashEndSlowAoEDuration: 3
+  dashEndSlowAmount: 0.4
+  dashEndSlowEffectDuration: 2
+  dashEndSlowAoEPrefab: {fileID: 0}
+  dashEndSlowEffect: {fileID: 0}
+  projectileTelegraphDuration: 1.5
+  projectileTravelTime: 0.8
+  projectileRadius: 2
+  projectileTelegraphPrefab: {fileID: 7340584436085235738, guid: 4a993dd54464e144d9ce2e40337585f1,
+    type: 3}
+  iceProjectilePrefab: {fileID: 7655041676435405191, guid: be9f53a7dcff5754faa117d3391a4eb4,
+    type: 3}
+  projectileEffect: {fileID: 5374757574983774937, guid: b1ae5055f08b8284d9e996465d1d37e3,
+    type: 3}
+  iceBossClonePrefab: {fileID: 8670071803579099242, guid: 89486154a62a5904f9e7b050a699970d,
+    type: 3}
+  cloneSpawnRadius: 8
+  cloneSpawnDelay: 0.15
+  cloneDashDelay: 0.7
+  cloneSpawnEffect: {fileID: 5607819269926399345, guid: 45e0f06c750176947862c10346226439,
+    type: 3}
+  eightDirectionSpikes: 8
+  spikeDistance: 12
+  spikeWidth: 2
+  spikeTelegraphPrefab: {fileID: 7340584436085235738, guid: 4a993dd54464e144d9ce2e40337585f1,
+    type: 3}
+  cloneDashSpeed: 0.7
+  cloneDashDistance: 12
+  minRandomSpikes: 2
+  maxRandomSpikes: 6
+  minCloneCount: 3
+  maxCloneCount: 6
+  telegraphYOffset: -1.16
+  iceTelegraphColor: {r: 0, g: 0.56810045, b: 1, a: 0.5}
+  showDebugGizmos: 1
+  slowAuraRadius: 10
+  slowAuraAmount: 0.3
+  slowAuraDuration: 2
+  slowAuraTickInterval: 0.5
+--- !u!65 &4258539476575828701
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8670071803579099242}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
   m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef4fbc8716eb4ce49986489ebf9ed273, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetSpriteRenderer: {fileID: 0}
-  shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
-  shadowAlpha: 0.7
-  shadowOffset: {x: 0.1, y: -0.3, z: 0}
-  shadowScale: {x: 1, y: 0.6, z: 1}
-  shadowRotation: {x: 0, y: 0, z: 0}
-  skewX: 0
-  followTarget: 1
-  mirrorFlip: 0
-  sameFacing: 1
-  useSameSprite: 1
-  customShadowSprite: {fileID: 0}
-  shadowMaterial: {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  serializedVersion: 3
+  m_Size: {x: 3.72, y: 4.12, z: 0.2}
+  m_Center: {x: 0.49, y: 0, z: 0}

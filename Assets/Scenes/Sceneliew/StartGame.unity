@@ -2568,17 +2568,17 @@ PrefabInstance:
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
       propertyPath: sceneBGMMapping.Array.data[7].bgmIndex
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
       propertyPath: sceneBGMMapping.Array.data[8].bgmIndex
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
       propertyPath: sceneBGMMapping.Array.data[9].bgmIndex
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
@@ -2588,7 +2588,7 @@ PrefabInstance:
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}
       propertyPath: sceneBGMMapping.Array.data[10].bgmIndex
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2804343478636754590, guid: 4e38db0571e744746b1beb86f5c51618,
         type: 3}

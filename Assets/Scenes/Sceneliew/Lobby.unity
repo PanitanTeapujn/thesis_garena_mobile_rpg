@@ -55389,7 +55389,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Mountain4
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: Snow2_1
     - panel: {fileID: 497467513}
       subStageName: Snow2_2
@@ -55418,7 +55418,7 @@ MonoBehaviour:
       requiredEnemyKills: 1
       requiredEnemyTags: 01000000
       requiredPreviousStages:
-      - Snow4
+      - Snow3
       isFirstStage: 0
       stageDescription: Snow2_1
   - panel: {fileID: 1369753109}

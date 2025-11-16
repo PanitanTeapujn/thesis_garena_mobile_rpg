@@ -149,7 +149,7 @@ MonoBehaviour:
       type: 3}
     enemyName: 
     spawnWeight: 3
-    maxCount: 3
+    maxCount: -1
     spawnCooldown: 1
     currentCount: 0
     lastSpawnTime: 0
@@ -165,7 +165,7 @@ MonoBehaviour:
       type: 3}
     enemyName: 
     spawnWeight: 2
-    maxCount: 2
+    maxCount: 5
     spawnCooldown: 1
     currentCount: 0
     lastSpawnTime: 0

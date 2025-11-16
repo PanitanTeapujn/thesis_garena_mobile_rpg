@@ -53,6 +53,9 @@ public class WaterSlime : NetworkEnemy
             Debug.LogWarning($"⚠️ Animator not found on {CharacterName}!");
         }
 
+        // 🆕 ตั้งดีเลย์เริ่มต้น (3-5 วินาที)
+        nextHealTime = Runner.SimulationTime + 3f;
+
         Debug.Log($"🌊 {CharacterName} spawned!");
     }
 
@@ -173,6 +176,9 @@ public class WaterSlime : NetworkEnemy
                 MoveSpeed = characterStats.moveSpeed;
             }
         }
+
+        // 🆕 เพิ่มบรรทัดนี้เพื่อให้กลับไปหาผู้เล่น
+        FindNearestPlayer();
 
         Debug.Log($"🌊 {CharacterName}: Movement RESUMED");
     }
