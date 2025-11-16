@@ -635,7 +635,7 @@ public class Archer : Hero
         // 🏹 ยิงธนูออกไปข้างหน้าก่อน Dash
         if (HasStateAuthority)
         {
-            Vector3 forwardDirection = -direction; // ยิงไปทางตรงข้ามกับทิศทาง dash
+            Vector3 forwardDirection = -direction;
             ShootShadowStepArrow(forwardDirection);
         }
 
@@ -663,6 +663,12 @@ public class Archer : Hero
         {
             GameObject dashFX = Instantiate(shadowStepEffect.gameObject, startPos, Quaternion.identity);
             Destroy(dashFX, 2f);
+        }
+
+        // ✅ เพิ่ม: ทิ้งรอยไฟถ้าอยู่ใน Ferris Mode
+        if (IsInFerrisMode && HasStateAuthority)
+        {
+            StartCoroutine(CreateFireTrail(startPos, endPos, dashTime));
         }
 
         // Dash animation
@@ -722,6 +728,69 @@ public class Archer : Hero
 
             Debug.Log($"🌪️ Shadow Step complete! +25% Evasion, +20% Move Speed");
         }
+    }
+
+    // ✅ เพิ่มฟังก์ชันใหม่: สร้างรอยไฟตามทางที่แดช
+    private IEnumerator CreateFireTrail(Vector3 startPos, Vector3 endPos, float duration)
+    {
+        float trailInterval = 0.2f; // ทิ้งรอยไฟทุก 0.2 วินาที
+        float elapsed = 0f;
+        List<Vector3> firePositions = new List<Vector3>();
+
+        // สร้างรอยไฟระหว่างแดช
+        while (elapsed < duration)
+        {
+            elapsed += trailInterval;
+            float progress = Mathf.Min(elapsed / duration, 1f);
+
+            Vector3 firePos = Vector3.Lerp(startPos, endPos, progress);
+            firePositions.Add(firePos);
+
+            // สร้าง visual effect
+            if (flameArrowEffect != null)
+            {
+                GameObject fireFX = Instantiate(flameArrowEffect.gameObject, firePos, Quaternion.identity);
+                Destroy(fireFX, 3f);
+            }
+
+            yield return new WaitForSeconds(trailInterval);
+        }
+
+        // ให้รอยไฟทำดาเมจต่อเนื่อง 3 วินาที
+        float fireDuration = 3f;
+        float fireEndTime = Time.time + fireDuration;
+        float damageInterval = 0.5f; // ดาเมจทุก 0.5 วินาที
+
+        while (Time.time < fireEndTime)
+        {
+            foreach (Vector3 firePos in firePositions)
+            {
+                Collider[] hits = Physics.OverlapSphere(firePos, 1.5f); // รัศมี 1.5m
+                foreach (Collider col in hits)
+                {
+                    Character enemy = col.GetComponent<Character>();
+                    if (enemy != null && enemy != this)
+                    {
+                        bool isEnemy = false;
+                        if (this is Hero && enemy is NetworkEnemy) isEnemy = true;
+                        if (this is NetworkEnemy && enemy is Hero) isEnemy = true;
+
+                        if (isEnemy)
+                        {
+                            // ดาเมจ = 30% ของ Magic Damage
+                            int trailDamage = Mathf.RoundToInt(MagicDamage * 0.3f);
+                            enemy.TakeDamageFromAttacker(0, trailDamage, this, DamageType.Burn, false);
+
+                            Debug.Log($"🔥 Fire trail hit {enemy.CharacterName} for {trailDamage} burn damage");
+                        }
+                    }
+                }
+            }
+
+            yield return new WaitForSeconds(damageInterval);
+        }
+
+        Debug.Log($"🔥 Fire trail expired");
     }
 
     // ========== เพิ่มฟังก์ชันใหม่ทั้งหมดหลัง CreateSmokeBomb ==========
@@ -1148,58 +1217,50 @@ public class Archer : Hero
     }
 
     private IEnumerator ExecuteInfernoRain(Vector3 targetPosition)
-{
-    Debug.Log($"🔥 [INFERNO RAIN] Ultimate activated at {targetPosition}!");
-    AudioManager.instance.PlaySFX(14, 0.5f);
-
-    if (infernoRainEffect != null)
     {
-        GameObject infernoFX = Instantiate(infernoRainEffect.gameObject, targetPosition + Vector3.up * 1f, Quaternion.identity);
-        Destroy(infernoFX, 5f);
-    }
+        Debug.Log($"🔥 [INFERNO RAIN] Ultimate activated at {targetPosition}!");
+        AudioManager.instance.PlaySFX(14, 0.5f);
 
-    yield return new WaitForSeconds(0.5f);
-
-    // ✅ เปลี่ยนเป็น MagicDamage
-    if (HasStateAuthority)
-    {
-        List<Character> hitEnemies = FindEnemiesInArea(targetPosition, infernoRainAOERadius, infernoRainMaxTargets);
-
-        foreach (Character enemy in hitEnemies)
+        if (infernoRainEffect != null)
         {
-            if (enemy != null)
-            {
-                    int damage = GetScaledSkillDamageWithAmp(infernoRainDamageMultiplier);
-
-                    bool isCritical = Random.Range(0f, 1f) <= CriticalChance;
-                DamageType damageType = isCritical ? DamageType.Critical : DamageType.Magic;
-
-                if (isCritical)
-                {
-                    damage = Mathf.RoundToInt(damage * (1f + CriticalDamageBonus));
-                    Debug.Log($"💥 CRITICAL HIT!");
-                }
-
-                enemy.TakeDamageFromAttacker(0, damage, this, damageType, false);
-
-                StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
-                if (enemyStatus != null)
-                {
-                    int burnDamagePerTick = infernoRainEnhancedBurnDamage + Mathf.RoundToInt(MagicDamage * 0.3f);
-                    enemyStatus.ApplyBurn(burnDamagePerTick, infernoRainEnhancedBurnDuration);
-                    Debug.Log($"🔥🔥 Applied Enhanced Burn to {enemy.CharacterName}!");
-                }
-            }
+            GameObject infernoFX = Instantiate(infernoRainEffect.gameObject, targetPosition + Vector3.up * 1f, Quaternion.identity);
+            Destroy(infernoFX, 5f);
         }
 
-        CreateFireRing(targetPosition);
+        yield return new WaitForSeconds(0.5f);
 
-        HasEvasionBonus = true;
-        EvasionBonusEndTime = Time.time + infernoRainEvasionDuration;
-        EvasionRate += infernoRainEvasionBonus;
-        Debug.Log($"🌪️ Gained +20% Evasion from Ultimate!");
+        if (HasStateAuthority)
+        {
+            List<Character> hitEnemies = FindEnemiesInArea(targetPosition, infernoRainAOERadius, infernoRainMaxTargets);
+
+            foreach (Character enemy in hitEnemies)
+            {
+                if (enemy != null)
+                {
+                    // ✅ แก้ไข: ใช้ GetScaledSkillDamageWithAmp เหมือนท่า 3
+                    int damage = GetScaledSkillDamageWithAmp(infernoRainDamageMultiplier);
+
+                    // ✅ ลบการคำนวณ Critical แยก - ให้ TakeDamageFromAttacker จัดการเอง
+                    enemy.TakeDamageFromAttacker(0, damage, this, DamageType.Magic, false);
+
+                    StatusEffectManager enemyStatus = enemy.GetComponent<StatusEffectManager>();
+                    if (enemyStatus != null)
+                    {
+                        int burnDamagePerTick = infernoRainEnhancedBurnDamage + Mathf.RoundToInt(MagicDamage * 0.3f);
+                        enemyStatus.ApplyBurn(burnDamagePerTick, infernoRainEnhancedBurnDuration);
+                        Debug.Log($"🔥🔥 Applied Enhanced Burn to {enemy.CharacterName}!");
+                    }
+                }
+            }
+
+            CreateFireRing(targetPosition);
+
+            HasEvasionBonus = true;
+            EvasionBonusEndTime = Time.time + infernoRainEvasionDuration;
+            EvasionRate += infernoRainEvasionBonus;
+            Debug.Log($"🌪️ Gained +20% Evasion from Ultimate!");
+        }
     }
-}
 
     private void CreateFireRing(Vector3 position)
     {

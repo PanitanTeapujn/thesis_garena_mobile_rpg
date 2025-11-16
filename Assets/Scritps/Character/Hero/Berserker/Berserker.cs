@@ -1505,6 +1505,12 @@ public class Berserker : Hero
     /// <summary>
     /// Titan Rampage พร้อมระบบ Teleport เพื่อแก้ปัญหาการติดพื้น
     /// </summary>
+    /// <summary>
+    /// Titan Rampage แบบขยายร่าง ไม่กระโดด
+    /// </summary>
+    /// <summary>
+    /// Titan Rampage แบบไม่ขยายตัว ไม่กระโดด - เน้นกล้องสั่น + Knockback
+    /// </summary>
     private IEnumerator ExecuteTitanRampageWithTeleport()
     {
         IsInTitanForm = true;
@@ -1512,79 +1518,13 @@ public class Berserker : Hero
         float duration = isPhysicalBuild ? 10f : 8f;
         TitanFormEndTime = Time.time + duration;
 
-        // บันทึกตำแหน่งเดิม
-        Vector3 originalPosition = transform.position;
+        Debug.Log($"⚡ [Titan Rampage] Started! Duration: {duration}s");
 
-        // ❌ ลบส่วนขยายตัวออกทั้งหมด
-        // Vector3 originalScale = transform.localScale;
-        // Vector3 targetScale = originalScale * 1.3f;
-        // ไม่ต้องมีโค้ดเกี่ยวกับ scale และ collider adjustment
-
-        // 🚀 PHASE 1: วาร์ปขึ้นไปข้างบน
-        float teleportHeight = 8f;
-        Vector3 teleportPosition = originalPosition + Vector3.up * teleportHeight;
-
-        Debug.Log($"⚡ [Titan Rampage] Phase 1: Teleporting up to height {teleportHeight}");
-
-        // ปิด gravity ชั่วคราว
-        bool wasKinematic = rb != null && rb.isKinematic;
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-        }
-
-        // วาร์ปขึ้นไปข้างบน
-        transform.position = teleportPosition;
-
-        // ❌ ลบการขยายตัว
-        // transform.localScale = targetScale;
-
-        // รอสักครู่
-        yield return new WaitForSeconds(0.3f);
-
-        // 🔥 PHASE 2: ลงมาทุบพื้น
-        Debug.Log($"⚡ [Titan Rampage] Phase 2: Slamming down!");
-
-        RaycastHit hit;
-        Vector3 landingPosition = originalPosition;
-
-        if (Physics.Raycast(teleportPosition, Vector3.down, out hit, teleportHeight + 2f, LayerMask.GetMask("Ground")))
-        {
-            // ❌ ไม่ต้องปรับตำแหน่งตาม scale เพราะไม่ได้ขยาย
-            landingPosition = hit.point;
-        }
-        else
-        {
-            landingPosition = originalPosition;
-        }
-
-        // เคลื่อนลงมาอย่างรวดเร็ว
-        float slamDuration = 0.2f;
-        float slamElapsed = 0f;
-        Vector3 startPos = transform.position;
-
-        while (slamElapsed < slamDuration)
-        {
-            slamElapsed += Time.deltaTime;
-            float t = slamElapsed / slamDuration;
-            t = t * t; // ease-in
-            transform.position = Vector3.Lerp(startPos, landingPosition, t);
-            yield return null;
-        }
-
-        transform.position = landingPosition;
-
-        // เปิด physics กลับ
-        if (rb != null)
-        {
-            rb.isKinematic = wasKinematic;
-        }
-
-        // 💥 Ground Slam Impact
-        Debug.Log($"⚡ [Titan Rampage] Ground Slam Impact!");
+        // 💥 Ground Slam Impact + Camera Shake + Knockback
         RPC_TriggerCameraShake();
 
         float impactRadius = 10f;
+        float knockbackForce = 15f; // แรง knockback เท่า War Cry
         Collider[] impactEnemies = Physics.OverlapSphere(transform.position, impactRadius, LayerMask.GetMask("Enemy"));
 
         foreach (Collider col in impactEnemies)
@@ -1596,12 +1536,16 @@ public class Berserker : Hero
                 enemy.TakeDamageFromAttacker(0, impactDamage, this, DamageType.Critical, false);
                 enemy.ApplyStatusEffect(StatusEffectType.Stun, 0, 1.5f);
 
-                Debug.Log($"⚡ Ground Slam Impact hit {enemy.CharacterName}: {impactDamage} damage");
+                // Knockback เหมือนท่า 3
+                Vector3 knockbackDir = (enemy.transform.position - transform.position).normalized;
+                enemy.ApplyKnockback(knockbackDir, knockbackForce, 1.5f);
+
+                Debug.Log($"⚡ Ground Slam Impact hit {enemy.CharacterName}: {impactDamage} damage + Knockback");
             }
         }
 
-        // 🌋 PHASE 3: Earthquake Zone
-        Debug.Log($"⚡ [Titan Rampage] Phase 3: Earthquake Zone for {duration}s");
+        // 🌋 Earthquake Zone
+        Debug.Log($"⚡ [Titan Rampage] Earthquake Zone for {duration}s");
 
         float tickInterval = 1f;
         float nextTick = 0f;
@@ -1661,11 +1605,8 @@ public class Berserker : Hero
             }
         }
 
-        // ❌ ไม่ต้อง reset scale เพราะไม่ได้ขยาย
-        // transform.localScale = originalScale;
-
         IsInTitanForm = false;
-        Debug.Log($"⚡ [Titan Rampage with Teleport] Ended! Total enemies hit: {totalEnemiesHit}");
+        Debug.Log($"⚡ [Titan Rampage] Ended! Total enemies hit: {totalEnemiesHit}");
     }
 
     #endregion
