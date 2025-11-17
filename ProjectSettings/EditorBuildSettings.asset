@@ -50,6 +50,18 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SceneMan/Snow4.unity
     guid: 0cf25e58dd63cec48bb47a562fa3cc2c
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Lava1_1.unity
+    guid: 9dff483a350b4c046afcdd1379093553
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Lava1_2.unity
+    guid: 893a9d9db090786459e376989f74983e
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Lava1_3.unity
+    guid: 106ab7d3ee0d4784185bb5b5fc056d15
+  - enabled: 1
+    path: Assets/Scenes/SceneMan/Lava1_4.unity
+    guid: 9cdd17b9b2120a84eb60ea2e6fe9c08c
   - enabled: 0
     path: Assets/Scenes/Sceneliew/Dungeom/PlayRoom1.unity
     guid: 03674728668858f42ad1b6ed1d782739

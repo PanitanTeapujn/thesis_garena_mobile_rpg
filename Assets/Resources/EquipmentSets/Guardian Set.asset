@@ -196,6 +196,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ec9b1c7d0ac4c9544863e8b403e6f641, type: 2}
   - {fileID: 11400000, guid: 63f692e3edb3d1b468928b5b87f509b5, type: 2}
   - {fileID: 11400000, guid: 2c46b810a25f7e04b9376ef15702506c, type: 2}
+  - {fileID: 11400000, guid: ec744ccc7849822449b40562567df1bc, type: 2}
+  - {fileID: 11400000, guid: c2c966ba5d1ee9d4cab7bd133c12f5bc, type: 2}
+  - {fileID: 11400000, guid: e127c02dfa2cf8c4cbb2b75b6aaa5c1c, type: 2}
+  - {fileID: 11400000, guid: 0ae9b372360f8bd4bb9332baba9f9e26, type: 2}
+  - {fileID: 11400000, guid: 906304a547e94ab4394048a430177c83, type: 2}
+  - {fileID: 11400000, guid: 526c931cb6fd24e4e9722f41286d1cf0, type: 2}
+  - {fileID: 11400000, guid: 9ea8d09f06ff2e24bbb88cbe2a8d43df, type: 2}
+  - {fileID: 11400000, guid: c1e3558aeddd87b46bcf3a0fb7b95df0, type: 2}
+  - {fileID: 11400000, guid: c85298342b789f8469506c4e38745a18, type: 2}
+  - {fileID: 11400000, guid: 7343c7ffa317dc4459d0b7c835798a76, type: 2}
+  - {fileID: 11400000, guid: 10ccca0033ad37f4ab630d542236c2a2, type: 2}
+  - {fileID: 11400000, guid: 139c10ce918fe4b4ba69e8a1eb420326, type: 2}
+  - {fileID: 11400000, guid: 78162d31b6b139d4ca860cb4d8b0e70e, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:

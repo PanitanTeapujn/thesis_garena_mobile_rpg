@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Holy sword
+  m_Name: test
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 1
-    maxEnchantLevel: 12
+    canBeEnchanted: 0
+    maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:
       sameItemWithEnchant: 90
@@ -31,28 +31,22 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 1000
+    requiredGold: 50
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: f2a51aecee620e84c8fe1a9f92749663, type: 2}
-      requiredQuantity: 1
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 497384fcf2b1f6e4082e39e7e3bb5ca9, type: 2}
-      requiredQuantity: 3
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 2bbbe06ae51a8444ab4d026c44297394, type: 2}
-      requiredQuantity: 3
+    - requiredItem: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+      requiredQuantity: 0
       description: 
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Holy sword
-  itemName: Holy sword
-  itemIcon: {fileID: 1715130993, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
+  itemId: test
+  itemName: test
+  itemIcon: {fileID: 21300000, guid: 6f98b3e70c3ad8a48a0396785dad48e8, type: 3}
   itemType: 0
-  tier: 5
+  tier: 4
   description: 
-  sellPrice: 1500
-  buyPrice: 1000
+  sellPrice: 0
+  buyPrice: 0
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -61,11 +55,11 @@ MonoBehaviour:
   belongsToSet: {fileID: 0}
   isSetItem: 0
   stats:
-    attackDamageBonus: 80
+    attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 30
-    criticalDamageBonus: 20
+    criticalChanceBonus: 0
+    criticalDamageBonus: 0
     magicArmorBonus: 0
     manaRegenBonus: 0
     healthRegenBonus: 0

@@ -432,10 +432,10 @@ MonoBehaviour:
   targetSpriteRenderer: {fileID: 0}
   shadowColor: {r: 0, g: 0, b: 0, a: 0.5}
   shadowAlpha: 0.5
-  shadowOffset: {x: 0.1, y: -0.3, z: 0}
+  shadowOffset: {x: 0.82, y: -2.25, z: 0.88}
   shadowScale: {x: 1, y: 0.6, z: 1}
-  shadowRotation: {x: 0, y: 0, z: 0}
-  skewX: 0
+  shadowRotation: {x: 90, y: 0, z: 0}
+  skewX: 1
   followTarget: 1
   mirrorFlip: 0
   sameFacing: 1
@@ -641,9 +641,9 @@ MonoBehaviour:
   fireSlamDamage: 30
   fireSlamBurnDamage: 5
   fireSlamBurnDuration: 4
-  fireSlamTelegraphPrefab: {fileID: 7607841488155974854, guid: ba3421ba5a7c1654cbf175aa232f24b8,
+  fireSlamTelegraphPrefab: {fileID: 4332660487222771301, guid: c0e37f7f1db3aab40bcaa1deb4ff5f7b,
     type: 3}
-  fireSlamEffect: {fileID: 4251143904839232142, guid: e09571f065fb5ca4180032b4fb31b978,
+  fireSlamEffect: {fileID: 5557362394125618979, guid: 43ca6b4775bfb1e45b1bfcce5303970b,
     type: 3}
   dashDistance: 10
   dashDuration: 0.4
@@ -651,7 +651,8 @@ MonoBehaviour:
   dashTelegraphDuration: 1.2
   dashTelegraphPrefab: {fileID: 7340584436085235738, guid: 4a993dd54464e144d9ce2e40337585f1,
     type: 3}
-  fireTrailPrefab: {fileID: 0}
+  fireTrailPrefab: {fileID: 5167564184485961095, guid: 06ef6baad52261a4dbf0ccee6f357858,
+    type: 3}
   fireTrailLifetime: 6
   fireTrailBurnDamage: 3
   fireTrailBurnDuration: 3
@@ -676,7 +677,8 @@ MonoBehaviour:
   projectileBurnDuration: 4
   projectileTelegraphPrefab: {fileID: 7340584436085235738, guid: 4a993dd54464e144d9ce2e40337585f1,
     type: 3}
-  fireProjectilePrefab: {fileID: 0}
+  fireProjectilePrefab: {fileID: 831396530621380293, guid: 2f4ca655913039c4e9e4a789527020e9,
+    type: 3}
   projectileEffect: {fileID: 2972392977303283611, guid: 11c9a5d587e034e43a68d4ebfb901206,
     type: 3}
   minMeteorCount: 10
@@ -689,7 +691,8 @@ MonoBehaviour:
   meteorBurnDuration: 4
   meteorTelegraphPrefab: {fileID: 4332660487222771301, guid: c0e37f7f1db3aab40bcaa1deb4ff5f7b,
     type: 3}
-  meteorPrefab: {fileID: 0}
+  meteorPrefab: {fileID: 831396530621380293, guid: 2f4ca655913039c4e9e4a789527020e9,
+    type: 3}
   meteorEffect: {fileID: 6168184190451578028, guid: 952b3b2d104ddfd47ba6d824d0c79475,
     type: 3}
   fireShieldDuration: 5
@@ -707,9 +710,10 @@ MonoBehaviour:
   shockwaveStunDuration: 1
   shockwaveTelegraphPrefab: {fileID: 7340584436085235738, guid: dba5b657654cdd24498ee49c2d79161a,
     type: 3}
-  shockwavePrefab: {fileID: 4994997792314849709, guid: 6479c3bdbb7805e458f9dffdf0e298d8,
+  shockwavePrefab: {fileID: 2956018988111513690, guid: 8a76b176bfc8f2e469ce5c94acf8ced6,
     type: 3}
-  shockwaveEffect: {fileID: 0}
+  shockwaveEffect: {fileID: 5557362394125618979, guid: 43ca6b4775bfb1e45b1bfcce5303970b,
+    type: 3}
   minThrowCount: 1
   maxThrowCount: 3
   throwDelay: 0.5

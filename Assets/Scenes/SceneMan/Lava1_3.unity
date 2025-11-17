@@ -7405,7 +7405,7 @@ PrefabInstance:
         type: 3}
       propertyPath: enemySpawnerPrefab
       value: 
-      objectReference: {fileID: 4887578928855140605, guid: 275d28e08b875d6479e5a3ed516a7f44,
+      objectReference: {fileID: 4887578928855140605, guid: 4a99fdfe27f001046abeccba877b0cbc,
         type: 3}
     - target: {fileID: 8202185733760812409, guid: d75b32aa4e7f0a14dbabf7d0ee8b5434,
         type: 3}

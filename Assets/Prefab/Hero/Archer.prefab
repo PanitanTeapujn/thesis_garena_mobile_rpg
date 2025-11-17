@@ -267,7 +267,7 @@ MonoBehaviour:
   _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
-  _OriginalMoveSpeed: 0
+  _OriginalMoveSpeedForFreeze: 0
   _IsStunned: 0
   _StunDuration: 0
   _IsArmorBreak: 0
@@ -276,6 +276,10 @@ MonoBehaviour:
   _IsBlind: 0
   _BlindDuration: 0
   _BlindAmount: 0
+  _IsSlowed: 0
+  _SlowDuration: 0
+  _SlowAmount: 0
+  _OriginalMoveSpeedForSlow: 0
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
@@ -354,6 +358,8 @@ MonoBehaviour:
   _CriticalAuraDuration: 0
   _CriticalAuraRadius: 0
   _CriticalAuraAmount: 0
+  _IsDebuffImmune: 0
+  _DebuffImmunityDuration: 0
 --- !u!114 &-2598280145371838362
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -576,6 +582,21 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 6cdea1b58fd43f341bd9594ab6c3a002, type: 2}
     quantity: 1
     note: 
+  - itemData: {fileID: 11400000, guid: 497384fcf2b1f6e4082e39e7e3bb5ca9, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 2a93bb913bac76045b0858fcb285b60c, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6a27372d5bdb9fc45ba9acf32c5a249f, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: c367ba90b47a4304aad608476ab03abc, type: 2}
+    quantity: 1
+    note: 
+  - itemData: {fileID: 11400000, guid: 6b7ee32e50bbc2a4888f897819da97d5, type: 2}
+    quantity: 1
+    note: 
   useFallbackItems: 1
   fallbackToTestItems: 1
   testSword: {fileID: 0}
@@ -744,6 +765,7 @@ MonoBehaviour:
   potionSlots: []
   potionStackCounts: 
   potionCooldown: 1
+  reflectDamagePercent: 0
   enableAutoFixInventory: 1
   autoFixCompleted: 0
   autoFixDelay: 3
@@ -859,6 +881,13 @@ MonoBehaviour:
   attackRangeMaterial: {fileID: 2100000, guid: 4bab0f95134663b4c9c3dd73939c0ff1, type: 2}
   _IsInFerrisMode: 0
   flameArrowAOERadius: 4
+  _AttackSpeedStacks: 0
+  _AttackSpeedStacksEndTime: 0
+  _HasAttackSpeedBonusFromSkill: 0
+  _AttackSpeedBonusFromSkillEndTime: 0
+  _AttackSpeedBonusFromSkillAmount: 0
+  _EagleEyeAttackSpeedStacks: 0
+  _EagleEyeStacksEndTime: 0
   _IsFlameArrowActive: 0
   _IsShadowStepping: 0
   _IsInvulnerable: 0
@@ -872,8 +901,6 @@ MonoBehaviour:
   _HasAttackSpeedBonus: 0
   _AttackSpeedBonusEndTime: 0
   _CurrentFireRing: {fileID: 0}
-  _EagleEyeAttackSpeedStacks: 0
-  _EagleEyeStacksEndTime: 0
 --- !u!95 &8581546270774230497
 Animator:
   serializedVersion: 7
