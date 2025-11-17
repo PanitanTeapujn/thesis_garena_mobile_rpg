@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
+  m_Name: Radiant Helm+10
+  m_EditorClassIdentifier: 
+  enchantmentSettings:
+    canBeEnchanted: 1
+    maxEnchantLevel: 12
+    baseGoldCost: 1000
+    successRates:
+      sameItemWithEnchant: 90
+      sameItemNoEnchant: 75
+      sameTierWithEnchant: 60
+      sameTierNoEnchant: 45
+      higherTierWithEnchant: 50
+      higherTierNoEnchant: 35
+      lowerTierWithEnchant: 25
+      lowerTierNoEnchant: 15
+    enchantmentBonuses: []
+    degradeChanceOnFail: 50
+    maxDegradeLevel: 2
+    repairCostMultiplier: 0.7
+  tradeRecipe:
+    isTradeableItem: 1
+    requiredGold: 2000
+    requiredItems:
+    - requiredItem: {fileID: 11400000, guid: f4322e088c026b14b8a2f5c776cdeb7d, type: 2}
+      requiredQuantity: 0
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 2a93bb913bac76045b0858fcb285b60c, type: 2}
+      requiredQuantity: 3
+      description: 
+    - requiredItem: {fileID: 11400000, guid: 1f5e2427afb2cc9408d7f40feeb51529, type: 2}
+      requiredQuantity: 3
+      description: 
+    tradeName: 
+    tradeDescription: 
+    tradeCategory: 0
+  itemId: Radiant Helm+10
+  itemName: Radiant Helm+10
+  itemIcon: {fileID: 59571964, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
+  itemType: 1
+  tier: 5
+  description: 
+  sellPrice: 10000
+  buyPrice: 15000
+  isSellable: 1
+  isTradeable: 1
+  buyCurrencyType: 0
+  maxStackSize: 1
+  isStackable: 0
+  belongsToSet: {fileID: 0}
+  isSetItem: 0
+  stats:
+    attackDamageBonus: 75
+    magicDamageBonus: 0
+    armorBonus: 7
+    criticalChanceBonus: 15
+    criticalDamageBonus: 45
+    magicArmorBonus: 0
+    manaRegenBonus: 0
+    healthRegenBonus: 0
+    maxHpBonus: 150
+    maxManaBonus: 0
+    moveSpeedBonus: 0
+    attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 0
+    reductionCoolDownBonus: 0
+    physicalResistanceBonus: 0
+    magicalResistanceBonus: 0
+    lifeStealBonus: 0
+    ampDamageBonus: 0
+    healAmount: 0
+    manaAmount: 0
+    healPercentage: 0
+    manaPercentage: 0
