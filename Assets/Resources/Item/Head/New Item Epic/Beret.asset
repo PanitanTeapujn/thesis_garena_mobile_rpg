@@ -40,7 +40,7 @@ MonoBehaviour:
   itemName: Beret
   itemIcon: {fileID: 0}
   itemType: 1
-  tier: 1
+  tier: 4
   description: 
   sellPrice: 0
   buyPrice: 0
@@ -52,20 +52,20 @@ MonoBehaviour:
   belongsToSet: {fileID: 0}
   isSetItem: 0
   stats:
-    attackDamageBonus: -5
+    attackDamageBonus: -15
     magicDamageBonus: 0
-    armorBonus: 3
+    armorBonus: 20
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 2
+    magicArmorBonus: 20
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 5
+    maxHpBonus: 25
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 5
+    attackSpeedBonus: 20
     hitRateBonus: 0
-    evasionRateBonus: 5
+    evasionRateBonus: 30
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

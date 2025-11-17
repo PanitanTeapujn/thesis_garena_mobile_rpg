@@ -39,8 +39,8 @@ MonoBehaviour:
   itemId: weapon__5537
   itemName: IronHead
   itemIcon: {fileID: 0}
-  itemType: 0
-  tier: 0
+  itemType: 1
+  tier: 4
   description: 
   sellPrice: 0
   buyPrice: 0
@@ -54,18 +54,18 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 6
+    armorBonus: 25
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 6
+    magicArmorBonus: 25
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 15
+    maxHpBonus: 50
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: -7
-    hitRateBonus: 0
-    evasionRateBonus: -5
+    attackSpeedBonus: -10
+    hitRateBonus: 20
+    evasionRateBonus: -10
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Hood
+  m_Name: Shirt
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 0
@@ -36,10 +36,10 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: weapon__3331
-  itemName: Hood
+  itemId: armor_shirt_3899
+  itemName: Shirt
   itemIcon: {fileID: 0}
-  itemType: 1
+  itemType: 2
   tier: 3
   description: 
   sellPrice: 0
@@ -63,14 +63,14 @@ MonoBehaviour:
     maxHpBonus: 15
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 0
+    attackSpeedBonus: 15
     hitRateBonus: 0
     evasionRateBonus: 10
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
-    ampDamageBonus: 15
+    ampDamageBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

@@ -39,8 +39,8 @@ MonoBehaviour:
   itemId: weapon__5537
   itemName: IronHead
   itemIcon: {fileID: 0}
-  itemType: 0
-  tier: 0
+  itemType: 1
+  tier: 1
   description: 
   sellPrice: 0
   buyPrice: 0

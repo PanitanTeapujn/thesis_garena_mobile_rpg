@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Hood
+  m_Name: Robe1
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 0
@@ -36,10 +36,10 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: weapon__3331
-  itemName: Hood
+  itemId: armor_armort1_9652
+  itemName: ArmorT1
   itemIcon: {fileID: 0}
-  itemType: 1
+  itemType: 2
   tier: 3
   description: 
   sellPrice: 0
@@ -53,7 +53,7 @@ MonoBehaviour:
   isSetItem: 0
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: -10
+    magicDamageBonus: 0
     armorBonus: 10
     criticalChanceBonus: 0
     criticalDamageBonus: 0
@@ -65,12 +65,12 @@ MonoBehaviour:
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 10
-    reductionCoolDownBonus: 0
+    evasionRateBonus: 5
+    reductionCoolDownBonus: 10
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
-    ampDamageBonus: 15
+    ampDamageBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0
