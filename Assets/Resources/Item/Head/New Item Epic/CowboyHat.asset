@@ -40,7 +40,7 @@ MonoBehaviour:
   itemName: CowboyHat
   itemIcon: {fileID: 0}
   itemType: 1
-  tier: 1
+  tier: 4
   description: 
   sellPrice: 0
   buyPrice: 0
@@ -54,23 +54,23 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 2
+    armorBonus: 15
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 3
+    magicArmorBonus: 15
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 5
+    maxHpBonus: 30
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 3
-    reductionCoolDownBonus: 2
+    evasionRateBonus: 20
+    reductionCoolDownBonus: 10
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
-    ampDamageBonus: 0
+    ampDamageBonus: 10
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

@@ -39,8 +39,8 @@ MonoBehaviour:
   itemId: weapon__3331
   itemName: Hood
   itemIcon: {fileID: 0}
-  itemType: 0
-  tier: 0
+  itemType: 1
+  tier: 4
   description: 
   sellPrice: 0
   buyPrice: 0
@@ -53,24 +53,24 @@ MonoBehaviour:
   isSetItem: 0
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: -5
-    armorBonus: 2
+    magicDamageBonus: -15
+    armorBonus: 25
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 2
+    magicArmorBonus: 25
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 5
+    maxHpBonus: 25
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 6
+    evasionRateBonus: 20
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
-    ampDamageBonus: 0
+    ampDamageBonus: 20
     healAmount: 0
     manaAmount: 0
     healPercentage: 0
