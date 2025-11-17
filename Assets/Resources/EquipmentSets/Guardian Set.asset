@@ -22,16 +22,47 @@ MonoBehaviour:
   - {fileID: 11400000, guid: bf9fee0df52857f4588010e1e1dffef6, type: 2}
   - {fileID: 11400000, guid: 92b4c5e0144b248479337dee64bf07b0, type: 2}
   - {fileID: 11400000, guid: 4f30b4c98c99c734b86b8bf37ded2350, type: 2}
+  - {fileID: 11400000, guid: 5a9c59f8102f67d4eabd6ceaeacfb0f9, type: 2}
+  - {fileID: 11400000, guid: a670335d321dc1e46927e507cd6d11df, type: 2}
+  - {fileID: 11400000, guid: d300d24ab711c884babdab6f64f99dcb, type: 2}
+  - {fileID: 11400000, guid: f84562644b0e2364595a6c9212e4ad1e, type: 2}
+  - {fileID: 11400000, guid: 2bbbe06ae51a8444ab4d026c44297394, type: 2}
+  - {fileID: 11400000, guid: 3dd30fc095bedc24f9873e527adffedc, type: 2}
+  - {fileID: 11400000, guid: cc6efeb3bb049dc4885d2c76965be5c1, type: 2}
+  - {fileID: 11400000, guid: a6b7a2ecd211a774d9ff555c397d91c4, type: 2}
+  - {fileID: 11400000, guid: 497384fcf2b1f6e4082e39e7e3bb5ca9, type: 2}
+  - {fileID: 11400000, guid: 08233b5d620c60340bfbcaf2c6cad80a, type: 2}
+  - {fileID: 11400000, guid: 0fd3ea5560508e54c97bec6e25a1ea1a, type: 2}
+  - {fileID: 11400000, guid: c7c12b954d83ec640a318da3adb6a8c0, type: 2}
+  - {fileID: 11400000, guid: 701d3c9aa865763409a86562e8a74af8, type: 2}
+  - {fileID: 11400000, guid: 524d5c79930b856408599f3c7505de33, type: 2}
+  - {fileID: 11400000, guid: cfec5d254e98951489ab74c65b217e6f, type: 2}
+  - {fileID: 11400000, guid: 9827ff16bd8a9c144aa3aa19b72bba1c, type: 2}
+  - {fileID: 11400000, guid: f2a51aecee620e84c8fe1a9f92749663, type: 2}
+  - {fileID: 11400000, guid: 76d90320a8fc92e47af56f04efeb9461, type: 2}
+  - {fileID: 11400000, guid: 1c580b7a5af2b894886d9c5449e79c72, type: 2}
+  - {fileID: 11400000, guid: 46e63131046ce8243a185d2c29e5ee9c, type: 2}
+  - {fileID: 11400000, guid: 9a755f6fafededf4e9e68950a6393f8e, type: 2}
+  - {fileID: 11400000, guid: a5b7f9c22c6f6be448dccbf980742b43, type: 2}
+  - {fileID: 11400000, guid: b4735bc43bb80ca40b320e914a83e584, type: 2}
+  - {fileID: 11400000, guid: d0d9a2699ea53bf45ba1d4cf62c9a1c9, type: 2}
+  - {fileID: 11400000, guid: 49f6db597d09f354c821d45d6ba1d25c, type: 2}
+  - {fileID: 11400000, guid: 984278e52aa93324cb403dfd5c8570a3, type: 2}
+  - {fileID: 11400000, guid: a3d11f84e5778fe4eacc9c23819dfafa, type: 2}
+  - {fileID: 11400000, guid: 0677ffe53367c504ca32ae1180234028, type: 2}
+  - {fileID: 11400000, guid: 0909485fa5853c9428af99a53d917a84, type: 2}
+  - {fileID: 11400000, guid: 2a2ddf2605f523d4bb7b7b27b0f78c17, type: 2}
+  - {fileID: 11400000, guid: 0c709c7a41f2161409aeacdbf530c0c3, type: 2}
+  - {fileID: 11400000, guid: ecd168a9fc720c2488a2be570307633a, type: 2}
+  - {fileID: 11400000, guid: 3b0acbcf41f75e443a6de44bd97be73f, type: 2}
+  - {fileID: 11400000, guid: 762e4db1ebbe9194797027b1e4b5b710, type: 2}
+  - {fileID: 11400000, guid: f9d66de4b57253e4fac7183c510c3e65, type: 2}
+  - {fileID: 11400000, guid: 12a58e554cde425428d08515baaa4194, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:
-    - bonusType: 8
-      bonusValue: 25
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 10
-      bonusValue: 15
+    - bonusType: 0
+      bonusValue: 5
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
@@ -39,32 +70,17 @@ MonoBehaviour:
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
   - requiredPieces: 4
     bonusEffects:
-    - bonusType: 2
-      bonusValue: 40
+    - bonusType: 5
+      bonusValue: 15
       isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 13
-      bonusValue: 3
-      isPercentage: 0
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
-  - requiredPieces: 5
+  - requiredPieces: 2
     bonusEffects:
-    - bonusType: 12
-      bonusValue: 30
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 11
-      bonusValue: 20
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
     - bonusType: 2
-      bonusValue: 50
+      bonusValue: 35
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}

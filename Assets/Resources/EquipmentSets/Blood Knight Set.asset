@@ -30,7 +30,7 @@ MonoBehaviour:
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 9
+    - bonusType: 19
       bonusValue: 10
       isPercentage: 1
       bonusDescription: 
@@ -44,9 +44,9 @@ MonoBehaviour:
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 13
+    - bonusType: 2
       bonusValue: 5
-      isPercentage: 0
+      isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
