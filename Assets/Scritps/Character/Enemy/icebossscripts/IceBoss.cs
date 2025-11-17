@@ -1964,40 +1964,6 @@ public class IceBoss : NetworkEnemy
     }
 
     // ========== Debug Gizmos ==========
-    private void OnDrawGizmosSelected()
-    {
-        if (!showDebugGizmos) return;
-
-        // Half-circle attack
-        Gizmos.color = new Color(0.5f, 0.7f, 1f, 0.3f);
-        Vector3 forward = transform.forward;
-
-        for (int i = 0; i <= 16; i++)
-        {
-            float angle1 = Mathf.Deg2Rad * (i * halfCircleAngle / 16f - halfCircleAngle / 2f);
-            float angle2 = Mathf.Deg2Rad * ((i + 1) * halfCircleAngle / 16f - halfCircleAngle / 2f);
-
-            Vector3 dir1 = Quaternion.Euler(0, Mathf.Rad2Deg * angle1, 0) * forward;
-            Vector3 dir2 = Quaternion.Euler(0, Mathf.Rad2Deg * angle2, 0) * forward;
-
-            Vector3 point1 = transform.position + dir1 * halfCircleRadius;
-            Vector3 point2 = transform.position + dir2 * halfCircleRadius;
-
-            Gizmos.DrawLine(transform.position, point1);
-            Gizmos.DrawLine(point1, point2);
-        }
-
-        // Jump slam radius
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawWireSphere(transform.position, slamRadius);
-
-        // Dash distance
-        if (targetTransform != null)
-        {
-            Vector3 direction = (targetTransform.position - transform.position).normalized;
-            Gizmos.color = Color.green;
-            Gizmos.DrawLine(transform.position, transform.position + direction * dashDistance);
-        }
-    }
+   
 
 }

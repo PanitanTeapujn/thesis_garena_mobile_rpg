@@ -223,7 +223,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 0.4660377, g: 1, b: 0.63836086, a: 1}
-      maxColor: {r: 0.01886791, g: 0.01051085, b: 0.007725163, a: 1}
+      maxColor: {r: 1, g: 0.37498984, b: 0, a: 1}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -5144,7 +5144,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 1, g: 1, b: 1, a: 1}
-      maxColor: {r: 0.122641504, g: 0.05902582, b: 0.037486646, a: 1}
+      maxColor: {r: 1, g: 0.15842558, b: 0, a: 1}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -9836,7 +9836,7 @@ GameObject:
   - component: {fileID: 8904114409888472623}
   - component: {fileID: 1864373347213916901}
   m_Layer: 0
-  m_Name: Ground AOE explosion
+  m_Name: Ground AOE boss 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10051,7 +10051,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 1, g: 1, b: 1, a: 1}
-      maxColor: {r: 0.46226418, g: 0.24342972, b: 0.15437876, a: 0.29803923}
+      maxColor: {r: 1, g: 0.29113925, b: 0, a: 0.29803923}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -14963,7 +14963,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 1, g: 1, b: 1, a: 1}
-      maxColor: {r: 0.254717, g: 0.15239537, b: 0.1283197, a: 0.19607843}
+      maxColor: {r: 1, g: 0, b: 0.16834307, a: 0.19607843}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
