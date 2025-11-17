@@ -170,6 +170,32 @@ MonoBehaviour:
   - {fileID: 11400000, guid: faf6e19e01c10554e8a4c100faf8ed31, type: 2}
   - {fileID: 11400000, guid: 2189c83a47cb65741bd55dcd7c9b5fbd, type: 2}
   - {fileID: 11400000, guid: eac23f8a632657147902ec7a3ad27dcf, type: 2}
+  - {fileID: 11400000, guid: 7615870d6537f8b4b9f637ce4f7b26d1, type: 2}
+  - {fileID: 11400000, guid: d38b1c3f440fd254c915d88d6d118b6a, type: 2}
+  - {fileID: 11400000, guid: 56c748912f2c92343b8a529cd2949201, type: 2}
+  - {fileID: 11400000, guid: 9cc603481eac855478dfacca6deb59d5, type: 2}
+  - {fileID: 11400000, guid: 2a1454aab54a4c140a0c9f98c306b4ff, type: 2}
+  - {fileID: 11400000, guid: ef306b639a61dc44abaa7736b81ca5cb, type: 2}
+  - {fileID: 11400000, guid: 1f0f871b9f18d8544a0f6e9e5a76ac65, type: 2}
+  - {fileID: 11400000, guid: c4703e824d1b68646a2430aa0a400298, type: 2}
+  - {fileID: 11400000, guid: 6b7ee32e50bbc2a4888f897819da97d5, type: 2}
+  - {fileID: 11400000, guid: 63756ffe66a7f324c9495fb7e9cacd79, type: 2}
+  - {fileID: 11400000, guid: c0208429cbf14084e86bd9fdabb02acb, type: 2}
+  - {fileID: 11400000, guid: 9ede75635e14b8540a78a456b22f002e, type: 2}
+  - {fileID: 11400000, guid: 10b1fa3a3d0325b479724caca210eecd, type: 2}
+  - {fileID: 11400000, guid: adddb594ae0588c4b95bc314c1ac4e22, type: 2}
+  - {fileID: 11400000, guid: 32ff03afb65132840b13fb77e2cb238c, type: 2}
+  - {fileID: 11400000, guid: 04fb9085146d51c40ac2a7e500e2db29, type: 2}
+  - {fileID: 11400000, guid: fb24baf3ab3fba14189555b5904ee61c, type: 2}
+  - {fileID: 11400000, guid: 34c0596084ff34c458062264afa49417, type: 2}
+  - {fileID: 11400000, guid: 47848110043747048a66a8edbe201523, type: 2}
+  - {fileID: 11400000, guid: 6136dc1ee114a794a966c4bb9263a878, type: 2}
+  - {fileID: 11400000, guid: ed1fb4a09b575ac44b519070ef067855, type: 2}
+  - {fileID: 11400000, guid: 7450750a57e01564193ad664351f0408, type: 2}
+  - {fileID: 11400000, guid: 546212a8b55289d43b24d2bd8268a72b, type: 2}
+  - {fileID: 11400000, guid: ec9b1c7d0ac4c9544863e8b403e6f641, type: 2}
+  - {fileID: 11400000, guid: 63f692e3edb3d1b468928b5b87f509b5, type: 2}
+  - {fileID: 11400000, guid: 2c46b810a25f7e04b9376ef15702506c, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:
