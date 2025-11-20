@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MageRobe
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 0
+    canBeEnchanted: 1
     maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:
@@ -30,7 +30,7 @@ MonoBehaviour:
     maxDegradeLevel: 2
     repairCostMultiplier: 0.7
   tradeRecipe:
-    isTradeableItem: 0
+    isTradeableItem: 1
     requiredGold: 0
     requiredItems: []
     tradeName: 
@@ -52,7 +52,7 @@ MonoBehaviour:
   belongsToSet: {fileID: 0}
   isSetItem: 0
   stats:
-    attackDamageBonus: -2
+    attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 2
     criticalChanceBonus: 0
@@ -60,7 +60,7 @@ MonoBehaviour:
     magicArmorBonus: 2
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 3
+    maxHpBonus: 5
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
@@ -70,7 +70,7 @@ MonoBehaviour:
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
-    ampDamageBonus: 4
+    ampDamageBonus: 0
     healAmount: 0
     manaAmount: 0
     healPercentage: 0

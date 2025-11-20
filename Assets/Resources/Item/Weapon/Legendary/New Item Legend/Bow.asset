@@ -52,7 +52,7 @@ MonoBehaviour:
   belongsToSet: {fileID: 0}
   isSetItem: 0
   stats:
-    attackDamageBonus: 100
+    attackDamageBonus: 101
     magicDamageBonus: 0
     armorBonus: 0
     criticalChanceBonus: 29
@@ -63,7 +63,7 @@ MonoBehaviour:
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: -1
+    attackSpeedBonus: 0
     hitRateBonus: 43
     evasionRateBonus: 0
     reductionCoolDownBonus: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Armor
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 0
+    canBeEnchanted: 1
     maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:
@@ -30,7 +30,7 @@ MonoBehaviour:
     maxDegradeLevel: 2
     repairCostMultiplier: 0.7
   tradeRecipe:
-    isTradeableItem: 0
+    isTradeableItem: 1
     requiredGold: 0
     requiredItems: []
     tradeName: 
@@ -64,8 +64,8 @@ MonoBehaviour:
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
-    hitRateBonus: 4
-    evasionRateBonus: -4
+    hitRateBonus: 8
+    evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

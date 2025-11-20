@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Spear
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 0
+    canBeEnchanted: 1
     maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:

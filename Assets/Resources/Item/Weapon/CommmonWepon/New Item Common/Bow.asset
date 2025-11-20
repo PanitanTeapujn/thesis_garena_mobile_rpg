@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bow
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 0
+    canBeEnchanted: 1
     maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:
@@ -52,18 +52,18 @@ MonoBehaviour:
   belongsToSet: {fileID: 0}
   isSetItem: 0
   stats:
-    attackDamageBonus: 7
+    attackDamageBonus: 8
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 4
-    criticalDamageBonus: 4
+    criticalChanceBonus: 3
+    criticalDamageBonus: 3
     magicArmorBonus: 0
     manaRegenBonus: 0
     healthRegenBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: -1
+    attackSpeedBonus: 0
     hitRateBonus: 1
     evasionRateBonus: 0
     reductionCoolDownBonus: 0

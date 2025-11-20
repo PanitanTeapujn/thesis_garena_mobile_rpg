@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a25c8f1f6946dcd4a8cb137e6addc359, type: 3}
+  m_Name: NewTrying Set
+  m_EditorClassIdentifier: 
+  setName: Armorer set
+  setDescription: 
+  setIcon: {fileID: 0}
+  setColor: {r: 0.5581946, g: 0, b: 0.7735849, a: 1}
+  setItems:
+  - {fileID: 11400000, guid: 04ba4097e12ed52478a24ffface74def, type: 2}
+  - {fileID: 11400000, guid: ce4e667c784b1404d8528e3badfb1821, type: 2}
+  - {fileID: 11400000, guid: dcb11be6b656c5f44a7bc84ad7ffdb8a, type: 2}
+  - {fileID: 11400000, guid: 7d6cddc2b6e495b43916790e6eb7f49b, type: 2}
+  - {fileID: 11400000, guid: b1a8496d8532e4d4aaa42d5f365b0bd8, type: 2}
+  - {fileID: 11400000, guid: eb7a43d272a715a459f5dc5b09c4d1c8, type: 2}
+  - {fileID: 11400000, guid: 6b58a0d4bfab71d4e840102536feb075, type: 2}
+  - {fileID: 11400000, guid: 5b8649ba832eb214fb6470806943479a, type: 2}
+  - {fileID: 11400000, guid: 0167e85359b0de348b032847aa3adc9b, type: 2}
+  - {fileID: 11400000, guid: 3df9bb50038cb0c4fafec8515e9d5052, type: 2}
+  - {fileID: 11400000, guid: 7a456bd4f810ac042b0907c2aad431e0, type: 2}
+  - {fileID: 11400000, guid: 1dc10d9d20f07c8439fcb03d777ff4ea, type: 2}
+  - {fileID: 11400000, guid: 5a0c4612fe79ff6409f79fa3f9ae2932, type: 2}
+  - {fileID: 11400000, guid: 37ba38134458b84499e9baca43e06dde, type: 2}
+  - {fileID: 11400000, guid: 96b4be69ce3512847bfdbd4b93e13542, type: 2}
+  - {fileID: 11400000, guid: 25cf8cb4476790349ba88bcba8ea3a0a, type: 2}
+  - {fileID: 11400000, guid: b44d7f57e6f2b704fb5a0232042758f9, type: 2}
+  - {fileID: 11400000, guid: a49dba36047dce44799bf3917d7f05c9, type: 2}
+  - {fileID: 11400000, guid: 8389689045762df4c890acf7230fe904, type: 2}
+  - {fileID: 11400000, guid: f80e7ef6fc1ab5340a531d6329d85097, type: 2}
+  setBonuses:
+  - requiredPieces: 2
+    bonusEffects:
+    - bonusType: 4
+      bonusValue: 20
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0.5568628, g: 0, b: 0.7725491, a: 1}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 4
+    bonusEffects:
+    - bonusType: 5
+      bonusValue: 20
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0.5568628, g: 0, b: 0.7725491, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  setTier: 4

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Two Hand Sword
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 0
+    canBeEnchanted: 1
     maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:
@@ -30,7 +30,7 @@ MonoBehaviour:
     maxDegradeLevel: 2
     repairCostMultiplier: 0.7
   tradeRecipe:
-    isTradeableItem: 0
+    isTradeableItem: 1
     requiredGold: 0
     requiredItems: []
     tradeName: 
