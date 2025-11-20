@@ -222,7 +222,7 @@ MonoBehaviour:
   _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
-  _OriginalMoveSpeed: 0
+  _OriginalMoveSpeedForFreeze: 0
   _IsStunned: 0
   _StunDuration: 0
   _IsArmorBreak: 0
@@ -231,6 +231,10 @@ MonoBehaviour:
   _IsBlind: 0
   _BlindDuration: 0
   _BlindAmount: 0
+  _IsSlowed: 0
+  _SlowDuration: 0
+  _SlowAmount: 0
+  _OriginalMoveSpeedForSlow: 0
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0
@@ -605,16 +609,14 @@ MonoBehaviour:
   healingCooldown: 12
   telegraphDuration: 1.8
   healingPercentage: 0.2
-  removeDebuffs: 1
+  postHealCooldown: 1.5
   healingTelegraphPrefab: {fileID: 4332660487222771301, guid: c0e37f7f1db3aab40bcaa1deb4ff5f7b,
     type: 3}
   healingWaveEffect: {fileID: 6810471105834413002, guid: 13fb772bc01e4c3468997eb4311271b6,
     type: 3}
   telegraphColor: {r: 0.3, g: 0.7, b: 1, a: 0.5}
   telegraphYOffset: -1.16
-  keepAwayDistance: 8
-  patrolRadius: 12
-  retreatSpeed: 1.2
+  stopDistance: 8
 --- !u!114 &6248330751126404576
 MonoBehaviour:
   m_ObjectHideFlags: 0

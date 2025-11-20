@@ -6294,6 +6294,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: FadePanel
       objectReference: {fileID: 0}
+    - target: {fileID: 4745477799476891879, guid: 681dccae256beed47be3c7390a3a3c36,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -6614,6 +6619,11 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.x
       value: 3.137329
       objectReference: {fileID: 0}
+    - target: {fileID: 401641364202046711, guid: 714569ed42579e640bc58d53e9c0c01d,
+        type: 3}
+      propertyPath: m_margin.z
+      value: 155.77629
+      objectReference: {fileID: 0}
     - target: {fileID: 433808451759228218, guid: 714569ed42579e640bc58d53e9c0c01d,
         type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -6633,6 +6643,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 158.4938
+      objectReference: {fileID: 0}
+    - target: {fileID: 2008134424196433396, guid: 714569ed42579e640bc58d53e9c0c01d,
+        type: 3}
+      propertyPath: m_margin.x
+      value: 47.474808
+      objectReference: {fileID: 0}
+    - target: {fileID: 2008134424196433396, guid: 714569ed42579e640bc58d53e9c0c01d,
+        type: 3}
+      propertyPath: m_margin.z
+      value: -312.89392
       objectReference: {fileID: 0}
     - target: {fileID: 2324543404669305134, guid: 714569ed42579e640bc58d53e9c0c01d,
         type: 3}
@@ -6749,10 +6769,25 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 5835190941932125256, guid: 714569ed42579e640bc58d53e9c0c01d,
+        type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -298
+      objectReference: {fileID: 0}
+    - target: {fileID: 5835190941932125256, guid: 714569ed42579e640bc58d53e9c0c01d,
+        type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 52
+      objectReference: {fileID: 0}
+    - target: {fileID: 6119052922453935564, guid: 714569ed42579e640bc58d53e9c0c01d,
+        type: 3}
+      propertyPath: m_margin.w
+      value: -62.357788
+      objectReference: {fileID: 0}
     - target: {fileID: 8962233899694268720, guid: 714569ed42579e640bc58d53e9c0c01d,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 321.3
+      value: 294
       objectReference: {fileID: 0}
     - target: {fileID: 9057933415413222868, guid: 714569ed42579e640bc58d53e9c0c01d,
         type: 3}
