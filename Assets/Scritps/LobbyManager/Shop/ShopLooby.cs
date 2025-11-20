@@ -62,7 +62,10 @@ public class ShopLooby : MonoBehaviour
     public Image quantityItemIcon;
     public TextMeshProUGUI quantityItemName;
     public TextMeshProUGUI quantityItemPrice;
-    public Slider quantitySlider;
+    public Button decreaseOneButton;      // ปุ่ม -1
+    public Button decreaseTenButton;      // ปุ่ม -10
+    public Button increaseOneButton;      // ปุ่ม +1
+    public Button increaseTenButton;      // ปุ่ม +10
     public TextMeshProUGUI quantityValueText;
     public TextMeshProUGUI totalPriceText;
     public Button confirmPurchaseButton;
@@ -348,8 +351,15 @@ public class ShopLooby : MonoBehaviour
             confirmPurchaseButton.onClick.AddListener(OnConfirmPurchaseClicked);
         if (cancelPurchaseButton != null)
             cancelPurchaseButton.onClick.AddListener(OnCancelPurchaseClicked);
-        if (quantitySlider != null)
-            quantitySlider.onValueChanged.AddListener(OnQuantitySliderChanged);
+        if (decreaseOneButton != null)
+            decreaseOneButton.onClick.AddListener(() => ChangeQuantity(-1));
+        if (decreaseTenButton != null)
+            decreaseTenButton.onClick.AddListener(() => ChangeQuantity(-10));
+        if (increaseOneButton != null)
+            increaseOneButton.onClick.AddListener(() => ChangeQuantity(1));
+        if (increaseTenButton != null)
+            increaseTenButton.onClick.AddListener(() => ChangeQuantity(10));
+
 
         if (sellButton != null)
             sellButton.onClick.AddListener(OnSellButtonClicked);
@@ -407,11 +417,17 @@ public class ShopLooby : MonoBehaviour
             confirmPurchaseButton.onClick.RemoveAllListeners();
         if (cancelPurchaseButton != null)
             cancelPurchaseButton.onClick.RemoveAllListeners();
-        if (quantitySlider != null)
-            quantitySlider.onValueChanged.RemoveAllListeners();
+        if (decreaseOneButton != null)
+            decreaseOneButton.onClick.RemoveAllListeners();
+        if (decreaseTenButton != null)
+            decreaseTenButton.onClick.RemoveAllListeners();
+        if (increaseOneButton != null)
+            increaseOneButton.onClick.RemoveAllListeners();
+        if (increaseTenButton != null)
+            increaseTenButton.onClick.RemoveAllListeners();
 
 
-      
+
 
         if (sellButton != null)
             sellButton.onClick.RemoveAllListeners();
@@ -420,7 +436,45 @@ public class ShopLooby : MonoBehaviour
         if (sellAllButton != null)
             sellAllButton.onClick.RemoveAllListeners();
     }
+    // ✅ 5. เพิ่ม method อัพเดทสถานะปุ่ม
+    private void UpdateQuantityButtons()
+    {
+        // อัพเดทปุ่มลด
+        if (decreaseOneButton != null)
+            decreaseOneButton.interactable = selectedQuantity > 1;
 
+        if (decreaseTenButton != null)
+            decreaseTenButton.interactable = selectedQuantity > 10;
+
+        // อัพเดทปุ่มเพิ่ม
+        if (increaseOneButton != null)
+            increaseOneButton.interactable = selectedQuantity < maxAffordableQuantity;
+
+        if (increaseTenButton != null)
+            increaseTenButton.interactable = (selectedQuantity + 10) <= maxAffordableQuantity;
+    }
+    // ✅ 4. เพิ่ม method ใหม่สำหรับเปลี่ยนจำนวน
+    private void ChangeQuantity(int change)
+    {
+        int newQuantity = selectedQuantity + change;
+
+        // ✅ จำกัดไม่ให้ต่ำกว่า 1 และสูงกว่า max
+        newQuantity = Mathf.Clamp(newQuantity, 1, maxAffordableQuantity);
+
+        if (newQuantity != selectedQuantity)
+        {
+            selectedQuantity = newQuantity;
+
+            if (selectedSellItem != null)
+                UpdateSellQuantityDisplay();
+            else
+                UpdateQuantityDisplay();
+
+            UpdateQuantityButtons();
+
+            Debug.Log($"[ShopLooby] Quantity changed to: {selectedQuantity}");
+        }
+    }
     private void SetupShopData()
     {
         // ✅ Auto setup layout สำหรับทั้งสอง container
@@ -1091,6 +1145,7 @@ public class ShopLooby : MonoBehaviour
         // Setup UI สำหรับ sell mode
         SetupSellQuantityPanelUI();
     }
+    // ✅ 8. แก้ไข SetupSellQuantityPanelUI
     private void SetupSellQuantityPanelUI()
     {
         if (selectedSellItem?.itemData == null) return;
@@ -1110,12 +1165,15 @@ public class ShopLooby : MonoBehaviour
         if (quantityItemPrice != null)
             quantityItemPrice.text = $"💰 {itemData.SellPrice:N0} Gold each";
 
+        // ❌ ลบการตั้งค่า Slider
+        /*
         if (quantitySlider != null)
         {
             quantitySlider.minValue = 1;
             quantitySlider.maxValue = maxSellQuantity;
             quantitySlider.value = 1;
         }
+        */
 
         if (maxAffordableText != null)
         {
@@ -1138,6 +1196,7 @@ public class ShopLooby : MonoBehaviour
         selectedQuantity = 1;
         maxAffordableQuantity = maxSellQuantity;
         UpdateSellQuantityDisplay();
+        UpdateQuantityButtons(); // ✅ เพิ่มบรรทัดนี้
     }
     private void UpdateSellQuantityDisplay()
     {
@@ -1510,6 +1569,7 @@ public class ShopLooby : MonoBehaviour
         return totalCanAdd;
     }
 
+    // ✅ 7. แก้ไข SetupQuantityPanelUI
     private void SetupQuantityPanelUI()
     {
         if (selectedShopItem?.itemData == null)
@@ -1521,7 +1581,7 @@ public class ShopLooby : MonoBehaviour
         ItemData itemData = selectedShopItem.itemData;
         Debug.Log($"[ShopLooby] 🎨 Setting up quantity panel UI for: {itemData.ItemName}");
 
-        // แสดงรูปและชื่อไอเทม (เหมือนเดิม)
+        // แสดงรูปและชื่อไอเทม
         if (quantityItemIcon != null)
         {
             quantityItemIcon.sprite = itemData.ItemIcon;
@@ -1533,15 +1593,15 @@ public class ShopLooby : MonoBehaviour
             quantityItemName.color = itemData.GetTierColor();
         }
 
-        // ✅ แสดงราคาพร้อมสกุลเงิน
+        // แสดงราคาพร้อมสกุลเงิน
         if (quantityItemPrice != null)
         {
             string currencyText = selectedShopItem.currencyType == CurrencyType.Gold ? "Gold" : "Gems";
             quantityItemPrice.text = $"{selectedShopItem.price:N0} {currencyText} each";
-            Debug.Log($"[ShopLooby] ✅ Set quantity item price: {selectedShopItem.price} {currencyText}");
         }
 
-        // ตั้งค่า Slider (เหมือนเดิม)
+        // ❌ ลบการตั้งค่า Slider
+        /*
         if (quantitySlider != null)
         {
             quantitySlider.minValue = 1;
@@ -1549,8 +1609,9 @@ public class ShopLooby : MonoBehaviour
             quantitySlider.wholeNumbers = true;
             quantitySlider.value = 1;
         }
+        */
 
-        // ✅ แสดงข้อมูลเพิ่มเติมตามสกุลเงิน
+        // แสดงข้อมูลเพิ่มเติม
         if (maxAffordableText != null)
         {
             long playerCurrency = 0;
@@ -1568,23 +1629,15 @@ public class ShopLooby : MonoBehaviour
             }
 
             maxAffordableText.text = $"You have: {playerCurrency:N0} {currencyText}\nMax: {maxAffordableQuantity}";
-            Debug.Log($"[ShopLooby] ✅ Set max affordable text: {playerCurrency} {currencyText}, max {maxAffordableQuantity}");
         }
 
         selectedQuantity = 1;
         UpdateQuantityDisplay();
+        UpdateQuantityButtons(); // ✅ เพิ่มบรรทัดนี้
     }
 
 
-    private void OnQuantitySliderChanged(float value)
-    {
-        selectedQuantity = (int)value;
 
-        if (selectedSellItem != null)
-            UpdateSellQuantityDisplay();
-        else
-            UpdateQuantityDisplay();
-    }
 
     private void UpdateQuantityDisplay()
     {
@@ -1885,6 +1938,7 @@ public class ShopLooby : MonoBehaviour
         Debug.Log("[ShopLooby] ✅ All trade requirements removed successfully");
         return true;
     }
+    // ✅ 10. แก้ไข CleanupTradeMode
     private void CleanupTradeMode()
     {
         Debug.Log("[ShopLooby] 🧹 Cleaning up trade mode...");
@@ -1893,19 +1947,18 @@ public class ShopLooby : MonoBehaviour
         isTradeMode = false;
         selectedQuantity = 1;
 
-        // ปิด quantity panel
         if (purchaseQuantityPanel != null)
         {
             purchaseQuantityPanel.SetActive(false);
         }
 
-        // แสดง slider และ quantity text กลับมา
-        if (quantitySlider != null)
-            quantitySlider.gameObject.SetActive(true);
-        if (quantityValueText != null)
-            quantityValueText.gameObject.SetActive(true);
-        if (quantityItemIcon != null)
-            quantityItemIcon.gameObject.SetActive(true);
+        // ✅ แสดงปุ่มกลับมา
+        if (decreaseOneButton != null) decreaseOneButton.gameObject.SetActive(true);
+        if (decreaseTenButton != null) decreaseTenButton.gameObject.SetActive(true);
+        if (increaseOneButton != null) increaseOneButton.gameObject.SetActive(true);
+        if (increaseTenButton != null) increaseTenButton.gameObject.SetActive(true);
+        if (quantityValueText != null) quantityValueText.gameObject.SetActive(true);
+        if (quantityItemIcon != null) quantityItemIcon.gameObject.SetActive(true);
     }
     private void ProcessSellAllTransaction()
     {
@@ -2064,8 +2117,7 @@ public class ShopLooby : MonoBehaviour
         }
 
         // แสดง slider และ quantity text กลับมา
-        if (quantitySlider != null)
-            quantitySlider.gameObject.SetActive(true);
+      
         if (quantityValueText != null)
             quantityValueText.gameObject.SetActive(true);
     }
@@ -2403,10 +2455,7 @@ public class ShopLooby : MonoBehaviour
         }
 
         // ซ่อน slider (ไม่ต้องเลือกจำนวน)
-        if (quantitySlider != null)
-        {
-            quantitySlider.gameObject.SetActive(false);
-        }
+      
 
         // ซ่อน quantity text
         if (quantityValueText != null)
@@ -2564,16 +2613,15 @@ public class ShopLooby : MonoBehaviour
         selectedSellSlotIndex = -1;
         selectedSellAllItems.Clear();
         isSellAllMode = false;
-
-        // ✅ เพิ่ม cleanup สำหรับ trade mode
         selectedTradeItem = null;
         isTradeMode = false;
 
-        // แสดง slider และ quantity text กลับมา
-        if (quantitySlider != null)
-            quantitySlider.gameObject.SetActive(true);
-        if (quantityValueText != null)
-            quantityValueText.gameObject.SetActive(true);
+        // ✅ แสดงปุ่มและ UI กลับมา
+        if (decreaseOneButton != null) decreaseOneButton.gameObject.SetActive(true);
+        if (decreaseTenButton != null) decreaseTenButton.gameObject.SetActive(true);
+        if (increaseOneButton != null) increaseOneButton.gameObject.SetActive(true);
+        if (increaseTenButton != null) increaseTenButton.gameObject.SetActive(true);
+        if (quantityValueText != null) quantityValueText.gameObject.SetActive(true);
     }
     private void UpdateSellAllButton()
     {
@@ -2923,13 +2971,13 @@ public class ShopLooby : MonoBehaviour
         SetupTradeRequirementsUI();
     }
 
+    // ✅ 9. แก้ไข SetupTradeRequirementsUI (ซ่อนปุ่มเมื่ออยู่ใน trade mode)
     private void SetupTradeRequirementsUI()
     {
         if (selectedTradeItem?.resultItem == null) return;
 
         ItemData resultItem = selectedTradeItem.resultItem;
 
-        // แสดงไอเทมที่จะได้
         if (quantityItemIcon != null)
         {
             quantityItemIcon.sprite = resultItem.ItemIcon;
@@ -2942,48 +2990,39 @@ public class ShopLooby : MonoBehaviour
             quantityItemName.color = resultItem.GetTierColor();
         }
 
-        // ✅ แสดงข้อความ requirements ที่ถูกต้อง
         if (quantityItemPrice != null)
         {
             quantityItemPrice.gameObject.SetActive(false);
         }
 
-        // ซ่อน slider
-        if (quantitySlider != null)
-        {
-            quantitySlider.gameObject.SetActive(false);
-        }
+        // ✅ ซ่อนปุ่มเพิ่ม/ลด (trade ไม่ต้องเลือกจำนวน)
+        if (decreaseOneButton != null) decreaseOneButton.gameObject.SetActive(false);
+        if (decreaseTenButton != null) decreaseTenButton.gameObject.SetActive(false);
+        if (increaseOneButton != null) increaseOneButton.gameObject.SetActive(false);
+        if (increaseTenButton != null) increaseTenButton.gameObject.SetActive(false);
 
         if (quantityValueText != null)
         {
             quantityValueText.gameObject.SetActive(false);
         }
 
-        // ✅ แสดงรายการ requirements ที่แก้ไขแล้ว
         if (maxAffordableText != null)
         {
             string requirementsText = BuildRequirementsDisplayText();
             maxAffordableText.text = requirementsText;
         }
 
-        // ✅ แสดงสรุป requirements
         if (totalPriceText != null)
         {
             totalPriceText.gameObject.SetActive(false);
-
-
         }
 
-        // ตั้งค่าปุ่ม
         if (confirmPurchaseButton != null)
         {
             bool canTrade = CheckTradeRequirements(selectedTradeItem);
 
             TextMeshProUGUI buttonText = confirmPurchaseButton.GetComponentInChildren<TextMeshProUGUI>();
-            if (buttonText != null)
-            {
-                buttonText.text = canTrade ? "TRADE" : "No ITEMS";
-            }
+           
 
             confirmPurchaseButton.interactable = canTrade;
 
