@@ -31,7 +31,7 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 0
+    requiredGold: 1800
     requiredItems: []
     tradeName: 
     tradeDescription: 
@@ -42,15 +42,15 @@ MonoBehaviour:
   itemType: 2
   tier: 4
   description: 
-  sellPrice: 0
-  buyPrice: 0
+  sellPrice: 1800
+  buyPrice: 2200
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
   maxStackSize: 1
   isStackable: 0
-  belongsToSet: {fileID: 0}
-  isSetItem: 0
+  belongsToSet: {fileID: 11400000, guid: 55766afb319efbc4a9b0da975a6c509f, type: 2}
+  isSetItem: 1
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0

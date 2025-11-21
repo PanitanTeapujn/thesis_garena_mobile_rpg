@@ -31,7 +31,7 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 0
+    requiredGold: 200
     requiredItems: []
     tradeName: 
     tradeDescription: 
@@ -42,8 +42,8 @@ MonoBehaviour:
   itemType: 2
   tier: 2
   description: 
-  sellPrice: 0
-  buyPrice: 0
+  sellPrice: 200
+  buyPrice: 250
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0

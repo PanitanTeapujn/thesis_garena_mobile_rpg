@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: AverageShoe
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 0
+    canBeEnchanted: 1
     maxEnchantLevel: 15
     baseGoldCost: 1000
     successRates:
@@ -30,8 +30,8 @@ MonoBehaviour:
     maxDegradeLevel: 2
     repairCostMultiplier: 0.7
   tradeRecipe:
-    isTradeableItem: 0
-    requiredGold: 0
+    isTradeableItem: 1
+    requiredGold: 200
     requiredItems: []
     tradeName: 
     tradeDescription: 
@@ -42,8 +42,8 @@ MonoBehaviour:
   itemType: 4
   tier: 1
   description: 
-  sellPrice: 0
-  buyPrice: 0
+  sellPrice: 200
+  buyPrice: 250
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
