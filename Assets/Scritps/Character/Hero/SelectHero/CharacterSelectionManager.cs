@@ -57,19 +57,42 @@ public class CharacterSelectionManager : MonoBehaviour
     public Image skill3Icon;
     public Image skill4Icon;
 
-    [Header("📖 Skill Descriptions (ใส่ใน Inspector)")]
-    public string passiveDescription = "Passive skill description here...";
-    public string skill1Description = "Skill 1 description here...";
-    public string skill2Description = "Skill 2 description here...";
-    public string skill3Description = "Skill 3 description here...";
-    public string skill4Description = "Skill 4 description here...";
+    [Header("📖 Skill Descriptions - Blood Knight")]
+    public string bloodKnightPassive = "Blood Siphon: Heals for a percentage of damage dealt.";
+    public string bloodKnightSkill1 = "Blood Strike: Powerful melee attack that deals bonus damage.";
+    public string bloodKnightSkill2 = "Life Drain: Drains life from enemies in an area.";
+    public string bloodKnightSkill3 = "Crimson Shield: Creates a blood shield that absorbs damage.";
+    public string bloodKnightSkill4 = "Blood Rage: Increases attack speed and damage temporarily.";
 
-    [Header("📜 Display Panels")]
-    public GameObject storyPanel;              // Panel แสดงเรื่องราว (ใช้ characterDescriptionText)
-    public GameObject skillDescriptionPanel;   // Panel แสดงรายละเอียด skill
-    public TextMeshProUGUI skillDescriptionText; // Text ใน Skill Description Panel
+    [Header("📖 Skill Descriptions - Archer")]
+    public string archerPassive = "Eagle Eye: Increased critical chance and range.";
+    public string archerSkill1 = "Multi Shot: Fires multiple arrows at once.";
+    public string archerSkill2 = "Poison Arrow: Shoots a poisoned arrow that deals damage over time.";
+    public string archerSkill3 = "Rain of Arrows: Rains arrows in a large area.";
+    public string archerSkill4 = "Snipe: Powerful long-range shot with high damage.";
 
-    // ========== 🆕 NEW: Detailed Stats Display ==========
+    [Header("📖 Skill Descriptions - Assassin")]
+    public string assassinPassive = "Shadow Step: Increased movement speed and evasion.";
+    public string assassinSkill1 = "Backstab: Critical damage from behind.";
+    public string assassinSkill2 = "Smoke Bomb: Creates smoke that blinds enemies.";
+    public string assassinSkill3 = "Poison Blade: Applies deadly poison to weapons.";
+    public string assassinSkill4 = "Shadow Clone: Creates clones to confuse enemies.";
+
+    [Header("📖 Skill Descriptions - Iron Juggernaut")]
+    public string ironJuggernautPassive = "Iron Skin: Increased armor and damage reduction.";
+    public string ironJuggernautSkill1 = "Shield Bash: Stuns enemies with shield.";
+    public string ironJuggernautSkill2 = "Ground Slam: Creates shockwave that damages nearby enemies.";
+    public string ironJuggernautSkill3 = "Fortify: Temporarily increases defense greatly.";
+    public string ironJuggernautSkill4 = "Charge: Rushes forward, knocking back enemies.";
+
+    [Header("📜 Info Display Panel")]
+    public GameObject infoPanel;               // Panel รวม (มี Stats + Story/Skill Description)
+    public GameObject statsSection;            // Section แสดง Stats (แสดงตลอด)
+    public GameObject storySection;            // Section แสดงเรื่องราว (toggle)
+    public GameObject skillDescriptionSection; // Section แสดงรายละเอียด skill (toggle)
+    public TextMeshProUGUI skillDescriptionText; // Text ใน Skill Description Section
+
+    // ========== 🆕 NEW: Detailed Stats Display (17 Fields) ==========
     [Header("📊 Character Stats Display")]
     public TextMeshProUGUI hpText;
     public TextMeshProUGUI manaText;
@@ -138,11 +161,11 @@ public class CharacterSelectionManager : MonoBehaviour
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
 
-        if (skillDescriptionPanel != null)
-            skillDescriptionPanel.SetActive(false);
+        if (storySection != null)
+            storySection.SetActive(false);
 
-        if (storyPanel != null)
-            storyPanel.SetActive(true); // แสดง story panel เป็น default
+        if (skillDescriptionSection != null)
+            skillDescriptionSection.SetActive(true);
     }
 
     // ========== 🆕 NEW: Setup Skill Buttons ==========
@@ -193,48 +216,92 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         currentSelectedSkillIndex = skillIndex;
 
-        // ซ่อน Story Panel
-        if (storyPanel != null)
-            storyPanel.SetActive(false);
+        // ✅ ซ่อน Story Panel
+        if (storySection != null)
+            storySection.SetActive(false);
 
-        // แสดง Skill Description Panel
-        if (skillDescriptionPanel != null)
-            skillDescriptionPanel.SetActive(true);
+        // ✅ แสดง Skill Description Panel
+        if (skillDescriptionSection != null)
+            skillDescriptionSection.SetActive(true);
 
-        // เปลี่ยน Text ตาม skill ที่เลือก
+        // ✅ ดึง description ตามตัวละครที่เลือก (ไม่เว้นบรรทัด)
         if (skillDescriptionText != null)
         {
-            string description = "";
-            string skillName = "";
+            string description = GetSkillDescriptionForCharacter(selectedCharacter, skillIndex);
+            string skillName = GetSkillName(skillIndex);
 
-            switch (skillIndex)
-            {
-                case 0:
-                    skillName = "Passive Skill";
-                    description = passiveDescription;
-                    break;
-                case 1:
-                    skillName = "Skill 1";
-                    description = skill1Description;
-                    break;
-                case 2:
-                    skillName = "Skill 2";
-                    description = skill2Description;
-                    break;
-                case 3:
-                    skillName = "Skill 3";
-                    description = skill3Description;
-                    break;
-                case 4:
-                    skillName = "Skill 4";
-                    description = skill4Description;
-                    break;
-            }
-
-            skillDescriptionText.text = $"<color=yellow><b>{skillName}</b></color>\n\n{description}";
+            // แสดงในบรรทัดเดียว ไม่เว้นบรรทัด
+            skillDescriptionText.text = $"<color=yellow><b>{skillName}:</b></color> {description}";
         }
 
-        Debug.Log($"[CharacterSelection] Showing skill {skillIndex} description");
+        Debug.Log($"[CharacterSelection] Showing {selectedCharacter} skill {skillIndex} description");
+    }
+
+    // ========== 🆕 NEW: Get Skill Description for Character ==========
+    private string GetSkillDescriptionForCharacter(PlayerSelectionData.CharacterType character, int skillIndex)
+    {
+        switch (character)
+        {
+            case PlayerSelectionData.CharacterType.BloodKnight:
+                switch (skillIndex)
+                {
+                    case 0: return bloodKnightPassive;
+                    case 1: return bloodKnightSkill1;
+                    case 2: return bloodKnightSkill2;
+                    case 3: return bloodKnightSkill3;
+                    case 4: return bloodKnightSkill4;
+                }
+                break;
+
+            case PlayerSelectionData.CharacterType.Archer:
+                switch (skillIndex)
+                {
+                    case 0: return archerPassive;
+                    case 1: return archerSkill1;
+                    case 2: return archerSkill2;
+                    case 3: return archerSkill3;
+                    case 4: return archerSkill4;
+                }
+                break;
+
+            case PlayerSelectionData.CharacterType.Assassin:
+                switch (skillIndex)
+                {
+                    case 0: return assassinPassive;
+                    case 1: return assassinSkill1;
+                    case 2: return assassinSkill2;
+                    case 3: return assassinSkill3;
+                    case 4: return assassinSkill4;
+                }
+                break;
+
+            case PlayerSelectionData.CharacterType.IronJuggernaut:
+                switch (skillIndex)
+                {
+                    case 0: return ironJuggernautPassive;
+                    case 1: return ironJuggernautSkill1;
+                    case 2: return ironJuggernautSkill2;
+                    case 3: return ironJuggernautSkill3;
+                    case 4: return ironJuggernautSkill4;
+                }
+                break;
+        }
+
+        return "Skill description not available.";
+    }
+
+    // ========== 🆕 NEW: Get Skill Name ==========
+    private string GetSkillName(int skillIndex)
+    {
+        switch (skillIndex)
+        {
+            case 0: return "Passive Skill";
+            case 1: return "Skill 1";
+            case 2: return "Skill 2";
+            case 3: return "Skill 3";
+            case 4: return "Skill 4";
+            default: return "Unknown Skill";
+        }
     }
 
     // ========== 🆕 NEW: Show Story Panel ==========
@@ -242,13 +309,13 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         currentSelectedSkillIndex = -1;
 
-        // แสดง Story Panel
-        if (storyPanel != null)
-            storyPanel.SetActive(true);
+        // แสดง Story Section
+        if (storySection != null)
+            storySection.SetActive(true);
 
-        // ซ่อน Skill Description Panel
-        if (skillDescriptionPanel != null)
-            skillDescriptionPanel.SetActive(false);
+        // ซ่อน Skill Description Section
+        if (skillDescriptionSection != null)
+            skillDescriptionSection.SetActive(false);
 
         Debug.Log("[CharacterSelection] Showing story panel");
     }
@@ -277,7 +344,7 @@ public class CharacterSelectionManager : MonoBehaviour
         Debug.Log($"✅ Skill icons loaded for {characterName}");
     }
 
-    // ========== 🆕 NEW: Update Character Stats (Detailed) ==========
+    // ========== 🆕 NEW: Update Character Stats (17 Fields) ==========
     private void UpdateCharacterStats(PlayerSelectionData.CharacterType character)
     {
         // หา CharacterStats ScriptableObject
@@ -312,7 +379,7 @@ public class CharacterSelectionManager : MonoBehaviour
         float healthRegen = progressData?.totalHealthRegen ?? stats.healthRegen;
         float manaRegen = progressData?.totalManaRegen ?? stats.manaRegen;
 
-        // แสดง Stats
+        // แสดง Stats แยก 17 fields
         if (hpText != null)
             hpText.text = $"HP: {maxHp}";
 
@@ -817,7 +884,7 @@ public class CharacterSelectionManager : MonoBehaviour
                 break;
         }
 
-        characterDescriptionText.text = baseDescription;
+      /*  characterDescriptionText.text = baseDescription;*/
 
         // Show character level
         ShowCharacterLevel(character.ToString());
