@@ -1744,7 +1744,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 16.281, y: 33.2907}
+  m_AnchoredPosition: {x: 16.281006, y: 33.29065}
   m_SizeDelta: {x: -588.353, y: -298.6083}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &38986224
@@ -19153,7 +19153,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.058283105, y: 0.055000003}
   m_AnchorMax: {x: 0.9394339, y: 0.9556502}
-  m_AnchoredPosition: {x: 2.6394653, y: 2.3301392}
+  m_AnchoredPosition: {x: 2.6394043, y: 2.3302002}
   m_SizeDelta: {x: -1.0438995, y: 2.6824036}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &625811051
@@ -29351,7 +29351,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 16.279053, y: 33.289}
+  m_AnchoredPosition: {x: 16.279053, y: 33.289062}
   m_SizeDelta: {x: -588.35, y: -298.61}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &947627146
@@ -41233,15 +41233,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 1
+  m_Sprite: {fileID: 313450512, guid: 237eb5330a721424f8c9cfb9b157ef5c, type: 3}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -44570,7 +44570,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 16.28003, y: 33.289}
+  m_AnchoredPosition: {x: 16.28003, y: 33.289062}
   m_SizeDelta: {x: -588.35, y: -298.61}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1369753111
@@ -71157,6 +71157,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6901210701368510256, guid: 7495f240c8428874fb12f78c2cc55305,
+        type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -6.881836
+      objectReference: {fileID: 0}
     - target: {fileID: 7891235788219291187, guid: 7495f240c8428874fb12f78c2cc55305,
         type: 3}
       propertyPath: m_Name
@@ -71166,6 +71171,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9096129467933015715, guid: 7495f240c8428874fb12f78c2cc55305,
+        type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -66.8999
+      objectReference: {fileID: 0}
+    - target: {fileID: 9096129467933015715, guid: 7495f240c8428874fb12f78c2cc55305,
+        type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -69.69995
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

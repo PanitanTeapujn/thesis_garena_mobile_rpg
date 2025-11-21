@@ -2232,7 +2232,7 @@ public class CharacterProgressData
         critDmgBonus = upgradedSTR * 0.2f;
 
         // DEX bonuses: ATTACK_SPEED +3%, EVASION +1%, CRIT_CHANCE +0.8% per point  
-        atkSpeedBonus = upgradedDEX * 0.2f;
+        atkSpeedBonus = upgradedDEX * 0.5f;
         evaBonus = upgradedDEX * 0.2f;
         critChanceBonus = upgradedDEX * 0.2f;
 

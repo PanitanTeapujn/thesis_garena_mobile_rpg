@@ -273,6 +273,81 @@ public class SkillIconManager : MonoBehaviour
         LoadAllSkillIcons();
     }
     #endregion
+    public void SetSkillIconsForSelection(
+    string characterName,
+    Image skill1Icon,
+    Image skill2Icon,
+    Image skill3Icon,
+    Image skill4Icon)
+    {
+        if (skill1Icon == null || skill2Icon == null || skill3Icon == null || skill4Icon == null)
+        {
+            Debug.LogError("[SkillIconManager] One or more skill icon Images are null!");
+            return;
+        }
+
+        Debug.Log($"[SkillIconManager] Setting skill icons for Character Selection: {characterName}");
+
+        // ดึง skill icons จาก cache
+        HeroSkillIcons icons = GetHeroSkillIcons(characterName);
+
+        if (icons == null)
+        {
+            Debug.LogWarning($"[SkillIconManager] Could not load skill icons for {characterName}");
+            return;
+        }
+
+        // Set skill icons
+        if (icons.skill1Icon != null)
+        {
+            skill1Icon.sprite = icons.skill1Icon;
+            skill1Icon.enabled = true;
+            skill1Icon.gameObject.SetActive(true);
+            Debug.Log($"✅ Set Skill 1 icon for {characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ Skill 1 icon not found for {characterName}");
+        }
+
+        if (icons.skill2Icon != null)
+        {
+            skill2Icon.sprite = icons.skill2Icon;
+            skill2Icon.enabled = true;
+            skill2Icon.gameObject.SetActive(true);
+            Debug.Log($"✅ Set Skill 2 icon for {characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ Skill 2 icon not found for {characterName}");
+        }
+
+        if (icons.skill3Icon != null)
+        {
+            skill3Icon.sprite = icons.skill3Icon;
+            skill3Icon.enabled = true;
+            skill3Icon.gameObject.SetActive(true);
+            Debug.Log($"✅ Set Skill 3 icon for {characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ Skill 3 icon not found for {characterName}");
+        }
+
+        if (icons.skill4Icon != null)
+        {
+            skill4Icon.sprite = icons.skill4Icon;
+            skill4Icon.enabled = true;
+            skill4Icon.gameObject.SetActive(true);
+            Debug.Log($"✅ Set Skill 4 icon for {characterName}");
+        }
+        else
+        {
+            Debug.LogWarning($"⚠️ Skill 4 icon not found for {characterName}");
+        }
+
+        Debug.Log($"[SkillIconManager] ✅ Character Selection icons set for {characterName}");
+    }
 
     #region Debug Methods
     [ContextMenu("Show Statistics")]

@@ -32,26 +32,74 @@ public class CharacterSelectionManager : MonoBehaviour
     public TextMeshProUGUI errorMessageText;
 
     [Header("Character Info")]
-    public TextMeshProUGUI characterDescriptionText;
+    public TextMeshProUGUI characterDescriptionText;  // ใช้สำหรับ Story
     public TextMeshProUGUI characterNameText;
 
     [Header("Loading")]
     public GameObject loadingPanel;
 
-    private GameObject currentPreview;
-    private PlayerSelectionData.CharacterType selectedCharacter;
-
-    private FirebaseAuth auth;
-    private DatabaseReference databaseReference;
-
     [Header("Navigation")]
     public Button backToLobbyButton;
     public TextMeshProUGUI characterLevelsText;
+
+    // ========== 🆕 NEW: Skill System ==========
+    [Header("🎯 Skill Icon Buttons")]
+    public Button passiveSkillButton;
+    public Button skill1Button;
+    public Button skill2Button;
+    public Button skill3Button;
+    public Button skill4Button;
+
+    [Header("🎨 Skill Icon Images (ลากจาก Button > Image)")]
+    public Image passiveSkillIcon;
+    public Image skill1Icon;
+    public Image skill2Icon;
+    public Image skill3Icon;
+    public Image skill4Icon;
+
+    [Header("📖 Skill Descriptions (ใส่ใน Inspector)")]
+    public string passiveDescription = "Passive skill description here...";
+    public string skill1Description = "Skill 1 description here...";
+    public string skill2Description = "Skill 2 description here...";
+    public string skill3Description = "Skill 3 description here...";
+    public string skill4Description = "Skill 4 description here...";
+
+    [Header("📜 Display Panels")]
+    public GameObject storyPanel;              // Panel แสดงเรื่องราว (ใช้ characterDescriptionText)
+    public GameObject skillDescriptionPanel;   // Panel แสดงรายละเอียด skill
+    public TextMeshProUGUI skillDescriptionText; // Text ใน Skill Description Panel
+
+    // ========== 🆕 NEW: Detailed Stats Display ==========
+    [Header("📊 Character Stats Display")]
+    public TextMeshProUGUI hpText;
+    public TextMeshProUGUI manaText;
+    public TextMeshProUGUI attackDamageText;
+    public TextMeshProUGUI magicDamageText;
+    public TextMeshProUGUI armorText;
+    public TextMeshProUGUI magicArmorText;
+    public TextMeshProUGUI moveSpeedText;
+    public TextMeshProUGUI criticalChanceText;
+    public TextMeshProUGUI criticalDamageText;
+    public TextMeshProUGUI hitRateText;
+    public TextMeshProUGUI evasionRateText;
+    public TextMeshProUGUI attackSpeedText;
+    public TextMeshProUGUI reductionCoolDownText;
+    public TextMeshProUGUI lifeStealText;
+    public TextMeshProUGUI ampDamageText;
+    public TextMeshProUGUI healthRegenText;
+    public TextMeshProUGUI manaRegenText;
+
+    // ========== Private Variables ==========
+    private GameObject currentPreview;
+    private PlayerSelectionData.CharacterType selectedCharacter;
+    private FirebaseAuth auth;
+    private DatabaseReference databaseReference;
     private bool comingFromLobby = false;
+    private int currentSelectedSkillIndex = -1; // -1 = ไม่มีการเลือก, 0 = passive, 1-4 = skills
 
     private void Start()
     {
-        // เชื่อมปุ่มกับฟังก์ชันเลือกตัวละคร
+        // Setup character selection buttons
         bloodKnightButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.BloodKnight));
         archerButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Archer));
         assassinButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.Assassin));
@@ -59,33 +107,264 @@ public class CharacterSelectionManager : MonoBehaviour
 
         confirmButton.onClick.AddListener(() => StartCoroutine(ConfirmSelectionCoroutine()));
 
-        // ✅ เพิ่มปุ่ม Back to Lobby
+        // ✅ Setup skill buttons
+        SetupSkillButtons();
+
+        // ✅ Setup back to lobby button
         if (backToLobbyButton != null)
             backToLobbyButton.onClick.AddListener(BackToLobby);
 
         // ✅ Check if coming from Lobby
         comingFromLobby = (PlayerPrefs.GetString("LastScene", "") == "Lobby");
 
-        // ✅ แสดงปุ่ม Back to Lobby ถ้ามาจาก Lobby
+        // ✅ Show back button if from lobby
         if (backToLobbyButton != null)
             backToLobbyButton.gameObject.SetActive(comingFromLobby);
 
         auth = FirebaseAuth.DefaultInstance;
         databaseReference = FirebaseDatabase.DefaultInstance.RootReference;
 
-        // โหลดชื่อผู้เล่นจาก PlayerPrefs (ถ้ามี)
+        // Load saved player name
         string savedPlayerName = PlayerPrefs.GetString("PlayerName", "");
         if (!string.IsNullOrEmpty(savedPlayerName) && playerNameInput != null)
         {
             playerNameInput.text = savedPlayerName;
         }
 
-        // ✅ รอให้โหลดข้อมูลก่อนแล้วค่อยเลือกตัวละคร
+        // ✅ Initialize character selection
         StartCoroutine(InitializeCharacterSelection());
 
-        // ซ่อน loading panel
+        // ✅ Hide panels initially
         if (loadingPanel != null)
             loadingPanel.SetActive(false);
+
+        if (skillDescriptionPanel != null)
+            skillDescriptionPanel.SetActive(false);
+
+        if (storyPanel != null)
+            storyPanel.SetActive(true); // แสดง story panel เป็น default
+    }
+
+    // ========== 🆕 NEW: Setup Skill Buttons ==========
+    private void SetupSkillButtons()
+    {
+        Debug.Log("=== Setting up Skill Buttons ===");
+
+        if (passiveSkillButton != null)
+        {
+            passiveSkillButton.onClick.RemoveAllListeners();
+            passiveSkillButton.onClick.AddListener(() => ShowSkillDescription(0));
+            Debug.Log("✅ Passive button setup complete");
+        }
+
+        if (skill1Button != null)
+        {
+            skill1Button.onClick.RemoveAllListeners();
+            skill1Button.onClick.AddListener(() => ShowSkillDescription(1));
+            Debug.Log("✅ Skill 1 button setup complete");
+        }
+
+        if (skill2Button != null)
+        {
+            skill2Button.onClick.RemoveAllListeners();
+            skill2Button.onClick.AddListener(() => ShowSkillDescription(2));
+            Debug.Log("✅ Skill 2 button setup complete");
+        }
+
+        if (skill3Button != null)
+        {
+            skill3Button.onClick.RemoveAllListeners();
+            skill3Button.onClick.AddListener(() => ShowSkillDescription(3));
+            Debug.Log("✅ Skill 3 button setup complete");
+        }
+
+        if (skill4Button != null)
+        {
+            skill4Button.onClick.RemoveAllListeners();
+            skill4Button.onClick.AddListener(() => ShowSkillDescription(4));
+            Debug.Log("✅ Skill 4 button setup complete");
+        }
+
+        Debug.Log("=== Skill Buttons Setup Complete ===");
+    }
+
+    // ========== 🆕 NEW: Show Skill Description ==========
+    private void ShowSkillDescription(int skillIndex)
+    {
+        currentSelectedSkillIndex = skillIndex;
+
+        // ซ่อน Story Panel
+        if (storyPanel != null)
+            storyPanel.SetActive(false);
+
+        // แสดง Skill Description Panel
+        if (skillDescriptionPanel != null)
+            skillDescriptionPanel.SetActive(true);
+
+        // เปลี่ยน Text ตาม skill ที่เลือก
+        if (skillDescriptionText != null)
+        {
+            string description = "";
+            string skillName = "";
+
+            switch (skillIndex)
+            {
+                case 0:
+                    skillName = "Passive Skill";
+                    description = passiveDescription;
+                    break;
+                case 1:
+                    skillName = "Skill 1";
+                    description = skill1Description;
+                    break;
+                case 2:
+                    skillName = "Skill 2";
+                    description = skill2Description;
+                    break;
+                case 3:
+                    skillName = "Skill 3";
+                    description = skill3Description;
+                    break;
+                case 4:
+                    skillName = "Skill 4";
+                    description = skill4Description;
+                    break;
+            }
+
+            skillDescriptionText.text = $"<color=yellow><b>{skillName}</b></color>\n\n{description}";
+        }
+
+        Debug.Log($"[CharacterSelection] Showing skill {skillIndex} description");
+    }
+
+    // ========== 🆕 NEW: Show Story Panel ==========
+    private void ShowStoryPanel()
+    {
+        currentSelectedSkillIndex = -1;
+
+        // แสดง Story Panel
+        if (storyPanel != null)
+            storyPanel.SetActive(true);
+
+        // ซ่อน Skill Description Panel
+        if (skillDescriptionPanel != null)
+            skillDescriptionPanel.SetActive(false);
+
+        Debug.Log("[CharacterSelection] Showing story panel");
+    }
+
+    // ========== 🆕 NEW: Load Skill Icons ==========
+    private void LoadSkillIconsForCharacter(string characterName)
+    {
+        if (SkillIconManager.Instance == null)
+        {
+            Debug.LogWarning("[CharacterSelection] SkillIconManager not found!");
+            return;
+        }
+
+        Debug.Log($"[CharacterSelection] 🎨 Loading skill icons for: {characterName}");
+
+        // โหลด skill icons สำหรับ skill 1-4
+        SkillIconManager.Instance.SetSkillIconsForSelection(
+            characterName,
+            skill1Icon,
+            skill2Icon,
+            skill3Icon,
+            skill4Icon
+        );
+
+        // Passive Icon ไม่ต้องโหลด - คุณจะใส่รูปเองใน Inspector
+        Debug.Log($"✅ Skill icons loaded for {characterName}");
+    }
+
+    // ========== 🆕 NEW: Update Character Stats (Detailed) ==========
+    private void UpdateCharacterStats(PlayerSelectionData.CharacterType character)
+    {
+        // หา CharacterStats ScriptableObject
+        CharacterStats stats = GetCharacterStatsForCharacter(character);
+
+        if (stats == null)
+        {
+            Debug.LogWarning($"[CharacterSelection] Could not load stats for {character}");
+            return;
+        }
+
+        // ดึงข้อมูล character progress ถ้ามี
+        CharacterProgressData progressData = PersistentPlayerData.Instance.GetCharacterData(character.ToString());
+
+        // ใช้ total stats ถ้ามี progress data, ไม่งั้นใช้ base stats
+        int currentLevel = progressData?.currentLevel ?? 1;
+        int maxHp = progressData?.totalMaxHp ?? stats.maxHp;
+        int maxMana = progressData?.totalMaxMana ?? stats.maxMana;
+        int attackDamage = progressData?.totalAttackDamage ?? stats.attackDamage;
+        int magicDamage = progressData?.totalMagicDamage ?? stats.magicDamage;
+        int armor = progressData?.totalArmor ?? stats.arrmor;
+        int magicArmor = progressData?.totalMagicArmor ?? stats.magicArmor;
+        float moveSpeed = progressData?.totalMoveSpeed ?? stats.moveSpeed;
+        float critChance = progressData?.totalCriticalChance ?? stats.criticalChance;
+        float critDamage = progressData?.totalCriticalDamageBonus ?? stats.criticalDamageBonus;
+        float hitRate = progressData?.totalHitRate ?? stats.hitRate;
+        float evasionRate = progressData?.totalEvasionRate ?? stats.evasionRate;
+        float attackSpeed = progressData?.totalAttackSpeed ?? stats.attackSpeed;
+        float cdr = progressData?.totalReductionCoolDown ?? stats.reductionCoolDown;
+        float lifeSteal = progressData?.totalLifeSteal ?? stats.lifeSteal;
+        float ampDamage = progressData?.totalAmpdamage ?? stats.ampdamage;
+        float healthRegen = progressData?.totalHealthRegen ?? stats.healthRegen;
+        float manaRegen = progressData?.totalManaRegen ?? stats.manaRegen;
+
+        // แสดง Stats
+        if (hpText != null)
+            hpText.text = $"HP: {maxHp}";
+
+        if (manaText != null)
+            manaText.text = $"Mana: {maxMana}";
+
+        if (attackDamageText != null)
+            attackDamageText.text = $"ATK: {attackDamage}";
+
+        if (magicDamageText != null)
+            magicDamageText.text = $"MAG: {magicDamage}";
+
+        if (armorText != null)
+            armorText.text = $"ARM: {armor}";
+
+        if (magicArmorText != null)
+            magicArmorText.text = $"MGA: {magicArmor}";
+
+        if (moveSpeedText != null)
+            moveSpeedText.text = $"SPD: {moveSpeed:F1}";
+
+        if (criticalChanceText != null)
+            criticalChanceText.text = $"CRIT: {critChance:F1}%";
+
+        if (criticalDamageText != null)
+            criticalDamageText.text = $"CRIT DMG: {critDamage * 100f:F1}%";
+
+        if (hitRateText != null)
+            hitRateText.text = $"HIT: {hitRate:F1}%";
+
+        if (evasionRateText != null)
+            evasionRateText.text = $"EVA: {evasionRate:F1}%";
+
+        if (attackSpeedText != null)
+            attackSpeedText.text = $"AS: x{attackSpeed:F2}";
+
+        if (reductionCoolDownText != null)
+            reductionCoolDownText.text = $"CDR: {cdr:F1}%";
+
+        if (lifeStealText != null)
+            lifeStealText.text = $"LST: {lifeSteal:F1}%";
+
+        if (ampDamageText != null)
+            ampDamageText.text = $"AMP: {ampDamage:F1}%";
+
+        if (healthRegenText != null)
+            healthRegenText.text = $"HP+: {healthRegen:F1}/s";
+
+        if (manaRegenText != null)
+            manaRegenText.text = $"MP+: {manaRegen:F1}/s";
+
+        Debug.Log($"[CharacterSelection] Updated stats for {character} (Level {currentLevel})");
     }
 
     private IEnumerator InitializeCharacterSelection()
@@ -164,10 +443,6 @@ public class CharacterSelectionManager : MonoBehaviour
 
         PlayerPrefs.SetString("PlayerName", playerName);
 
-        // ✅ บันทึกแค่ใน PersistentPlayerData อย่างเดียว - ลบ PlayerPrefs.SetString("SelectedCharacter")
-        // PlayerPrefs.SetString("SelectedCharacter", selectedCharacter.ToString()); // ❌ ลบบรรทัดนี้
-        // PlayerSelectionData.SaveCharacterSelection(selectedCharacter); // ❌ ลบบรรทัดนี้
-
         Debug.Log($"[CharacterSelection] ✅ Confirmed selection: {selectedCharacter}");
 
         if (comingFromLobby)
@@ -216,10 +491,10 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         Debug.Log($"[CharacterSelection] Creating new multi-character player: {playerName}");
 
-        // ✅ สร้าง MultiCharacterPlayerData ใหม่ (ไม่มี default character)
+        // ✅ สร้าง MultiCharacterPlayerData ใหม่
         MultiCharacterPlayerData newMultiCharacterData = new MultiCharacterPlayerData();
         newMultiCharacterData.playerName = playerName;
-        newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString(); // ✅ ใช้ที่เลือกจริง
+        newMultiCharacterData.currentActiveCharacter = selectedCharacter.ToString();
         newMultiCharacterData.registrationDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         newMultiCharacterData.lastLoginDate = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
@@ -274,7 +549,6 @@ public class CharacterSelectionManager : MonoBehaviour
         // Create new character data
         Debug.Log($"[CharacterSelection] Creating new character data for {characterType}");
 
-        // Get or create character data (this will create it with default stats)
         CharacterProgressData newCharacterData = PersistentPlayerData.Instance.multiCharacterData.GetOrCreateCharacterData(characterType);
 
         // Apply stats from ScriptableObject if available
@@ -298,7 +572,7 @@ public class CharacterSelectionManager : MonoBehaviour
         return PlayerSelectionData.CharacterType.Assassin;
     }
 
-    // ========== NEW: หา CharacterStats ScriptableObject ==========
+    // ========== หา CharacterStats ScriptableObject ==========
     private CharacterStats GetCharacterStatsForCharacter(PlayerSelectionData.CharacterType characterType)
     {
         string characterName = characterType.ToString();
@@ -340,6 +614,7 @@ public class CharacterSelectionManager : MonoBehaviour
         characterData.totalAttackDamage = stats.attackDamage;
         characterData.totalMagicDamage = stats.magicDamage;
         characterData.totalArmor = stats.arrmor;
+        characterData.totalMagicArmor = stats.magicArmor;
         characterData.totalCriticalChance = stats.criticalChance;
         characterData.totalCriticalDamageBonus = stats.criticalDamageBonus;
         characterData.totalMoveSpeed = stats.moveSpeed;
@@ -349,6 +624,10 @@ public class CharacterSelectionManager : MonoBehaviour
         characterData.totalEvasionRate = stats.evasionRate;
         characterData.totalAttackSpeed = stats.attackSpeed;
         characterData.totalReductionCoolDown = stats.reductionCoolDown;
+        characterData.totalLifeSteal = stats.lifeSteal;
+        characterData.totalAmpdamage = stats.ampdamage;
+        characterData.totalHealthRegen = stats.healthRegen;
+        characterData.totalManaRegen = stats.manaRegen;
     }
 
     // ========== UI Methods ==========
@@ -402,11 +681,17 @@ public class CharacterSelectionManager : MonoBehaviour
             DisableComponents(currentPreview);
         }
 
-        // อัพเดทข้อมูลตัวละคร
+        // ✅ อัพเดท Character Info (Story)
         UpdateCharacterInfo(character);
 
-        // Show character level if it exists
-        ShowCharacterLevel(character.ToString());
+        // ✅ อัพเดท Character Stats (Detailed)
+        UpdateCharacterStats(character);
+
+        // ✅ โหลด Skill Icons
+        LoadSkillIconsForCharacter(character.ToString());
+
+        // ✅ แสดง Story Panel (Default)
+        ShowStoryPanel();
 
         Debug.Log($"[CharacterSelection] Selected character: {character}");
     }
@@ -419,15 +704,6 @@ public class CharacterSelectionManager : MonoBehaviour
         {
             // Update character name text to include level
             characterNameText.text = $"{GetDisplayName(characterType)} (Level {characterData.currentLevel})";
-
-            // Optionally show more detailed stats in description
-            string originalDescription = characterDescriptionText.text;
-            characterDescriptionText.text = originalDescription +
-                $"\n\n<color=yellow>Current Stats:</color>" +
-                $"\n• Level: {characterData.currentLevel}" +
-                $"\n• HP: {characterData.totalMaxHp}" +
-                $"\n• Attack: {characterData.totalAttackDamage}" +
-                $"\n• Armor: {characterData.totalArmor}";
         }
         else
         {
@@ -522,7 +798,7 @@ public class CharacterSelectionManager : MonoBehaviour
 
     private void UpdateCharacterInfo(PlayerSelectionData.CharacterType character)
     {
-        // Clear description first
+        // Story/Lore text (ใช้เดิม)
         string baseDescription = "";
 
         switch (character)
@@ -537,16 +813,13 @@ public class CharacterSelectionManager : MonoBehaviour
                 baseDescription = "Shadow Prowler lost her family at a young age. She was adopted by the Shadow Claw Assassins Association and trained to become the Cat Clan's most skilled assassin. She specializes in poison and silent movement, earning the nickname Invisible Shadow.";
                 break;
             case PlayerSelectionData.CharacterType.IronJuggernaut:
-                baseDescription = "Legend has it that the Iron Rhino tribe was born from ancient warriors who inhaled fumes from forging mystical metal over many years, causing their bodies to develop steel-like properties. From a young age, Iron Rhinos are trained to master the use of their body weight and raw strength to their fullest advantage. Their primary weapons are a sword and shield forged from special volcanic steel, making them exceptionally durable. The rhino horn on their heads can also be used as a weapon in times of dire need.";
+                baseDescription = "Legend has it that the Iron Rhino tribe was born from ancient warriors who inhaled fumes from forging mystical metal over many years, causing their bodies to develop steel-like properties. From a young age, Iron Rhinos are trained to master the use of their body weight and raw strength to their fullest advantage.";
                 break;
         }
 
         characterDescriptionText.text = baseDescription;
 
-        // Show character level will add stats info
+        // Show character level
         ShowCharacterLevel(character.ToString());
     }
-
-    // ========== Context Menu สำหรับ Debug ==========
-   
 }
