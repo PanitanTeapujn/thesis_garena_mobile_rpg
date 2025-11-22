@@ -10,50 +10,38 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
-  m_Name: SlimeFire
+  m_Name: SlimeWater
   m_EditorClassIdentifier: 
   overallDropChance: 50
   maxItemDrops: 5
   dropChanceLevelBonus: 1.5
   itemDrops:
-  - itemData: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
-    dropChance: 50
+  - itemData: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+    dropChance: 70
     minQuantity: 0
     maxQuantity: 0
     minEnemyLevel: 0
     maxEnemyLevel: 1
-  - itemData: {fileID: 11400000, guid: 6a27372d5bdb9fc45ba9acf32c5a249f, type: 2}
-    dropChance: 30
+  - itemData: {fileID: 11400000, guid: d2a87d561f4a82e468216e1d7c069f40, type: 2}
+    dropChance: 40
     minQuantity: 0
     maxQuantity: 0
     minEnemyLevel: 0
     maxEnemyLevel: 1
-  - itemData: {fileID: 11400000, guid: 25cf8cb4476790349ba88bcba8ea3a0a, type: 2}
-    dropChance: 30
+  - itemData: {fileID: 11400000, guid: b16bfba132439ff438502250761237c0, type: 2}
+    dropChance: 40
     minQuantity: 0
     maxQuantity: 0
     minEnemyLevel: 0
     maxEnemyLevel: 1
-  - itemData: {fileID: 11400000, guid: 7a456bd4f810ac042b0907c2aad431e0, type: 2}
-    dropChance: 30
+  - itemData: {fileID: 11400000, guid: 9cc603481eac855478dfacca6deb59d5, type: 2}
+    dropChance: 40
     minQuantity: 0
     maxQuantity: 0
     minEnemyLevel: 0
     maxEnemyLevel: 1
-  - itemData: {fileID: 11400000, guid: 6b7ee32e50bbc2a4888f897819da97d5, type: 2}
-    dropChance: 30
-    minQuantity: 0
-    maxQuantity: 0
-    minEnemyLevel: 0
-    maxEnemyLevel: 1
-  - itemData: {fileID: 11400000, guid: 2a93bb913bac76045b0858fcb285b60c, type: 2}
-    dropChance: 30
-    minQuantity: 0
-    maxQuantity: 0
-    minEnemyLevel: 0
-    maxEnemyLevel: 1
-  - itemData: {fileID: 11400000, guid: 497384fcf2b1f6e4082e39e7e3bb5ca9, type: 2}
-    dropChance: 30
+  - itemData: {fileID: 11400000, guid: f84562644b0e2364595a6c9212e4ad1e, type: 2}
+    dropChance: 40
     minQuantity: 0
     maxQuantity: 0
     minEnemyLevel: 0
