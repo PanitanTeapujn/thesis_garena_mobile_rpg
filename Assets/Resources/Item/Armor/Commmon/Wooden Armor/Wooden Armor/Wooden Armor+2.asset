@@ -37,7 +37,7 @@ MonoBehaviour:
     tradeDescription: 
     tradeCategory: 0
   itemId: WoodenArmor+2
-  itemName: Wooden Armor+2
+  itemName: WoodenArmor+2
   itemIcon: {fileID: 1180791640, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 2
   tier: 1
