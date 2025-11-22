@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Iron sword+6
-  itemName: Iron sword+6
+  itemId: Ironsword+6
+  itemName: Ironsword+6
   itemIcon: {fileID: 1715130993, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 0
   tier: 3

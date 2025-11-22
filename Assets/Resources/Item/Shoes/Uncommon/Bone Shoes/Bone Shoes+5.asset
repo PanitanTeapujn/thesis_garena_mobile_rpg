@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Bone Shoes+5
-  itemName: Bone Shoes+5
+  itemId: BoneShoes+5
+  itemName: BoneShoes+5
   itemIcon: {fileID: -420219365, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 4
   tier: 2

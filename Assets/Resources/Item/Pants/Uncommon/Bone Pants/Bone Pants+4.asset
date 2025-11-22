@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Bone Pants+4
-  itemName: Bone Pants+4
+  itemId: BonePants+4
+  itemName: BonePants+4
   itemIcon: {fileID: -1654668580, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 3
   tier: 2

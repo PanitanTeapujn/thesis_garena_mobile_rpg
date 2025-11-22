@@ -42,8 +42,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Knight Helm+7
-  itemName: Knight Helm+7
+  itemId: KnightHelm+7
+  itemName: KnightHelm+7
   itemIcon: {fileID: 59571964, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 1
   tier: 4

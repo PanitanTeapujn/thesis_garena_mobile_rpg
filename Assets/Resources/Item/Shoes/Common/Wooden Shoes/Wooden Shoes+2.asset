@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Wooden Shoes+2
-  itemName: Wooden Shoes+2
+  itemId: WoodenShoes+2
+  itemName: WoodenShoes+2
   itemIcon: {fileID: -420219365, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 4
   tier: 1

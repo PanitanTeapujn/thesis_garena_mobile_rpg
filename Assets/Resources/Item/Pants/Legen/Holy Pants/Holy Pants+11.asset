@@ -45,8 +45,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Holy Pants+11
-  itemName: Holy Pants+11
+  itemId: HolyPants+11
+  itemName: HolyPants+11
   itemIcon: {fileID: -1654668580, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 3
   tier: 5

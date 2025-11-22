@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Iron Pants+3
-  itemName: Iron Pants+3
+  itemId: IronPants+3
+  itemName: IronPants+3
   itemIcon: {fileID: -1654668580, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 3
   tier: 3

@@ -45,8 +45,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Radiant Helm+5
-  itemName: Radiant Helm+5
+  itemId: RadiantHelm+5
+  itemName: RadiantHelm+5
   itemIcon: {fileID: 59571964, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 1
   tier: 5

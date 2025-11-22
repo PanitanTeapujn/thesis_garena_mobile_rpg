@@ -45,8 +45,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Holy sword+8
-  itemName: Holy sword+8
+  itemId: Holysword+8
+  itemName: Holysword+8
   itemIcon: {fileID: 1715130993, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 0
   tier: 5

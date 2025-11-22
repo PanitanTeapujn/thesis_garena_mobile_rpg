@@ -42,8 +42,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Knight sword+10
-  itemName: Knight sword+10
+  itemId: Knightsword+10
+  itemName: Knightsword+10
   itemIcon: {fileID: 1715130993, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 0
   tier: 4

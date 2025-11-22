@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Wooden Helm+3
-  itemName: Wooden Helm+3
+  itemId: WoodenHelm+3
+  itemName: WoodenHelm+3
   itemIcon: {fileID: 59571964, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 1
   tier: 1

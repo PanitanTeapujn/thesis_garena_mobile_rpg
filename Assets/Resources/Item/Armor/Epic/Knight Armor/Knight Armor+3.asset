@@ -42,8 +42,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Knight Armor+3
-  itemName: Knight Armor+3
+  itemId: KnightArmor+3
+  itemName: KnightArmor+3
   itemIcon: {fileID: 1180791640, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 2
   tier: 4

@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Skull Helm+4
-  itemName: Skull Helm+4
+  itemId: SkullHelm+4
+  itemName: SkullHelm+4
   itemIcon: {fileID: 59571964, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 1
   tier: 2
