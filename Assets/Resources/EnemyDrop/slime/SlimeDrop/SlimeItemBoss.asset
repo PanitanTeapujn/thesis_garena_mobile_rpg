@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SlimeItemBoss
   m_EditorClassIdentifier: 
   overallDropChance: 100
-  maxItemDrops: 1
+  maxItemDrops: 2
   dropChanceLevelBonus: 0
   itemDrops:
   - itemData: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
   m_Name: SlimeWater
   m_EditorClassIdentifier: 
-  overallDropChance: 50
+  overallDropChance: 100
   maxItemDrops: 5
   dropChanceLevelBonus: 1.5
   itemDrops:

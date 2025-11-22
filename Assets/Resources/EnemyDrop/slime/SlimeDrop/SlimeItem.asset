@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
   m_Name: SlimeItem
   m_EditorClassIdentifier: 
-  overallDropChance: 30
-  maxItemDrops: 1
+  overallDropChance: 100
+  maxItemDrops: 5
   dropChanceLevelBonus: 0
   itemDrops:
   - itemData: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
