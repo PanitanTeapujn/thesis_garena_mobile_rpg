@@ -22,5 +22,29 @@ MonoBehaviour:
     maxQuantity: 0
     minEnemyLevel: 0
     maxEnemyLevel: 0
+  - itemData: {fileID: 11400000, guid: d2a87d561f4a82e468216e1d7c069f40, type: 2}
+    dropChance: 40
+    minQuantity: 0
+    maxQuantity: 0
+    minEnemyLevel: 0
+    maxEnemyLevel: 0
+  - itemData: {fileID: 11400000, guid: b16bfba132439ff438502250761237c0, type: 2}
+    dropChance: 40
+    minQuantity: 0
+    maxQuantity: 0
+    minEnemyLevel: 0
+    maxEnemyLevel: 0
+  - itemData: {fileID: 11400000, guid: 9cc603481eac855478dfacca6deb59d5, type: 2}
+    dropChance: 40
+    minQuantity: 0
+    maxQuantity: 0
+    minEnemyLevel: 0
+    maxEnemyLevel: 0
+  - itemData: {fileID: 11400000, guid: f84562644b0e2364595a6c9212e4ad1e, type: 2}
+    dropChance: 40
+    minQuantity: 0
+    maxQuantity: 0
+    minEnemyLevel: 0
+    maxEnemyLevel: 0
   showDropLogs: 0
   guaranteedDropsForTesting: 1
