@@ -230,6 +230,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: cb7f0be2e02f747438544254ce299d73, type: 2}
   - {fileID: 11400000, guid: 5b7c3be2b4a230d4fac5754f5676664d, type: 2}
   - {fileID: 11400000, guid: 0d8bb0c68ba973b44b8193ab49c8e891, type: 2}
+  - {fileID: 11400000, guid: df835ffaedbe598438322666182f22c9, type: 2}
+  - {fileID: 11400000, guid: 18c2ce75107454b469675e58b70957c7, type: 2}
+  - {fileID: 11400000, guid: 3af488decf990874bb39b472b5eaa3c5, type: 2}
+  - {fileID: 11400000, guid: 9ec7f2b9c848d2a44aac5f7cd122985d, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:
