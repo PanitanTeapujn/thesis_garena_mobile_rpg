@@ -16,38 +16,38 @@ MonoBehaviour:
   maxItemDrops: 1
   dropChanceLevelBonus: 0
   itemDrops:
-  - itemData: {fileID: 11400000, guid: 6f9c83e51335ff44caecc6b1ce24f3d1, type: 2}
-    dropChance: 20
-    minQuantity: 1
-    maxQuantity: 1
-    minEnemyLevel: 1
-    maxEnemyLevel: 50
   - itemData: {fileID: 11400000, guid: 9ee6c2298681e0641abb233dd75dcbdd, type: 2}
-    dropChance: 50
+    dropChance: 80
     minQuantity: 1
     maxQuantity: 10
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 2bb99274bb5f1fc4db2fdd638ee5bbe2, type: 2}
-    dropChance: 20
-    minQuantity: 1
-    maxQuantity: 1
-    minEnemyLevel: 1
-    maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 6153e820073ae944bb7490ac31683e80, type: 2}
-    dropChance: 20
-    minQuantity: 1
-    maxQuantity: 1
-    minEnemyLevel: 1
-    maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+  - itemData: {fileID: 11400000, guid: 5a9c59f8102f67d4eabd6ceaeacfb0f9, type: 2}
     dropChance: 50
     minQuantity: 1
-    maxQuantity: 5
+    maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
-    dropChance: 1
+  - itemData: {fileID: 11400000, guid: 73e057548af930047862260ea287da2d, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 1f5e2427afb2cc9408d7f40feeb51529, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 7615870d6537f8b4b9f637ce4f7b26d1, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 7d62face7750fd44c83a351dfb73486b, type: 2}
+    dropChance: 50
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1

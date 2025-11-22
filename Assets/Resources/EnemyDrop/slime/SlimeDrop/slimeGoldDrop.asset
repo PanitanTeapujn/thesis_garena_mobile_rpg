@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 477e21091d74cdf439b1d59cedffb93c, type: 3}
   m_Name: slimeGoldDrop
   m_EditorClassIdentifier: 
-  minGoldDrop: 20
-  maxGoldDrop: 80
-  goldDropChance: 50
+  minGoldDrop: 50
+  maxGoldDrop: 50
+  goldDropChance: 100
   minGemsDrop: 0
   maxGemsDrop: 0
   gemsDropChance: 0
