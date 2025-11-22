@@ -142,7 +142,7 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 6.11, y: 13.04, z: 1.36}
+  m_Size: {x: 11.3, y: 13.04, z: 11.4}
   m_Center: {x: -0.2, y: 0.3, z: 0}
 --- !u!114 &1153582897584543797
 MonoBehaviour:
@@ -216,7 +216,7 @@ MonoBehaviour:
   _BleedNextTickTime: 0
   _IsFrozen: 0
   _FreezeDuration: 0
-  _OriginalMoveSpeed: 0
+  _OriginalMoveSpeedForFreeze: 0
   _IsStunned: 0
   _StunDuration: 0
   _IsArmorBreak: 0
@@ -225,6 +225,10 @@ MonoBehaviour:
   _IsBlind: 0
   _BlindDuration: 0
   _BlindAmount: 0
+  _IsSlowed: 0
+  _SlowDuration: 0
+  _SlowAmount: 0
+  _OriginalMoveSpeedForSlow: 0
   _IsWeak: 0
   _WeaknessDuration: 0
   _WeaknessAmount: 0

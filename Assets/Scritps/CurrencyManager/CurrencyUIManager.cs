@@ -2,6 +2,7 @@
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// จัดการ UI แสดงผลเงินและเพชร
@@ -10,8 +11,8 @@ using System.Collections;
 public class CurrencyUIManager : MonoBehaviour
 {
     [Header("Currency UI Elements")]
-    public TextMeshProUGUI goldText;
-    public TextMeshProUGUI gemsText;
+    public List<TextMeshProUGUI> goldTextList = new List<TextMeshProUGUI>();
+    public List<TextMeshProUGUI> gemsTextList = new List<TextMeshProUGUI>();
 
     [Header("Currency Icons")]
     public Image goldIcon;
@@ -53,12 +54,19 @@ public class CurrencyUIManager : MonoBehaviour
     private void InitializeUI()
     {
         // ตั้งค่าเริ่มต้น
-        if (goldText != null)
-            goldText.text = FormatCurrency(1000, CurrencyType.Gold);
+        foreach (var goldText in goldTextList)
+        {
+            if (goldText != null)
+                goldText.text = FormatCurrency(1000, CurrencyType.Gold);
+        }
 
-        if (gemsText != null)
-            gemsText.text = FormatCurrency(50, CurrencyType.Gems);
+        foreach (var gemsText in gemsTextList)
+        {
+            if (gemsText != null)
+                gemsText.text = FormatCurrency(50, CurrencyType.Gems);
+        }
     }
+
 
     private IEnumerator FindCurrencyManagerDelayed()
     {
@@ -115,66 +123,82 @@ public class CurrencyUIManager : MonoBehaviour
     #region UI Update Methods
     private void UpdateGoldDisplay(long newAmount)
     {
-        if (goldText == null) return;
+        if (goldTextList.Count == 0) return;
 
         if (enableCounterAnimation)
         {
-            // หยุด animation เก่า
             if (goldAnimationCoroutine != null)
             {
                 StopCoroutine(goldAnimationCoroutine);
             }
-
             goldAnimationCoroutine = StartCoroutine(AnimateGoldCounter(currentDisplayGold, newAmount));
         }
         else
         {
             currentDisplayGold = newAmount;
-            goldText.text = FormatCurrency(newAmount, CurrencyType.Gold);
+            string formattedText = FormatCurrency(newAmount, CurrencyType.Gold);
+            foreach (var goldText in goldTextList)
+            {
+                if (goldText != null)
+                    goldText.text = formattedText;
+            }
         }
     }
 
+
     private void UpdateGemsDisplay(int newAmount)
     {
-        if (gemsText == null) return;
+        if (gemsTextList.Count == 0) return;
 
         if (enableCounterAnimation)
         {
-            // หยุด animation เก่า
             if (gemsAnimationCoroutine != null)
             {
                 StopCoroutine(gemsAnimationCoroutine);
             }
-
             gemsAnimationCoroutine = StartCoroutine(AnimateGemsCounter(currentDisplayGems, newAmount));
         }
         else
         {
             currentDisplayGems = newAmount;
-            gemsText.text = FormatCurrency(newAmount, CurrencyType.Gems);
+            string formattedText = FormatCurrency(newAmount, CurrencyType.Gems);
+            foreach (var gemsText in gemsTextList)
+            {
+                if (gemsText != null)
+                    gemsText.text = formattedText;
+            }
         }
     }
 
     private IEnumerator AnimateGoldCounter(long startValue, long endValue)
     {
         float elapsed = 0f;
-        float duration = Mathf.Abs(endValue - startValue) / animationSpeed / 1000f; // ปรับ duration ตามจำนวน
-        duration = Mathf.Clamp(duration, 0.1f, 2f); // จำกัด duration
+        float duration = Mathf.Abs(endValue - startValue) / animationSpeed / 1000f;
+        duration = Mathf.Clamp(duration, 0.1f, 2f);
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / duration;
-
             long currentValue = (long)Mathf.Lerp(startValue, endValue, progress);
-            goldText.text = FormatCurrency(currentValue, CurrencyType.Gold);
+            string formattedText = FormatCurrency(currentValue, CurrencyType.Gold);
+
+            foreach (var goldText in goldTextList)
+            {
+                if (goldText != null)
+                    goldText.text = formattedText;
+            }
 
             yield return null;
         }
 
-        // ตั้งค่าสุดท้าย
         currentDisplayGold = endValue;
-        goldText.text = FormatCurrency(endValue, CurrencyType.Gold);
+        string finalText = FormatCurrency(endValue, CurrencyType.Gold);
+        foreach (var goldText in goldTextList)
+        {
+            if (goldText != null)
+                goldText.text = finalText;
+        }
         goldAnimationCoroutine = null;
     }
 
@@ -188,16 +212,25 @@ public class CurrencyUIManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float progress = elapsed / duration;
-
             int currentValue = (int)Mathf.Lerp(startValue, endValue, progress);
-            gemsText.text = FormatCurrency(currentValue, CurrencyType.Gems);
+            string formattedText = FormatCurrency(currentValue, CurrencyType.Gems);
+
+            foreach (var gemsText in gemsTextList)
+            {
+                if (gemsText != null)
+                    gemsText.text = formattedText;
+            }
 
             yield return null;
         }
 
-        // ตั้งค่าสุดท้าย
         currentDisplayGems = endValue;
-        gemsText.text = FormatCurrency(endValue, CurrencyType.Gems);
+        string finalText = FormatCurrency(endValue, CurrencyType.Gems);
+        foreach (var gemsText in gemsTextList)
+        {
+            if (gemsText != null)
+                gemsText.text = finalText;
+        }
         gemsAnimationCoroutine = null;
     }
     #endregion
@@ -212,9 +245,9 @@ public class CurrencyUIManager : MonoBehaviour
             switch (currencyType)
             {
                 case CurrencyType.Gold:
-                    return $"💰 {formattedAmount}";
+                    return $"{formattedAmount}";
                 case CurrencyType.Gems:
-                    return $"💎 {formattedAmount}";
+                    return $"{formattedAmount}";
                 default:
                     return formattedAmount;
             }
@@ -250,16 +283,60 @@ public class CurrencyUIManager : MonoBehaviour
             currentDisplayGold = currentGold;
             currentDisplayGems = currentGems;
 
-            if (goldText != null)
-                goldText.text = FormatCurrency(currentGold, CurrencyType.Gold);
+            string goldFormatted = FormatCurrency(currentGold, CurrencyType.Gold);
+            string gemsFormatted = FormatCurrency(currentGems, CurrencyType.Gems);
 
-            if (gemsText != null)
-                gemsText.text = FormatCurrency(currentGems, CurrencyType.Gems);
+            foreach (var goldText in goldTextList)
+            {
+                if (goldText != null)
+                    goldText.text = goldFormatted;
+            }
+
+            foreach (var gemsText in gemsTextList)
+            {
+                if (gemsText != null)
+                    gemsText.text = gemsFormatted;
+            }
 
             Debug.Log($"[CurrencyUIManager] Refreshed display - Gold: {currentGold}, Gems: {currentGems}");
         }
     }
+    /// <summary>
+    /// เพิ่ม Gold Text เข้า List
+    /// </summary>
+    public void AddGoldText(TextMeshProUGUI goldText)
+    {
+        if (goldText != null && !goldTextList.Contains(goldText))
+        {
+            goldTextList.Add(goldText);
+            goldText.text = FormatCurrency(currentDisplayGold, CurrencyType.Gold);
+        }
+    }
 
+    /// <summary>
+    /// เพิ่ม Gems Text เข้า List
+    /// </summary>
+    public void AddGemsText(TextMeshProUGUI gemsText)
+    {
+        if (gemsText != null && !gemsTextList.Contains(gemsText))
+        {
+            gemsTextList.Add(gemsText);
+            gemsText.text = FormatCurrency(currentDisplayGems, CurrencyType.Gems);
+        }
+    }
+
+    /// <summary>
+    /// ลบ Text ออกจาก List
+    /// </summary>
+    public void RemoveGoldText(TextMeshProUGUI goldText)
+    {
+        goldTextList.Remove(goldText);
+    }
+
+    public void RemoveGemsText(TextMeshProUGUI gemsText)
+    {
+        gemsTextList.Remove(gemsText);
+    }
     /// <summary>
     /// ตั้งค่า CurrencyManager manually
     /// </summary>
