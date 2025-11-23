@@ -91,7 +91,7 @@ public class Berserker : Hero
     /// เพิ่ม Rage Points
     /// </summary>
     /// 
-   
+
     private void GainRagePoints(int amount)
     {
         if (IsInBerserkMode) return; // ไม่เพิ่มระหว่าง Berserk Mode
@@ -190,14 +190,17 @@ public class Berserker : Hero
         RPC_ShowBerserkBurst();
         RPC_ShowBerserkAura(true);
         ResetAllSkillCooldowns();
-        // เปลี่ยน skill icons
+
+        // ✅ เปลี่ยน skill icons ทั้ง 4 ท่า
         if (HasInputAuthority)
         {
             CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
             if (uiManager != null && SkillIconManager.Instance != null)
             {
-                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Berserker", 1, true);
-                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Berserker", 2, true);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 1, true);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 2, true);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 3, true);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 4, true);
             }
         }
     }
@@ -230,14 +233,16 @@ public class Berserker : Hero
         // Visual effect
         RPC_ShowBerserkAura(false);
 
-        // ✅ รีเซ็ต skill icons
+        // ✅ รีเซ็ต skill icons ทั้ง 4 ท่า
         if (HasInputAuthority)
         {
             CombatUIManager uiManager = FindObjectOfType<CombatUIManager>();
             if (uiManager != null && SkillIconManager.Instance != null)
             {
-                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Berserker", 1, false);
-                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "Berserker", 2, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 1, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 2, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 3, false);
+                SkillIconManager.Instance.SetSkillIconUpgraded(uiManager, "IronJuggernaut", 4, false);
             }
         }
     }
@@ -785,7 +790,7 @@ public class Berserker : Hero
 
     // ใน Berserker.cs - แทนที่ TryUseSkill2
 
-   
+
 
     public override void TryUseSkill2()
     {
@@ -1963,6 +1968,10 @@ public class Berserker : Hero
         Debug.Log($"🌙 [Shadow Mode] All skill cooldowns RESET! Ready for combo!");
 
         // แจ้ง UI
+
+
     }
+
+
     #endregion
 }

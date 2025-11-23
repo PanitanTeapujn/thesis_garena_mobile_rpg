@@ -225,7 +225,7 @@ public class LobbyManager : MonoBehaviour
         visiblePosition = menuPanel.anchoredPosition;
 
         // คำนวณตำแหน่งซ่อน (ซ่อนไปทางซ้าย)
-        hiddenPosition = new Vector2(-menuPanel.rect.width + 50f, visiblePosition.y);
+        hiddenPosition = new Vector2(menuPanel.rect.width + 50f, visiblePosition.y);
 
         // เริ่มต้นด้วยสถานะเปิด
         isMenuOpen = true;
