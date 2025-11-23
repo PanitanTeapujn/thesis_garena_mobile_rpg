@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a25c8f1f6946dcd4a8cb137e6addc359, type: 3}
+  m_Name: Little Witch
+  m_EditorClassIdentifier: 
+  setName: Little Witch
+  setDescription: 
+  setIcon: {fileID: 2122192887, guid: 38935e826d4a7164fb67a7d25647c5ce, type: 3}
+  setColor: {r: 0.2971698, g: 1, b: 0.94178545, a: 1}
+  setItems:
+  - {fileID: 11400000, guid: e23e6f1451814ca4e993a0a5ad253f4f, type: 2}
+  setBonuses:
+  - requiredPieces: 2
+    bonusEffects:
+    - bonusType: 1
+      bonusValue: 15
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 4
+    bonusEffects:
+    - bonusType: 3
+      bonusValue: 15
+      isPercentage: 1
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  - requiredPieces: 5
+    bonusEffects:
+    - bonusType: 15
+      bonusValue: 10
+      isPercentage: 0
+      bonusDescription: 
+      bonusColor: {r: 0, g: 0, b: 0, a: 0}
+    requirementDescription: 
+    requirementColor: {r: 0, g: 0, b: 0, a: 0}
+  setTier: 1
