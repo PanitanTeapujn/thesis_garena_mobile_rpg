@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: GrandSorceressSkirt+9
+  m_Name: ArcaneShoes+7
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
-    maxEnchantLevel: 9
-    baseGoldCost: 1000
+    maxEnchantLevel: 7
+    baseGoldCost: 500
     successRates:
       sameItemWithEnchant: 90
       sameItemNoEnchant: 75
@@ -33,26 +33,23 @@ MonoBehaviour:
     isTradeableItem: 1
     requiredGold: 500
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: 2fcc4935dd733a34bab9c4fb979fc0e1, type: 2}
-      requiredQuantity: 5
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 3cc4e58e2e3c128498a937088078b152, type: 2}
+    - requiredItem: {fileID: 11400000, guid: a32ee3f8b0d875542bc894d010fd8b02, type: 2}
       requiredQuantity: 2
       description: 
-    - requiredItem: {fileID: 11400000, guid: 69ff3ee2aac76aa4dad885081a94b0f8, type: 2}
-      requiredQuantity: 1
+    - requiredItem: {fileID: 11400000, guid: 3e292a736a8c87f4fb47ecee34d21f1e, type: 2}
+      requiredQuantity: 2
       description: 
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: GrandSorceressSkirt+9
-  itemName: GrandSorceressSkirt+9
-  itemIcon: {fileID: 21300000, guid: c3dbdee0ce8cf8948a9c29068bf93e51, type: 3}
-  itemType: 3
-  tier: 5
+  itemId: ArcaneShoes+7
+  itemName: ArcaneShoes+7
+  itemIcon: {fileID: 21300000, guid: dd4c354c8a170e94581c1c7bec1516f1, type: 3}
+  itemType: 4
+  tier: 4
   description: 
-  sellPrice: 10500
-  buyPrice: 11100
+  sellPrice: 4300
+  buyPrice: 4800
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -62,20 +59,20 @@ MonoBehaviour:
   isSetItem: 1
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: 0
-    armorBonus: 15
+    magicDamageBonus: 60
+    armorBonus: 0
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 20
+    magicArmorBonus: 14
     manaRegenBonus: 0
     healthRegenBonus: 0
     maxHpBonus: 0
-    maxManaBonus: 220
+    maxManaBonus: 0
     moveSpeedBonus: 0.5
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0
-    reductionCoolDownBonus: 7
+    reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
     lifeStealBonus: 0
