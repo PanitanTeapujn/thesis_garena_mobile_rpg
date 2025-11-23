@@ -38,6 +38,16 @@ public class LobbyManager : MonoBehaviour
     public Button characterSelectionButton;
     #endregion
 
+    [Header("Button Toggle System")]
+    public Button toggleMenuButton; // ปุ่มเปิด-ปิดเมนู (ปุ่มเดียว)
+    public RectTransform menuPanel; // Panel ที่เก็บปุ่มทั้งหมด
+    public CanvasGroup menuCanvasGroup; // 🆕 สำหรับ Fade Effect
+    public float slideSpeed = 0.3f; // ความเร็วในการ Slide
+    public float fadeSpeed = 0.3f; // 🆕 ความเร็วในการ Fade
+    private bool isMenuOpen = false; // สถานะเมนู
+    private Vector2 hiddenPosition; // ตำแหน่งซ่อน
+    private Vector2 visiblePosition; // ตำแหน่งแสดง
+
     #region Party Management UI - ส่วน UI สำหรับจัดการปาร์ตี้และการเข้าร่วมห้อง
     [Header("Party Management")]
     public GameObject partyOptionsPanel;
@@ -113,6 +123,7 @@ public class LobbyManager : MonoBehaviour
     {
         SetupEvents();
         SetupButtons();
+        InitializeMenuToggle(); // 🆕 เพิ่มบรรทัดนี้
 
         ShowBasicPlayerInfo();
         StartCoroutine(LoadAndShowPlayerStats());
@@ -176,7 +187,8 @@ public class LobbyManager : MonoBehaviour
             inventoryButton.onClick.AddListener(ShowInventory);
         if (characterSelectionButton != null)
             characterSelectionButton.onClick.AddListener(OpenCharacterSelection);
-
+        if (toggleMenuButton != null)
+            toggleMenuButton.onClick.AddListener(ToggleMenu);
         // Friends system buttons
         if (friendsButton != null)
             friendsButton.onClick.AddListener(ShowFriendsPanel);
@@ -191,7 +203,116 @@ public class LobbyManager : MonoBehaviour
             gachaButton.onClick.AddListener(ShowGachaPanel);
     }
     #endregion
+    void InitializeMenuToggle()
+    {
+        if (menuPanel == null)
+        {
+            Debug.LogError("❌ menuPanel is not assigned!");
+            return;
+        }
 
+        // 🆕 เพิ่ม CanvasGroup ถ้ายังไม่มี
+        if (menuCanvasGroup == null)
+        {
+            menuCanvasGroup = menuPanel.GetComponent<CanvasGroup>();
+            if (menuCanvasGroup == null)
+            {
+                menuCanvasGroup = menuPanel.gameObject.AddComponent<CanvasGroup>();
+            }
+        }
+
+        // บันทึกตำแหน่งเริ่มต้น
+        visiblePosition = menuPanel.anchoredPosition;
+
+        // คำนวณตำแหน่งซ่อน (ซ่อนไปทางซ้าย)
+        hiddenPosition = new Vector2(-menuPanel.rect.width + 50f, visiblePosition.y);
+
+        // เริ่มต้นด้วยสถานะเปิด
+        isMenuOpen = true;
+        menuPanel.anchoredPosition = visiblePosition;
+        menuCanvasGroup.alpha = 1f; // 🆕 เริ่มต้นแสดงเต็ม
+
+        Debug.Log($"✅ Menu Toggle initialized - Visible: {visiblePosition}, Hidden: {hiddenPosition}");
+    }
+
+    void ToggleMenu()
+    {
+        if (menuPanel == null || menuCanvasGroup == null) return;
+
+        isMenuOpen = !isMenuOpen;
+
+        Vector2 targetPosition = isMenuOpen ? visiblePosition : hiddenPosition;
+        float targetAlpha = isMenuOpen ? 1f : 0f; // 🆕
+
+        // เริ่ม Animation
+        StopCoroutine(nameof(SlideAndFadeMenuCoroutine));
+        StartCoroutine(SlideAndFadeMenuCoroutine(targetPosition, targetAlpha));
+
+        Debug.Log($"🎬 Menu {(isMenuOpen ? "Opening" : "Closing")}");
+    }
+    private IEnumerator SlideAndFadeMenuCoroutine(Vector2 targetPosition, float targetAlpha)
+    {
+        Vector2 startPosition = menuPanel.anchoredPosition;
+        float startAlpha = menuCanvasGroup.alpha;
+        float elapsedTime = 0f;
+        float duration = Mathf.Max(slideSpeed, fadeSpeed); // ใช้เวลาที่นานกว่า
+
+        // 🆕 ถ้าเปิดเมนู ให้ Interactable ทันที
+        if (isMenuOpen)
+        {
+            menuCanvasGroup.interactable = true;
+            menuCanvasGroup.blocksRaycasts = true;
+        }
+
+        while (elapsedTime < duration)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = elapsedTime / duration;
+
+            // Ease Out Cubic สำหรับการเคลื่อนไหวที่นุ่มนวล
+            float smoothProgress = 1f - Mathf.Pow(1f - progress, 3f);
+
+            // 🆕 Slide + Fade พร้อมกัน
+            menuPanel.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, smoothProgress);
+            menuCanvasGroup.alpha = Mathf.Lerp(startAlpha, targetAlpha, smoothProgress);
+
+            yield return null;
+        }
+
+        // ตั้งค่าสุดท้าย
+        menuPanel.anchoredPosition = targetPosition;
+        menuCanvasGroup.alpha = targetAlpha;
+
+        // 🆕 ถ้าปิดเมนู ให้ปิด Interactable
+        if (!isMenuOpen)
+        {
+            menuCanvasGroup.interactable = false;
+            menuCanvasGroup.blocksRaycasts = false;
+        }
+
+        Debug.Log($"✅ Menu animation completed - Position: {targetPosition}, Alpha: {targetAlpha}");
+    }
+    private IEnumerator SlideMenuCoroutine(Vector2 targetPosition)
+    {
+        Vector2 startPosition = menuPanel.anchoredPosition;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < slideSpeed)
+        {
+            elapsedTime += Time.deltaTime;
+            float progress = elapsedTime / slideSpeed;
+
+            // Ease Out Cubic สำหรับการเคลื่อนไหวที่นุ่มนวล
+            float smoothProgress = 1f - Mathf.Pow(1f - progress, 3f);
+
+            menuPanel.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, smoothProgress);
+
+            yield return null;
+        }
+
+        menuPanel.anchoredPosition = targetPosition;
+        Debug.Log($"✅ Menu animation completed at position: {targetPosition}");
+    }
     #region Stage Selection Event Handlers - จัดการเหตุการณ์จากการเลือก Stage
     void HandleSoloGameSelected(string sceneToLoad)
     {
