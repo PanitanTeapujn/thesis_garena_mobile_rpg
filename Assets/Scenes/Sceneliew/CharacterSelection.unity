@@ -1898,7 +1898,7 @@ MonoBehaviour:
   statsSection: {fileID: 1473272467}
   storySection: {fileID: 734436606}
   skillDescriptionSection: {fileID: 0}
-  skillDescriptionText: {fileID: 0}
+  skillDescriptionText: {fileID: 1793227314}
   hpText: {fileID: 1532318387}
   manaText: {fileID: 2122403096}
   attackDamageText: {fileID: 2048648177}

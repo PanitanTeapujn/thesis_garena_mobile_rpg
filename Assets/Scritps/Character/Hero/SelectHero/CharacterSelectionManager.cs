@@ -49,6 +49,7 @@ public class CharacterSelectionManager : MonoBehaviour
     public Button skill2Button;
     public Button skill3Button;
     public Button skill4Button;
+    public Button showCharacterInfoButton; // ปุ่มสำหรับกลับมาแสดงคำอธิบายตัวละคร (optional)
 
     [Header("🎨 Skill Icon Images (ลากจาก Button > Image)")]
     public Image passiveSkillIcon;
@@ -119,6 +120,7 @@ public class CharacterSelectionManager : MonoBehaviour
     private DatabaseReference databaseReference;
     private bool comingFromLobby = false;
     private int currentSelectedSkillIndex = -1; // -1 = ไม่มีการเลือก, 0 = passive, 1-4 = skills
+    private string currentCharacterBaseDescription = ""; // เก็บคำอธิบายเดิมของตัวละคร
 
     private void Start()
     {
@@ -208,6 +210,14 @@ public class CharacterSelectionManager : MonoBehaviour
             Debug.Log("✅ Skill 4 button setup complete");
         }
 
+
+        // ✅ Setup Show Character Info Button (Optional)
+        if (showCharacterInfoButton != null)
+        {
+            showCharacterInfoButton.onClick.RemoveAllListeners();
+            showCharacterInfoButton.onClick.AddListener(ShowCharacterDescription);
+            Debug.Log("✅ Show Character Info button setup complete");
+        }
         Debug.Log("=== Skill Buttons Setup Complete ===");
     }
 
@@ -216,25 +226,32 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         currentSelectedSkillIndex = skillIndex;
 
-        // ✅ ซ่อน Story Panel
-        if (storySection != null)
-            storySection.SetActive(false);
 
-        // ✅ แสดง Skill Description Panel
-        if (skillDescriptionSection != null)
-            skillDescriptionSection.SetActive(true);
-
-        // ✅ ดึง description ตามตัวละครที่เลือก (ไม่เว้นบรรทัด)
-        if (skillDescriptionText != null)
+        // ✅ ดึง description ตามตัวละครที่เลือก 
+        if (characterDescriptionText != null)
         {
             string description = GetSkillDescriptionForCharacter(selectedCharacter, skillIndex);
             string skillName = GetSkillName(skillIndex);
 
-            // แสดงในบรรทัดเดียว ไม่เว้นบรรทัด
-            skillDescriptionText.text = $"<color=yellow><b>{skillName}:</b></color> {description}";
+            // แสดงคำอธิบายสกิลใน characterDescriptionText
+            characterDescriptionText.text = $"<color=yellow><b>{skillName}:</b></color> \n{description}";
         }
 
         Debug.Log($"[CharacterSelection] Showing {selectedCharacter} skill {skillIndex} description");
+    }
+
+    // ========== 🆕 NEW: Show Character Description ==========
+    private void ShowCharacterDescription()
+    {
+        currentSelectedSkillIndex = -1; // Reset skill selection
+
+        // ✅ แสดงคำอธิบายตัวละครกลับ
+        if (characterDescriptionText != null && !string.IsNullOrEmpty(currentCharacterBaseDescription))
+        {
+            characterDescriptionText.text = currentCharacterBaseDescription;
+        }
+
+        Debug.Log($"[CharacterSelection] Showing {selectedCharacter} character description");
     }
 
     // ========== 🆕 NEW: Get Skill Description for Character ==========
@@ -884,6 +901,7 @@ public class CharacterSelectionManager : MonoBehaviour
                 break;
         }
 
+        currentCharacterBaseDescription = baseDescription;
         characterDescriptionText.text = baseDescription;
 
         // Show character level
