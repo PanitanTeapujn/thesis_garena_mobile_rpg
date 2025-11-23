@@ -1859,7 +1859,7 @@ MonoBehaviour:
   confirmButton: {fileID: 255934148}
   playerNameInput: {fileID: 315835177}
   errorMessageText: {fileID: 1923892158}
-  characterDescriptionText: {fileID: 0}
+  characterDescriptionText: {fileID: 1793227314}
   characterNameText: {fileID: 943639270}
   loadingPanel: {fileID: 2061196561}
   backToLobbyButton: {fileID: 1384958248}
@@ -1898,7 +1898,7 @@ MonoBehaviour:
   statsSection: {fileID: 1473272467}
   storySection: {fileID: 734436606}
   skillDescriptionSection: {fileID: 0}
-  skillDescriptionText: {fileID: 1793227314}
+  skillDescriptionText: {fileID: 0}
   hpText: {fileID: 1532318387}
   manaText: {fileID: 2122403096}
   attackDamageText: {fileID: 2048648177}
@@ -2150,10 +2150,10 @@ RectTransform:
   - {fileID: 1793227313}
   m_Father: {fileID: 2029372890}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 528.6778, y: 0.2755127}
-  m_SizeDelta: {x: -1261.4124, y: -500.001}
+  m_SizeDelta: {x: 658.58765, y: 395.999}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &734436608
 MonoBehaviour:
@@ -5550,11 +5550,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: xxx
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: db593ac26b4442f44837aa04bdbbc48d, type: 2}
-  m_sharedMaterial: {fileID: 512576780747043591, guid: db593ac26b4442f44837aa04bdbbc48d,
-    type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -5578,10 +5577,10 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 15
+  m_fontSize: 72
   m_fontSizeBase: 15
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
   m_fontSizeMax: 72
   m_fontStyle: 0

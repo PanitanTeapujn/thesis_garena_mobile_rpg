@@ -871,20 +871,20 @@ public class CharacterSelectionManager : MonoBehaviour
         switch (character)
         {
             case PlayerSelectionData.CharacterType.BloodKnight:
-                baseDescription = "Blood Siphon grew up in an aristocratic family of the insect tribe, but rejected the luxurious life to join the army. With his remarkable ability to absorb the blood and life force of his enemies, he was appointed as one of the insect's elite soldiers.";
+                baseDescription = "Ferris Buff: Increased life steal\r\nPassive: Restores HP on hit\r\nSkill 2: Summons 6 blood spears orbiting the user\r\nSkill 3: Greatly increases healing power";
                 break;
             case PlayerSelectionData.CharacterType.Archer:
-                baseDescription = "Talon was born in the kingdom of Aviana, a land high above the clouds that the Bird Clan had ruled for thousands of years. From a young age, he displayed remarkable talent for archery, able to hit the target with his arrows every time, even at the age of 1.";
+                baseDescription = "Ferris Buff: Faster attack speed / Shoots 2 arrows per attack\r\nPassive: Double Hit chance increased to 40%\r\nSkill 1: Shoots 2 arrows forward\r\nSkill 2: Dash forward, leaving a trail of fire";
                 break;
             case PlayerSelectionData.CharacterType.Assassin:
-                baseDescription = "Shadow Prowler lost her family at a young age. She was adopted by the Shadow Claw Assassins Association and trained to become the Cat Clan's most skilled assassin. She specializes in poison and silent movement, earning the nickname Invisible Shadow.";
+                baseDescription = "Ferris Buff: Increased movement speed\r\nSkill 2: Dash twice per cooldown\r\nSkill 3: Strikes 6 consecutive attacks";
                 break;
             case PlayerSelectionData.CharacterType.IronJuggernaut:
-                baseDescription = "Legend has it that the Iron Rhino tribe was born from ancient warriors who inhaled fumes from forging mystical metal over many years, causing their bodies to develop steel-like properties. From a young age, Iron Rhinos are trained to master the use of their body weight and raw strength to their fullest advantage.";
+                baseDescription = "Ferris Buff: Damage taken reduced\r\nPassive: Stronger damage reflection\r\nSkill 1: Slams the ground in an X-shaped attack\r\nSkill 4: Deals AoE damage around the user";
                 break;
         }
 
-      /*  characterDescriptionText.text = baseDescription;*/
+        characterDescriptionText.text = baseDescription;
 
         // Show character level
         ShowCharacterLevel(character.ToString());
