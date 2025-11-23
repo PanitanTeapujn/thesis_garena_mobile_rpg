@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EnchantedShoes
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 1
+    canBeEnchanted: 0
     maxEnchantLevel: 5
     baseGoldCost: 200
     successRates:
@@ -37,7 +37,7 @@ MonoBehaviour:
     tradeDescription: 
     tradeCategory: 0
   itemId: 'EnchantedShoes '
-  itemName: EnchantedShoes
+  itemName: 'EnchantedShoes '
   itemIcon: {fileID: 21300000, guid: f25b16c7add794b4e89be33447aaf8a4, type: 3}
   itemType: 4
   tier: 3
@@ -53,7 +53,7 @@ MonoBehaviour:
   isSetItem: 1
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: 0
+    magicDamageBonus: 10
     armorBonus: 0
     criticalChanceBonus: 0
     criticalDamageBonus: 0
@@ -62,7 +62,7 @@ MonoBehaviour:
     healthRegenBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
-    moveSpeedBonus: 0.15
+    moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Wooden Pants+2
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 1
+    canBeEnchanted: 0
     maxEnchantLevel: 3
     baseGoldCost: 100
     successRates:

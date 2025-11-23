@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: IronPants+1
+  m_Name: Iron Pants+1
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1

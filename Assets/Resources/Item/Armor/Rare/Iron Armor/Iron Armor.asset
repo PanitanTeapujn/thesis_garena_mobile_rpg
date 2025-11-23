@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Iron Armor
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 1
+    canBeEnchanted: 0
     maxEnchantLevel: 8
     baseGoldCost: 300
     successRates:

@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: IronArmor+1
+  m_Name: Iron Pants
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
@@ -36,10 +36,10 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: 'IronArmor+1  '
-  itemName: IronArmor+1
-  itemIcon: {fileID: 1180791640, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
-  itemType: 2
+  itemId: IronPants
+  itemName: IronPants
+  itemIcon: {fileID: -1654668580, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
+  itemType: 3
   tier: 3
   description: 
   sellPrice: 400
@@ -54,18 +54,18 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 8
+    armorBonus: 7
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 0
+    magicArmorBonus: 5
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 50
+    maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 5
+    evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
-    maxEnchantLevel: 10
+    maxEnchantLevel: 9
     baseGoldCost: 800
     successRates:
       sameItemWithEnchant: 90
