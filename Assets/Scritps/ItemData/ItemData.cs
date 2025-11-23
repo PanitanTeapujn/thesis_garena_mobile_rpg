@@ -817,6 +817,7 @@ public class ItemData : ScriptableObject
         }
     }
 
+    // ใน ItemData.cs - หา method GetEnchantSuccessRate และแก้ไข
     public float GetEnchantSuccessRate(List<ItemData> materials)
     {
         if (materials == null || materials.Count == 0) return 0f;
@@ -831,8 +832,8 @@ public class ItemData : ScriptableObject
             }
         }
 
-        // จำกัดไม่ให้เกิน 95%
-        return Mathf.Min(95f, totalRate);
+        // ✅ ลบการจำกัดที่ 95% - ให้ไปได้เต็ม 100%
+        return Mathf.Min(100f, totalRate);
     }
 
     public long GetEnchantCostWithMaterials(int targetLevel, List<ItemData> materials)
