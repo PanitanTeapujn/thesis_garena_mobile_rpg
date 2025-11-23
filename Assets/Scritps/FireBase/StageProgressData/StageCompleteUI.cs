@@ -327,7 +327,7 @@ public class StageCompleteUI : MonoBehaviour
         if (stageResult.levelUpResult.didLevelUp) totalGems += stageResult.levelUpResult.gemsReward;
 
         // แสดงผลรวม
-        string gemText = $"💎 {totalGems}";
+        string gemText = $"{totalGems}";
 
         // เพิ่มข้อความ breakdown ถ้ามี bonus
         List<string> bonusInfo = new List<string>();
@@ -590,13 +590,13 @@ public class StageCompleteUI : MonoBehaviour
     {
         if (goldRewardText != null)
         {
-            goldRewardText.text = $"💰 {rewards.totalGoldEarned:N0}";
+            goldRewardText.text = $"{rewards.totalGoldEarned:N0}";
             goldRewardText.color = Color.yellow;
         }
 
         if (gemsRewardText != null)
         {
-            gemsRewardText.text = $"💎 0"; // เริ่มจาก 0
+            gemsRewardText.text = $"0"; // เริ่มจาก 0
             gemsRewardText.color = Color.cyan;
         }
     }
@@ -824,13 +824,13 @@ public class StageCompleteUI : MonoBehaviour
     {
         if (goldRewardText != null)
         {
-            goldRewardText.text = $"💰 {rewards.totalGoldEarned:N0}";
+            goldRewardText.text = $"{rewards.totalGoldEarned:N0}";
             goldRewardText.color = Color.yellow;
         }
 
         if (gemsRewardText != null)
         {
-            gemsRewardText.text = $"💎 {rewards.totalGemsEarned}";
+            gemsRewardText.text = $"{rewards.totalGemsEarned}";
             gemsRewardText.color = Color.cyan;
         }
     }
@@ -866,7 +866,7 @@ public class StageCompleteUI : MonoBehaviour
         if (completionTimeText != null)
         {
             string timeFormat = FormatTime(rewards.stageCompletionTime);
-            completionTimeText.text = $"⏱️ Time: {timeFormat}";
+            completionTimeText.text = $"Time: {timeFormat}";
         }
 
         if (enemiesKilledText != null)

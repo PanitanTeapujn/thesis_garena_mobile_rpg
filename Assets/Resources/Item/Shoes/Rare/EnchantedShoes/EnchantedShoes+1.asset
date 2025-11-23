@@ -53,7 +53,7 @@ MonoBehaviour:
   isSetItem: 1
   stats:
     attackDamageBonus: 0
-    magicDamageBonus: 0
+    magicDamageBonus: 10
     armorBonus: 0
     criticalChanceBonus: 0
     criticalDamageBonus: 0
@@ -62,7 +62,7 @@ MonoBehaviour:
     healthRegenBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
-    moveSpeedBonus: 0.15
+    moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0

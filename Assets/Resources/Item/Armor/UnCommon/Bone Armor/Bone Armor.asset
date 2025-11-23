@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Bone Armor
   m_EditorClassIdentifier: 
   enchantmentSettings:
-    canBeEnchanted: 1
+    canBeEnchanted: 0
     maxEnchantLevel: 5
     baseGoldCost: 200
     successRates:

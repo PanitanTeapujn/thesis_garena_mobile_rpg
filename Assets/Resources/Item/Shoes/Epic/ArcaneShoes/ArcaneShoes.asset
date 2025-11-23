@@ -36,7 +36,7 @@ MonoBehaviour:
     - requiredItem: {fileID: 11400000, guid: a32ee3f8b0d875542bc894d010fd8b02, type: 2}
       requiredQuantity: 2
       description: 
-    - requiredItem: {fileID: 11400000, guid: 3e292a736a8c87f4fb47ecee34d21f1e, type: 2}
+    - requiredItem: {fileID: 11400000, guid: 95ec9f26cbdb75a4da89cdc3dc8af2d6, type: 2}
       requiredQuantity: 2
       description: 
     tradeName: 

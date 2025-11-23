@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: WoodenArmor+1
+  m_Name: Wooden Shoes+1
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
@@ -36,10 +36,10 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: WoodenArmor+1
-  itemName: WoodenArmor+1
-  itemIcon: {fileID: 1180791640, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
-  itemType: 2
+  itemId: WoodenShoes+1
+  itemName: WoodenShoes+1
+  itemIcon: {fileID: -420219365, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
+  itemType: 4
   tier: 1
   description: 
   sellPrice: 100
@@ -60,9 +60,9 @@ MonoBehaviour:
     magicArmorBonus: 0
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 51
+    maxHpBonus: 0
     maxManaBonus: 0
-    moveSpeedBonus: 0
+    moveSpeedBonus: 0.15
     attackSpeedBonus: 0
     hitRateBonus: 0
     evasionRateBonus: 0

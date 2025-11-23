@@ -1869,31 +1869,48 @@ MonoBehaviour:
   skill2Button: {fileID: 1491329340}
   skill3Button: {fileID: 342690103}
   skill4Button: {fileID: 1091037378}
+  showCharacterInfoButton: {fileID: 0}
   passiveSkillIcon: {fileID: 0}
   skill1Icon: {fileID: 1153602514}
   skill2Icon: {fileID: 566724077}
   skill3Icon: {fileID: 1106707801}
   skill4Icon: {fileID: 1309899672}
   bloodKnightPassive: 'Blood Siphon: Heals for a percentage of damage dealt.'
-  bloodKnightSkill1: 'Blood Strike: Powerful melee attack that deals bonus damage.'
-  bloodKnightSkill2: 'Life Drain: Drains life from enemies in an area.'
-  bloodKnightSkill3: 'Crimson Shield: Creates a blood shield that absorbs damage.'
-  bloodKnightSkill4: 'Blood Rage: Increases attack speed and damage temporarily.'
+  bloodKnightSkill1: 'Blood Rend: A melee attack that empowers the next strikes and
+    inflicts Bleed on the target'
+  bloodKnightSkill2: 'Blood Spear: Launches a spear of blood forward, piercing enemies
+    and applying Bleed'
+  bloodKnightSkill3: 'Crimson Well: Creates a pool of blood that heals allies inside
+    and slightly reduces skill cooldowns'
+  bloodKnightSkill4: 'Blood Tempest: Summons a swirling blood storm that deals continuous
+    AoE damage and inflicts Bleed'
   archerPassive: 'Eagle Eye: Increased critical chance and range.'
-  archerSkill1: 'Multi Shot: Fires multiple arrows at once.'
-  archerSkill2: 'Poison Arrow: Shoots a poisoned arrow that deals damage over time.'
-  archerSkill3: 'Rain of Arrows: Rains arrows in a large area.'
-  archerSkill4: 'Snipe: Powerful long-range shot with high damage.'
+  archerSkill1: 'Flame Arrow: Fires a blazing arrow at a single target, dealing fire
+    damage'
+  archerSkill2: 'Retreat Shot: Leaps backward while firing an arrow forward to damage
+    and create distance'
+  archerSkill3: 'Arrow Rain: Summons a barrage of arrows that strike a wide area,
+    dealing sustained AoE damage'
+  archerSkill4: 'Blazing Arrow Rain: A stronger arrow rain that engulfs the area
+    in flames, dealing AoE damage and inflicting Burn'
   assassinPassive: 'Shadow Step: Increased movement speed and evasion.'
-  assassinSkill1: 'Backstab: Critical damage from behind.'
-  assassinSkill2: 'Smoke Bomb: Creates smoke that blinds enemies.'
-  assassinSkill3: 'Poison Blade: Applies deadly poison to weapons.'
-  assassinSkill4: 'Shadow Clone: Creates clones to confuse enemies.'
+  assassinSkill1: 'Venom Edge: Empowers the next attacks, causing enemies hit to
+    become Poisoned'
+  assassinSkill2: 'Toxic Dash: Quickly dashes through enemies, dealing damage and
+    applying Poison'
+  assassinSkill3: 'Shadow Ambush: Teleports behind a target and strikes instantly,
+    inflicting Bleed'
+  assassinSkill4: 'Toxic Zone: Creates a large poisonous field around the Assassin,
+    dealing AoE damage and applying Poison to all enemies inside'
   ironJuggernautPassive: 'Iron Skin: Increased armor and damage reduction.'
-  ironJuggernautSkill1: 'Shield Bash: Stuns enemies with shield.'
-  ironJuggernautSkill2: 'Ground Slam: Creates shockwave that damages nearby enemies.'
-  ironJuggernautSkill3: 'Fortify: Temporarily increases defense greatly.'
-  ironJuggernautSkill4: 'Charge: Rushes forward, knocking back enemies.'
+  ironJuggernautSkill1: 'Iron Quake: Slams the ground with immense force, dealing
+    damage in a small radius around the Juggernaut'
+  ironJuggernautSkill2: 'Steel Dash: Charges forward in a short burst, damaging all
+    enemies in the path'
+  ironJuggernautSkill3: 'War Cry: Lets out a powerful roar, healing yourself and
+    cleansing all debuffs while granting a brief buff'
+  ironJuggernautSkill4: 'Seismic Shock: Stomps the ground to create a violent tremor,
+    dealing heavy AoE damage around the Juggernaut'
   infoPanel: {fileID: 0}
   statsSection: {fileID: 1473272467}
   storySection: {fileID: 734436606}

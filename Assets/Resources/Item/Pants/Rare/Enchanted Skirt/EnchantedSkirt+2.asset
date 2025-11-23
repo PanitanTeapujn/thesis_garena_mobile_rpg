@@ -38,7 +38,7 @@ MonoBehaviour:
     tradeCategory: 0
   itemId: EnchantedSkirt+2
   itemName: EnchantedSkirt+2
-  itemIcon: {fileID: 21300000, guid: a27aa50f2bcbc2646a8c6f4f579dac1d, type: 3}
+  itemIcon: {fileID: 21300000, guid: 8b56dd3c68ad16841b664ad9a83345d8, type: 3}
   itemType: 3
   tier: 3
   description: 
@@ -54,7 +54,7 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 5
+    armorBonus: 4
     criticalChanceBonus: 0
     criticalDamageBonus: 0
     magicArmorBonus: 7
