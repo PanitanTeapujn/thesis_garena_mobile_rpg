@@ -60,31 +60,35 @@ public class CharacterSelectionManager : MonoBehaviour
 
     [Header("📖 Skill Descriptions - Blood Knight")]
     public string bloodKnightPassive = "Blood Siphon: Heals for a percentage of damage dealt.";
-    public string bloodKnightSkill1 = "Blood Strike: Powerful melee attack that deals bonus damage.";
-    public string bloodKnightSkill2 = "Life Drain: Drains life from enemies in an area.";
-    public string bloodKnightSkill3 = "Crimson Shield: Creates a blood shield that absorbs damage.";
-    public string bloodKnightSkill4 = "Blood Rage: Increases attack speed and damage temporarily.";
+    public string bloodKnightSkill1 = "Blood Rend: A melee attack that empowers the next strikes and inflicts Bleed on the target.";
+    public string bloodKnightSkill2 = "Blood Spear: Launches a spear of blood forward, piercing enemies and applying Bleed.";
+    public string bloodKnightSkill3 = "Crimson Well: Creates a pool of blood that heals allies inside and slightly reduces skill cooldowns.";
+    public string bloodKnightSkill4 = "Blood Tempest: Summons a swirling blood storm that deals continuous AoE damage and inflicts Bleed.";
 
     [Header("📖 Skill Descriptions - Archer")]
     public string archerPassive = "Eagle Eye: Increased critical chance and range.";
-    public string archerSkill1 = "Multi Shot: Fires multiple arrows at once.";
-    public string archerSkill2 = "Poison Arrow: Shoots a poisoned arrow that deals damage over time.";
-    public string archerSkill3 = "Rain of Arrows: Rains arrows in a large area.";
-    public string archerSkill4 = "Snipe: Powerful long-range shot with high damage.";
+    public string archerSkill1 = "Flame Arrow: Fires a blazing arrow at a single target, dealing fire damage.";
+    public string archerSkill2 = "Retreat Shot: Leaps backward while firing an arrow forward to damage and create distance.";
+    public string archerSkill3 = "Arrow Rain: Summons a barrage of arrows that strike a wide area, dealing sustained AoE damage.";
+    public string archerSkill4 = "Blazing Arrow Rain: A stronger arrow rain that engulfs the area in flames, dealing AoE damage and inflicting Burn.";
 
     [Header("📖 Skill Descriptions - Assassin")]
-    public string assassinPassive = "Shadow Step: Increased movement speed and evasion.";
-    public string assassinSkill1 = "Backstab: Critical damage from behind.";
-    public string assassinSkill2 = "Smoke Bomb: Creates smoke that blinds enemies.";
-    public string assassinSkill3 = "Poison Blade: Applies deadly poison to weapons.";
-    public string assassinSkill4 = "Shadow Clone: Creates clones to confuse enemies.";
+    public string assassinPassive = "Shadow Step: Increases movement speed and evasion, allowing swift repositioning.";
+
+    public string assassinSkill1 = "Venom Edge: Empowers the next attacks, causing enemies hit to become Poisoned.";
+    public string assassinSkill2 = "Toxic Dash: Quickly dashes through enemies, dealing damage and applying Poison.";
+    public string assassinSkill3 = "Shadow Ambush: Teleports behind a target and strikes instantly, inflicting Bleed.";
+    public string assassinSkill4 = "Toxic Zone: Creates a large poisonous field around the Assassin, dealing AoE damage and applying Poison to all enemies inside.";
+
 
     [Header("📖 Skill Descriptions - Iron Juggernaut")]
-    public string ironJuggernautPassive = "Iron Skin: Increased armor and damage reduction.";
-    public string ironJuggernautSkill1 = "Shield Bash: Stuns enemies with shield.";
-    public string ironJuggernautSkill2 = "Ground Slam: Creates shockwave that damages nearby enemies.";
-    public string ironJuggernautSkill3 = "Fortify: Temporarily increases defense greatly.";
-    public string ironJuggernautSkill4 = "Charge: Rushes forward, knocking back enemies.";
+    public string ironJuggernautPassive = "Iron Skin: Greatly increases armor and reduces incoming damage.";
+
+    public string ironJuggernautSkill1 = "Iron Quake: Slams the ground with immense force, dealing damage in a small radius around the Juggernaut.";
+    public string ironJuggernautSkill2 = "Steel Dash: Charges forward in a short burst, damaging all enemies in the path.";
+    public string ironJuggernautSkill3 = "War Cry: Lets out a powerful roar, healing yourself and cleansing all debuffs while granting a brief buff.";
+    public string ironJuggernautSkill4 = "Seismic Shock: Stomps the ground to create a violent tremor, dealing heavy AoE damage around the Juggernaut.";
+
 
     [Header("📜 Info Display Panel")]
     public GameObject infoPanel;               // Panel รวม (มี Stats + Story/Skill Description)
