@@ -1879,16 +1879,19 @@ MonoBehaviour:
   bloodKnightSkill1: 'Blood Rend: A melee attack that empowers the next strikes and
     inflicts Bleed on the target'
   bloodKnightSkill2: 'Blood Spear: Launches a spear of blood forward, piercing enemies
-    and applying Bleed'
+    and applying Bleed\r\nFerris Upgrade Skill: Blood Spear\r\nSummons 6 blood spears
+    orbiting the user'
   bloodKnightSkill3: 'Crimson Well: Creates a pool of blood that heals allies inside
-    and slightly reduces skill cooldowns'
+    and slightly reduces skill cooldowns\r\nFerris Upgrade Skill: Crimson Well\r\nGreatly
+    increases healing power'
   bloodKnightSkill4: 'Blood Tempest: Summons a swirling blood storm that deals continuous
     AoE damage and inflicts Bleed'
   archerPassive: 'Eagle Eye: Increased critical chance and range.'
   archerSkill1: 'Flame Arrow: Fires a blazing arrow at a single target, dealing fire
-    damage'
+    damage\r\nFerris Upgrade Skill: Flame Arrow\r\nShoots 2 arrows forward'
   archerSkill2: 'Retreat Shot: Leaps backward while firing an arrow forward to damage
-    and create distance'
+    and create distance\r\nFerris Upgrade Skill: Retreat Shot\r\nDash forward, leaving
+    a trail of fire'
   archerSkill3: 'Arrow Rain: Summons a barrage of arrows that strike a wide area,
     dealing sustained AoE damage'
   archerSkill4: 'Blazing Arrow Rain: A stronger arrow rain that engulfs the area
@@ -1897,20 +1900,23 @@ MonoBehaviour:
   assassinSkill1: 'Venom Edge: Empowers the next attacks, causing enemies hit to
     become Poisoned'
   assassinSkill2: 'Toxic Dash: Quickly dashes through enemies, dealing damage and
-    applying Poison'
+    applying Poison\r\nFerris Upgrade Skill: Toxic Dash\r\nDash twice per cooldown'
   assassinSkill3: 'Shadow Ambush: Teleports behind a target and strikes instantly,
-    inflicting Bleed'
+    inflicting Bleed\r\nFerris Upgrade Skill: Shadow Ambush\r\nStrikes 6 consecutive
+    attacks'
   assassinSkill4: 'Toxic Zone: Creates a large poisonous field around the Assassin,
     dealing AoE damage and applying Poison to all enemies inside'
   ironJuggernautPassive: 'Iron Skin: Increased armor and damage reduction.'
   ironJuggernautSkill1: 'Iron Quake: Slams the ground with immense force, dealing
-    damage in a small radius around the Juggernaut'
+    damage in a small radius around the Juggernaut\r\nFerris Upgrade Skill: Iron
+    Quake\r\nSlams the ground in an X-shaped attack'
   ironJuggernautSkill2: 'Steel Dash: Charges forward in a short burst, damaging all
     enemies in the path'
   ironJuggernautSkill3: 'War Cry: Lets out a powerful roar, healing yourself and
     cleansing all debuffs while granting a brief buff'
   ironJuggernautSkill4: 'Seismic Shock: Stomps the ground to create a violent tremor,
-    dealing heavy AoE damage around the Juggernaut'
+    dealing heavy AoE damage around the Juggernaut\r\nFerris Upgrade Skill: Seismic
+    Shock\r\nDeals AoE damage around the user'
   infoPanel: {fileID: 0}
   statsSection: {fileID: 1473272467}
   storySection: {fileID: 734436606}
