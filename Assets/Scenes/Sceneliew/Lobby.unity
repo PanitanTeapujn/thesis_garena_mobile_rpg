@@ -55173,6 +55173,56 @@ MonoBehaviour:
     requiredGold: 0
     tradeName: 
     tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: dd590bc1106140a4581da00f633dc384, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: ce109db3bdfd6bb4d8b139f81becfbd8, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: 44de5bf9e8d328c45baa1608d2b96c80, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: 69ff3ee2aac76aa4dad885081a94b0f8, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: 07286fd58f56d86418dc3c92c7684f7e, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: cff88994fec13f74eae34a277dbc6f4e, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: d774f5f23a5b88c45a8956386605e248, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: 0a0731a0d8f88b848b641463bc67a11f, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: fa5b600307a02e04c9b11568c5bf5860, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: c6c0ca404d7482e4b84c51d0bf135321, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
   refreshShopButton: {fileID: 880498792}
   searchInputField: {fileID: 1894658152}
   categoryFilter: {fileID: 976932361}
