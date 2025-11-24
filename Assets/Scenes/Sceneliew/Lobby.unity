@@ -18029,7 +18029,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 2028, y: -519}
+  m_AnchoredPosition: {x: 1999, y: -500}
   m_SizeDelta: {x: 40.1677, y: 40.1677}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &597262658
@@ -26429,7 +26429,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -235, y: 402.00006}
+  m_AnchoredPosition: {x: -286, y: 402.00006}
   m_SizeDelta: {x: 1004.7, y: 179.3651}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &862889267
@@ -30478,7 +30478,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 2117114543, guid: 0d249ce73ca84104580793a503d90799, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d5dc78fc0a2eefa47ab628b7772788a7, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -41705,27 +41705,27 @@ PrefabInstance:
     - target: {fileID: 4762119149725169278, guid: 3996ccf1d1cc0414fbb148bb5c3ea607,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.55513877
+      value: 0.3784936
       objectReference: {fileID: 0}
     - target: {fileID: 4762119149725169278, guid: 3996ccf1d1cc0414fbb148bb5c3ea607,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.685348
+      value: 0.46727026
       objectReference: {fileID: 0}
     - target: {fileID: 4762119149725169278, guid: 3996ccf1d1cc0414fbb148bb5c3ea607,
         type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.685348
+      value: 0.46727026
       objectReference: {fileID: 0}
     - target: {fileID: 4762119149725169278, guid: 3996ccf1d1cc0414fbb148bb5c3ea607,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 854
+      value: 224
       objectReference: {fileID: 0}
     - target: {fileID: 4762119149725169278, guid: 3996ccf1d1cc0414fbb148bb5c3ea607,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 313
+      value: 475
       objectReference: {fileID: 0}
     - target: {fileID: 4991680120608955310, guid: 3996ccf1d1cc0414fbb148bb5c3ea607,
         type: 3}
@@ -66509,7 +66509,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1274, y: -90}
+  m_AnchoredPosition: {x: 1224, y: -90}
   m_SizeDelta: {x: 100, y: 179.3651}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2004710434
