@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: CrownoftheShadowReaper+9
+  m_Name: ReapersNightmantle+4
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
@@ -33,26 +33,26 @@ MonoBehaviour:
     isTradeableItem: 1
     requiredGold: 1000
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: 03fddbdbea6fd364eb8b4c1ec17f1315, type: 2}
+    - requiredItem: {fileID: 11400000, guid: 1928f1edda32f2a448518bc007cf1309, type: 2}
       requiredQuantity: 0
       description: 
-    - requiredItem: {fileID: 11400000, guid: 92ba78c4c6d4a9f44a5ceb4ba8c83004, type: 2}
-      requiredQuantity: 3
+    - requiredItem: {fileID: 11400000, guid: d8e2a1e64ed6c464aa2e5a80a8640a02, type: 2}
+      requiredQuantity: 2
       description: 
-    - requiredItem: {fileID: 11400000, guid: f38b958f3cf60cd4e94e684f2a32a534, type: 2}
-      requiredQuantity: 3
+    - requiredItem: {fileID: 11400000, guid: 5b524f021aad6f247a9b05f4625a8088, type: 2}
+      requiredQuantity: 2
       description: 
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: CrownoftheShadowReaper+9
-  itemName: CrownoftheShadowReaper+9
-  itemIcon: {fileID: 21300000, guid: eddb0f61210d2f4429ae92bc08d1b3ba, type: 3}
-  itemType: 1
+  itemId: ReapersNightmantle+4
+  itemName: ReapersNightmantle+4
+  itemIcon: {fileID: 21300000, guid: c720139856ac0f44d894498956e1b55f, type: 3}
+  itemType: 2
   tier: 5
   description: 
-  sellPrice: 9000
-  buyPrice: 9500
+  sellPrice: 5500
+  buyPrice: 6000
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -63,18 +63,18 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 0
-    criticalChanceBonus: 22
-    criticalDamageBonus: 18
+    armorBonus: 18
+    criticalChanceBonus: 0
+    criticalDamageBonus: 0
     magicArmorBonus: 15
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 0
+    maxHpBonus: 220
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 70
-    hitRateBonus: 30
-    evasionRateBonus: 0
+    attackSpeedBonus: 0
+    hitRateBonus: 0
+    evasionRateBonus: 15
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
@@ -82,5 +82,5 @@ MonoBehaviour:
     ampDamageBonus: 0
     healAmount: 0
     manaAmount: 0
-    healPercentage: 0
+    healPercentage: 1
     manaPercentage: 0
