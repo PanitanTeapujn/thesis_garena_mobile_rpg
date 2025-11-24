@@ -271,26 +271,28 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
-    
+
 
     // 🎯 UPDATED: Setup Inventory Panel with Grid System
     private void SetupInventoryPanel()
     {
-        Debug.Log("=== Setting up Inventory Panel with Grid System ===");
+        Debug.Log("=== Setting up Inventory Panel with Pagination System ===");
 
         if (inventoryPanel != null)
         {
             inventoryPanel.SetActive(false);
-            Debug.Log("✅ Inventory Panel initialized (hidden)");
 
-            // 🎯 Setup Inventory Grid
+            // ❌ ลบการตรวจสอบ ScrollRect ออก
+
+            Debug.Log("✅ Inventory Panel initialized (hidden) with pagination");
+
+            // Setup Inventory Grid
             SetupInventoryGrid();
 
             // Setup Item Info Panel
             SetupItemDetailPanel();
 
             SetupInventoryFilters();
-
         }
         else
         {
@@ -1213,7 +1215,7 @@ public class CombatUIManager : MonoBehaviour
             {
                 UpdateInventoryCharacterStats();
 
-                // ✅ เพิ่มบรรทัดนี้ - Force load จาก Firebase ทุกครั้งที่เปิด inventory
+                // Force load จาก Firebase
                 var inventory = localHero.GetInventory();
                 if (inventory != null)
                 {
@@ -1221,14 +1223,31 @@ public class CombatUIManager : MonoBehaviour
                 }
             }
 
-            // Force update inventory grid
+            // ✅ เปลี่ยนจาก OnInventoryPanelOpened() เป็น ForceRefreshOnOpen()
             if (inventoryGridManager != null)
             {
-                inventoryGridManager.ForceRefreshAllSlots();
-                Debug.Log("[CombatUI] Forced inventory refresh on panel open");
+                inventoryGridManager.ForceRefreshOnOpen();
+
+                // รอแล้ว force อีกครั้ง
+                StartCoroutine(DelayedInventoryFix());
             }
 
             Debug.Log("Inventory panel opened");
+        }
+    }
+
+    // ✅ เพิ่ม Coroutine ใหม่นี้
+    private IEnumerator DelayedInventoryFix()
+    {
+        // รอ 3 frames
+        yield return null;
+        yield return null;
+        yield return null;
+
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ForceRefreshOnOpen();
+            Debug.Log("[CombatUI] ✅ Delayed inventory fix complete");
         }
     }
     public bool IsDeleteModeActive()
