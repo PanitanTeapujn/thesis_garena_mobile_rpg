@@ -184,8 +184,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: feac6e8f6808d0346bfb478d061467d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterStats: {fileID: 11400000, guid: c674cc0d041dd1f488c6443eb64e5b31, type: 2}
-  characterName: Slime
+  characterStats: {fileID: 11400000, guid: 803f3aaf0ec5ab546bafd9298d80671a, type: 2}
+  characterName: RedSlime
   currentHp: 0
   maxHp: 0
   currentMana: 0

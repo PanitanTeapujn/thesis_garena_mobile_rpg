@@ -153,7 +153,7 @@ MonoBehaviour:
     spawnCooldown: 1
     currentCount: 0
     lastSpawnTime: 0
-  - enemyPrefab: {fileID: 2102208964661930907, guid: eaf15b70e569d2343846e52d707dd01e,
+  - enemyPrefab: {fileID: 2102208964661930907, guid: 6d74f94ef56fc20439da9e7973138acf,
       type: 3}
     enemyName: 
     spawnWeight: 5
