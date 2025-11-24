@@ -44,7 +44,7 @@ MonoBehaviour:
     tradeCategory: 0
   itemId: KnightHelm+1
   itemName: KnightHelm+1
-  itemIcon: {fileID: 59571964, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
+  itemIcon: {fileID: 1016440491, guid: 462eee4135c0592449f8d4d14a17418a, type: 3}
   itemType: 1
   tier: 4
   description: 
