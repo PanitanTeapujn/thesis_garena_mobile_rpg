@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
-    maxEnchantLevel: 9
-    baseGoldCost: 1000
+    maxEnchantLevel: 7
+    baseGoldCost: 500
     successRates:
       sameItemWithEnchant: 90
       sameItemNoEnchant: 75
@@ -31,15 +31,15 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 1000
+    requiredGold: 500
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: 15f7c2098bdac364696ec262ebab7fb1, type: 2}
-      requiredQuantity: 0
+    - requiredItem: {fileID: 11400000, guid: 426203944d427df4187ce39dd795f509, type: 2}
+      requiredQuantity: 3
       description: 
     - requiredItem: {fileID: 11400000, guid: 5ff793260bdf9a14b85e5e01fe10225f, type: 2}
-      requiredQuantity: 0
+      requiredQuantity: 2
       description: 
-    - requiredItem: {fileID: 11400000, guid: 02d82c7935b47e5418942d07a7457658, type: 2}
+    - requiredItem: {fileID: 11400000, guid: 15f7c2098bdac364696ec262ebab7fb1, type: 2}
       requiredQuantity: 2
       description: 
     tradeName: 
@@ -52,7 +52,7 @@ MonoBehaviour:
   tier: 5
   description: 
   sellPrice: 1500
-  buyPrice: 2000
+  buyPrice: 2500
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -64,21 +64,21 @@ MonoBehaviour:
     attackDamageBonus: 0
     magicDamageBonus: 0
     armorBonus: 0
-    criticalChanceBonus: 20
-    criticalDamageBonus: 0
+    criticalChanceBonus: 0
+    criticalDamageBonus: 20
     magicArmorBonus: 0
     manaRegenBonus: 0
     healthRegenBonus: 0
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 80
-    hitRateBonus: 35
+    attackSpeedBonus: 50
+    hitRateBonus: 30
     evasionRateBonus: 0
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
-    lifeStealBonus: 10
+    lifeStealBonus: 3
     ampDamageBonus: 0
     healAmount: 0
     manaAmount: 0

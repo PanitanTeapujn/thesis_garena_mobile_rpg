@@ -31,28 +31,25 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 1000
+    requiredGold: 500
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: 5a6b841942e72fb49ac48d92cbe7355c, type: 2}
-      requiredQuantity: 0
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 4276e847d3c59a44c9aefd4040611ae4, type: 2}
-      requiredQuantity: 0
-      description: 
     - requiredItem: {fileID: 11400000, guid: d208666f088d82445b3e164654c92179, type: 2}
-      requiredQuantity: 0
+      requiredQuantity: 5
+      description: 
+    - requiredItem: {fileID: 11400000, guid: ca952ff5d789d0a47982b24092cad2b2, type: 2}
+      requiredQuantity: 2
       description: 
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
   itemId: Abyss
   itemName: Abyss
-  itemIcon: {fileID: 21300000, guid: c3dbdee0ce8cf8948a9c29068bf93e51, type: 3}
+  itemIcon: {fileID: 21300000, guid: 8b56dd3c68ad16841b664ad9a83345d8, type: 3}
   itemType: 3
   tier: 5
   description: 
   sellPrice: 1500
-  buyPrice: 2000
+  buyPrice: 2500
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -63,18 +60,18 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 8
+    armorBonus: 5
     criticalChanceBonus: 0
     criticalDamageBonus: 0
-    magicArmorBonus: 5
+    magicArmorBonus: 4
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 100
+    maxHpBonus: 80
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 15
+    evasionRateBonus: 5
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0

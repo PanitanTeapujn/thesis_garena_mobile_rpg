@@ -55414,7 +55414,7 @@ MonoBehaviour:
     requiredGold: 0
     tradeName: 
     tradeDescription: 
-  - resultItem: {fileID: 11400000, guid: 5c6fa61528fb5b54abe76d6cab10ac20, type: 2}
+  - resultItem: {fileID: 11400000, guid: 379fc551e98a7aa44beba3b240c4a48e, type: 2}
     requiredItems: []
     requiredGold: 0
     tradeName: 
@@ -55424,7 +55424,7 @@ MonoBehaviour:
     requiredGold: 0
     tradeName: 
     tradeDescription: 
-  - resultItem: {fileID: 11400000, guid: a80feab3fdaa1e947a73d0f20e464420, type: 2}
+  - resultItem: {fileID: 11400000, guid: 5e2aa5fbc1084f4489ab5806765d5b5e, type: 2}
     requiredItems: []
     requiredGold: 0
     tradeName: 
@@ -55444,7 +55444,7 @@ MonoBehaviour:
     requiredGold: 0
     tradeName: 
     tradeDescription: 
-  - resultItem: {fileID: 11400000, guid: c22a40f25402dbd4dbeb99fc4bef318e, type: 2}
+  - resultItem: {fileID: 11400000, guid: 701a45d918cf54a4bb514f46d62a405f, type: 2}
     requiredItems: []
     requiredGold: 0
     tradeName: 
@@ -55454,7 +55454,12 @@ MonoBehaviour:
     requiredGold: 0
     tradeName: 
     tradeDescription: 
-  - resultItem: {fileID: 11400000, guid: ba09a87a0c2f116449eba18c5425da68, type: 2}
+  - resultItem: {fileID: 11400000, guid: 8300d28ce7c308c46a0282c514dd3ce3, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: 4a054a0edaba37043b047b1823fa6260, type: 2}
     requiredItems: []
     requiredGold: 0
     tradeName: 
