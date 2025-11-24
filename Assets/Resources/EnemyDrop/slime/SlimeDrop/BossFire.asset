@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
+  m_Name: BossFire
+  m_EditorClassIdentifier: 
+  overallDropChance: 100
+  maxItemDrops: 5
+  dropChanceLevelBonus: 0
+  itemDrops:
+  - itemData: {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
+    dropChance: 80
+    minQuantity: 1
+    maxQuantity: 10
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 78162d31b6b139d4ca860cb4d8b0e70e, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 7cd77ae85bd999b4aacd425185bdaca9, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: e101ba101c6844247964f008af797fec, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: ec744ccc7849822449b40562567df1bc, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 619737b480349354397ced52ca75fe26, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  showDropLogs: 1
+  guaranteedDropsForTesting: 0

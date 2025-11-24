@@ -146,7 +146,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   enemyPrefabs:
-  - enemyPrefab: {fileID: 2335039710452873401, guid: 3973eab3e8058d74098b9520dfb07322,
+  - enemyPrefab: {fileID: 2102208964661930907, guid: eaf15b70e569d2343846e52d707dd01e,
       type: 3}
     enemyName: 
     spawnWeight: 5
