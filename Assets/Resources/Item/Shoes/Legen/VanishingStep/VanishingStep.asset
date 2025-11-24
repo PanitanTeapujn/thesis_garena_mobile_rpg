@@ -31,28 +31,25 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 1000
+    requiredGold: 500
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: 642ff0b332033f940929ec8c621bf5a4, type: 2}
-      requiredQuantity: 0
+    - requiredItem: {fileID: 11400000, guid: 6834c41d19a3bf145baac376e8f2e8c6, type: 2}
+      requiredQuantity: 3
       description: 
     - requiredItem: {fileID: 11400000, guid: 1980a607da6cc6f448de97a4da9cf7c0, type: 2}
       requiredQuantity: 2
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 6834c41d19a3bf145baac376e8f2e8c6, type: 2}
-      requiredQuantity: 3
       description: 
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
   itemId: VanishingStep
   itemName: VanishingStep
-  itemIcon: {fileID: 21300000, guid: e89ca016d404a6a4687a5ee741e2d2b5, type: 3}
+  itemIcon: {fileID: 21300000, guid: 57e55d9ab75fec140a903522d5acf84e, type: 3}
   itemType: 4
   tier: 5
   description: 
   sellPrice: 1500
-  buyPrice: 2000
+  buyPrice: 2500
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -63,8 +60,8 @@ MonoBehaviour:
   stats:
     attackDamageBonus: 0
     magicDamageBonus: 0
-    armorBonus: 0
-    criticalChanceBonus: 30
+    armorBonus: 5
+    criticalChanceBonus: 0
     criticalDamageBonus: 0
     magicArmorBonus: 0
     manaRegenBonus: 0
@@ -72,7 +69,7 @@ MonoBehaviour:
     maxHpBonus: 0
     maxManaBonus: 0
     moveSpeedBonus: 0
-    attackSpeedBonus: 40
+    attackSpeedBonus: 20
     hitRateBonus: 15
     evasionRateBonus: 0
     reductionCoolDownBonus: 0

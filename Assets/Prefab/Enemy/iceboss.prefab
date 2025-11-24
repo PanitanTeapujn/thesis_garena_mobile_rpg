@@ -392,7 +392,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemDropSettings: {fileID: 11400000, guid: f63571b005f902f4597bea45c632801a, type: 2}
+  itemDropSettings: {fileID: 11400000, guid: fcfe43ed86c302e41baf995f143faa57, type: 2}
   collectRange: 10
   dropDelay: 0
   showDropLogs: 1

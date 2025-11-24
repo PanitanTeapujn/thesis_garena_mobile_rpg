@@ -36,9 +36,6 @@ MonoBehaviour:
     - requiredItem: {fileID: 11400000, guid: 2fcc4935dd733a34bab9c4fb979fc0e1, type: 2}
       requiredQuantity: 5
       description: 
-    - requiredItem: {fileID: 11400000, guid: 3cc4e58e2e3c128498a937088078b152, type: 2}
-      requiredQuantity: 2
-      description: 
     - requiredItem: {fileID: 11400000, guid: 69ff3ee2aac76aa4dad885081a94b0f8, type: 2}
       requiredQuantity: 1
       description: 

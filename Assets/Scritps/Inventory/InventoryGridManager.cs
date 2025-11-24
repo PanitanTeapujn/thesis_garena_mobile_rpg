@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Linq;
+
 public class InventoryGridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private int gridWidth = 8;     // 8 คอลัมน์
-    [SerializeField] private int gridHeight = 6;    // 6 แถว
-    [SerializeField] private float cellSize = 60f;   // ขนาดแต่ละ cell (ลดลงจาก 80f)
-    [SerializeField] private float spacing = 3f;     // ระยะห่างระหว่าง cells (ลดลงจาก 5f)
-    [SerializeField] private bool autoFitToParent = true;  // ปรับขนาดอัตโนมัติตาม parent
+    [SerializeField] private int gridWidth = 5;     // ✅ 5 คอลัมน์
+    [SerializeField] private int gridHeight = 5;    // ✅ 5 แถว
+    [SerializeField] private float cellSize = 70f;   // ✅ ขนาดแต่ละ cell
+    [SerializeField] private float spacing = 5f;     // ✅ ระยะห่างระหว่าง cells
+    [SerializeField] private bool autoFitToParent = true;
     [Header("Character Integration")]
     [SerializeField] private Character ownerCharacter;          // Character ที่เป็นเจ้าของ inventory นี้
     [SerializeField] private bool autoDetectCharacter = true;   // หา Character อัตโนมัติ
@@ -33,9 +35,45 @@ public class InventoryGridManager : MonoBehaviour
     public Button clearFiltersButton;              // ปุ่มล้าง filters
     public TextMeshProUGUI filteredItemCountText;  // แสดงจำนวน items หลัง filter
 
-    [Header("🔍 Filter Variables")]
-    private ItemType selectedItemType = ItemType.Weapon; // เก็บ type ที่เลือก (-1 = All)
-    private ItemTier selectedItemTier = ItemTier.Common;  // เก็บ tier ที่เลือก (-1 = All)
+    [Header("📄 Pagination Settings")]
+    [SerializeField] private int itemsPerPage = 25;  // ✅ 5x5 = 25 items per page
+    [SerializeField] private int currentPage = 0;
+    [SerializeField] private int totalPages = 0;
+    [Header("📄 Pagination UI")]
+    public Button previousPageButton;               // ✅ ปุ่มหน้าก่อน
+    public Button nextPageButton;                   // ✅ ปุ่มหน้าถัดไป
+    public TextMeshProUGUI pageInfoText;
+    [Header("🔍 Filter Panel")]
+    public GameObject filterPanel;                  // Panel หลักของ filter
+    public Button openFilterButton;                 // ปุ่มเปิด filter panel
+    public Button closeFilterButton;                // ปุ่มปิด filter panel (ใน panel)
+
+    [Header("🔍 Type Filter Buttons")]
+    public Button filterAllTypesButton;
+    public Button filterWeaponButton;
+    public Button filterHeadButton;
+    public Button filterArmorButton;
+    public Button filterPantsButton;
+    public Button filterShoesButton;
+    public Button filterPotionButton;
+    public Button filterMaterialButton;
+    public Button filterMiscButton;
+
+    [Header("🔍 Tier Filter Buttons")]
+    public Button filterAllTiersButton;
+    public Button filterCommonButton;
+    public Button filterUncommonButton;
+    public Button filterRareButton;
+    public Button filterEpicButton;
+    public Button filterLegendaryButton;
+
+    [Header("🔍 Filter Status UI")]
+    public TextMeshProUGUI filterStatusText;        // แสดงสถานะ filter ปัจจุบัน
+    public TextMeshProUGUI itemCountText;           // แสดงจำนวน items (X/Y)
+
+    // ตัวแปรสถานะ filter
+    private ItemType? selectedItemType = null;      // null = All Types
+    private ItemTier? selectedItemTier = null;      // null = All Tiers
     private bool isFilteringByType = false;              // สถานะการ filter ตาม type
     private bool isFilteringByTier = false;              // สถานะการ filter ตาม tier
     // Properties
@@ -53,23 +91,163 @@ public class InventoryGridManager : MonoBehaviour
     private void Start()
     {
         SetupCharacterConnection();
-        SetupInventoryFilters();
 
-        // ✅ เปลี่ยนจาก CreateInventoryGrid(); เป็น
-        // สร้าง grid เสมอ แม้ว่าจะยังไม่มี character
+        // ✅ เพิ่มบรรทัดนี้
+        SetupFilterPanel();
+
+        SetupPagination();
+
         if (allSlots.Count == 0)
         {
             CreateInventoryGrid();
             Debug.Log("[InventoryGrid] Created initial grid");
         }
 
-        // ถ้ามี character แล้วให้ load items
         if (ownerCharacter != null)
         {
             LoadItemsFromCharacterInventory();
         }
     }
+    #region Filter Panel System
 
+    private void SetupFilterPanel()
+    {
+        Debug.Log("[InventoryGrid] 🔍 Setting up filter panel...");
+
+        // ซ่อน filter panel ไว้ก่อน
+        if (filterPanel != null)
+        {
+            filterPanel.SetActive(false);
+        }
+
+        // Setup Open/Close buttons
+        if (openFilterButton != null)
+        {
+            openFilterButton.onClick.RemoveAllListeners();
+            openFilterButton.onClick.AddListener(OpenFilterPanel);
+            Debug.Log("[InventoryGrid] ✅ Open filter button setup");
+        }
+
+        if (closeFilterButton != null)
+        {
+            closeFilterButton.onClick.RemoveAllListeners();
+            closeFilterButton.onClick.AddListener(CloseFilterPanel);
+            Debug.Log("[InventoryGrid] ✅ Close filter button setup");
+        }
+
+        // Setup Type Filter Buttons
+        SetupTypeFilterButtons();
+
+        // Setup Tier Filter Buttons
+        SetupTierFilterButtons();
+
+        // Initial display update
+        UpdateFilterDisplay();
+
+        Debug.Log("[InventoryGrid] ✅ Filter panel setup complete");
+    }
+
+    private void SetupTypeFilterButtons()
+    {
+        if (filterAllTypesButton != null)
+        {
+            filterAllTypesButton.onClick.RemoveAllListeners();
+            filterAllTypesButton.onClick.AddListener(() => OnTypeFilterClicked(null));
+        }
+
+        if (filterWeaponButton != null)
+        {
+            filterWeaponButton.onClick.RemoveAllListeners();
+            filterWeaponButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Weapon));
+        }
+
+        if (filterHeadButton != null)
+        {
+            filterHeadButton.onClick.RemoveAllListeners();
+            filterHeadButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Head));
+        }
+
+        if (filterArmorButton != null)
+        {
+            filterArmorButton.onClick.RemoveAllListeners();
+            filterArmorButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Armor));
+        }
+
+        if (filterPantsButton != null)
+        {
+            filterPantsButton.onClick.RemoveAllListeners();
+            filterPantsButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Pants));
+        }
+
+        if (filterShoesButton != null)
+        {
+            filterShoesButton.onClick.RemoveAllListeners();
+            filterShoesButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Shoes));
+        }
+
+        if (filterPotionButton != null)
+        {
+            filterPotionButton.onClick.RemoveAllListeners();
+            filterPotionButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Potion));
+        }
+
+        if (filterMaterialButton != null)
+        {
+            filterMaterialButton.onClick.RemoveAllListeners();
+            filterMaterialButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Material));
+        }
+
+        if (filterMiscButton != null)
+        {
+            filterMiscButton.onClick.RemoveAllListeners();
+            filterMiscButton.onClick.AddListener(() => OnTypeFilterClicked(ItemType.Misc));
+        }
+
+        Debug.Log("[InventoryGrid] ✅ Type filter buttons setup");
+    }
+
+    private void SetupTierFilterButtons()
+    {
+        if (filterAllTiersButton != null)
+        {
+            filterAllTiersButton.onClick.RemoveAllListeners();
+            filterAllTiersButton.onClick.AddListener(() => OnTierFilterClicked(null));
+        }
+
+        if (filterCommonButton != null)
+        {
+            filterCommonButton.onClick.RemoveAllListeners();
+            filterCommonButton.onClick.AddListener(() => OnTierFilterClicked(ItemTier.Common));
+        }
+
+        if (filterUncommonButton != null)
+        {
+            filterUncommonButton.onClick.RemoveAllListeners();
+            filterUncommonButton.onClick.AddListener(() => OnTierFilterClicked(ItemTier.Uncommon));
+        }
+
+        if (filterRareButton != null)
+        {
+            filterRareButton.onClick.RemoveAllListeners();
+            filterRareButton.onClick.AddListener(() => OnTierFilterClicked(ItemTier.Rare));
+        }
+
+        if (filterEpicButton != null)
+        {
+            filterEpicButton.onClick.RemoveAllListeners();
+            filterEpicButton.onClick.AddListener(() => OnTierFilterClicked(ItemTier.Epic));
+        }
+
+        if (filterLegendaryButton != null)
+        {
+            filterLegendaryButton.onClick.RemoveAllListeners();
+            filterLegendaryButton.onClick.AddListener(() => OnTierFilterClicked(ItemTier.Legendary));
+        }
+
+        Debug.Log("[InventoryGrid] ✅ Tier filter buttons setup");
+    }
+
+    #endregion
     private void OnRectTransformDimensionsChange()
     {
         // ปรับขนาดอัตโนมัติเมื่อ parent panel เปลี่ยนขนาด
@@ -87,7 +265,13 @@ public class InventoryGridManager : MonoBehaviour
             }
         }
     }
-
+    // ✅ เพิ่ม class นี้ใน InventoryGridManager (ด้านล่างสุดของ class)
+    private class FilteredSlotData
+    {
+        public int slotIndex;
+        public ItemData itemData;
+        public int stackCount;
+    }
     private IEnumerator DelayedRefreshLayout()
     {
         // รอ 1 frame เพื่อให้ layout update เสร็จก่อน
@@ -159,34 +343,116 @@ public class InventoryGridManager : MonoBehaviour
         if (gridLayout == null)
         {
             gridLayout = gameObject.AddComponent<GridLayoutGroup>();
+            Debug.Log("[InventoryGrid] Created new GridLayoutGroup");
         }
 
-        // 🎯 NEW: Auto-fit to parent panel
-        if (autoFitToParent)
-        {
-            CalculateOptimalCellSize();
-        }
 
-        // ตั้งค่า Grid Layout
-        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = gridWidth;
-        gridLayout.cellSize = new Vector2(cellSize, cellSize);
-        gridLayout.spacing = new Vector2(spacing, spacing);
-        gridLayout.childAlignment = TextAnchor.MiddleCenter;
-        gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-        gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
 
-        // ตั้งค่า Content Size Fitter สำหรับ scroll
+        // ลบ ContentSizeFitter ถ้ามี (ส่วนนี้เก็บไว้)
         ContentSizeFitter sizeFitter = GetComponent<ContentSizeFitter>();
-        if (sizeFitter == null)
+        if (sizeFitter != null)
         {
-            sizeFitter = gameObject.AddComponent<ContentSizeFitter>();
+            Destroy(sizeFitter);
+            Debug.Log("[InventoryGrid] Removed ContentSizeFitter");
         }
-        sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        Debug.Log($"[InventoryGrid] Grid Layout setup complete: {gridWidth}x{gridHeight} = {totalSlots} slots, Cell Size: {cellSize}x{cellSize}");
+        Debug.Log($"[InventoryGrid] Grid Layout setup complete - Using Inspector settings");
+    }
+    // ✅ เพิ่ม method ใหม่นี้
+    // ✅ แทนที่ method เดิมทั้งหมด
+    public void OnInventoryPanelOpened()
+    {
+        Debug.Log("[InventoryGrid] 📂 Inventory panel opened");
+
+        // ไม่ต้อง StartCoroutine ซ้ำซ้อน
+        ForceRefreshOnOpen();
     }
 
+    // ✅ เพิ่ม Coroutine ใหม่นี้
+    private IEnumerator ForceFixOnPanelOpen()
+    {
+        // รอ 1 frame
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔧 First fix attempt...");
+
+        // Fix ครั้งที่ 1
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+        Canvas.ForceUpdateCanvases();
+
+        // รออีก 1 frame
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔧 Second fix attempt...");
+
+        // Fix ครั้งที่ 2
+        UpdateVisibleSlots();
+        Canvas.ForceUpdateCanvases();
+
+        // รออีก 1 frame
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔧 Final fix attempt...");
+
+        // Fix ครั้งที่ 3 (สุดท้าย)
+        ForceHideExtraSlots();
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[InventoryGrid] ✅ Panel open fix complete!");
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับบังคับซ่อน slots ที่เกิน
+    // ✅ ตรวจสอบว่ามี method นี้แล้วหรือยัง ถ้ายังให้เพิ่ม
+    public void ForceHideExtraSlots()
+    {
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = startIndex + itemsPerPage;
+
+        Debug.Log($"[InventoryGrid] 🔒 Force hiding slots outside range {startIndex}-{endIndex}");
+
+        int hiddenCount = 0;
+        int visibleCount = 0;
+
+        for (int i = 0; i < allSlots.Count; i++)
+        {
+            if (allSlots[i] == null) continue;
+
+            bool shouldBeVisible = i >= startIndex && i < endIndex;
+
+            // บังคับ SetActive
+            allSlots[i].gameObject.SetActive(shouldBeVisible);
+
+            if (shouldBeVisible)
+                visibleCount++;
+            else
+                hiddenCount++;
+        }
+
+        Debug.Log($"[InventoryGrid] ✅ Force hide complete - Visible: {visibleCount}, Hidden: {hiddenCount}");
+    }
+    /// <summary>
+    /// บังคับ Refresh ทั้งหมดทันที (ใช้เมื่อเปิด panel)
+    /// </summary>
+    // ✅ แทนที่ method เดิม
+    public void ForceRefreshOnOpen()
+    {
+        Debug.Log("[InventoryGrid] 🔄 Force refresh on open...");
+
+        // Reset to first page
+        currentPage = 0;
+
+        // ✅ อัพเดท pagination UI
+        UpdatePaginationUI();
+
+        // ✅ อัพเดท visible slots
+        UpdateVisibleSlots();
+
+        // ✅ Force hide extra (ป้องกันทะลุ)
+        ForceHideExtraSlots();
+
+        Debug.Log("[InventoryGrid] ✅ Force refresh complete");
+    }
     private void CreateInventoryGrid()
     {
         bool needsCanvasRefresh = !IsParentCanvasActive();
@@ -194,54 +460,88 @@ public class InventoryGridManager : MonoBehaviour
         // ลบ slots เก่าถ้ามี
         ClearExistingSlots();
 
-        // ดึงจำนวน slots จาก Character ถ้ามี
+        // ✅ อ่านค่าจาก GridLayoutGroup ที่ตั้งใน Inspector
+        if (gridLayout != null)
+        {
+            gridWidth = gridLayout.constraintCount;
+            itemsPerPage = gridWidth * gridHeight;
+
+            Debug.Log($"[InventoryGrid] Using Inspector settings: {gridWidth}x{gridHeight} = {itemsPerPage} per page");
+        }
+
+        // ดึงจำนวน slots จาก Character (800 slots)
         if (ownerCharacter != null)
         {
             int characterSlots = ownerCharacter.GetInventorySlotCount();
             totalSlots = characterSlots;
 
-            // คำนวณ grid dimensions ใหม่
-            CalculateGridDimensions(characterSlots);
-
-            Debug.Log($"[InventoryGrid] Using character's inventory: {characterSlots} slots ({gridWidth}x{gridHeight})");
+            Debug.Log($"[InventoryGrid] Creating grid for {characterSlots} slots (showing {itemsPerPage} per page)");
         }
         else
         {
-            // ใช้ค่าเริ่มต้นถ้าไม่มี character
-            totalSlots = gridWidth * gridHeight;
-            Debug.LogWarning("[InventoryGrid] No character found, using default slot count");
+            totalSlots = 800;
+            Debug.LogWarning("[InventoryGrid] No character found, using default 800 slots");
         }
 
-        // สร้าง slots ใหม่
+        // Reset หน้าเป็น 0 ก่อนสร้าง
+        currentPage = 0;
+
+        // สร้าง slots ทั้งหมด 800 ช่อง
         for (int i = 0; i < totalSlots; i++)
         {
             CreateSlot(i);
         }
 
-        // ✅ แก้ไข - ตรวจสอบก่อนเรียก Coroutine
+        // Canvas refresh
         if (needsCanvasRefresh && gameObject.activeInHierarchy)
         {
             StartCoroutine(ForceCanvasRefreshRoutine());
         }
         else if (needsCanvasRefresh)
         {
-            // ถ้า GameObject ไม่ active ให้ refresh ทันที
             Canvas.ForceUpdateCanvases();
-            Debug.Log("[InventoryGrid] Force refreshed canvas immediately (object inactive)");
         }
 
-        // ✅ แก้ไข - เพิ่ม immediate sync หลังสร้าง slots เสร็จ
+        // อัพเดท pagination ทันทีหลังสร้าง slots
+        UpdatePaginationUI();
+
+        // เพิ่ม Coroutine เพื่อให้แน่ใจว่า slots แสดงถูกต้อง
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(DelayedInitialPageSetup());
+        }
+
+        // Immediate sync
         if (ownerCharacter != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(ImmediateSyncAllSlotsAfterCreate());
         }
         else if (ownerCharacter != null)
         {
-            // ถ้า GameObject ไม่ active ให้ sync ทันที
             ImmediateSyncAllSlotsNow();
         }
 
-        Debug.Log($"[InventoryGrid] Created {allSlots.Count} inventory slots");
+        Debug.Log($"[InventoryGrid] ✅ Created {allSlots.Count} inventory slots with pagination");
+    }
+
+    // ✅ เพิ่ม Coroutine ใหม่นี้
+    private IEnumerator DelayedInitialPageSetup()
+    {
+        // รอ 2 frames เพื่อให้ grid setup เสร็จ
+        yield return null;
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔄 Setting up initial page display...");
+
+        // Force อัพเดทหน้าแรก
+        currentPage = 0;
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+
+        // Force canvas update
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[InventoryGrid] ✅ Initial page setup complete - showing first 25 slots");
     }
     private void ImmediateSyncAllSlotsNow()
     {
@@ -311,7 +611,7 @@ public class InventoryGridManager : MonoBehaviour
 
                         slot.SetFilledState(itemIcon, stackCount);
 
-                       
+
 
                         Debug.Log($"[InventoryGrid] Immediate sync slot {i}: {item.itemData.ItemName}");
                     }
@@ -342,7 +642,7 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log("[InventoryGrid] Force refreshed canvas for slot creation");
     }
 
-   
+
     private void CreateSlot(int slotIndex)
     {
         GameObject slotObj;
@@ -369,23 +669,26 @@ public class InventoryGridManager : MonoBehaviour
         slot.SlotIndex = slotIndex;
         slot.OnSlotSelected += HandleSlotSelected;
 
-        // ✅ Setup components ทันทีที่สร้าง
+        // Setup components ทันทีที่สร้าง
         slot.ForceSetupComponents();
 
         allSlots.Add(slot);
 
-        // ✅ แก้ไข - ตรวจสอบก่อนเรียก Coroutine
+        // ✅ เพิ่มบรรทัดนี้ - ซ่อน slots ที่ไม่อยู่ในหน้าแรก
+        bool isInFirstPage = slotIndex < itemsPerPage;
+        slotObj.SetActive(isInFirstPage);
+
+        // Sync with character
         if (ownerCharacter != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(DelayedSyncSlotFromCharacter(slot, slotIndex));
         }
         else if (ownerCharacter != null)
         {
-            // ถ้า GameObject ไม่ active ให้ sync ทันที
             SyncSlotFromCharacterNow(slot, slotIndex);
         }
 
-        Debug.Log($"[InventoryGrid] Created slot {slotIndex} without forcing empty state");
+        Debug.Log($"[InventoryGrid] Created slot {slotIndex}, Active: {isInFirstPage}");
     }
 
     // ✅ เพิ่ม method ใหม่สำหรับ sync แบบไม่ใช้ Coroutine
@@ -434,7 +737,7 @@ public class InventoryGridManager : MonoBehaviour
 
                 slot.SetFilledState(itemIcon, stackCount);
 
-               
+
 
                 Debug.Log($"[InventoryGrid] Slot {slotIndex} synced with item: {item.itemData.ItemName}");
             }
@@ -444,7 +747,7 @@ public class InventoryGridManager : MonoBehaviour
             slot.SetEmptyState();
         }
     }
-   
+
     private GameObject CreateSlotFromScratch()
     {
         // สร้าง slot object
@@ -849,43 +1152,7 @@ public class InventoryGridManager : MonoBehaviour
             LoadItemsFromCharacterInventory();
         }
     }
-    private void CalculateGridDimensions(int slotCount)
-    {
-        // หา dimensions ที่เหมาะสมที่สุด
-        if (slotCount <= 24) // 6x4
-        {
-            gridWidth = 6;
-            gridHeight = 4;
-        }
-        else if (slotCount <= 30) // 6x5
-        {
-            gridWidth = 6;
-            gridHeight = 5;
-        }
-        else if (slotCount <= 36) // 6x6
-        {
-            gridWidth = 6;
-            gridHeight = 6;
-        }
-        else if (slotCount <= 42) // 7x6
-        {
-            gridWidth = 7;
-            gridHeight = 6;
-        }
-        else // 8x6 หรือมากกว่า
-        {
-            gridWidth = 8;
-            gridHeight = Mathf.CeilToInt((float)slotCount / gridWidth);
-        }
 
-        // อัปเดต GridLayoutGroup
-        if (gridLayout != null)
-        {
-            gridLayout.constraintCount = gridWidth;
-        }
-
-        totalSlots = gridWidth * gridHeight; // อาจจะมากกว่า slotCount เล็กน้อย
-    }
 
     // เพิ่ม method สำหรับโหลด items จาก character
     private void LoadItemsFromCharacterInventory()
@@ -901,79 +1168,50 @@ public class InventoryGridManager : MonoBehaviour
             InventoryItem item = characterInventory.GetItem(i);
             UpdateSlotFromInventoryItem(i, item);
 
-            // ✅ เพิ่มบรรทัดนี้ - Force sync ทุก slot ทันที
             if (i < allSlots.Count && allSlots[i] != null)
             {
                 allSlots[i].ForceSyncFromCharacterNow();
             }
         }
 
-        // ✅ เพิ่ม force refresh ทั้ง grid
+        // ✅ อัพเดท pagination หลังโหลด
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+
         ForceRefreshAllSlots();
         ApplyInventoryFilters();
 
-        Debug.Log("[InventoryGrid] ✅ Completed loading all items with force sync");
+        Debug.Log("[InventoryGrid] ✅ Completed loading all items");
     }
+    // ✅ แทนที่ method เดิม
     public void ForceRefreshAllSlots()
     {
-        Debug.Log("[InventoryGrid] 🔄 Force refreshing all slots...");
-
         if (ownerCharacter?.GetInventory() == null)
         {
-            Debug.LogWarning("[InventoryGrid] No character inventory to refresh from");
-            return;
+            return; // ✅ Early exit
         }
 
         Inventory inventory = ownerCharacter.GetInventory();
 
-        // ✅ Debug inventory ก่อน refresh
-        Debug.Log($"[InventoryGrid] Inventory has {inventory.UsedSlots}/{inventory.CurrentSlots} items");
+        // ✅ Refresh เฉพาะ visible slots (ไม่ต้องทั้งหมด)
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = Mathf.Min(startIndex + itemsPerPage, inventory.CurrentSlots);
 
-        for (int i = 0; i < 5 && i < inventory.CurrentSlots; i++)
+        for (int i = startIndex; i < endIndex && i < allSlots.Count; i++)
         {
-            var item = inventory.GetItem(i);
-            string itemInfo = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
-            Debug.Log($"[InventoryGrid] Slot {i}: {itemInfo}");
-        }
-
-        // Refresh ทุก slot พร้อม debug
-        int refreshedCount = 0;
-        foreach (InventorySlot slot in allSlots)
-        {
-            if (slot != null)
+            if (allSlots[i] != null && allSlots[i].gameObject.activeSelf)
             {
-                // ดึงข้อมูลจาก character inventory
-                int slotIndex = slot.SlotIndex;
-                if (slotIndex >= 0 && slotIndex < inventory.CurrentSlots)
-                {
-                    var item = inventory.GetItem(slotIndex);
-
-                    // Debug ก่อน sync
-                    string beforeState = slot.IsEmpty ? "EMPTY" : "FILLED";
-                    string inventoryState = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
-
-                    // Force sync
-                    slot.ForceSyncFromCharacterNow();
-
-                    // Debug หลัง sync
-                    string afterState = slot.IsEmpty ? "EMPTY" : "FILLED";
-
-                    if (beforeState != afterState)
-                    {
-                        Debug.Log($"[InventoryGrid] Slot {slotIndex}: {beforeState} → {afterState} (Inventory: {inventoryState})");
-                    }
-
-                    refreshedCount++;
-                }
+                allSlots[i].ForceSyncFromCharacterNow();
             }
         }
 
-        // Force canvas update
-        Canvas.ForceUpdateCanvases();
-        ApplyInventoryFilters();
+        // ✅ Force hide extra slots
+        ForceHideExtraSlots();
 
-        Debug.Log($"[InventoryGrid] ✅ Refreshed {refreshedCount} slots");
+        // Canvas update ครั้งเดียว
+        Canvas.ForceUpdateCanvases();
     }
+
     // เพิ่ม method สำหรับอัปเดต slot จาก inventory item
     private void UpdateSlotFromInventoryItem(int slotIndex, InventoryItem item)
     {
@@ -1024,7 +1262,7 @@ public class InventoryGridManager : MonoBehaviour
 
     public void ForceSyncAllSlots()
     {
-       // Debug.Log("[InventoryGrid] Force syncing all slots...");
+        // Debug.Log("[InventoryGrid] Force syncing all slots...");
 
         if (ownerCharacter?.GetInventory() == null) return;
 
@@ -1037,7 +1275,7 @@ public class InventoryGridManager : MonoBehaviour
 
             if (slot != null)
             {
-             //   Debug.Log($"[InventoryGrid] Syncing slot {i}: {(item?.IsEmpty != false ? "Empty" : item.itemData.ItemName)}");
+                //   Debug.Log($"[InventoryGrid] Syncing slot {i}: {(item?.IsEmpty != false ? "Empty" : item.itemData.ItemName)}");
                 UpdateSlotFromInventoryItem(i, item);
             }
         }
@@ -1075,7 +1313,7 @@ public class InventoryGridManager : MonoBehaviour
     {
         if (ownerCharacter == null) return;
 
-       // Debug.Log("[InventoryGrid] Force loading items after character connection...");
+        // Debug.Log("[InventoryGrid] Force loading items after character connection...");
 
         // ตรวจสอบว่ามี slots แล้วหรือยัง
         if (allSlots.Count == 0)
@@ -1092,7 +1330,7 @@ public class InventoryGridManager : MonoBehaviour
         // ✅ เพิ่มบรรทัดนี้ - แจ้ง ItemDeleteManager หลัง load เสร็จ
         NotifyItemDeleteManagerForRefresh();
 
-       // Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed");
+        // Debug.Log("[InventoryGrid] ✅ Force load completed with all slots refreshed");
     }
     public bool IsProperlyConnected()
     {
@@ -1100,7 +1338,7 @@ public class InventoryGridManager : MonoBehaviour
         bool hasInventory = ownerCharacter?.GetInventory() != null;
         bool hasSlots = allSlots != null && allSlots.Count > 0;
 
-       // Debug.Log($"[InventoryGrid] Connection Status - Character: {hasCharacter}, Inventory: {hasInventory}, Slots: {hasSlots}");
+        // Debug.Log($"[InventoryGrid] Connection Status - Character: {hasCharacter}, Inventory: {hasInventory}, Slots: {hasSlots}");
 
         return hasCharacter && hasInventory && hasSlots;
     }
@@ -1124,13 +1362,13 @@ public class InventoryGridManager : MonoBehaviour
     {
         if (ownerCharacter?.GetInventory() == null)
         {
-         //   Debug.LogWarning($"[InventoryGrid] No character or inventory to update slot {slotIndex}");
+            //   Debug.LogWarning($"[InventoryGrid] No character or inventory to update slot {slotIndex}");
             return;
         }
 
         if (slotIndex < 0 || slotIndex >= allSlots.Count)
         {
-         //   Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range (0-{allSlots.Count - 1})");
+            //   Debug.LogWarning($"[InventoryGrid] Slot index {slotIndex} out of range (0-{allSlots.Count - 1})");
             return;
         }
 
@@ -1140,23 +1378,23 @@ public class InventoryGridManager : MonoBehaviour
 
         if (slot == null)
         {
-         //   Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
+            //   Debug.LogError($"[InventoryGrid] Slot {slotIndex} is null!");
             return;
         }
 
-      //  Debug.Log($"[InventoryGrid] 🔄 Updating slot {slotIndex} from character data...");
+        //  Debug.Log($"[InventoryGrid] 🔄 Updating slot {slotIndex} from character data...");
 
         // 🆕 แสดงข้อมูลก่อนและหลัง update
         string beforeState = slot.IsEmpty ? "EMPTY" : "FILLED";
         string itemInfo = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
 
-       // Debug.Log($"[InventoryGrid] Slot {slotIndex} - Before: {beforeState}, Character Data: {itemInfo}");
+        // Debug.Log($"[InventoryGrid] Slot {slotIndex} - Before: {beforeState}, Character Data: {itemInfo}");
 
         // อัปเดต slot ตามข้อมูลจาก character
         UpdateSlotFromInventoryItem(slotIndex, item);
 
         string afterState = slot.IsEmpty ? "EMPTY" : "FILLED";
-     //   Debug.Log($"[InventoryGrid] Slot {slotIndex} - After: {afterState}");
+        //   Debug.Log($"[InventoryGrid] Slot {slotIndex} - After: {afterState}");
 
         // 🆕 Force refresh เฉพาะ slot นี้
         if (slot.slotButton != null)
@@ -1167,7 +1405,7 @@ public class InventoryGridManager : MonoBehaviour
     }
     public void NotifyItemDeleteManagerForRefresh()
     {
-      //  Debug.Log("[InventoryGrid] 📢 Notifying ItemDeleteManager to refresh references...");
+        //  Debug.Log("[InventoryGrid] 📢 Notifying ItemDeleteManager to refresh references...");
 
         try
         {
@@ -1175,16 +1413,16 @@ public class InventoryGridManager : MonoBehaviour
             if (deleteManager != null)
             {
                 deleteManager.ForceRefreshReferences();
-             //   Debug.Log("[InventoryGrid] ✅ Successfully notified ItemDeleteManager");
+                //   Debug.Log("[InventoryGrid] ✅ Successfully notified ItemDeleteManager");
             }
             else
             {
-               // Debug.LogWarning("[InventoryGrid] ItemDeleteManager not found for notification");
+                // Debug.LogWarning("[InventoryGrid] ItemDeleteManager not found for notification");
             }
         }
         catch (System.Exception e)
         {
-          //  Debug.LogError($"[InventoryGrid] Error notifying ItemDeleteManager: {e.Message}");
+            //  Debug.LogError($"[InventoryGrid] Error notifying ItemDeleteManager: {e.Message}");
         }
     }
     #region Runtime Grid Modification
@@ -1213,406 +1451,199 @@ public class InventoryGridManager : MonoBehaviour
     }
     #endregion
 
-    private void SetupInventoryFilters()
+  
+  
+    #region Pagination System
+
+    private void SetupPagination()
     {
-      //  Debug.Log("[InventoryGrid] 🔧 Setting up inventory filters...");
+        Debug.Log("[InventoryGrid] Setting up pagination system...");
 
-        // ✅ Setup Category Filter Dropdown
-        if (categoryFilterDropdown != null)
+        // Setup button events
+        if (previousPageButton != null)
         {
-            try
-            {
-                categoryFilterDropdown.ClearOptions();
-                List<string> categoryOptions = new List<string> { "All Types" };
-
-                foreach (ItemType itemType in System.Enum.GetValues(typeof(ItemType)))
-                {
-                    categoryOptions.Add(itemType.ToString());
-                }
-
-                categoryFilterDropdown.AddOptions(categoryOptions);
-                categoryFilterDropdown.value = 0;
-                categoryFilterDropdown.RefreshShownValue();
-
-                // ✅ Setup dropdown content layout พร้อม optimization
-                SetupDropdownContentLayout(categoryFilterDropdown, "Category");
-                OptimizeDropdownUsability(categoryFilterDropdown, "Category");
-
-                // เพิ่ม event listener
-                categoryFilterDropdown.onValueChanged.AddListener(OnCategoryFilterChanged);
-
-              //  Debug.Log($"[InventoryGrid] ✅ Category filter setup: {categoryOptions.Count} options");
-            }
-            catch (System.Exception e)
-            {
-             //   Debug.LogError($"[InventoryGrid] ❌ Category filter setup failed: {e.Message}");
-            }
-        }
-
-        // ✅ Setup Tier Filter Dropdown
-        if (tierFilterDropdown != null)
-        {
-            try
-            {
-                tierFilterDropdown.ClearOptions();
-                List<string> tierOptions = new List<string> { "All Tiers" };
-
-                foreach (ItemTier tier in System.Enum.GetValues(typeof(ItemTier)))
-                {
-                    tierOptions.Add(tier.ToString());
-                }
-
-                tierFilterDropdown.AddOptions(tierOptions);
-                tierFilterDropdown.value = 0;
-                tierFilterDropdown.RefreshShownValue();
-
-                // ✅ Setup dropdown content layout พร้อม optimization
-                SetupDropdownContentLayout(tierFilterDropdown, "Tier");
-                OptimizeDropdownUsability(tierFilterDropdown, "Tier");
-
-                // เพิ่ม event listener
-                tierFilterDropdown.onValueChanged.AddListener(OnTierFilterChanged);
-
-             //   Debug.Log($"[InventoryGrid] ✅ Tier filter setup: {tierOptions.Count} options");
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[InventoryGrid] ❌ Tier filter setup failed: {e.Message}");
-            }
-        }
-
-        // ✅ Setup Clear Filters Button
-        if (clearFiltersButton != null)
-        {
-            clearFiltersButton.onClick.RemoveAllListeners();
-            clearFiltersButton.onClick.AddListener(ClearAllFilters);
-          //  Debug.Log("[InventoryGrid] ✅ Clear filters button setup");
-        }
-
-       // Debug.Log("[InventoryGrid] 🎉 Inventory filters setup completed with improved usability!");
-    }
-    private void SetupDropdownContentLayout(TMP_Dropdown dropdown, string dropdownName)
-    {
-        if (dropdown == null) return;
-
-        try
-        {
-            // หา dropdown content (Template)
-            Transform template = dropdown.transform.Find("Template");
-            if (template == null)
-            {
-              //  Debug.LogWarning($"[InventoryGrid] No Template found in {dropdownName} dropdown");
-                return;
-            }
-
-            // หา Viewport และ Content
-            Transform viewport = template.Find("Viewport");
-            if (viewport == null)
-            {
-           //     Debug.LogWarning($"[InventoryGrid] No Viewport found in {dropdownName} dropdown template");
-                return;
-            }
-
-            Transform content = viewport.Find("Content");
-            if (content == null)
-            {
-            //    Debug.LogWarning($"[InventoryGrid] No Content found in {dropdownName} dropdown viewport");
-                return;
-            }
-
-            // ✅ เพิ่ม Vertical Layout Group ใน Content
-            VerticalLayoutGroup verticalLayout = content.GetComponent<VerticalLayoutGroup>();
-            if (verticalLayout == null)
-            {
-                verticalLayout = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            //    Debug.Log($"[InventoryGrid] ✅ Added VerticalLayoutGroup to {dropdownName} dropdown content");
-            }
-
-            // ✅ ตั้งค่า Vertical Layout Group ให้กดง่าย (เหมือน ShopLooby)
-            verticalLayout.padding = new RectOffset(2, 2, 15, 2);       // padding น้อยลง
-            verticalLayout.spacing = 25f;                               // ไม่มีระยะห่างระหว่างตัวเลือก
-            verticalLayout.childAlignment = TextAnchor.UpperLeft;       // จัดเรียงซ้ายบน
-            verticalLayout.childControlWidth = true;                   // ควบคุมความกว้าง
-            verticalLayout.childControlHeight = true;                  // ควบคุมความสูง
-            verticalLayout.childForceExpandWidth = true;               // บังคับขยายความกว้าง
-            verticalLayout.childForceExpandHeight = false;             // ไม่บังคับขยายความสูง
-
-            // ✅ เพิ่ม Content Size Fitter
-            ContentSizeFitter sizeFitter = content.GetComponent<ContentSizeFitter>();
-            if (sizeFitter == null)
-            {
-                sizeFitter = content.gameObject.AddComponent<ContentSizeFitter>();
-            }
-            sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-
-            // ✅ ปรับ Template size ให้เหมาะสมกับการกด
-            RectTransform templateRect = template.GetComponent<RectTransform>();
-            if (templateRect != null)
-            {
-                // กำหนดความสูงสูงสุดของ dropdown
-                float maxHeight = 300; // สูงสุด 200 pixels
-                Vector2 templateSize = templateRect.sizeDelta;
-                templateSize.y = maxHeight;
-                templateRect.sizeDelta = templateSize;
-
-             //   Debug.Log($"[InventoryGrid] Set {dropdownName} dropdown template max height to {maxHeight}");
-            }
-
-            // ✅ เพิ่ม ScrollRect ถ้าไม่มี (สำหรับกรณีตัวเลือกเยอะ)
-            ScrollRect scrollRect = template.GetComponent<ScrollRect>();
-            if (scrollRect == null)
-            {
-                scrollRect = template.gameObject.AddComponent<ScrollRect>();
-                scrollRect.content = content.GetComponent<RectTransform>();
-                scrollRect.viewport = viewport.GetComponent<RectTransform>();
-                scrollRect.horizontal = false;
-                scrollRect.vertical = true;
-                scrollRect.scrollSensitivity = 20f;
-
-              //  Debug.Log($"[InventoryGrid] ✅ Added ScrollRect to {dropdownName} dropdown");
-            }
-
-            // ✅ ปรับแต่ง dropdown items ให้กดง่าย
-            SetupDropdownItemInteraction(dropdown, dropdownName);
-
-            Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown content layout setup completed");
-
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown layout: {e.Message}");
-        }
-    }
-    private void SetupDropdownItemInteraction(TMP_Dropdown dropdown, string dropdownName)
-    {
-        if (dropdown == null) return;
-
-        try
-        {
-            // หา dropdown item prefab
-            Transform template = dropdown.transform.Find("Template");
-            if (template == null) return;
-
-            Transform viewport = template.Find("Viewport");
-            if (viewport == null) return;
-
-            Transform content = viewport.Find("Content");
-            if (content == null) return;
-
-            Transform item = content.Find("Item");
-            if (item == null) return;
-
-            // ✅ ปรับแต่ง item toggle component
-            Toggle itemToggle = item.GetComponent<Toggle>();
-            if (itemToggle != null)
-            {
-                // ปรับสี transition ให้เห็นชัดเจนขึ้น
-                ColorBlock colors = itemToggle.colors;
-                colors.normalColor = new Color(1f, 1f, 1f, 0.8f);      // ปกติ - ขาวโปร่งใส
-                colors.highlightedColor = new Color(0.9f, 0.9f, 1f, 1f); // hover - ฟ้าอ่อน
-                colors.pressedColor = new Color(0.7f, 0.7f, 1f, 1f);     // กด - ฟ้าเข้ม
-                colors.selectedColor = new Color(0.8f, 1f, 0.8f, 1f);    // เลือก - เขียวอ่อน
-                colors.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.5f); // ปิดใช้งาน - เทา
-                colors.colorMultiplier = 1f;
-                colors.fadeDuration = 0.1f;
-                itemToggle.colors = colors;
-
-                // ตั้งค่า transition เป็น ColorTint เพื่อให้เห็นการเปลี่ยนแปลงชัด
-                itemToggle.transition = Selectable.Transition.ColorTint;
-            }
-
-            // ✅ ปรับขนาด item ให้กดง่าย
-            RectTransform itemRect = item.GetComponent<RectTransform>();
-            if (itemRect != null)
-            {
-                // เพิ่มความสูงของแต่ละ item ให้กดง่าย
-                Vector2 itemSize = itemRect.sizeDelta;
-                itemSize.y = Mathf.Max(itemSize.y, 25f); // ความสูงขั้นต่ำ 25 pixels
-                itemRect.sizeDelta = itemSize;
-            }
-
-            // ✅ ปรับแต่ง text component ใน item
-            TextMeshProUGUI itemText = item.GetComponentInChildren<TextMeshProUGUI>();
-            if (itemText != null)
-            {
-                // ตั้งค่า text alignment
-                itemText.alignment = TextAlignmentOptions.Left;
-                itemText.margin = new Vector4(10, 4, 10, 4); // margin ซ้าย, บน, ขวา, ล่าง
-
-                // ปรับขนาดตัวอักษรให้อ่านง่าย
-                if (itemText.fontSize < 14f)
-                {
-                    itemText.fontSize = 14f;
-                }
-            }
-
-         //   Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown item interaction setup completed");
-
-        }
-        catch (System.Exception e)
-        {
-           // Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown item interaction: {e.Message}");
-        }
-    }
-
-    // ✅ เพิ่ม method สำหรับปรับแต่ง dropdown ทั้งตัว
-    private void OptimizeDropdownUsability(TMP_Dropdown dropdown, string dropdownName)
-    {
-        if (dropdown == null) return;
-
-        try
-        {
-            // ✅ ปรับแต่ง dropdown button เอง
-            Button dropdownButton = dropdown.GetComponent<Button>();
-            if (dropdownButton != null)
-            {
-                // ปรับสี transition
-                ColorBlock colors = dropdownButton.colors;
-                colors.normalColor = new Color(0.9f, 0.9f, 0.9f, 1f);
-                colors.highlightedColor = new Color(1f, 1f, 1f, 1f);
-                colors.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f);
-                colors.disabledColor = new Color(0.6f, 0.6f, 0.6f, 0.5f);
-                colors.colorMultiplier = 1f;
-                colors.fadeDuration = 0.1f;
-                dropdownButton.colors = colors;
-            }
-
-            // ✅ ปรับขนาด dropdown ให้กดง่าย
-            RectTransform dropdownRect = dropdown.GetComponent<RectTransform>();
-            if (dropdownRect != null)
-            {
-                Vector2 dropdownSize = dropdownRect.sizeDelta;
-                dropdownSize.y = Mathf.Max(dropdownSize.y, 30f); // ความสูงขั้นต่ำ 30 pixels
-                dropdownRect.sizeDelta = dropdownSize;
-            }
-
-            // ✅ ปรับแต่ง dropdown arrow
-            Transform arrow = dropdown.transform.Find("Arrow");
-            if (arrow != null)
-            {
-                Image arrowImage = arrow.GetComponent<Image>();
-                if (arrowImage != null)
-                {
-                    arrowImage.color = new Color(0.3f, 0.3f, 0.3f, 1f); // สีเทาเข้มให้เห็นชัด
-                }
-            }
-
-           // Debug.Log($"[InventoryGrid] ✅ {dropdownName} dropdown usability optimized");
-
-        }
-        catch (System.Exception e)
-        {
-          //  Debug.LogError($"[InventoryGrid] ❌ Error optimizing {dropdownName} dropdown usability: {e.Message}");
-        }
-    }
-
-    private void SetupFilterContainer()
-    {
-        // หา filter container หรือสร้างใหม่
-        Transform filterContainer = transform.parent?.Find("FilterContainer");
-
-        if (filterContainer == null && categoryFilterDropdown != null)
-        {
-            // หา parent ของ dropdown แล้วเพิ่ม Vertical Layout Group
-            Transform dropdownParent = categoryFilterDropdown.transform.parent;
-
-            if (dropdownParent != null)
-            {
-                // เพิ่ม Vertical Layout Group ถ้ายังไม่มี
-                VerticalLayoutGroup verticalLayout = dropdownParent.GetComponent<VerticalLayoutGroup>();
-                if (verticalLayout == null)
-                {
-                    verticalLayout = dropdownParent.gameObject.AddComponent<VerticalLayoutGroup>();
-
-                    // ตั้งค่า Vertical Layout Group
-                    verticalLayout.spacing = 10f;
-                    verticalLayout.childAlignment = TextAnchor.UpperCenter;
-                    verticalLayout.childControlWidth = true;
-                    verticalLayout.childControlHeight = false;
-                    verticalLayout.childForceExpandWidth = true;
-                    verticalLayout.childForceExpandHeight = false;
-
-                    // เพิ่ม Content Size Fitter
-                    ContentSizeFitter sizeFitter = dropdownParent.GetComponent<ContentSizeFitter>();
-                    if (sizeFitter == null)
-                    {
-                        sizeFitter = dropdownParent.gameObject.AddComponent<ContentSizeFitter>();
-                    }
-                    sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-                    sizeFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-
-                    Debug.Log("[InventoryGrid] ✅ Added Vertical Layout Group to filter container");
-                }
-            }
-        }
-    }
-    // ✅ เพิ่ม Event Handlers
-    private void OnCategoryFilterChanged(int filterIndex)
-    {
-        Debug.Log($"[InventoryGrid] Category filter changed to index: {filterIndex}");
-
-        if (filterIndex == 0)
-        {
-            // "All Types" selected
-            isFilteringByType = false;
-            Debug.Log("[InventoryGrid] Showing all item types");
+            previousPageButton.onClick.RemoveAllListeners();
+            previousPageButton.onClick.AddListener(PreviousPage);
+            Debug.Log("[InventoryGrid] ✅ Previous page button setup");
         }
         else
         {
-            // Specific type selected
-            isFilteringByType = true;
-            selectedItemType = (ItemType)(filterIndex - 1);
-            Debug.Log($"[InventoryGrid] Filtering by type: {selectedItemType}");
+            Debug.LogWarning("[InventoryGrid] ❌ Previous page button not assigned!");
         }
 
-        ApplyInventoryFilters();
-    }
-
-    private void OnTierFilterChanged(int filterIndex)
-    {
-        Debug.Log($"[InventoryGrid] Tier filter changed to index: {filterIndex}");
-
-        if (filterIndex == 0)
+        if (nextPageButton != null)
         {
-            // "All Tiers" selected
-            isFilteringByTier = false;
-            Debug.Log("[InventoryGrid] Showing all tiers");
+            nextPageButton.onClick.RemoveAllListeners();
+            nextPageButton.onClick.AddListener(NextPage);
+            Debug.Log("[InventoryGrid] ✅ Next page button setup");
         }
         else
         {
-            // Specific tier selected
-            isFilteringByTier = true;
-            selectedItemTier = (ItemTier)filterIndex;
-            Debug.Log($"[InventoryGrid] Filtering by tier: {selectedItemTier}");
+            Debug.LogWarning("[InventoryGrid] ❌ Next page button not assigned!");
         }
 
-        ApplyInventoryFilters();
+        // Initial update
+        currentPage = 0;
+        UpdatePaginationUI();
     }
 
-    private void ClearAllFilters()
+    // ✅ แทนที่ UpdatePaginationUI() เดิม
+    public void UpdatePaginationUI()
     {
-        Debug.Log("[InventoryGrid] 🧹 Clearing all filters...");
-
-        // Reset dropdowns
-        if (categoryFilterDropdown != null)
+        if (ownerCharacter?.GetInventory() == null)
         {
-            categoryFilterDropdown.value = 0;
-            categoryFilterDropdown.RefreshShownValue();
+            totalPages = 0;
+            if (previousPageButton != null) previousPageButton.interactable = false;
+            if (nextPageButton != null) nextPageButton.interactable = false;
+            if (pageInfoText != null) pageInfoText.text = "Page 0/0";
+            return;
         }
 
-        if (tierFilterDropdown != null)
+        // คำนวณจำนวนหน้า
+        if (isUsingCustomFilter)
         {
-            tierFilterDropdown.value = 0;
-            tierFilterDropdown.RefreshShownValue();
+            // ใช้จำนวน filtered items
+            totalPages = Mathf.CeilToInt((float)customFilteredSlots.Count / itemsPerPage);
+        }
+        else
+        {
+            // ใช้จำนวน slots ทั้งหมด
+            int totalSlots = ownerCharacter.GetInventory().CurrentSlots;
+            totalPages = Mathf.CeilToInt((float)totalSlots / itemsPerPage);
         }
 
-        // Reset filter states
-        isFilteringByType = false;
-        isFilteringByTier = false;
+        currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
 
-        // Apply filters (จะแสดง items ทั้งหมด)
-        ApplyInventoryFilters();
+        // อัพเดทปุ่ม
+        if (previousPageButton != null)
+            previousPageButton.interactable = currentPage > 0;
+
+        if (nextPageButton != null)
+            nextPageButton.interactable = currentPage < totalPages - 1;
+
+        // อัพเดทข้อความ (แสดง 🔍 ถ้ามี filter)
+        if (pageInfoText != null)
+        {
+            string filterIcon = isUsingCustomFilter ? "🔍 " : "";
+            pageInfoText.text = $"{filterIcon}Page {currentPage + 1}/{Mathf.Max(1, totalPages)}";
+        }
+
+        Debug.Log($"[InventoryGrid] Pagination: Page {currentPage + 1}/{totalPages} (Filtered: {isUsingCustomFilter})");
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 0)
+        {
+            currentPage--;
+            Debug.Log($"[InventoryGrid] Previous page: {currentPage + 1}");
+
+            UpdatePaginationUI();
+
+            if (isUsingCustomFilter)
+                UpdateVisibleSlotsWithFilter();
+            else
+                UpdateVisibleSlots();
+
+            AudioManager.instance?.PlaySFX(7, 0.5f);
+        }
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < totalPages - 1)
+        {
+            currentPage++;
+            Debug.Log($"[InventoryGrid] Next page: {currentPage + 1}");
+
+            UpdatePaginationUI();
+
+            if (isUsingCustomFilter)
+                UpdateVisibleSlotsWithFilter();
+            else
+                UpdateVisibleSlots();
+
+            AudioManager.instance?.PlaySFX(7, 0.5f);
+        }
+    }
+
+    // ✅ แทนที่ method เดิม (เพิ่ม logic การซ่อน slots ที่ไม่ควรแสดง)
+    public void UpdateVisibleSlots()
+    {
+        if (ownerCharacter?.GetInventory() == null || allSlots.Count == 0)
+        {
+            Debug.LogWarning("[InventoryGrid] Cannot update visible slots - no inventory or slots");
+            return;
+        }
+
+        Inventory inventory = ownerCharacter.GetInventory();
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = Mathf.Min(startIndex + itemsPerPage, inventory.CurrentSlots);
+
+        Debug.Log($"[InventoryGrid] 📄 Updating page {currentPage + 1}: Showing slots {startIndex}-{endIndex - 1}");
+
+        int visibleCount = 0;
+        int hiddenCount = 0;
+
+        // ✅ ซ่อน/แสดง slots ตามหน้าปัจจุบัน
+        for (int i = 0; i < allSlots.Count; i++)
+        {
+            if (allSlots[i] == null) continue;
+
+            bool shouldBeVisible = i >= startIndex && i < endIndex;
+
+            // ✅ บังคับ SetActive ทุกครั้ง
+            if (allSlots[i].gameObject.activeSelf != shouldBeVisible)
+            {
+                allSlots[i].gameObject.SetActive(shouldBeVisible);
+            }
+
+            if (shouldBeVisible)
+            {
+                visibleCount++;
+                // อัพเดท item ถ้าเป็น slot ที่แสดง
+                InventoryItem item = inventory.GetItem(i);
+                UpdateSlotFromInventoryItem(i, item);
+            }
+            else
+            {
+                hiddenCount++;
+            }
+        }
+
+        Debug.Log($"[InventoryGrid] ✅ Visible: {visibleCount}, Hidden: {hiddenCount}");
+
+        // ✅ Force canvas update
+        Canvas.ForceUpdateCanvases();
+    }
+
+    public int GetCurrentPage()
+    {
+        return currentPage;
+    }
+
+    public void SetCurrentPage(int page)
+    {
+        currentPage = Mathf.Clamp(page, 0, Mathf.Max(0, totalPages - 1));
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+    }
+
+    #endregion
+
+
+    public void ClearAllFilters()
+    {
+        selectedItemType = null;
+        selectedItemTier = null;
+
+        UpdateButtonColors();
+        ApplyFilters();
+        UpdateFilterDisplay();
+
+        AudioManager.instance?.PlaySFX(7, 0.7f);
+
+        Debug.Log("[InventoryGrid] Cleared all filters");
     }
 
     private void ApplyInventoryFilters()
@@ -1681,7 +1712,7 @@ public class InventoryGridManager : MonoBehaviour
             {
                 slot.itemIcon.color = Color.white;
             }
-           
+
             if (slot.stackText != null)
             {
                 slot.stackText.color = Color.white;
@@ -1694,7 +1725,7 @@ public class InventoryGridManager : MonoBehaviour
             {
                 slot.itemIcon.color = new Color(0.5f, 0.5f, 0.5f, 0.3f); // สีเทาจาง
             }
-            
+
             if (slot.stackText != null)
             {
                 slot.stackText.color = new Color(0.5f, 0.5f, 0.5f, 0.5f); // ตัวเลขเทาจาง
@@ -1772,7 +1803,7 @@ public class InventoryGridManager : MonoBehaviour
         {
             return "No filters active";
         }
-        
+
         List<string> activeFilters = new List<string>();
 
         if (isFilteringByType)
@@ -1787,4 +1818,261 @@ public class InventoryGridManager : MonoBehaviour
 
         return "Filters: " + string.Join(", ", activeFilters);
     }
+    private void OnTypeFilterClicked(ItemType? itemType)
+    {
+        selectedItemType = itemType;
+
+        Debug.Log($"[InventoryGrid] Type filter: {(itemType.HasValue ? itemType.Value.ToString() : "All")}");
+
+        AudioManager.instance?.PlaySFX(7, 0.7f);
+
+        UpdateButtonColors();
+        ApplyFilters();
+        UpdateFilterDisplay();
+    }
+
+    private void OnTierFilterClicked(ItemTier? itemTier)
+    {
+        selectedItemTier = itemTier;
+
+        Debug.Log($"[InventoryGrid] Tier filter: {(itemTier.HasValue ? itemTier.Value.ToString() : "All")}");
+
+        AudioManager.instance?.PlaySFX(7, 0.7f);
+
+        UpdateButtonColors();
+        ApplyFilters();
+        UpdateFilterDisplay();
+    }
+
+    private void ApplyFilters()
+    {
+        if (ownerCharacter?.GetInventory() == null)
+        {
+            Debug.LogWarning("[InventoryGrid] No inventory to filter");
+            return;
+        }
+
+        Inventory inventory = ownerCharacter.GetInventory();
+        List<FilteredSlotData> filteredData = new List<FilteredSlotData>();
+        int totalItems = 0;
+
+        // Step 1: รวบรวม items ที่ตรงกับ filter
+        for (int i = 0; i < inventory.CurrentSlots; i++)
+        {
+            InventoryItem item = inventory.GetItem(i);
+
+            if (item == null || item.IsEmpty) continue;
+
+            totalItems++;
+
+            bool matchesFilter = true;
+
+            // ตรวจสอบ Type filter
+            if (selectedItemType.HasValue && item.itemData.ItemType != selectedItemType.Value)
+            {
+                matchesFilter = false;
+            }
+
+            // ตรวจสอบ Tier filter
+            if (selectedItemTier.HasValue && item.itemData.Tier != selectedItemTier.Value)
+            {
+                matchesFilter = false;
+            }
+
+            if (matchesFilter)
+            {
+                filteredData.Add(new FilteredSlotData
+                {
+                    slotIndex = i,
+                    itemData = item.itemData,
+                    stackCount = item.stackCount
+                });
+            }
+        }
+
+        Debug.Log($"[InventoryGrid] Found {filteredData.Count}/{totalItems} items matching filter");
+
+        // Step 2: เรียงอัตโนมัติ - Tier (สูง→ต่ำ) → Type (A-Z) → Name (A-Z)
+        filteredData = filteredData
+            .OrderByDescending(d => (int)d.itemData.Tier)
+            .ThenBy(d => d.itemData.ItemType.ToString())
+            .ThenBy(d => d.itemData.ItemName)
+            .ToList();
+
+        Debug.Log($"[InventoryGrid] Sorted {filteredData.Count} items");
+
+        // Step 3: แปลงเป็น slot indices
+        List<int> visibleSlots = filteredData.Select(d => d.slotIndex).ToList();
+
+        // แจ้ง pagination system
+        ApplyCustomFilter(visibleSlots, selectedItemType, selectedItemTier);
+
+        // อัพเดทจำนวน items
+        if (itemCountText != null)
+        {
+            itemCountText.text = $"{visibleSlots.Count}/{totalItems} items";
+        }
+    }
+
+    #region Custom Filter Integration
+
+    // Variables สำหรับ custom filter
+    private List<int> customFilteredSlots = new List<int>();
+    private bool isUsingCustomFilter = false;
+    private ItemType? currentFilterType = null;
+    private ItemTier? currentFilterTier = null;
+
+    public void ApplyCustomFilter(List<int> visibleSlotIndices, ItemType? filterType, ItemTier? filterTier)
+    {
+        customFilteredSlots = new List<int>(visibleSlotIndices);
+        isUsingCustomFilter = true;
+        currentFilterType = filterType;
+        currentFilterTier = filterTier;
+
+        // Reset to first page
+        currentPage = 0;
+
+        UpdatePaginationUI();
+        UpdateVisibleSlotsWithFilter();
+
+        Debug.Log($"[InventoryGrid] Applied custom filter: {customFilteredSlots.Count} items");
+    }
+
+    public void ClearCustomFilter()
+    {
+        customFilteredSlots.Clear();
+        isUsingCustomFilter = false;
+        currentFilterType = null;
+        currentFilterTier = null;
+
+        currentPage = 0;
+
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+
+        Debug.Log("[InventoryGrid] Cleared custom filter");
+    }
+
+    private void UpdateVisibleSlotsWithFilter()
+    {
+        if (ownerCharacter?.GetInventory() == null || allSlots.Count == 0)
+        {
+            Debug.LogWarning("[InventoryGrid] Cannot update visible slots - no inventory or slots");
+            return;
+        }
+
+        Inventory inventory = ownerCharacter.GetInventory();
+
+        // ซ่อนทุก slot ก่อน
+        foreach (var slot in allSlots)
+        {
+            if (slot != null)
+                slot.gameObject.SetActive(false);
+        }
+
+        // คำนวณ range สำหรับหน้าปัจจุบัน
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = Mathf.Min(startIndex + itemsPerPage, customFilteredSlots.Count);
+
+        Debug.Log($"[InventoryGrid] 📄 Filtered page {currentPage + 1}: Showing {startIndex}-{endIndex - 1} (of {customFilteredSlots.Count} filtered items)");
+
+        int visibleCount = 0;
+
+        // แสดงเฉพาะ slots ที่อยู่ในหน้าปัจจุบัน
+        for (int i = startIndex; i < endIndex; i++)
+        {
+            int slotIndex = customFilteredSlots[i];
+
+            if (slotIndex >= 0 && slotIndex < allSlots.Count)
+            {
+                InventorySlot slot = allSlots[slotIndex];
+                if (slot != null)
+                {
+                    slot.gameObject.SetActive(true);
+                    visibleCount++;
+
+                    // อัพเดท item
+                    InventoryItem item = inventory.GetItem(slotIndex);
+                    UpdateSlotFromInventoryItem(slotIndex, item);
+                }
+            }
+        }
+
+        Debug.Log($"[InventoryGrid] ✅ Showing {visibleCount} filtered items on page {currentPage + 1}");
+
+        // Force canvas update
+        Canvas.ForceUpdateCanvases();
+    }
+
+    #endregion
+    #region Filter UI Updates
+
+    private void UpdateButtonColors()
+    {
+        // Type buttons
+        UpdateButtonColor(filterAllTypesButton, !selectedItemType.HasValue);
+        UpdateButtonColor(filterWeaponButton, selectedItemType == ItemType.Weapon);
+        UpdateButtonColor(filterHeadButton, selectedItemType == ItemType.Head);
+        UpdateButtonColor(filterArmorButton, selectedItemType == ItemType.Armor);
+        UpdateButtonColor(filterPantsButton, selectedItemType == ItemType.Pants);
+        UpdateButtonColor(filterShoesButton, selectedItemType == ItemType.Shoes);
+        UpdateButtonColor(filterPotionButton, selectedItemType == ItemType.Potion);
+        UpdateButtonColor(filterMaterialButton, selectedItemType == ItemType.Material);
+        UpdateButtonColor(filterMiscButton, selectedItemType == ItemType.Misc);
+
+        // Tier buttons
+        UpdateButtonColor(filterAllTiersButton, !selectedItemTier.HasValue);
+        UpdateButtonColor(filterCommonButton, selectedItemTier == ItemTier.Common);
+        UpdateButtonColor(filterUncommonButton, selectedItemTier == ItemTier.Uncommon);
+        UpdateButtonColor(filterRareButton, selectedItemTier == ItemTier.Rare);
+        UpdateButtonColor(filterEpicButton, selectedItemTier == ItemTier.Epic);
+        UpdateButtonColor(filterLegendaryButton, selectedItemTier == ItemTier.Legendary);
+    }
+
+    private void UpdateButtonColor(Button button, bool isSelected)
+    {
+        if (button == null) return;
+
+        var colors = button.colors;
+        colors.normalColor = isSelected ? Color.yellow : Color.white;
+        button.colors = colors;
+    }
+
+    private void UpdateFilterDisplay()
+    {
+        if (filterStatusText == null) return;
+
+        if (!selectedItemType.HasValue && !selectedItemTier.HasValue)
+        {
+            filterStatusText.text = "Filter: All Items";
+        }
+        else
+        {
+            string typeText = selectedItemType.HasValue ? selectedItemType.Value.ToString() : "All";
+            string tierText = selectedItemTier.HasValue ? selectedItemTier.Value.ToString() : "All";
+            filterStatusText.text = $"Filter: {typeText} | {tierText}";
+        }
+    }
+
+    private void OpenFilterPanel()
+    {
+        if (filterPanel != null)
+        {
+            filterPanel.SetActive(true);
+            AudioManager.instance?.PlaySFX(7, 0.8f);
+            Debug.Log("[InventoryGrid] Filter panel opened");
+        }
+    }
+
+    private void CloseFilterPanel()
+    {
+        if (filterPanel != null)
+        {
+            filterPanel.SetActive(false);
+            AudioManager.instance?.PlaySFX(7, 0.6f);
+            Debug.Log("[InventoryGrid] Filter panel closed");
+        }
+    }
+
+    #endregion
 }

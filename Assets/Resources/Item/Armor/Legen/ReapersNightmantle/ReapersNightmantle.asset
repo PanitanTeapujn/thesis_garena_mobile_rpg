@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
-    maxEnchantLevel: 9
-    baseGoldCost: 1000
+    maxEnchantLevel: 15
+    baseGoldCost: 500
     successRates:
       sameItemWithEnchant: 90
       sameItemNoEnchant: 75
@@ -31,15 +31,12 @@ MonoBehaviour:
     repairCostMultiplier: 0.7
   tradeRecipe:
     isTradeableItem: 1
-    requiredGold: 1000
+    requiredGold: 0
     requiredItems:
-    - requiredItem: {fileID: 11400000, guid: 1928f1edda32f2a448518bc007cf1309, type: 2}
-      requiredQuantity: 0
-      description: 
-    - requiredItem: {fileID: 11400000, guid: 1a45a1a0026eb5d45ae3092ad2916417, type: 2}
-      requiredQuantity: 2
-      description: 
     - requiredItem: {fileID: 11400000, guid: 5b524f021aad6f247a9b05f4625a8088, type: 2}
+      requiredQuantity: 3
+      description: 
+    - requiredItem: {fileID: 11400000, guid: df79e58a87b26ed41a10efd2e95d67b3, type: 2}
       requiredQuantity: 2
       description: 
     tradeName: 
@@ -47,12 +44,12 @@ MonoBehaviour:
     tradeCategory: 0
   itemId: ReapersNightmantle
   itemName: ReapersNightmantle
-  itemIcon: {fileID: 21300000, guid: c720139856ac0f44d894498956e1b55f, type: 3}
+  itemIcon: {fileID: 21300000, guid: c9d48411a39cdc9429fca1da96828e34, type: 3}
   itemType: 2
   tier: 5
   description: 
   sellPrice: 1500
-  buyPrice: 2000
+  buyPrice: 2500
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -74,7 +71,7 @@ MonoBehaviour:
     moveSpeedBonus: 0
     attackSpeedBonus: 0
     hitRateBonus: 0
-    evasionRateBonus: 15
+    evasionRateBonus: 10
     reductionCoolDownBonus: 0
     physicalResistanceBonus: 0
     magicalResistanceBonus: 0
@@ -82,5 +79,5 @@ MonoBehaviour:
     ampDamageBonus: 0
     healAmount: 0
     manaAmount: 0
-    healPercentage: 1
+    healPercentage: 0
     manaPercentage: 0

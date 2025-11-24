@@ -271,26 +271,28 @@ public class CombatUIManager : MonoBehaviour
         }
     }
 
-    
+
 
     // 🎯 UPDATED: Setup Inventory Panel with Grid System
     private void SetupInventoryPanel()
     {
-        Debug.Log("=== Setting up Inventory Panel with Grid System ===");
+        Debug.Log("=== Setting up Inventory Panel with Pagination System ===");
 
         if (inventoryPanel != null)
         {
             inventoryPanel.SetActive(false);
-            Debug.Log("✅ Inventory Panel initialized (hidden)");
 
-            // 🎯 Setup Inventory Grid
+            // ❌ ลบการตรวจสอบ ScrollRect ออก
+
+            Debug.Log("✅ Inventory Panel initialized (hidden) with pagination");
+
+            // Setup Inventory Grid
             SetupInventoryGrid();
 
             // Setup Item Info Panel
             SetupItemDetailPanel();
 
             SetupInventoryFilters();
-
         }
         else
         {
@@ -1199,6 +1201,8 @@ public class CombatUIManager : MonoBehaviour
             }
         }
     }
+    // ✅ แทนที่ method เดิม
+    // ✅ แทนที่ method เดิม - ลด refresh
     public void OpenInventory()
     {
         if (inventoryPanel != null)
@@ -1208,29 +1212,51 @@ public class CombatUIManager : MonoBehaviour
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
 
-            // อัพเดท Character Stats ทันทีที่เปิด Panel
+            // อัพเดท Character Stats
             if (localHero != null)
             {
                 UpdateInventoryCharacterStats();
-
-                // ✅ เพิ่มบรรทัดนี้ - Force load จาก Firebase ทุกครั้งที่เปิด inventory
-                var inventory = localHero.GetInventory();
-                if (inventory != null)
-                {
-                    inventory.ForceLoadFromFirebase();
-                }
             }
 
-            // Force update inventory grid
+            // ✅ Force refresh เฉพาะครั้งเดียว
             if (inventoryGridManager != null)
             {
-                inventoryGridManager.ForceRefreshAllSlots();
-                Debug.Log("[CombatUI] Forced inventory refresh on panel open");
+                inventoryGridManager.ForceRefreshOnOpen();
+            }
+
+            // ✅ Delayed fix แค่ครั้งเดียว (ไม่ต้อง 3 ครั้ง)
+            if (gameObject.activeInHierarchy)
+            {
+                StartCoroutine(SingleDelayedFix());
+            }
+
+            // Force refresh ItemDeleteManager
+            if (itemDeleteManager != null)
+            {
+                itemDeleteManager.ForceRefreshReferences();
             }
 
             Debug.Log("Inventory panel opened");
         }
     }
+
+    // ✅ เพิ่ม Coroutine ใหม่ - แค่ 1 ครั้ง
+    private IEnumerator SingleDelayedFix()
+    {
+        // รอ 2 frames
+        yield return null;
+        yield return null;
+
+        if (inventoryGridManager != null && isInventoryOpen)
+        {
+            inventoryGridManager.ForceHideExtraSlots();
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[CombatUI] ✅ Single delayed fix complete");
+        }
+    }
+
+    // ✅ เพิ่ม Coroutine ใหม่สำหรับ multiple refresh
+   
     public bool IsDeleteModeActive()
     {
         return isDeleteModeActive;
@@ -1917,8 +1943,22 @@ public class CombatUIManager : MonoBehaviour
         return isInventoryOpen;
     }
     // 🎯 NEW: Public methods for accessing inventory grid
+    // ✅ เพิ่ม method นี้ใน CombatUIManager
+    /// <summary>
+    /// ให้ ItemDeleteManager เรียกใช้เพื่อดึง InventoryGridManager
+    /// </summary>
     public InventoryGridManager GetInventoryGridManager()
     {
+        if (inventoryGridManager != null)
+        {
+            Debug.Log("[CombatUI] Returning existing InventoryGridManager");
+            return inventoryGridManager;
+        }
+
+        // ถ้ายังไม่มี ให้ force setup
+        Debug.Log("[CombatUI] InventoryGridManager not found, forcing setup...");
+        ForceSetupInventoryGrid();
+
         return inventoryGridManager;
     }
 

@@ -104,42 +104,75 @@ public class ItemDeleteManager : MonoBehaviour
     }
 
     // ✅ เพิ่ม method สำหรับ refresh reference
+    // ✅ แทนที่ method เดิมทั้งหมด
     private void RefreshInventoryGridManagerReference()
     {
-        // หา InventoryGridManager ถ้าไม่ได้ assign หรือเป็น null
+        Debug.Log("[ItemDeleteManager] 🔍 Attempting to find InventoryGridManager...");
+
+        // วิธีที่ 1: หาจาก CombatUIManager
+        if (inventoryGridManager == null && combatUIManager != null)
+        {
+            inventoryGridManager = combatUIManager.GetInventoryGridManager();
+            if (inventoryGridManager != null)
+            {
+                Debug.Log("[ItemDeleteManager] ✅ Found via CombatUIManager.GetInventoryGridManager()");
+                return;
+            }
+        }
+
+        // วิธีที่ 2: หาจาก scene ทั้งหมด
         if (inventoryGridManager == null)
         {
-            // วิธีที่ 1: หาจาก CombatUIManager
-            if (combatUIManager != null)
+            inventoryGridManager = FindObjectOfType<InventoryGridManager>(true); // true = include inactive
+            if (inventoryGridManager != null)
             {
-                inventoryGridManager = combatUIManager.GetInventoryGridManager();
+                Debug.Log("[ItemDeleteManager] ✅ Found via FindObjectOfType (including inactive)");
+                return;
             }
+        }
 
-            // วิธีที่ 2: หาจาก scene ทั้งหมด
-            if (inventoryGridManager == null)
+        // วิธีที่ 3: หาจาก Inventory Panel
+        if (inventoryGridManager == null && combatUIManager != null)
+        {
+            // หา inventory panel จาก CombatUIManager
+            if (combatUIManager.inventoryPanel != null)
             {
-                inventoryGridManager = FindObjectOfType<InventoryGridManager>();
-            }
-
-            // วิธีที่ 3: หาจาก parent objects
-            if (inventoryGridManager == null)
-            {
-                Transform inventoryPanel = FindInventoryPanel();
-                if (inventoryPanel != null)
+                inventoryGridManager = combatUIManager.inventoryPanel.GetComponentInChildren<InventoryGridManager>(true);
+                if (inventoryGridManager != null)
                 {
-                    inventoryGridManager = inventoryPanel.GetComponentInChildren<InventoryGridManager>();
+                    Debug.Log("[ItemDeleteManager] ✅ Found in CombatUIManager.inventoryPanel");
+                    return;
                 }
             }
         }
 
-        if (inventoryGridManager != null)
+        // วิธีที่ 4: หาจาก inventoryGridParent
+        if (inventoryGridManager == null && combatUIManager != null)
         {
-            Debug.Log($"[ItemDeleteManager] ✅ Found InventoryGridManager: {inventoryGridManager.name}");
+            if (combatUIManager.inventoryGridParent != null)
+            {
+                inventoryGridManager = combatUIManager.inventoryGridParent.GetComponent<InventoryGridManager>();
+                if (inventoryGridManager != null)
+                {
+                    Debug.Log("[ItemDeleteManager] ✅ Found in CombatUIManager.inventoryGridParent");
+                    return;
+                }
+            }
         }
-        else
+
+        // วิธีที่ 5: หาทุก InventoryGridManager ใน scene
+        if (inventoryGridManager == null)
         {
-           // Debug.LogWarning("[ItemDeleteManager] ⚠️ InventoryGridManager still not found!");
+            InventoryGridManager[] allGridManagers = FindObjectsOfType<InventoryGridManager>(true);
+            if (allGridManagers.Length > 0)
+            {
+                inventoryGridManager = allGridManagers[0];
+                Debug.Log($"[ItemDeleteManager] ✅ Found {allGridManagers.Length} InventoryGridManager(s), using first one");
+                return;
+            }
         }
+
+        Debug.LogError("[ItemDeleteManager] ❌ InventoryGridManager NOT FOUND after all attempts!");
     }
 
     // ✅ เพิ่ม helper method สำหรับหา inventory panel
@@ -203,22 +236,48 @@ public class ItemDeleteManager : MonoBehaviour
         }
     }
 
+    // ✅ แทนที่ method เดิม
     public void EnterDeleteMode()
     {
-        if (isDeleteMode) return;
+        if (isDeleteMode)
+        {
+            Debug.Log("[ItemDeleteManager] Already in delete mode");
+            return;
+        }
 
         Debug.Log("[ItemDeleteManager] 🗑️ Entering delete mode...");
+        Debug.Log($"[ItemDeleteManager] combatUIManager: {(combatUIManager != null ? "OK" : "NULL")}");
+        Debug.Log($"[ItemDeleteManager] inventoryGridManager: {(inventoryGridManager != null ? "OK" : "NULL")}");
+        Debug.Log($"[ItemDeleteManager] targetCharacter: {(targetCharacter != null ? targetCharacter.CharacterName : "NULL")}");
 
-        // ✅ ตรวจสอบและ refresh reference ก่อนเข้าโหมดลบ
+        // ✅ ถ้าไม่มี InventoryGridManager ให้ force refresh
         if (inventoryGridManager == null)
         {
             Debug.LogWarning("[ItemDeleteManager] InventoryGridManager not found, attempting to find...");
+
+            // ลองหาอีกครั้ง
             RefreshInventoryGridManagerReference();
 
+            // ถ้ายังหาไม่เจอ ให้ขอจาก CombatUIManager
+            if (inventoryGridManager == null && combatUIManager != null)
+            {
+                Debug.Log("[ItemDeleteManager] Requesting InventoryGridManager from CombatUIManager...");
+                inventoryGridManager = combatUIManager.GetInventoryGridManager();
+            }
+
+            // ถ้ายังหาไม่เจอ แสดง error
             if (inventoryGridManager == null)
             {
                 Debug.LogError("[ItemDeleteManager] ❌ Cannot enter delete mode: InventoryGridManager not found!");
+                Debug.LogError("[ItemDeleteManager] Please make sure:");
+                Debug.LogError("  1. InventoryPanel is active in hierarchy");
+                Debug.LogError("  2. InventoryGridManager component exists");
+                Debug.LogError("  3. CombatUIManager.inventoryGridManager is assigned");
                 return;
+            }
+            else
+            {
+                Debug.Log("[ItemDeleteManager] ✅ Successfully found InventoryGridManager!");
             }
         }
 
@@ -238,7 +297,10 @@ public class ItemDeleteManager : MonoBehaviour
         // แจ้ง events
         OnDeleteModeChanged?.Invoke(true);
 
-        Debug.Log("[ItemDeleteManager] ✅ Delete mode activated");
+        // เล่นเสียง
+        AudioManager.instance?.PlaySFX(7, 0.8f);
+
+        Debug.Log("[ItemDeleteManager] ✅ Delete mode activated - Click any item to delete");
     }
 
     public void ExitDeleteMode()
@@ -379,6 +441,8 @@ public class ItemDeleteManager : MonoBehaviour
 
     private void SelectSlotForDelete(int slotIndex, InventoryItem item)
     {
+        Debug.Log($"[ItemDeleteManager] Selecting slot {slotIndex} for delete");
+
         // ยกเลิกการเลือก slot เก่า
         if (selectedSlotForDelete >= 0)
         {
@@ -396,10 +460,13 @@ public class ItemDeleteManager : MonoBehaviour
             selectedSlot.slotBackground.color = selectedForDeleteColor;
         }
 
-        Debug.Log($"[ItemDeleteManager] Selected {item.itemData.ItemName} x{item.stackCount} for delete from slot {slotIndex}");
+        Debug.Log($"[ItemDeleteManager] Selected {item.itemData.ItemName} x{item.stackCount} for delete");
 
-        // ✅ เพิ่มบรรทัดนี้ - แสดง delete panel ทันทีเมื่อเลือก item
+        // ✅ แสดง delete confirmation panel ทันที
         ShowDeleteConfirmation();
+
+        // ✅ เล่นเสียง
+        AudioManager.instance?.PlaySFX(7, 0.8f);
     }
 
 
@@ -423,19 +490,28 @@ public class ItemDeleteManager : MonoBehaviour
     #endregion
 
     #region Delete Confirmation
+    // ✅ แทนที่ method เดิม
     public void ShowDeleteConfirmation()
     {
+        Debug.Log("[ItemDeleteManager] ShowDeleteConfirmation called");
+        Debug.Log($"[ItemDeleteManager] HasSelectedItemToDelete: {HasSelectedItemToDelete}");
+        Debug.Log($"[ItemDeleteManager] deleteConfirmPanel: {deleteConfirmPanel != null}");
+
         if (!HasSelectedItemToDelete)
         {
-            Debug.LogWarning("[ItemDeleteManager] No item selected for delete");
+            Debug.LogWarning("[ItemDeleteManager] ❌ No item selected for delete");
+            return;
+        }
+
+        if (deleteConfirmPanel == null)
+        {
+            Debug.LogError("[ItemDeleteManager] ❌ deleteConfirmPanel is NULL!");
             return;
         }
 
         // แสดง confirmation panel
-        if (deleteConfirmPanel != null)
-        {
-            deleteConfirmPanel.SetActive(true);
-        }
+        deleteConfirmPanel.SetActive(true);
+        Debug.Log($"[ItemDeleteManager] ✅ Panel activated: {deleteConfirmPanel.activeSelf}");
 
         // อัปเดตข้อมูล item ใน panel
         UpdateDeletePanelItemInfo();
@@ -443,7 +519,10 @@ public class ItemDeleteManager : MonoBehaviour
         // อัปเดตข้อความยืนยัน
         UpdateConfirmationMessage();
 
-        Debug.Log($"[ItemDeleteManager] Showing delete confirmation for {itemToDelete.itemData.ItemName}");
+        // เล่นเสียง
+        AudioManager.instance?.PlaySFX(7, 1f);
+
+        Debug.Log($"[ItemDeleteManager] ✅ Showing delete confirmation for {itemToDelete.itemData.ItemName}");
     }
     private void UpdateDeletePanelItemInfo()
     {
@@ -516,9 +595,10 @@ public class ItemDeleteManager : MonoBehaviour
         }
     }
 
+    // ✅ แทนที่ method เดิม
     private void CancelDelete()
     {
-        Debug.Log("[ItemDeleteManager] Delete cancelled");
+        Debug.Log("[ItemDeleteManager] ❌ Delete cancelled");
 
         // ซ่อน confirmation panel
         if (deleteConfirmPanel != null)
@@ -526,8 +606,11 @@ public class ItemDeleteManager : MonoBehaviour
             deleteConfirmPanel.SetActive(false);
         }
 
-        // ✅ เปลี่ยนจากการออกโหมดลบ เป็นแค่ clear selection
+        // Clear selection แต่ยังอยู่ในโหมดลบ
         ClearCurrentSelection();
+
+        // เล่นเสียง
+        AudioManager.instance?.PlaySFX(7, 0.5f);
     }
     private void ClearCurrentSelection()
     {
@@ -544,15 +627,16 @@ public class ItemDeleteManager : MonoBehaviour
         Debug.Log("[ItemDeleteManager] Cleared current selection, still in delete mode");
     }
 
+    // ✅ แทนที่ method เดิม
     private void ConfirmDelete()
     {
         if (!HasSelectedItemToDelete)
         {
-            Debug.LogWarning("[ItemDeleteManager] No item to delete");
+            Debug.LogWarning("[ItemDeleteManager] ❌ No item to delete");
             return;
         }
 
-        Debug.Log($"[ItemDeleteManager] Confirming delete of {itemToDelete.itemData.ItemName} x{itemToDelete.stackCount}");
+        Debug.Log($"[ItemDeleteManager] 🗑️ Confirming delete of {itemToDelete.itemData.ItemName} x{itemToDelete.stackCount}");
 
         // ทำการลบไอเท็ม
         bool deleteSuccess = DeleteSelectedItem();
@@ -572,10 +656,16 @@ public class ItemDeleteManager : MonoBehaviour
 
             // อัปเดต UI
             UpdateUIAfterDelete();
+
+            // เล่นเสียงลบ
+            AudioManager.instance?.PlaySFX(8, 1f);
         }
         else
         {
             Debug.LogError("[ItemDeleteManager] ❌ Failed to delete item");
+
+            // เล่นเสียง error
+            AudioManager.instance?.PlaySFX(9, 1f);
         }
     }
 
@@ -597,28 +687,53 @@ public class ItemDeleteManager : MonoBehaviour
         return success;
     }
 
+    // ✅ แทนที่ method เดิมทั้งหมด
+    // ✅ แทนที่ method เดิม - เวอร์ชันเบา
     private void UpdateUIAfterDelete()
     {
-        // ✅ ตรวจสอบ reference อีกครั้งก่อน update
+        Debug.Log("[ItemDeleteManager] 🔄 Updating UI after delete...");
+
+        // ตรวจสอบ reference
         if (inventoryGridManager == null)
         {
             RefreshInventoryGridManagerReference();
         }
 
-        // อัปเดต inventory grid
-        if (inventoryGridManager != null)
+        if (inventoryGridManager == null)
+        {
+            Debug.LogWarning("[ItemDeleteManager] Cannot update UI: InventoryGridManager not found");
+            return;
+        }
+
+        // ✅ อัพเดทเฉพาะ slot ที่ลบ (ไม่ต้อง refresh ทั้งหมด)
+        if (selectedSlotForDelete >= 0)
         {
             inventoryGridManager.UpdateSlotFromCharacter(selectedSlotForDelete);
         }
-        else
-        {
-            Debug.LogWarning("[ItemDeleteManager] Cannot update UI: InventoryGridManager not found");
-        }
 
-        // Force update canvas
+        // ✅ Force hide extra slots เท่านั้น (ไม่ต้อง force refresh all)
+        inventoryGridManager.ForceHideExtraSlots();
+
+        // ✅ Canvas update ครั้งเดียว
         Canvas.ForceUpdateCanvases();
 
-        Debug.Log("[ItemDeleteManager] UI updated after delete");
+        Debug.Log("[ItemDeleteManager] ✅ UI updated after delete");
+    }
+
+    // ✅ เพิ่ม Coroutine สำหรับ delayed refresh
+    private IEnumerator DelayedCanvasRefresh()
+    {
+        // รอ 3 frames แล้ว refresh ซ้ำ
+        yield return null;
+        yield return null;
+        yield return null;
+
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ForceRefreshOnOpen();
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[ItemDeleteManager] Delayed canvas refresh complete");
+        }
     }
     #endregion
 
@@ -628,10 +743,10 @@ public class ItemDeleteManager : MonoBehaviour
         targetCharacter = character;
         Debug.Log($"[ItemDeleteManager] Target character set: {character?.CharacterName ?? "None"}");
 
-        // ✅ เมื่อมี character ใหม่ ให้ refresh reference ด้วย
+        // ✅ เมื่อมี character ใหม่ ให้ force refresh ทุกอย่าง
         if (character != null)
         {
-            RefreshInventoryGridManagerReference();
+            ForceRefreshReferences();
         }
     }
 
@@ -643,29 +758,53 @@ public class ItemDeleteManager : MonoBehaviour
 
     public void OnDeleteButtonClicked()
     {
+        Debug.Log("[ItemDeleteManager] 🗑️ Delete button clicked!");
+        Debug.Log($"[ItemDeleteManager] Current state - isDeleteMode: {isDeleteMode}, hasSelection: {HasSelectedItemToDelete}");
+
         if (!isDeleteMode)
         {
             // เข้าโหมดลบ
             EnterDeleteMode();
         }
-        else if (HasSelectedItemToDelete)
-        {
-            // ✅ เปลี่ยนจาก ShowDeleteConfirmation เป็น ConfirmDelete ทันที
-            // เพราะ panel แสดงอยู่แล้ว
-            ConfirmDelete();
-        }
         else
         {
-            // ออกจากโหมดลบถ้าไม่ได้เลือกอะไร
+            // ออกจากโหมดลบ (กดถังขยะอีกครั้งเพื่อยกเลิก)
             ExitDeleteMode();
         }
     }
 
     // ✅ เพิ่ม method สำหรับ force refresh reference (เรียกจาก CombatUIManager)
+    // ✅ แทนที่ method เดิม
     public void ForceRefreshReferences()
     {
-        Debug.Log("[ItemDeleteManager] 🔄 Force refreshing references...");
+        Debug.Log("[ItemDeleteManager] 🔄 Force refreshing all references...");
+
+        // 1. หา CombatUIManager
+        if (combatUIManager == null)
+        {
+            combatUIManager = FindObjectOfType<CombatUIManager>();
+            Debug.Log($"[ItemDeleteManager] CombatUIManager: {(combatUIManager != null ? "Found" : "NOT FOUND")}");
+        }
+
+        // 2. หา InventoryGridManager
         RefreshInventoryGridManagerReference();
+        Debug.Log($"[ItemDeleteManager] InventoryGridManager: {(inventoryGridManager != null ? "Found" : "NOT FOUND")}");
+
+        // 3. หา Target Character
+        if (targetCharacter == null && combatUIManager?.localHero != null)
+        {
+            targetCharacter = combatUIManager.localHero;
+            Debug.Log($"[ItemDeleteManager] Target Character: {targetCharacter.CharacterName}");
+        }
+
+        // 4. ดึง slots จาก InventoryGridManager
+        if (inventoryGridManager != null)
+        {
+            allInventorySlots = inventoryGridManager.AllSlots;
+            Debug.Log($"[ItemDeleteManager] Found {allInventorySlots?.Count ?? 0} inventory slots");
+        }
+
+        Debug.Log("[ItemDeleteManager] ✅ Force refresh complete");
     }
     #endregion
 }

@@ -78,6 +78,17 @@ public class ShopLooby : MonoBehaviour
     public List<TradeItemData> tradeItems = new List<TradeItemData>();
     private TradeItemData selectedTradeItem;
     private bool isTradeMode = false;
+    // ✅ เพิ่มตัวแปรสำหรับ Trade Pagination ใน ShopLooby class
+
+    [Header("🔄 Trade Pagination")]
+    public int tradeItemsPerPage = 12;
+    public Button previousTradePageButton;
+    public Button nextTradePageButton;
+    public TextMeshProUGUI tradePageInfoText;
+    public TextMeshProUGUI tradeItemCountText;
+
+    private List<TradeItemData> filteredTradeItems = new List<TradeItemData>();
+    private int currentTradePage = 0;
     [Header("🆕 Phase 3: Enhanced Shop Features")]
     public Button refreshShopButton;
     public TMP_InputField searchInputField;
@@ -341,6 +352,8 @@ public class ShopLooby : MonoBehaviour
             legendShopTab.onClick.AddListener(ShowLegendShopPanel);
         if (sellTab != null)
             sellTab.onClick.AddListener(ShowSellPanel);
+        if (tradeTab != null)
+            tradeTab.onClick.AddListener(ShowTradePanel);
 
         // Detail panel
         if (buyButton != null)
@@ -360,19 +373,12 @@ public class ShopLooby : MonoBehaviour
         if (increaseTenButton != null)
             increaseTenButton.onClick.AddListener(() => ChangeQuantity(10));
 
-
         if (sellButton != null)
             sellButton.onClick.AddListener(OnSellButtonClicked);
         if (closeSellDetailButton != null)
             closeSellDetailButton.onClick.AddListener(HideSellItemDetailPanel);
         if (sellAllButton != null)
             sellAllButton.onClick.AddListener(OnSellAllButtonClicked);
-
-        if (tradeTab != null)
-            tradeTab.onClick.AddListener(ShowTradePanel);
-
-        // ✅ 4. เพิ่มใน RemoveEventListeners() method  
-       
 
         // Enhanced shop listeners
         if (refreshShopButton != null)
@@ -387,10 +393,18 @@ public class ShopLooby : MonoBehaviour
             sortDropdown.onValueChanged.AddListener(OnSortOptionChanged);
         if (clearFiltersButton != null)
             clearFiltersButton.onClick.AddListener(ClearAllFilters);
+
+        // Shop pagination
         if (previousPageButton != null)
             previousPageButton.onClick.AddListener(PreviousPage);
         if (nextPageButton != null)
             nextPageButton.onClick.AddListener(NextPage);
+
+        // ✅ Trade pagination listeners
+        if (previousTradePageButton != null)
+            previousTradePageButton.onClick.AddListener(PreviousTradePage);
+        if (nextTradePageButton != null)
+            nextTradePageButton.onClick.AddListener(NextTradePage);
     }
 
     private void RemoveEventListeners()
@@ -2682,44 +2696,141 @@ public class ShopLooby : MonoBehaviour
         currentShopContainer = tradeContainer;
         currentShopName = "Trade";
 
-        // ✅ โหลด trade items เฉพาะเมื่อยังไม่มี หรือ list ว่าง
+        // โหลด trade items
         if (tradeItems == null || tradeItems.Count == 0)
         {
             Debug.Log("[ShopLooby] Trade items empty, loading...");
             LoadTradeItems();
         }
-        else
-        {
-            Debug.Log($"[ShopLooby] Using existing {tradeItems.Count} trade items");
-        }
 
-        // แสดง trade items
-        DisplayTradeItems();
+        // ✅ Reset pagination และแสดงผล
+        currentTradePage = 0;
+        filteredTradeItems = new List<TradeItemData>(tradeItems);
+        UpdateTradePagination();
+        DisplayTradeItemsWithPagination();
 
         Debug.Log($"[ShopLooby] ✅ Switched to Trade Shop - {tradeItems.Count} items");
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับ update trade pagination
+    private void UpdateTradePagination()
+    {
+        int totalPages = Mathf.CeilToInt((float)filteredTradeItems.Count / tradeItemsPerPage);
+        currentTradePage = Mathf.Clamp(currentTradePage, 0, Mathf.Max(0, totalPages - 1));
+
+        // Update pagination buttons
+        if (previousTradePageButton != null)
+            previousTradePageButton.interactable = currentTradePage > 0;
+
+        if (nextTradePageButton != null)
+            nextTradePageButton.interactable = currentTradePage < totalPages - 1;
+
+        // Update page info
+        if (tradePageInfoText != null)
+            tradePageInfoText.text = $"Page {currentTradePage + 1} of {Mathf.Max(1, totalPages)}";
+
+        // Update item count
+        if (tradeItemCountText != null)
+            tradeItemCountText.text = $"Showing {filteredTradeItems.Count} trade items";
+
+        Debug.Log($"[ShopLooby] Trade pagination updated - Page {currentTradePage + 1}/{totalPages}");
+    }
+    private void DisplayTradeItemsWithPagination()
+    {
+        if (tradeContainer == null)
+        {
+            Debug.LogError("[ShopLooby] tradeContainer is null!");
+            return;
+        }
+
+        // ลบ items เก่า
+        foreach (Transform child in tradeContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // คำนวณ items สำหรับหน้าปัจจุบัน
+        int startIndex = currentTradePage * tradeItemsPerPage;
+        int endIndex = Mathf.Min(startIndex + tradeItemsPerPage, filteredTradeItems.Count);
+
+        Debug.Log($"[ShopLooby] Displaying trade items {startIndex} to {endIndex} of {filteredTradeItems.Count}");
+
+        // สร้าง UI สำหรับ items ในหน้าปัจจุบัน
+        for (int i = startIndex; i < endIndex; i++)
+        {
+            CreateTradeItemUI(filteredTradeItems[i]);
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Displayed {endIndex - startIndex} trade items on page {currentTradePage + 1}");
     }
     public void RefreshTradeItems()
     {
         Debug.Log("[ShopLooby] 🔄 Refreshing trade items...");
 
-        // ✅ Clear เฉพาะเมื่อต้องการ refresh
         if (tradeItems != null)
         {
             tradeItems.Clear();
         }
 
-        // โหลดใหม่
         LoadTradeItems();
 
-        // แสดงผลใหม่ถ้าอยู่ใน trade panel
+        // ✅ อัพเดท pagination และแสดงผลใหม่
         if (tradePanel != null && tradePanel.activeSelf)
         {
-            DisplayTradeItems();
+            currentTradePage = 0;
+            filteredTradeItems = new List<TradeItemData>(tradeItems);
+            UpdateTradePagination();
+            DisplayTradeItemsWithPagination();
         }
 
         Debug.Log($"[ShopLooby] ✅ Trade items refreshed - {tradeItems.Count} items");
     }
+    public void FilterTradeItems(string searchText = "")
+    {
+        if (string.IsNullOrEmpty(searchText))
+        {
+            filteredTradeItems = new List<TradeItemData>(tradeItems);
+        }
+        else
+        {
+            filteredTradeItems = tradeItems.Where(trade =>
+                trade.resultItem.ItemName.ToLower().Contains(searchText.ToLower())).ToList();
+        }
 
+        currentTradePage = 0;
+        UpdateTradePagination();
+        DisplayTradeItemsWithPagination();
+    }
+
+    // ✅ เพิ่ม method สำหรับ sort trade items
+    public void SortTradeItems(string sortOption)
+    {
+        switch (sortOption.ToLower())
+        {
+            case "name_asc":
+                filteredTradeItems = filteredTradeItems.OrderBy(t => t.resultItem.ItemName).ToList();
+                break;
+            case "name_desc":
+                filteredTradeItems = filteredTradeItems.OrderByDescending(t => t.resultItem.ItemName).ToList();
+                break;
+            case "tier_asc":
+                filteredTradeItems = filteredTradeItems.OrderBy(t => (int)t.resultItem.Tier).ToList();
+                break;
+            case "tier_desc":
+                filteredTradeItems = filteredTradeItems.OrderByDescending(t => (int)t.resultItem.Tier).ToList();
+                break;
+            case "gold_asc":
+                filteredTradeItems = filteredTradeItems.OrderBy(t => t.requiredGold).ToList();
+                break;
+            case "gold_desc":
+                filteredTradeItems = filteredTradeItems.OrderByDescending(t => t.requiredGold).ToList();
+                break;
+        }
+
+        currentTradePage = 0;
+        UpdateTradePagination();
+        DisplayTradeItemsWithPagination();
+    }
     private void LoadTradeItems()
     {
         Debug.Log("[ShopLooby] 🔄 LoadTradeItems called!");
@@ -2864,7 +2975,28 @@ public class ShopLooby : MonoBehaviour
 
         Debug.Log($"[ShopLooby] ✅ Trade item UI created: {tradeItem.resultItem.ItemName}");
     }
+    private void PreviousTradePage()
+    {
+        if (currentTradePage > 0)
+        {
+            currentTradePage--;
+            UpdateTradePagination();
+            DisplayTradeItemsWithPagination();
+            Debug.Log($"[ShopLooby] Moved to trade page {currentTradePage + 1}");
+        }
+    }
 
+    private void NextTradePage()
+    {
+        int totalPages = Mathf.CeilToInt((float)filteredTradeItems.Count / tradeItemsPerPage);
+        if (currentTradePage < totalPages - 1)
+        {
+            currentTradePage++;
+            UpdateTradePagination();
+            DisplayTradeItemsWithPagination();
+            Debug.Log($"[ShopLooby] Moved to trade page {currentTradePage + 1}");
+        }
+    }
     public void OnTradeItemClicked(TradeItemData tradeItem)
     {
         if (tradeItem?.resultItem == null)

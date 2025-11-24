@@ -413,7 +413,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 342cec70286bc6346845f8a6ba3adef2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemDropSettings: {fileID: 11400000, guid: dfe6d3dd73ecb80478e611d71a31bb6c, type: 2}
+  itemDropSettings: {fileID: 11400000, guid: b33de766ac3392744b9efa278a5958e8, type: 2}
   collectRange: 10
   dropDelay: 0
   showDropLogs: 1
@@ -476,7 +476,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba7f323d442448146a84830bf18676d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  characterStats: {fileID: 0}
+  characterStats: {fileID: 11400000, guid: c674cc0d041dd1f488c6443eb64e5b31, type: 2}
   characterName: 
   currentHp: 0
   maxHp: 0

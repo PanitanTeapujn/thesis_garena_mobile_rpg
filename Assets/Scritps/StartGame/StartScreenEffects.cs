@@ -16,8 +16,8 @@ public class StartScreenEffects : MonoBehaviour
     private Vector3 originalScale;
     private bool startBlinking = false;
 
-    // ชื่อเกม (เพิ่มใหม่)
-    public TextMeshProUGUI gameTitleText;
+    // รูปภาพชื่อเกม (แก้ไขใหม่ - ใช้ Image แทน TextMeshProUGUI)
+    public Image gameTitleImage;
     public float titleSlideInDuration = 1f; // เวลาเลื่อนเข้ามา
     public float titleBounceHeight = 100f; // ความสูงที่เลื่อนจากบน
     public float titleFloatSpeed = 1f; // ความเร็วโยกขึ้นลง
@@ -51,12 +51,12 @@ public class StartScreenEffects : MonoBehaviour
         textColor.a = 0f;
         touchToStartText.color = textColor;
 
-        // ตั้งค่าชื่อเกม
-        if (gameTitleText != null)
+        // ตั้งค่ารูปภาพชื่อเกม
+        if (gameTitleImage != null)
         {
-            titleOriginalPos = gameTitleText.transform.localPosition;
-            // เริ่มต้นชื่อเกมอยู่ด้านบนนอกหน้าจอ
-            gameTitleText.transform.localPosition = titleOriginalPos + Vector3.up * titleBounceHeight;
+            titleOriginalPos = gameTitleImage.transform.localPosition;
+            // เริ่มต้นรูปภาพชื่อเกมอยู่ด้านบนนอกหน้าจอ
+            gameTitleImage.transform.localPosition = titleOriginalPos + Vector3.up * titleBounceHeight;
             StartCoroutine(ShowGameTitle());
         }
 
@@ -89,18 +89,18 @@ public class StartScreenEffects : MonoBehaviour
             touchToStartText.color = textColor;
         }
 
-        // เอฟเฟกต์โยกขึ้นลงของชื่อเกม
-        if (startFloating && gameTitleText != null)
+        // เอฟเฟกต์โยกขึ้นลงของรูปภาพชื่อเกม
+        if (startFloating && gameTitleImage != null)
         {
             float floatOffset = Mathf.Sin(Time.time * titleFloatSpeed) * titleFloatAmount;
-            gameTitleText.transform.localPosition = titleOriginalPos + Vector3.up * floatOffset;
+            gameTitleImage.transform.localPosition = titleOriginalPos + Vector3.up * floatOffset;
         }
 
-        // เอฟเฟกต์สีรุ้งของชื่อเกม
-        if (enableRainbowEffect && gameTitleText != null)
+        // เอฟเฟกต์สีรุ้งของรูปภาพชื่อเกม
+        if (enableRainbowEffect && gameTitleImage != null)
         {
             float hue = Mathf.PingPong(Time.time * rainbowSpeed * 0.1f, 1f);
-            gameTitleText.color = Color.HSVToRGB(hue, 0.8f, 1f);
+            gameTitleImage.color = Color.HSVToRGB(hue, 0.8f, 1f);
         }
 
         // ตรวจจับการแตะหน้าจอ
@@ -110,12 +110,12 @@ public class StartScreenEffects : MonoBehaviour
         }
     }
 
-    // Coroutine สำหรับแสดงชื่อเกม
+    // Coroutine สำหรับแสดงรูปภาพชื่อเกม
     IEnumerator ShowGameTitle()
     {
         // Slide In จากด้านบน พร้อม Bounce
         float elapsedTime = 0f;
-        Vector3 startPos = gameTitleText.transform.localPosition;
+        Vector3 startPos = gameTitleImage.transform.localPosition;
 
         while (elapsedTime < titleSlideInDuration)
         {
@@ -125,18 +125,18 @@ public class StartScreenEffects : MonoBehaviour
             // ใช้ Ease Out Bounce
             float bounce = Mathf.Sin(t * Mathf.PI * 0.5f);
 
-            gameTitleText.transform.localPosition = Vector3.Lerp(startPos, titleOriginalPos, bounce);
+            gameTitleImage.transform.localPosition = Vector3.Lerp(startPos, titleOriginalPos, bounce);
 
             // Scale Bounce เล็กน้อย
             float scale = 1f + Mathf.Sin(t * Mathf.PI) * 0.2f;
-            gameTitleText.transform.localScale = Vector3.one * scale;
+            gameTitleImage.transform.localScale = Vector3.one * scale;
 
             yield return null;
         }
 
         // Reset Scale
-        gameTitleText.transform.localScale = Vector3.one;
-        gameTitleText.transform.localPosition = titleOriginalPos;
+        gameTitleImage.transform.localScale = Vector3.one;
+        gameTitleImage.transform.localPosition = titleOriginalPos;
 
         // เริ่มโยกขึ้นลง
         startFloating = true;
@@ -194,9 +194,9 @@ public class StartScreenEffects : MonoBehaviour
 
     void LoadNextScene()
     {
-        AudioManager.instance.PlaySFX(5, 1f);           
-        AudioManager.instance.PlaySFX(6, 0.7f);           
-            if (Application.CanStreamedLevelBeLoaded("LoginAndRegister"))
+        AudioManager.instance.PlaySFX(5, 1f);
+        AudioManager.instance.PlaySFX(6, 0.7f);
+        if (Application.CanStreamedLevelBeLoaded("LoginAndRegister"))
         {
             SceneManager.LoadScene("LoginAndRegister");
         }
