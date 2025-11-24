@@ -675,8 +675,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d269ba3e644a7a64e801e375e75d7c56, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxSlots: 500
-  currentSlots: 80
+  maxSlots: 800
+  currentSlots: 800
   items: []
   giveStarterItems: 1
   starterItemsGiven: 0

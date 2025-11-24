@@ -65,8 +65,8 @@ public class Inventory : NetworkBehaviour
 
     #region Inventory Settings
     [Header("📦 Inventory Settings")]
-    [SerializeField] private int maxSlots = 48; // 8x6 = 48 slots เริ่มต้น
-    [SerializeField] private int currentSlots = 24; // เริ่มต้นที่ 24 ช่อง (6x4)
+    [SerializeField] private int maxSlots = 800; // ✅ เพิ่มเป็น 800 slots
+    [SerializeField] private int currentSlots = 800; // ✅ เริ่มต้นที่ 800 ช่อง
     [SerializeField] private List<InventoryItem> items = new List<InventoryItem>();
 
     [Header("🎁 Starter Items Configuration")]
@@ -92,8 +92,8 @@ public class Inventory : NetworkBehaviour
     [SerializeField] private bool useItemDatabase = true; // เปิด/ปิดการใช้ database
 
     [Header("🎯 Grid Layout")]
-    [SerializeField] private int gridWidth = 6;   // จำนวน columns
-    [SerializeField] private int gridHeight = 4;  // จำนวน rows
+    [SerializeField] private int gridWidth = 5;   // ✅ เปลี่ยนเป็น 5 columns
+    [SerializeField] private int gridHeight = 5;  // ✅ เปลี่ยนเป็น 5 rows (แสดงครั้งละ 25 ช่อง)
     #endregion
 
     #region Character Reference
@@ -535,34 +535,11 @@ public class Inventory : NetworkBehaviour
 
     private void CalculateGridDimensions()
     {
-        // หา dimensions ที่เหมาะสมที่สุดตาม currentSlots
-        if (currentSlots <= 24) // 6x4
-        {
-            gridWidth = 6;
-            gridHeight = 4;
-        }
-        else if (currentSlots <= 30) // 6x5
-        {
-            gridWidth = 6;
-            gridHeight = 5;
-        }
-        else if (currentSlots <= 36) // 6x6
-        {
-            gridWidth = 6;
-            gridHeight = 6;
-        }
-        else if (currentSlots <= 42) // 7x6
-        {
-            gridWidth = 7;
-            gridHeight = 6;
-        }
-        else // 8x6 หรือมากกว่า
-        {
-            gridWidth = 8;
-            gridHeight = Mathf.CeilToInt((float)currentSlots / gridWidth);
-        }
+        // ✅ ใช้ grid 5x5 แบบคงที่
+        gridWidth = 5;
+        gridHeight = 5;
 
-        Debug.Log($"[Inventory] Grid dimensions: {gridWidth}x{gridHeight} for {currentSlots} slots");
+        Debug.Log($"[Inventory] Grid dimensions: {gridWidth}x{gridHeight} fixed size, Total slots: {currentSlots}");
     }
 
     #region Inventory Management

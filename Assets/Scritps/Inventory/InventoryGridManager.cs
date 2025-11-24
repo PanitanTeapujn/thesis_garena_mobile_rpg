@@ -6,11 +6,11 @@ using TMPro;
 public class InventoryGridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
-    [SerializeField] private int gridWidth = 8;     // 8 คอลัมน์
-    [SerializeField] private int gridHeight = 6;    // 6 แถว
-    [SerializeField] private float cellSize = 60f;   // ขนาดแต่ละ cell (ลดลงจาก 80f)
-    [SerializeField] private float spacing = 3f;     // ระยะห่างระหว่าง cells (ลดลงจาก 5f)
-    [SerializeField] private bool autoFitToParent = true;  // ปรับขนาดอัตโนมัติตาม parent
+    [SerializeField] private int gridWidth = 5;     // ✅ 5 คอลัมน์
+    [SerializeField] private int gridHeight = 5;    // ✅ 5 แถว
+    [SerializeField] private float cellSize = 70f;   // ✅ ขนาดแต่ละ cell
+    [SerializeField] private float spacing = 5f;     // ✅ ระยะห่างระหว่าง cells
+    [SerializeField] private bool autoFitToParent = true;
     [Header("Character Integration")]
     [SerializeField] private Character ownerCharacter;          // Character ที่เป็นเจ้าของ inventory นี้
     [SerializeField] private bool autoDetectCharacter = true;   // หา Character อัตโนมัติ
@@ -33,6 +33,14 @@ public class InventoryGridManager : MonoBehaviour
     public Button clearFiltersButton;              // ปุ่มล้าง filters
     public TextMeshProUGUI filteredItemCountText;  // แสดงจำนวน items หลัง filter
 
+    [Header("📄 Pagination Settings")]
+    [SerializeField] private int itemsPerPage = 25;  // ✅ 5x5 = 25 items per page
+    [SerializeField] private int currentPage = 0;
+    [SerializeField] private int totalPages = 0;
+    [Header("📄 Pagination UI")]
+    public Button previousPageButton;               // ✅ ปุ่มหน้าก่อน
+    public Button nextPageButton;                   // ✅ ปุ่มหน้าถัดไป
+    public TextMeshProUGUI pageInfoText;
     [Header("🔍 Filter Variables")]
     private ItemType selectedItemType = ItemType.Weapon; // เก็บ type ที่เลือก (-1 = All)
     private ItemTier selectedItemTier = ItemTier.Common;  // เก็บ tier ที่เลือก (-1 = All)
@@ -55,15 +63,16 @@ public class InventoryGridManager : MonoBehaviour
         SetupCharacterConnection();
         SetupInventoryFilters();
 
-        // ✅ เปลี่ยนจาก CreateInventoryGrid(); เป็น
-        // สร้าง grid เสมอ แม้ว่าจะยังไม่มี character
+        // ✅ เพิ่ม setup pagination
+        SetupPagination();
+
+        // สร้าง grid
         if (allSlots.Count == 0)
         {
             CreateInventoryGrid();
             Debug.Log("[InventoryGrid] Created initial grid");
         }
 
-        // ถ้ามี character แล้วให้ load items
         if (ownerCharacter != null)
         {
             LoadItemsFromCharacterInventory();
@@ -159,34 +168,114 @@ public class InventoryGridManager : MonoBehaviour
         if (gridLayout == null)
         {
             gridLayout = gameObject.AddComponent<GridLayoutGroup>();
+            Debug.Log("[InventoryGrid] Created new GridLayoutGroup");
         }
 
-        // 🎯 NEW: Auto-fit to parent panel
-        if (autoFitToParent)
-        {
-            CalculateOptimalCellSize();
-        }
+      
 
-        // ตั้งค่า Grid Layout
-        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = gridWidth;
-        gridLayout.cellSize = new Vector2(cellSize, cellSize);
-        gridLayout.spacing = new Vector2(spacing, spacing);
-        gridLayout.childAlignment = TextAnchor.MiddleCenter;
-        gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-        gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
-
-        // ตั้งค่า Content Size Fitter สำหรับ scroll
+        // ลบ ContentSizeFitter ถ้ามี (ส่วนนี้เก็บไว้)
         ContentSizeFitter sizeFitter = GetComponent<ContentSizeFitter>();
-        if (sizeFitter == null)
+        if (sizeFitter != null)
         {
-            sizeFitter = gameObject.AddComponent<ContentSizeFitter>();
+            Destroy(sizeFitter);
+            Debug.Log("[InventoryGrid] Removed ContentSizeFitter");
         }
-        sizeFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        Debug.Log($"[InventoryGrid] Grid Layout setup complete: {gridWidth}x{gridHeight} = {totalSlots} slots, Cell Size: {cellSize}x{cellSize}");
+        Debug.Log($"[InventoryGrid] Grid Layout setup complete - Using Inspector settings");
+    }
+    // ✅ เพิ่ม method ใหม่นี้
+    // ✅ แทนที่ method เดิมทั้งหมด
+    public void OnInventoryPanelOpened()
+    {
+        Debug.Log("[InventoryGrid] 📂 Inventory panel opened - Starting force fix...");
+
+        // Reset to first page
+        currentPage = 0;
+
+        // ✅ เพิ่ม Coroutine เพื่อ fix หลายรอบ
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(ForceFixOnPanelOpen());
+        }
     }
 
+    // ✅ เพิ่ม Coroutine ใหม่นี้
+    private IEnumerator ForceFixOnPanelOpen()
+    {
+        // รอ 1 frame
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔧 First fix attempt...");
+
+        // Fix ครั้งที่ 1
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+        Canvas.ForceUpdateCanvases();
+
+        // รออีก 1 frame
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔧 Second fix attempt...");
+
+        // Fix ครั้งที่ 2
+        UpdateVisibleSlots();
+        Canvas.ForceUpdateCanvases();
+
+        // รออีก 1 frame
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔧 Final fix attempt...");
+
+        // Fix ครั้งที่ 3 (สุดท้าย)
+        ForceHideExtraSlots();
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[InventoryGrid] ✅ Panel open fix complete!");
+    }
+
+    // ✅ เพิ่ม method ใหม่สำหรับบังคับซ่อน slots ที่เกิน
+    private void ForceHideExtraSlots()
+    {
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = startIndex + itemsPerPage;
+
+        Debug.Log($"[InventoryGrid] 🔒 Force hiding slots outside range {startIndex}-{endIndex}");
+
+        int hiddenCount = 0;
+        int visibleCount = 0;
+
+        for (int i = 0; i < allSlots.Count; i++)
+        {
+            if (allSlots[i] == null) continue;
+
+            bool shouldBeVisible = i >= startIndex && i < endIndex;
+
+            // บังคับ SetActive
+            allSlots[i].gameObject.SetActive(shouldBeVisible);
+
+            if (shouldBeVisible)
+                visibleCount++;
+            else
+                hiddenCount++;
+        }
+
+        Debug.Log($"[InventoryGrid] ✅ Force hide complete - Visible: {visibleCount}, Hidden: {hiddenCount}");
+    }
+    /// <summary>
+    /// บังคับ Refresh ทั้งหมดทันที (ใช้เมื่อเปิด panel)
+    /// </summary>
+    public void ForceRefreshOnOpen()
+    {
+        Debug.Log("[InventoryGrid] 🔄 Force refresh on open...");
+
+        currentPage = 0;
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+        ForceHideExtraSlots();
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[InventoryGrid] ✅ Force refresh complete");
+    }
     private void CreateInventoryGrid()
     {
         bool needsCanvasRefresh = !IsParentCanvasActive();
@@ -194,54 +283,88 @@ public class InventoryGridManager : MonoBehaviour
         // ลบ slots เก่าถ้ามี
         ClearExistingSlots();
 
-        // ดึงจำนวน slots จาก Character ถ้ามี
+        // ✅ อ่านค่าจาก GridLayoutGroup ที่ตั้งใน Inspector
+        if (gridLayout != null)
+        {
+            gridWidth = gridLayout.constraintCount;
+            itemsPerPage = gridWidth * gridHeight;
+
+            Debug.Log($"[InventoryGrid] Using Inspector settings: {gridWidth}x{gridHeight} = {itemsPerPage} per page");
+        }
+
+        // ดึงจำนวน slots จาก Character (800 slots)
         if (ownerCharacter != null)
         {
             int characterSlots = ownerCharacter.GetInventorySlotCount();
             totalSlots = characterSlots;
 
-            // คำนวณ grid dimensions ใหม่
-            CalculateGridDimensions(characterSlots);
-
-            Debug.Log($"[InventoryGrid] Using character's inventory: {characterSlots} slots ({gridWidth}x{gridHeight})");
+            Debug.Log($"[InventoryGrid] Creating grid for {characterSlots} slots (showing {itemsPerPage} per page)");
         }
         else
         {
-            // ใช้ค่าเริ่มต้นถ้าไม่มี character
-            totalSlots = gridWidth * gridHeight;
-            Debug.LogWarning("[InventoryGrid] No character found, using default slot count");
+            totalSlots = 800;
+            Debug.LogWarning("[InventoryGrid] No character found, using default 800 slots");
         }
 
-        // สร้าง slots ใหม่
+        // Reset หน้าเป็น 0 ก่อนสร้าง
+        currentPage = 0;
+
+        // สร้าง slots ทั้งหมด 800 ช่อง
         for (int i = 0; i < totalSlots; i++)
         {
             CreateSlot(i);
         }
 
-        // ✅ แก้ไข - ตรวจสอบก่อนเรียก Coroutine
+        // Canvas refresh
         if (needsCanvasRefresh && gameObject.activeInHierarchy)
         {
             StartCoroutine(ForceCanvasRefreshRoutine());
         }
         else if (needsCanvasRefresh)
         {
-            // ถ้า GameObject ไม่ active ให้ refresh ทันที
             Canvas.ForceUpdateCanvases();
-            Debug.Log("[InventoryGrid] Force refreshed canvas immediately (object inactive)");
         }
 
-        // ✅ แก้ไข - เพิ่ม immediate sync หลังสร้าง slots เสร็จ
+        // อัพเดท pagination ทันทีหลังสร้าง slots
+        UpdatePaginationUI();
+
+        // เพิ่ม Coroutine เพื่อให้แน่ใจว่า slots แสดงถูกต้อง
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(DelayedInitialPageSetup());
+        }
+
+        // Immediate sync
         if (ownerCharacter != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(ImmediateSyncAllSlotsAfterCreate());
         }
         else if (ownerCharacter != null)
         {
-            // ถ้า GameObject ไม่ active ให้ sync ทันที
             ImmediateSyncAllSlotsNow();
         }
 
-        Debug.Log($"[InventoryGrid] Created {allSlots.Count} inventory slots");
+        Debug.Log($"[InventoryGrid] ✅ Created {allSlots.Count} inventory slots with pagination");
+    }
+
+    // ✅ เพิ่ม Coroutine ใหม่นี้
+    private IEnumerator DelayedInitialPageSetup()
+    {
+        // รอ 2 frames เพื่อให้ grid setup เสร็จ
+        yield return null;
+        yield return null;
+
+        Debug.Log("[InventoryGrid] 🔄 Setting up initial page display...");
+
+        // Force อัพเดทหน้าแรก
+        currentPage = 0;
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+
+        // Force canvas update
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log("[InventoryGrid] ✅ Initial page setup complete - showing first 25 slots");
     }
     private void ImmediateSyncAllSlotsNow()
     {
@@ -342,7 +465,7 @@ public class InventoryGridManager : MonoBehaviour
         Debug.Log("[InventoryGrid] Force refreshed canvas for slot creation");
     }
 
-   
+
     private void CreateSlot(int slotIndex)
     {
         GameObject slotObj;
@@ -369,23 +492,26 @@ public class InventoryGridManager : MonoBehaviour
         slot.SlotIndex = slotIndex;
         slot.OnSlotSelected += HandleSlotSelected;
 
-        // ✅ Setup components ทันทีที่สร้าง
+        // Setup components ทันทีที่สร้าง
         slot.ForceSetupComponents();
 
         allSlots.Add(slot);
 
-        // ✅ แก้ไข - ตรวจสอบก่อนเรียก Coroutine
+        // ✅ เพิ่มบรรทัดนี้ - ซ่อน slots ที่ไม่อยู่ในหน้าแรก
+        bool isInFirstPage = slotIndex < itemsPerPage;
+        slotObj.SetActive(isInFirstPage);
+
+        // Sync with character
         if (ownerCharacter != null && gameObject.activeInHierarchy)
         {
             StartCoroutine(DelayedSyncSlotFromCharacter(slot, slotIndex));
         }
         else if (ownerCharacter != null)
         {
-            // ถ้า GameObject ไม่ active ให้ sync ทันที
             SyncSlotFromCharacterNow(slot, slotIndex);
         }
 
-        Debug.Log($"[InventoryGrid] Created slot {slotIndex} without forcing empty state");
+        Debug.Log($"[InventoryGrid] Created slot {slotIndex}, Active: {isInFirstPage}");
     }
 
     // ✅ เพิ่ม method ใหม่สำหรับ sync แบบไม่ใช้ Coroutine
@@ -849,43 +975,7 @@ public class InventoryGridManager : MonoBehaviour
             LoadItemsFromCharacterInventory();
         }
     }
-    private void CalculateGridDimensions(int slotCount)
-    {
-        // หา dimensions ที่เหมาะสมที่สุด
-        if (slotCount <= 24) // 6x4
-        {
-            gridWidth = 6;
-            gridHeight = 4;
-        }
-        else if (slotCount <= 30) // 6x5
-        {
-            gridWidth = 6;
-            gridHeight = 5;
-        }
-        else if (slotCount <= 36) // 6x6
-        {
-            gridWidth = 6;
-            gridHeight = 6;
-        }
-        else if (slotCount <= 42) // 7x6
-        {
-            gridWidth = 7;
-            gridHeight = 6;
-        }
-        else // 8x6 หรือมากกว่า
-        {
-            gridWidth = 8;
-            gridHeight = Mathf.CeilToInt((float)slotCount / gridWidth);
-        }
 
-        // อัปเดต GridLayoutGroup
-        if (gridLayout != null)
-        {
-            gridLayout.constraintCount = gridWidth;
-        }
-
-        totalSlots = gridWidth * gridHeight; // อาจจะมากกว่า slotCount เล็กน้อย
-    }
 
     // เพิ่ม method สำหรับโหลด items จาก character
     private void LoadItemsFromCharacterInventory()
@@ -901,18 +991,20 @@ public class InventoryGridManager : MonoBehaviour
             InventoryItem item = characterInventory.GetItem(i);
             UpdateSlotFromInventoryItem(i, item);
 
-            // ✅ เพิ่มบรรทัดนี้ - Force sync ทุก slot ทันที
             if (i < allSlots.Count && allSlots[i] != null)
             {
                 allSlots[i].ForceSyncFromCharacterNow();
             }
         }
 
-        // ✅ เพิ่ม force refresh ทั้ง grid
+        // ✅ อัพเดท pagination หลังโหลด
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+
         ForceRefreshAllSlots();
         ApplyInventoryFilters();
 
-        Debug.Log("[InventoryGrid] ✅ Completed loading all items with force sync");
+        Debug.Log("[InventoryGrid] ✅ Completed loading all items");
     }
     public void ForceRefreshAllSlots()
     {
@@ -926,53 +1018,25 @@ public class InventoryGridManager : MonoBehaviour
 
         Inventory inventory = ownerCharacter.GetInventory();
 
-        // ✅ Debug inventory ก่อน refresh
-        Debug.Log($"[InventoryGrid] Inventory has {inventory.UsedSlots}/{inventory.CurrentSlots} items");
-
-        for (int i = 0; i < 5 && i < inventory.CurrentSlots; i++)
+        // Refresh ทุก slot
+        for (int i = 0; i < allSlots.Count && i < inventory.CurrentSlots; i++)
         {
-            var item = inventory.GetItem(i);
-            string itemInfo = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
-            Debug.Log($"[InventoryGrid] Slot {i}: {itemInfo}");
-        }
-
-        // Refresh ทุก slot พร้อม debug
-        int refreshedCount = 0;
-        foreach (InventorySlot slot in allSlots)
-        {
-            if (slot != null)
+            if (allSlots[i] != null)
             {
-                // ดึงข้อมูลจาก character inventory
-                int slotIndex = slot.SlotIndex;
-                if (slotIndex >= 0 && slotIndex < inventory.CurrentSlots)
-                {
-                    var item = inventory.GetItem(slotIndex);
-
-                    // Debug ก่อน sync
-                    string beforeState = slot.IsEmpty ? "EMPTY" : "FILLED";
-                    string inventoryState = item?.IsEmpty != false ? "EMPTY" : $"{item.itemData.ItemName} x{item.stackCount}";
-
-                    // Force sync
-                    slot.ForceSyncFromCharacterNow();
-
-                    // Debug หลัง sync
-                    string afterState = slot.IsEmpty ? "EMPTY" : "FILLED";
-
-                    if (beforeState != afterState)
-                    {
-                        Debug.Log($"[InventoryGrid] Slot {slotIndex}: {beforeState} → {afterState} (Inventory: {inventoryState})");
-                    }
-
-                    refreshedCount++;
-                }
+                allSlots[i].ForceSyncFromCharacterNow();
             }
         }
 
         // Force canvas update
         Canvas.ForceUpdateCanvases();
+
+        // ✅ อัพเดท pagination
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+
         ApplyInventoryFilters();
 
-        Debug.Log($"[InventoryGrid] ✅ Refreshed {refreshedCount} slots");
+        Debug.Log($"[InventoryGrid] ✅ Refreshed all slots");
     }
     // เพิ่ม method สำหรับอัปเดต slot จาก inventory item
     private void UpdateSlotFromInventoryItem(int slotIndex, InventoryItem item)
@@ -1286,10 +1350,10 @@ public class InventoryGridManager : MonoBehaviour
         {
             clearFiltersButton.onClick.RemoveAllListeners();
             clearFiltersButton.onClick.AddListener(ClearAllFilters);
-          //  Debug.Log("[InventoryGrid] ✅ Clear filters button setup");
+            //  Debug.Log("[InventoryGrid] ✅ Clear filters button setup");
         }
 
-       // Debug.Log("[InventoryGrid] 🎉 Inventory filters setup completed with improved usability!");
+        // Debug.Log("[InventoryGrid] 🎉 Inventory filters setup completed with improved usability!");
     }
     private void SetupDropdownContentLayout(TMP_Dropdown dropdown, string dropdownName)
     {
@@ -1301,7 +1365,7 @@ public class InventoryGridManager : MonoBehaviour
             Transform template = dropdown.transform.Find("Template");
             if (template == null)
             {
-              //  Debug.LogWarning($"[InventoryGrid] No Template found in {dropdownName} dropdown");
+                //  Debug.LogWarning($"[InventoryGrid] No Template found in {dropdownName} dropdown");
                 return;
             }
 
@@ -1309,14 +1373,14 @@ public class InventoryGridManager : MonoBehaviour
             Transform viewport = template.Find("Viewport");
             if (viewport == null)
             {
-           //     Debug.LogWarning($"[InventoryGrid] No Viewport found in {dropdownName} dropdown template");
+                //     Debug.LogWarning($"[InventoryGrid] No Viewport found in {dropdownName} dropdown template");
                 return;
             }
 
             Transform content = viewport.Find("Content");
             if (content == null)
             {
-            //    Debug.LogWarning($"[InventoryGrid] No Content found in {dropdownName} dropdown viewport");
+                //    Debug.LogWarning($"[InventoryGrid] No Content found in {dropdownName} dropdown viewport");
                 return;
             }
 
@@ -1325,7 +1389,7 @@ public class InventoryGridManager : MonoBehaviour
             if (verticalLayout == null)
             {
                 verticalLayout = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            //    Debug.Log($"[InventoryGrid] ✅ Added VerticalLayoutGroup to {dropdownName} dropdown content");
+                //    Debug.Log($"[InventoryGrid] ✅ Added VerticalLayoutGroup to {dropdownName} dropdown content");
             }
 
             // ✅ ตั้งค่า Vertical Layout Group ให้กดง่าย (เหมือน ShopLooby)
@@ -1356,7 +1420,7 @@ public class InventoryGridManager : MonoBehaviour
                 templateSize.y = maxHeight;
                 templateRect.sizeDelta = templateSize;
 
-             //   Debug.Log($"[InventoryGrid] Set {dropdownName} dropdown template max height to {maxHeight}");
+                //   Debug.Log($"[InventoryGrid] Set {dropdownName} dropdown template max height to {maxHeight}");
             }
 
             // ✅ เพิ่ม ScrollRect ถ้าไม่มี (สำหรับกรณีตัวเลือกเยอะ)
@@ -1370,7 +1434,7 @@ public class InventoryGridManager : MonoBehaviour
                 scrollRect.vertical = true;
                 scrollRect.scrollSensitivity = 20f;
 
-              //  Debug.Log($"[InventoryGrid] ✅ Added ScrollRect to {dropdownName} dropdown");
+                //  Debug.Log($"[InventoryGrid] ✅ Added ScrollRect to {dropdownName} dropdown");
             }
 
             // ✅ ปรับแต่ง dropdown items ให้กดง่าย
@@ -1384,6 +1448,163 @@ public class InventoryGridManager : MonoBehaviour
             Debug.LogError($"[InventoryGrid] ❌ Error setting up {dropdownName} dropdown layout: {e.Message}");
         }
     }
+    #region Pagination System
+
+    private void SetupPagination()
+    {
+        Debug.Log("[InventoryGrid] Setting up pagination system...");
+
+        // Setup button events
+        if (previousPageButton != null)
+        {
+            previousPageButton.onClick.RemoveAllListeners();
+            previousPageButton.onClick.AddListener(PreviousPage);
+            Debug.Log("[InventoryGrid] ✅ Previous page button setup");
+        }
+        else
+        {
+            Debug.LogWarning("[InventoryGrid] ❌ Previous page button not assigned!");
+        }
+
+        if (nextPageButton != null)
+        {
+            nextPageButton.onClick.RemoveAllListeners();
+            nextPageButton.onClick.AddListener(NextPage);
+            Debug.Log("[InventoryGrid] ✅ Next page button setup");
+        }
+        else
+        {
+            Debug.LogWarning("[InventoryGrid] ❌ Next page button not assigned!");
+        }
+
+        // Initial update
+        currentPage = 0;
+        UpdatePaginationUI();
+    }
+
+    private void UpdatePaginationUI()
+    {
+        if (ownerCharacter?.GetInventory() == null)
+        {
+            totalPages = 0;
+            if (previousPageButton != null) previousPageButton.interactable = false;
+            if (nextPageButton != null) nextPageButton.interactable = false;
+            if (pageInfoText != null) pageInfoText.text = "Page 0/0";
+            return;
+        }
+
+        // คำนวณจำนวนหน้าทั้งหมด
+        int totalSlots = ownerCharacter.GetInventory().CurrentSlots;
+        totalPages = Mathf.CeilToInt((float)totalSlots / itemsPerPage);
+
+        // จำกัด currentPage ไม่ให้เกินขอบเขต
+        currentPage = Mathf.Clamp(currentPage, 0, Mathf.Max(0, totalPages - 1));
+
+        // อัพเดทปุ่ม
+        if (previousPageButton != null)
+            previousPageButton.interactable = currentPage > 0;
+
+        if (nextPageButton != null)
+            nextPageButton.interactable = currentPage < totalPages - 1;
+
+        // อัพเดทข้อความ
+        if (pageInfoText != null)
+            pageInfoText.text = $"Page {currentPage + 1}/{Mathf.Max(1, totalPages)}";
+
+        Debug.Log($"[InventoryGrid] Pagination updated: Page {currentPage + 1}/{totalPages}");
+    }
+
+    private void PreviousPage()
+    {
+        if (currentPage > 0)
+        {
+            currentPage--;
+            Debug.Log($"[InventoryGrid] Previous page clicked: Now on page {currentPage + 1}");
+
+            UpdatePaginationUI();
+            UpdateVisibleSlots();
+
+            // Play sound
+            AudioManager.instance?.PlaySFX(7, 0.5f);
+        }
+    }
+
+    private void NextPage()
+    {
+        if (currentPage < totalPages - 1)
+        {
+            currentPage++;
+            Debug.Log($"[InventoryGrid] Next page clicked: Now on page {currentPage + 1}");
+
+            UpdatePaginationUI();
+            UpdateVisibleSlots();
+
+            // Play sound
+            AudioManager.instance?.PlaySFX(7, 0.5f);
+        }
+    }
+
+    private void UpdateVisibleSlots()
+    {
+        if (ownerCharacter?.GetInventory() == null || allSlots.Count == 0)
+        {
+            Debug.LogWarning("[InventoryGrid] Cannot update visible slots - no inventory or slots");
+            return;
+        }
+
+        Inventory inventory = ownerCharacter.GetInventory();
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = Mathf.Min(startIndex + itemsPerPage, inventory.CurrentSlots);
+
+        Debug.Log($"[InventoryGrid] 📄 Updating page {currentPage + 1}: Showing slots {startIndex}-{endIndex - 1}");
+
+        int visibleCount = 0;
+        int hiddenCount = 0;
+
+        // ซ่อน/แสดง slots ตามหน้าปัจจุบัน
+        for (int i = 0; i < allSlots.Count; i++)
+        {
+            if (allSlots[i] == null) continue;
+
+            bool shouldBeVisible = i >= startIndex && i < endIndex;
+
+            if (allSlots[i].gameObject.activeSelf != shouldBeVisible)
+            {
+                allSlots[i].gameObject.SetActive(shouldBeVisible);
+            }
+
+            if (shouldBeVisible)
+            {
+                visibleCount++;
+                // อัพเดท item ถ้าเป็น slot ที่แสดง
+                InventoryItem item = inventory.GetItem(i);
+                UpdateSlotFromInventoryItem(i, item);
+            }
+            else
+            {
+                hiddenCount++;
+            }
+        }
+
+        Debug.Log($"[InventoryGrid] ✅ Visible: {visibleCount}, Hidden: {hiddenCount}");
+
+        // Force canvas update
+        Canvas.ForceUpdateCanvases();
+    }
+
+    public int GetCurrentPage()
+    {
+        return currentPage;
+    }
+
+    public void SetCurrentPage(int page)
+    {
+        currentPage = Mathf.Clamp(page, 0, Mathf.Max(0, totalPages - 1));
+        UpdatePaginationUI();
+        UpdateVisibleSlots();
+    }
+
+    #endregion
     private void SetupDropdownItemInteraction(TMP_Dropdown dropdown, string dropdownName)
     {
         if (dropdown == null) return;
