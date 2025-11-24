@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
+  m_Name: SlimeWater
+  m_EditorClassIdentifier: 
+  overallDropChance: 100
+  maxItemDrops: 5
+  dropChanceLevelBonus: 0
+  itemDrops:
+  - itemData: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 10
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: f84562644b0e2364595a6c9212e4ad1e, type: 2}
+    dropChance: 40
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: d2a87d561f4a82e468216e1d7c069f40, type: 2}
+    dropChance: 40
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 1f5e2427afb2cc9408d7f40feeb51529, type: 2}
+    dropChance: 40
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 9cc603481eac855478dfacca6deb59d5, type: 2}
+    dropChance: 40
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: b16bfba132439ff438502250761237c0, type: 2}
+    dropChance: 40
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  showDropLogs: 1
+  guaranteedDropsForTesting: 0
