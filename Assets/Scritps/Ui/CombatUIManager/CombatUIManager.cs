@@ -1201,6 +1201,7 @@ public class CombatUIManager : MonoBehaviour
             }
         }
     }
+    // ✅ แทนที่ method เดิม
     public void OpenInventory()
     {
         if (inventoryPanel != null)
@@ -1223,16 +1224,67 @@ public class CombatUIManager : MonoBehaviour
                 }
             }
 
-            // ✅ เปลี่ยนจาก OnInventoryPanelOpened() เป็น ForceRefreshOnOpen()
+            // ✅ Force refresh inventory grid - เพิ่มการ refresh หลายครั้ง
             if (inventoryGridManager != null)
             {
+                // Reset to first page
+                inventoryGridManager.SetCurrentPage(0);
+
+                // Force refresh
                 inventoryGridManager.ForceRefreshOnOpen();
 
-                // รอแล้ว force อีกครั้ง
+                // Delayed fix
                 StartCoroutine(DelayedInventoryFix());
+
+                // ✅ เพิ่ม multiple force refresh
+                StartCoroutine(MultipleForceRefresh());
+            }
+
+            // Force refresh ItemDeleteManager
+            if (itemDeleteManager != null)
+            {
+                itemDeleteManager.ForceRefreshReferences();
+                Debug.Log("[CombatUI] Refreshed ItemDeleteManager references");
             }
 
             Debug.Log("Inventory panel opened");
+        }
+    }
+
+    // ✅ เพิ่ม Coroutine ใหม่สำหรับ multiple refresh
+    private IEnumerator MultipleForceRefresh()
+    {
+        // Refresh ครั้งที่ 1 - ทันที
+        yield return null;
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ForceRefreshOnOpen();
+            inventoryGridManager.ForceHideExtraSlots();
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[CombatUI] 🔄 Force refresh #1");
+        }
+
+        // Refresh ครั้งที่ 2 - หลัง 2 frames
+        yield return null;
+        yield return null;
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ForceRefreshOnOpen();
+            inventoryGridManager.ForceHideExtraSlots();
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[CombatUI] 🔄 Force refresh #2");
+        }
+
+        // Refresh ครั้งที่ 3 - หลัง 5 frames (final)
+        yield return null;
+        yield return null;
+        yield return null;
+        if (inventoryGridManager != null)
+        {
+            inventoryGridManager.ForceRefreshOnOpen();
+            inventoryGridManager.ForceHideExtraSlots();
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[CombatUI] ✅ Force refresh #3 (final)");
         }
     }
 
@@ -1936,8 +1988,22 @@ public class CombatUIManager : MonoBehaviour
         return isInventoryOpen;
     }
     // 🎯 NEW: Public methods for accessing inventory grid
+    // ✅ เพิ่ม method นี้ใน CombatUIManager
+    /// <summary>
+    /// ให้ ItemDeleteManager เรียกใช้เพื่อดึง InventoryGridManager
+    /// </summary>
     public InventoryGridManager GetInventoryGridManager()
     {
+        if (inventoryGridManager != null)
+        {
+            Debug.Log("[CombatUI] Returning existing InventoryGridManager");
+            return inventoryGridManager;
+        }
+
+        // ถ้ายังไม่มี ให้ force setup
+        Debug.Log("[CombatUI] InventoryGridManager not found, forcing setup...");
+        ForceSetupInventoryGrid();
+
         return inventoryGridManager;
     }
 

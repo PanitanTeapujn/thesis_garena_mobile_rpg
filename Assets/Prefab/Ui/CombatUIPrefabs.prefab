@@ -1442,6 +1442,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8887431567984762770}
   - component: {fileID: 6414281770461149747}
+  - component: {fileID: 6985485816317672587}
   m_Layer: 0
   m_Name: CombatUIPrefabs
   m_TagString: Untagged
@@ -1573,7 +1574,29 @@ MonoBehaviour:
   - {fileID: 1444134451826286145}
   equipmentSlotManager: {fileID: 0}
   deleteButton: {fileID: 6741006040122652949}
-  itemDeleteManager: {fileID: 9047719723079940899}
+  itemDeleteManager: {fileID: 0}
+--- !u!114 &6985485816317672587
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 425416238530389909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05651413924538849ae42fffa7c5f2db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  deleteConfirmPanel: {fileID: 2902069645589105835}
+  cancelButton: {fileID: 9031625217830995043}
+  confirmButton: {fileID: 8059510527141304516}
+  confirmMessageText: {fileID: 2472407913844343109}
+  deleteModeBorderColor: {r: 1, g: 0, b: 0, a: 1}
+  selectedForDeleteColor: {r: 1, g: 0.3, b: 0.3, a: 0.8}
+  normalSlotColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.8}
+  combatUIManager: {fileID: 6414281770461149747}
+  inventoryGridManager: {fileID: 2520649614366118276}
+  targetCharacter: {fileID: 0}
 --- !u!1 &435767440879291139
 GameObject:
   m_ObjectHideFlags: 0
@@ -7008,14 +7031,13 @@ GameObject:
   - component: {fileID: 5765669959886441066}
   - component: {fileID: 4770456015061229953}
   - component: {fileID: 5487212230395183815}
-  - component: {fileID: 9047719723079940899}
   m_Layer: 5
   m_Name: 'DeleteConfirmationPanel '
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &5765669959886441066
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7074,28 +7096,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &9047719723079940899
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2902069645589105835}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 05651413924538849ae42fffa7c5f2db, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  deleteConfirmPanel: {fileID: 2902069645589105835}
-  cancelButton: {fileID: 9031625217830995043}
-  confirmButton: {fileID: 8059510527141304516}
-  confirmMessageText: {fileID: 2472407913844343109}
-  deleteModeBorderColor: {r: 1, g: 0, b: 0, a: 1}
-  selectedForDeleteColor: {r: 1, g: 0.3, b: 0.3, a: 0.8}
-  normalSlotColor: {r: 0.2, g: 0.2, b: 0.2, a: 0.8}
-  combatUIManager: {fileID: 0}
-  inventoryGridManager: {fileID: 0}
-  targetCharacter: {fileID: 0}
 --- !u!1 &2974404831140696039
 GameObject:
   m_ObjectHideFlags: 0

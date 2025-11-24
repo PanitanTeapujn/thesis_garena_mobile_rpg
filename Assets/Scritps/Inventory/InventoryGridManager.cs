@@ -409,7 +409,8 @@ public class InventoryGridManager : MonoBehaviour
     }
 
     // ✅ เพิ่ม method ใหม่สำหรับบังคับซ่อน slots ที่เกิน
-    private void ForceHideExtraSlots()
+    // ✅ ตรวจสอบว่ามี method นี้แล้วหรือยัง ถ้ายังให้เพิ่ม
+    public void ForceHideExtraSlots()
     {
         int startIndex = currentPage * itemsPerPage;
         int endIndex = startIndex + itemsPerPage;
@@ -1489,7 +1490,7 @@ public class InventoryGridManager : MonoBehaviour
     }
 
     // ✅ แทนที่ UpdatePaginationUI() เดิม
-    private void UpdatePaginationUI()
+    public void UpdatePaginationUI()
     {
         if (ownerCharacter?.GetInventory() == null)
         {
@@ -1568,7 +1569,8 @@ public class InventoryGridManager : MonoBehaviour
         }
     }
 
-    private void UpdateVisibleSlots()
+    // ✅ แทนที่ method เดิม (เพิ่ม logic การซ่อน slots ที่ไม่ควรแสดง)
+    public void UpdateVisibleSlots()
     {
         if (ownerCharacter?.GetInventory() == null || allSlots.Count == 0)
         {
@@ -1585,13 +1587,14 @@ public class InventoryGridManager : MonoBehaviour
         int visibleCount = 0;
         int hiddenCount = 0;
 
-        // ซ่อน/แสดง slots ตามหน้าปัจจุบัน
+        // ✅ ซ่อน/แสดง slots ตามหน้าปัจจุบัน
         for (int i = 0; i < allSlots.Count; i++)
         {
             if (allSlots[i] == null) continue;
 
             bool shouldBeVisible = i >= startIndex && i < endIndex;
 
+            // ✅ บังคับ SetActive ทุกครั้ง
             if (allSlots[i].gameObject.activeSelf != shouldBeVisible)
             {
                 allSlots[i].gameObject.SetActive(shouldBeVisible);
@@ -1612,7 +1615,7 @@ public class InventoryGridManager : MonoBehaviour
 
         Debug.Log($"[InventoryGrid] ✅ Visible: {visibleCount}, Hidden: {hiddenCount}");
 
-        // Force canvas update
+        // ✅ Force canvas update
         Canvas.ForceUpdateCanvases();
     }
 
