@@ -688,11 +688,12 @@ public class ItemDeleteManager : MonoBehaviour
     }
 
     // ✅ แทนที่ method เดิมทั้งหมด
+    // ✅ แทนที่ method เดิม - เวอร์ชันเบา
     private void UpdateUIAfterDelete()
     {
         Debug.Log("[ItemDeleteManager] 🔄 Updating UI after delete...");
 
-        // ✅ ตรวจสอบ reference อีกครั้งก่อน update
+        // ตรวจสอบ reference
         if (inventoryGridManager == null)
         {
             RefreshInventoryGridManagerReference();
@@ -704,31 +705,17 @@ public class ItemDeleteManager : MonoBehaviour
             return;
         }
 
-        // ✅ 1. Force reload จาก character inventory ทั้งหมด
-        if (targetCharacter?.GetInventory() != null)
+        // ✅ อัพเดทเฉพาะ slot ที่ลบ (ไม่ต้อง refresh ทั้งหมด)
+        if (selectedSlotForDelete >= 0)
         {
-            // บันทึกหน้าปัจจุบัน
-            int currentPage = inventoryGridManager.GetCurrentPage();
-
-            // Reload items ทั้งหมด
-            targetCharacter.GetInventory().ForceLoadFromFirebase();
-
-            Debug.Log($"[ItemDeleteManager] Reloading inventory from character (page {currentPage})");
+            inventoryGridManager.UpdateSlotFromCharacter(selectedSlotForDelete);
         }
 
-        // ✅ 2. Force refresh ทุก slot
-        inventoryGridManager.ForceRefreshAllSlots();
-
-        // ✅ 3. Update pagination
-        inventoryGridManager.UpdatePaginationUI();
-        inventoryGridManager.UpdateVisibleSlots();
-
-        // ✅ 4. Force hide extra slots (ป้องกันการทะลุ)
+        // ✅ Force hide extra slots เท่านั้น (ไม่ต้อง force refresh all)
         inventoryGridManager.ForceHideExtraSlots();
 
-        // ✅ 5. Force canvas update หลายครั้ง
+        // ✅ Canvas update ครั้งเดียว
         Canvas.ForceUpdateCanvases();
-        StartCoroutine(DelayedCanvasRefresh());
 
         Debug.Log("[ItemDeleteManager] ✅ UI updated after delete");
     }

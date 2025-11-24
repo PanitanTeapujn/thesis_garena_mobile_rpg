@@ -362,16 +362,10 @@ public class InventoryGridManager : MonoBehaviour
     // ✅ แทนที่ method เดิมทั้งหมด
     public void OnInventoryPanelOpened()
     {
-        Debug.Log("[InventoryGrid] 📂 Inventory panel opened - Starting force fix...");
+        Debug.Log("[InventoryGrid] 📂 Inventory panel opened");
 
-        // Reset to first page
-        currentPage = 0;
-
-        // ✅ เพิ่ม Coroutine เพื่อ fix หลายรอบ
-        if (gameObject.activeInHierarchy)
-        {
-            StartCoroutine(ForceFixOnPanelOpen());
-        }
+        // ไม่ต้อง StartCoroutine ซ้ำซ้อน
+        ForceRefreshOnOpen();
     }
 
     // ✅ เพิ่ม Coroutine ใหม่นี้
@@ -440,15 +434,22 @@ public class InventoryGridManager : MonoBehaviour
     /// <summary>
     /// บังคับ Refresh ทั้งหมดทันที (ใช้เมื่อเปิด panel)
     /// </summary>
+    // ✅ แทนที่ method เดิม
     public void ForceRefreshOnOpen()
     {
         Debug.Log("[InventoryGrid] 🔄 Force refresh on open...");
 
+        // Reset to first page
         currentPage = 0;
+
+        // ✅ อัพเดท pagination UI
         UpdatePaginationUI();
+
+        // ✅ อัพเดท visible slots
         UpdateVisibleSlots();
+
+        // ✅ Force hide extra (ป้องกันทะลุ)
         ForceHideExtraSlots();
-        Canvas.ForceUpdateCanvases();
 
         Debug.Log("[InventoryGrid] ✅ Force refresh complete");
     }
@@ -1182,38 +1183,35 @@ public class InventoryGridManager : MonoBehaviour
 
         Debug.Log("[InventoryGrid] ✅ Completed loading all items");
     }
+    // ✅ แทนที่ method เดิม
     public void ForceRefreshAllSlots()
     {
-        Debug.Log("[InventoryGrid] 🔄 Force refreshing all slots...");
-
         if (ownerCharacter?.GetInventory() == null)
         {
-            Debug.LogWarning("[InventoryGrid] No character inventory to refresh from");
-            return;
+            return; // ✅ Early exit
         }
 
         Inventory inventory = ownerCharacter.GetInventory();
 
-        // Refresh ทุก slot
-        for (int i = 0; i < allSlots.Count && i < inventory.CurrentSlots; i++)
+        // ✅ Refresh เฉพาะ visible slots (ไม่ต้องทั้งหมด)
+        int startIndex = currentPage * itemsPerPage;
+        int endIndex = Mathf.Min(startIndex + itemsPerPage, inventory.CurrentSlots);
+
+        for (int i = startIndex; i < endIndex && i < allSlots.Count; i++)
         {
-            if (allSlots[i] != null)
+            if (allSlots[i] != null && allSlots[i].gameObject.activeSelf)
             {
                 allSlots[i].ForceSyncFromCharacterNow();
             }
         }
 
-        // Force canvas update
+        // ✅ Force hide extra slots
+        ForceHideExtraSlots();
+
+        // Canvas update ครั้งเดียว
         Canvas.ForceUpdateCanvases();
-
-        // ✅ อัพเดท pagination
-        UpdatePaginationUI();
-        UpdateVisibleSlots();
-
-        ApplyInventoryFilters();
-
-        Debug.Log($"[InventoryGrid] ✅ Refreshed all slots");
     }
+
     // เพิ่ม method สำหรับอัปเดต slot จาก inventory item
     private void UpdateSlotFromInventoryItem(int slotIndex, InventoryItem item)
     {

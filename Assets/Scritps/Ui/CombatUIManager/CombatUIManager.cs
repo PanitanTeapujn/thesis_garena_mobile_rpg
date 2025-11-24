@@ -1202,6 +1202,7 @@ public class CombatUIManager : MonoBehaviour
         }
     }
     // ✅ แทนที่ method เดิม
+    // ✅ แทนที่ method เดิม - ลด refresh
     public void OpenInventory()
     {
         if (inventoryPanel != null)
@@ -1211,97 +1212,51 @@ public class CombatUIManager : MonoBehaviour
             inventoryPanel.SetActive(true);
             isInventoryOpen = true;
 
-            // อัพเดท Character Stats ทันทีที่เปิด Panel
+            // อัพเดท Character Stats
             if (localHero != null)
             {
                 UpdateInventoryCharacterStats();
-
-                // Force load จาก Firebase
-                var inventory = localHero.GetInventory();
-                if (inventory != null)
-                {
-                    inventory.ForceLoadFromFirebase();
-                }
             }
 
-            // ✅ Force refresh inventory grid - เพิ่มการ refresh หลายครั้ง
+            // ✅ Force refresh เฉพาะครั้งเดียว
             if (inventoryGridManager != null)
             {
-                // Reset to first page
-                inventoryGridManager.SetCurrentPage(0);
-
-                // Force refresh
                 inventoryGridManager.ForceRefreshOnOpen();
+            }
 
-                // Delayed fix
-                StartCoroutine(DelayedInventoryFix());
-
-                // ✅ เพิ่ม multiple force refresh
-                StartCoroutine(MultipleForceRefresh());
+            // ✅ Delayed fix แค่ครั้งเดียว (ไม่ต้อง 3 ครั้ง)
+            if (gameObject.activeInHierarchy)
+            {
+                StartCoroutine(SingleDelayedFix());
             }
 
             // Force refresh ItemDeleteManager
             if (itemDeleteManager != null)
             {
                 itemDeleteManager.ForceRefreshReferences();
-                Debug.Log("[CombatUI] Refreshed ItemDeleteManager references");
             }
 
             Debug.Log("Inventory panel opened");
         }
     }
 
+    // ✅ เพิ่ม Coroutine ใหม่ - แค่ 1 ครั้ง
+    private IEnumerator SingleDelayedFix()
+    {
+        // รอ 2 frames
+        yield return null;
+        yield return null;
+
+        if (inventoryGridManager != null && isInventoryOpen)
+        {
+            inventoryGridManager.ForceHideExtraSlots();
+            Canvas.ForceUpdateCanvases();
+            Debug.Log("[CombatUI] ✅ Single delayed fix complete");
+        }
+    }
+
     // ✅ เพิ่ม Coroutine ใหม่สำหรับ multiple refresh
-    private IEnumerator MultipleForceRefresh()
-    {
-        // Refresh ครั้งที่ 1 - ทันที
-        yield return null;
-        if (inventoryGridManager != null)
-        {
-            inventoryGridManager.ForceRefreshOnOpen();
-            inventoryGridManager.ForceHideExtraSlots();
-            Canvas.ForceUpdateCanvases();
-            Debug.Log("[CombatUI] 🔄 Force refresh #1");
-        }
-
-        // Refresh ครั้งที่ 2 - หลัง 2 frames
-        yield return null;
-        yield return null;
-        if (inventoryGridManager != null)
-        {
-            inventoryGridManager.ForceRefreshOnOpen();
-            inventoryGridManager.ForceHideExtraSlots();
-            Canvas.ForceUpdateCanvases();
-            Debug.Log("[CombatUI] 🔄 Force refresh #2");
-        }
-
-        // Refresh ครั้งที่ 3 - หลัง 5 frames (final)
-        yield return null;
-        yield return null;
-        yield return null;
-        if (inventoryGridManager != null)
-        {
-            inventoryGridManager.ForceRefreshOnOpen();
-            inventoryGridManager.ForceHideExtraSlots();
-            Canvas.ForceUpdateCanvases();
-            Debug.Log("[CombatUI] ✅ Force refresh #3 (final)");
-        }
-    }
-
-    // ✅ เพิ่ม Coroutine ใหม่นี้
-    private IEnumerator DelayedInventoryFix()
-    {
-        // รอ 3 frames
-        yield return null;
-        yield return null;
-        yield return null;
-
-        if (inventoryGridManager != null)
-        {
-            inventoryGridManager.ForceRefreshOnOpen();
-            Debug.Log("[CombatUI] ✅ Delayed inventory fix complete");
-        }
-    }
+   
     public bool IsDeleteModeActive()
     {
         return isDeleteModeActive;
