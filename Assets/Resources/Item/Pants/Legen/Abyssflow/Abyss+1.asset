@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: Abyssflow+2
+  m_Name: Abyss+1
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
@@ -45,14 +45,14 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: Abyssflow+2
-  itemName: Abyssflow+2
+  itemId: Abyss+1
+  itemName: Abyss+1
   itemIcon: {fileID: 21300000, guid: c3dbdee0ce8cf8948a9c29068bf93e51, type: 3}
   itemType: 3
   tier: 5
   description: 
-  sellPrice: 3500
-  buyPrice: 4000
+  sellPrice: 2500
+  buyPrice: 3000
   isSellable: 1
   isTradeable: 1
   buyCurrencyType: 0
@@ -69,7 +69,7 @@ MonoBehaviour:
     magicArmorBonus: 5
     manaRegenBonus: 0
     healthRegenBonus: 0
-    maxHpBonus: 150
+    maxHpBonus: 130
     maxManaBonus: 0
     moveSpeedBonus: 0
     attackSpeedBonus: 0

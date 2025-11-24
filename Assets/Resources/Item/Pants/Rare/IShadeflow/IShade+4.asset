@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a006c722137937147b8fea9ca3a501db, type: 3}
-  m_Name: IShadeflow+4
+  m_Name: IShade+4
   m_EditorClassIdentifier: 
   enchantmentSettings:
     canBeEnchanted: 1
@@ -36,8 +36,8 @@ MonoBehaviour:
     tradeName: 
     tradeDescription: 
     tradeCategory: 0
-  itemId: IShadeflow+4
-  itemName: IShadeflow+4
+  itemId: IShade+4
+  itemName: IShade+4
   itemIcon: {fileID: 21300000, guid: 69aaf000ffeac1d428b655ee0b268225, type: 3}
   itemType: 3
   tier: 3
