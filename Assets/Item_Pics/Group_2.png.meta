@@ -113,12 +113,12 @@ TextureImporter:
       name: Group_2_0
       rect:
         serializedVersion: 2
-        x: 21
-        y: 32
-        width: 249
-        height: 235
+        x: 0
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -135,12 +135,12 @@ TextureImporter:
       name: Group_2_1
       rect:
         serializedVersion: 2
-        x: 282
-        y: 21
-        width: 292
-        height: 253
+        x: 283
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -157,12 +157,12 @@ TextureImporter:
       name: Group_2_2
       rect:
         serializedVersion: 2
-        x: 590
-        y: 22
-        width: 237
-        height: 203
+        x: 566
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -179,12 +179,12 @@ TextureImporter:
       name: Group_2_3
       rect:
         serializedVersion: 2
-        x: 870
-        y: 71
-        width: 243
-        height: 172
+        x: 849
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -201,12 +201,12 @@ TextureImporter:
       name: Group_2_4
       rect:
         serializedVersion: 2
-        x: 1242
-        y: 36
-        width: 64
-        height: 247
+        x: 1132
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -223,12 +223,12 @@ TextureImporter:
       name: Group_2_5
       rect:
         serializedVersion: 2
-        x: 1516
-        y: 19
-        width: 55
-        height: 207
+        x: 1415
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -245,12 +245,12 @@ TextureImporter:
       name: Group_2_6
       rect:
         serializedVersion: 2
-        x: 1762
-        y: 30
-        width: 70
-        height: 235
+        x: 1698
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -267,12 +267,12 @@ TextureImporter:
       name: Group_2_7
       rect:
         serializedVersion: 2
-        x: 1859
-        y: 35
-        width: 83
-        height: 195
+        x: 1981
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -289,12 +289,12 @@ TextureImporter:
       name: Group_2_8
       rect:
         serializedVersion: 2
-        x: 2011
-        y: 62
-        width: 35
-        height: 110
+        x: 2264
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -311,12 +311,12 @@ TextureImporter:
       name: Group_2_9
       rect:
         serializedVersion: 2
-        x: 2102
-        y: 39
-        width: 88
-        height: 164
+        x: 2547
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -333,12 +333,12 @@ TextureImporter:
       name: Group_2_10
       rect:
         serializedVersion: 2
-        x: 2301
-        y: 79
-        width: 66
-        height: 136
+        x: 2830
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -355,12 +355,12 @@ TextureImporter:
       name: Group_2_11
       rect:
         serializedVersion: 2
-        x: 2443
-        y: 79
-        width: 66
-        height: 136
+        x: 3113
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -377,12 +377,12 @@ TextureImporter:
       name: Group_2_12
       rect:
         serializedVersion: 2
-        x: 2575
-        y: 37
-        width: 86
-        height: 152
+        x: 3396
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -399,12 +399,12 @@ TextureImporter:
       name: Group_2_13
       rect:
         serializedVersion: 2
-        x: 2713
-        y: 37
-        width: 88
-        height: 152
+        x: 3679
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -421,12 +421,12 @@ TextureImporter:
       name: Group_2_14
       rect:
         serializedVersion: 2
-        x: 2899
-        y: 55
-        width: 125
-        height: 145
+        x: 3962
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -443,12 +443,12 @@ TextureImporter:
       name: Group_2_15
       rect:
         serializedVersion: 2
-        x: 3144
-        y: 21
-        width: 79
-        height: 241
+        x: 4245
+        y: 10
+        width: 283
+        height: 283
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -457,116 +457,6 @@ TextureImporter:
       bones: []
       spriteID: dd941785bcaa21e4fa7e6ec9a0829690
       internalID: 1016440491
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Group_2_16
-      rect:
-        serializedVersion: 2
-        x: 3288
-        y: 21
-        width: 78
-        height: 240
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 86a4b7772406842448f21c70ed42eba6
-      internalID: 1397123728
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Group_2_17
-      rect:
-        serializedVersion: 2
-        x: 3421
-        y: 84
-        width: 229
-        height: 152
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 6f9d5ac63f4b9b243834f37dede9bcd6
-      internalID: 59571964
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Group_2_18
-      rect:
-        serializedVersion: 2
-        x: 3692
-        y: 98
-        width: 258
-        height: 158
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 00b8ffa42d3d482489670c8c72ec58b3
-      internalID: 232220333
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Group_2_19
-      rect:
-        serializedVersion: 2
-        x: 3998
-        y: 86
-        width: 197
-        height: 165
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: f244769198eb10d49890511100e365f6
-      internalID: -1358165649
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Group_2_20
-      rect:
-        serializedVersion: 2
-        x: 4322
-        y: 59
-        width: 128
-        height: 184
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 706c4047d3adfef49b22d2358e609f56
-      internalID: 2136181059
       vertices: []
       indices: 
       edges: []
@@ -593,12 +483,7 @@ TextureImporter:
       Group_2_13: -1544998045
       Group_2_14: -420219365
       Group_2_15: 1016440491
-      Group_2_16: 1397123728
-      Group_2_17: 59571964
-      Group_2_18: 232220333
-      Group_2_19: -1358165649
       Group_2_2: 221102298
-      Group_2_20: 2136181059
       Group_2_3: 851835645
       Group_2_4: -282091822
       Group_2_5: -1754982624
