@@ -26,7 +26,7 @@ MonoBehaviour:
   - requiredPieces: 2
     bonusEffects:
     - bonusType: 16
-      bonusValue: 25
+      bonusValue: 15
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
@@ -37,15 +37,10 @@ MonoBehaviour:
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
     requirementDescription: 
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
-  - requiredPieces: 4
+  - requiredPieces: 5
     bonusEffects:
-    - bonusType: 4
-      bonusValue: 30
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 5
-      bonusValue: 35
+    - bonusType: 6
+      bonusValue: 20
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
@@ -53,13 +48,8 @@ MonoBehaviour:
     requirementColor: {r: 0, g: 0, b: 0, a: 0}
   - requiredPieces: 5
     bonusEffects:
-    - bonusType: 0
+    - bonusType: 4
       bonusValue: 30
-      isPercentage: 1
-      bonusDescription: 
-      bonusColor: {r: 0, g: 0, b: 0, a: 0}
-    - bonusType: 6
-      bonusValue: 20
       isPercentage: 1
       bonusDescription: 
       bonusColor: {r: 0, g: 0, b: 0, a: 0}
