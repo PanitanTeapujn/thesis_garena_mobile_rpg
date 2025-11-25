@@ -237,7 +237,7 @@ public class ItemDropManager : NetworkBehaviour
             // 🆕 บันทึกลง StageRewardTracker
             StageRewardTracker.AddItemReward(dropResult.itemData, dropResult.quantity);
 
-            Debug.Log($"[ItemDropManager] ✅ Gave {itemText} ({dropResult.itemData.GetTierText()}) to {player.CharacterName}");
+            Debug.Log($"[ItemDropManager] Gave {itemText} ({dropResult.itemData.GetTierText()}) to {player.CharacterName}");
         }
         else
         {
@@ -273,12 +273,12 @@ public class ItemDropManager : NetworkBehaviour
     {
         switch (tier)
         {
-            case ItemTier.Common: return "🎁";
-            case ItemTier.Uncommon: return "💚";
-            case ItemTier.Rare: return "💙";
-            case ItemTier.Epic: return "💜";
-            case ItemTier.Legendary: return "💛";
-            default: return "🎁";
+            case ItemTier.Common: return "";
+            case ItemTier.Uncommon: return "";
+            case ItemTier.Rare: return "";
+            case ItemTier.Epic: return "";
+            case ItemTier.Legendary: return "";
+            default: return "";
         }
     }
 

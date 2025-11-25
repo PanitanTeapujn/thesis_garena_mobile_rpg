@@ -526,11 +526,100 @@ public class ShopLooby : MonoBehaviour
         currentShopContainer = legendShopContainer;
         currentShopName = "Legend Shop";
 
-        // ✅ **อัพเดทระบบ filter และ pagination**
-        allShopItems = new List<ShopItemData>(legendShopItems);
-        ApplyFiltersAndPagination();
+        Debug.Log($"[ShopLooby] 🏆 Switching to Legend Shop...");
+        Debug.Log($"  - Container: {(legendShopContainer != null ? "✅" : "❌ NULL")}");
+        Debug.Log($"  - Items count: {legendShopItems.Count}");
+        Debug.Log($"  - Prefab: {(shopItemPrefab != null ? "✅" : "❌ NULL")}");
 
-        Debug.Log($"[ShopLooby] ✅ Switched to Legend Shop - {legendShopItems.Count} items");
+        // ✅ โหลด items ถ้ายังไม่มี
+        if (legendShopItems.Count == 0)
+        {
+            Debug.Log("[ShopLooby] Loading legend items from database...");
+            LoadLegendShopItemsFromDatabase();
+        }
+
+        // ✅ ตรวจสอบอีกครั้งหลังโหลด
+        if (legendShopItems.Count == 0)
+        {
+            Debug.LogError("[ShopLooby] ❌ No legend items after loading!");
+            return;
+        }
+
+        if (legendShopContainer == null)
+        {
+            Debug.LogError("[ShopLooby] ❌ legendShopContainer is NULL!");
+            return;
+        }
+
+        // ✅ ลบ items เก่า
+        Debug.Log($"[ShopLooby] Clearing old items... (current children: {legendShopContainer.childCount})");
+        foreach (Transform child in legendShopContainer)
+        {
+            Destroy(child.gameObject);
+        }
+
+        // ✅ **แสดงโดยตรงไม่ใช้ pagination (หรือใช้ pagination แบบ simple)**
+        int itemsCreated = 0;
+        foreach (var shopItemData in legendShopItems)
+        {
+            if (shopItemData?.itemData != null)
+            {
+                CreateLegendItemUIDirect(shopItemData);
+                itemsCreated++;
+            }
+        }
+
+        Debug.Log($"[ShopLooby] ✅ Legend Shop displayed with {itemsCreated}/{legendShopItems.Count} items");
+    }
+    // ✅ Method ใหม่ที่ bypass ปัญหา currentShopContainer
+    private void CreateLegendItemUIDirect(ShopItemData shopItemData)
+    {
+        if (shopItemData?.itemData == null)
+        {
+            Debug.LogError("[ShopLooby] Invalid shop item data!");
+            return;
+        }
+
+        if (legendShopContainer == null)
+        {
+            Debug.LogError("[ShopLooby] legendShopContainer is NULL!");
+            return;
+        }
+
+        if (shopItemPrefab == null)
+        {
+            Debug.LogError("[ShopLooby] shopItemPrefab is NULL!");
+            return;
+        }
+
+        Debug.Log($"[ShopLooby] 🔨 Creating legend item: {shopItemData.itemData.ItemName}");
+
+        try
+        {
+            // ✅ สร้าง GameObject
+            GameObject shopItemObj = Instantiate(shopItemPrefab, legendShopContainer);
+
+            if (shopItemObj == null)
+            {
+                Debug.LogError("[ShopLooby] Failed to instantiate prefab!");
+                return;
+            }
+
+            // ✅ Setup ShopItemUI
+            ShopItemUI shopItemUI = shopItemObj.GetComponent<ShopItemUI>();
+            if (shopItemUI == null)
+            {
+                shopItemUI = shopItemObj.AddComponent<ShopItemUI>();
+            }
+
+            shopItemUI.SetupShopItem(shopItemData, this);
+
+            Debug.Log($"[ShopLooby] ✅ Created: {shopItemData.itemData.ItemName}");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[ShopLooby] ❌ Error creating item UI: {e.Message}\n{e.StackTrace}");
+        }
     }
 
     // ✅ เพิ่ม method สำหรับตั้งค่า Layout อัตโนมัติ
@@ -813,12 +902,36 @@ public class ShopLooby : MonoBehaviour
 
     private void ShowLegendShopPanel()
     {
+        Debug.Log("========================================");
+        Debug.Log("[ShopLooby] 🏆 SHOWING LEGEND SHOP PANEL");
+        Debug.Log("========================================");
+
         SetActivePanel(legendShopPanel);
         ClearSelectedItem();
-        SwitchToLegendShop();
-        Debug.Log("[ShopLooby] Showing Legend Shop panel");
-    }
 
+        // ✅ โหลด items ก่อน
+        if (legendShopItems.Count == 0)
+        {
+            Debug.Log("[ShopLooby] Legend items empty, loading...");
+            LoadLegendShopItemsFromDatabase();
+            Debug.Log($"[ShopLooby] After loading: {legendShopItems.Count} items");
+        }
+
+        // ✅ Debug items
+        if (legendShopItems.Count > 0)
+        {
+            Debug.Log($"[ShopLooby] First 3 items:");
+            for (int i = 0; i < Mathf.Min(3, legendShopItems.Count); i++)
+            {
+                var item = legendShopItems[i];
+                Debug.Log($"  {i + 1}. {item.itemData.ItemName} ({item.itemData.Tier})");
+            }
+        }
+
+        SwitchToLegendShop();
+
+        Debug.Log("========================================");
+    }
 
     // ✅ **6. เพิ่ม method สำหรับโหลด Legend Shop items**
     private void LoadLegendShopItems()
@@ -836,12 +949,21 @@ public class ShopLooby : MonoBehaviour
     // ✅ **7. เพิ่ม method สำหรับโหลด Legend items จาก database**
     private void LoadLegendShopItemsFromDatabase()
     {
+        Debug.Log("[ShopLooby] 📦 Loading Legend Shop items from database...");
+
         ItemDatabase database = ItemDatabase.Instance;
+        if (database == null)
+        {
+            Debug.LogError("[ShopLooby] ❌ ItemDatabase.Instance is NULL!");
+            return;
+        }
+
         legendShopItems.Clear();
 
         var allItems = database.GetAllItems();
-        Debug.Log($"[ShopLooby] Loading legend shop items from {allItems.Count} total items");
+        Debug.Log($"[ShopLooby] Total items in database: {allItems.Count}");
 
+        int legendCount = 0;
         foreach (var item in allItems)
         {
             if (item == null)
@@ -862,32 +984,53 @@ public class ShopLooby : MonoBehaviour
                 }
 
                 legendShopItems.Add(newShopItem);
+                legendCount++;
 
                 string currencyType = newShopItem.currencyType == CurrencyType.Gold ? "Gold" : "Gems";
-                Debug.Log($"[ShopLooby] ✅ Added legend item: {item.ItemName} ({item.ItemType}) - Price: {newShopItem.price} {currencyType}");
+                Debug.Log($"[ShopLooby] ✅ Added: {item.ItemName} ({item.Tier}) - {newShopItem.price} {currencyType}");
             }
         }
 
-        Debug.Log($"[ShopLooby] ✅ Loaded {legendShopItems.Count} items for Legend shop");
+        Debug.Log($"[ShopLooby] ✅ Loaded {legendCount} legend items");
     }
 
     // ✅ **8. เพิ่ม method สำหรับกำหนดว่าไอเทมไหนเป็น Legend**
     private bool IsLegendShopItem(ItemData item)
     {
-        // ✅ **เอาเฉพาะ Epic และ Legendary**
+        if (item == null) return false;
+
+        // ✅ Debug แต่ละไอเทมที่เช็ค
+        bool isLegend = false;
+        string reason = "";
+
+        // ✅ เอา Epic และ Legendary
         if (item.Tier == ItemTier.Epic || item.Tier == ItemTier.Legendary)
-            return true;
+        {
+            isLegend = true;
+            reason = $"Tier: {item.Tier}";
+        }
 
-        // ✅ **เอา Rare ที่เป็น Weapon หรือ Armor**
-        if (item.Tier == ItemTier.Rare &&
+        // ✅ เอา Rare ที่เป็น Weapon หรือ Armor
+        else if (item.Tier == ItemTier.Rare &&
             (item.ItemType == ItemType.Weapon || item.ItemType == ItemType.Armor))
-            return true;
+        {
+            isLegend = true;
+            reason = $"Rare {item.ItemType}";
+        }
 
-        // ✅ **เอา Rune ทุกระดับ**
-        if (item.ItemType == ItemType.Rune)
-            return true;
+        // ✅ เอา Rune ทุกระดับ
+        else if (item.ItemType == ItemType.Rune)
+        {
+            isLegend = true;
+            reason = "Rune type";
+        }
 
-        return false;
+        if (isLegend)
+        {
+            Debug.Log($"[ShopLooby] ✅ Legend item: {item.ItemName} - {reason}");
+        }
+
+        return isLegend;
     }
 
     // ✅ **9. เพิ่ม method สำหรับแสดง Legend Shop items**
@@ -3279,7 +3422,7 @@ public class ShopLooby : MonoBehaviour
 
             if (requiredGold > 0)
             {
-                requirements.Add($"{requiredGold:N0} Gold");
+                requirements.Add("{requiredGold:N0} Gold");
             }
 
             if (requirements.Count == 0)
@@ -3667,7 +3810,7 @@ public class ShopItemData
     // ✅ เพิ่ม method สำหรับแสดงสกุลเงิน
     public string GetPriceDisplayText()
     {
-        string currencyIcon = currencyType == CurrencyType.Gold ? "💰" : "💎";
+        string currencyIcon = currencyType == CurrencyType.Gold ? "" : "";
         return $"{currencyIcon} {price:N0}";
     }
 }

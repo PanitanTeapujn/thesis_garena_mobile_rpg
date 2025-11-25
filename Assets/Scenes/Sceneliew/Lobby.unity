@@ -1229,7 +1229,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &26767685
 RectTransform:
   m_ObjectHideFlags: 0
@@ -43594,7 +43594,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 3.8094, y: -414}
+  m_AnchoredPosition: {x: 3.8094, y: -355}
   m_SizeDelta: {x: 345.8524, y: 163.5791}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1331009712
@@ -51983,7 +51983,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 3.8094, y: -166}
+  m_AnchoredPosition: {x: 3.8094, y: -85}
   m_SizeDelta: {x: 345.8524, y: 163.5791}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1585398056
@@ -55532,6 +55532,11 @@ MonoBehaviour:
     currencyType: 0
     isAvailable: 1
     stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 4a054a0edaba37043b047b1823fa6260, type: 2}
+    price: 200000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
   shopItemDetailPanel: {fileID: 1897629269}
   detailItemIcon: {fileID: 2083825255}
   detailItemName: {fileID: 1215070634}
@@ -55726,6 +55731,11 @@ MonoBehaviour:
     requiredGold: 0
     tradeName: 
     tradeDescription: 
+  - resultItem: {fileID: 11400000, guid: 4a054a0edaba37043b047b1823fa6260, type: 2}
+    requiredItems: []
+    requiredGold: 0
+    tradeName: 
+    tradeDescription: 
   tradeItemsPerPage: 32
   previousTradePageButton: {fileID: 374409854}
   nextTradePageButton: {fileID: 195090699}
@@ -55812,6 +55822,81 @@ MonoBehaviour:
     stockLimit: -1
   - itemData: {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
     price: 499999
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 9a85c34a22a4b014f971c5c3e2d21841, type: 2}
+    price: 5000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: f84562644b0e2364595a6c9212e4ad1e, type: 2}
+    price: 5000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: d2a87d561f4a82e468216e1d7c069f40, type: 2}
+    price: 5000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: b16bfba132439ff438502250761237c0, type: 2}
+    price: 5000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 9cc603481eac855478dfacca6deb59d5, type: 2}
+    price: 5000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 764ab3783648f1f45a718128f21de7bb, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 3f58e2afe929b944785da14d33c819cb, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: e5a180e117bebca43bb6290c05b51da2, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 7ac70c05ed3fbc746baf3e22c2f4db20, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: a32ee3f8b0d875542bc894d010fd8b02, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 5ff793260bdf9a14b85e5e01fe10225f, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: f38b958f3cf60cd4e94e684f2a32a534, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 5b524f021aad6f247a9b05f4625a8088, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: f2a51aecee620e84c8fe1a9f92749663, type: 2}
+    price: 6000
+    currencyType: 0
+    isAvailable: 1
+    stockLimit: -1
+  - itemData: {fileID: 11400000, guid: 6834c41d19a3bf145baac376e8f2e8c6, type: 2}
+    price: 6000
     currencyType: 0
     isAvailable: 1
     stockLimit: -1

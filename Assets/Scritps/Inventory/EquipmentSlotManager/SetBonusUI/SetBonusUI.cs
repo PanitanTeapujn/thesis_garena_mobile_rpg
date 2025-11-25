@@ -304,6 +304,8 @@ public class SetBonusUI : MonoBehaviour
     /// <summary>
     /// ✅ Setup Set Bonus Item แบบง่าย จาก EquipmentSetWithCount
     /// </summary>
+    // ========== SetBonusUI.cs - แก้เฉพาะ SetupSimpleSetBonusItemFromSetInfo() ==========
+
     private void SetupSimpleSetBonusItemFromSetInfo(GameObject setBonusItem, EquipmentSetWithCount setInfo)
     {
         // หา Text components
@@ -318,12 +320,12 @@ public class SetBonusUI : MonoBehaviour
             setNameText.color = setInfo.equipmentSet.setColor;
         }
 
-        // Set Pieces Count
+        // ✅ Set Pieces Count - แก้ตรงนี้: ใช้ /6 แทน setInfo.equipmentSet.setItems.Count
         if (setPiecesText != null)
         {
-            setPiecesText.text = $"({setInfo.equippedPieces}/{setInfo.equipmentSet.setItems.Count} pieces)";
+            setPiecesText.text = $"({setInfo.equippedPieces}/6 pieces)"; // ✅ เปลี่ยนเป็น /6
 
-            // ✅ เปลี่ยนสีตามสถานะ
+            // เปลี่ยนสีตามสถานะ
             if (setInfo.activeBonus != null)
             {
                 setPiecesText.color = Color.green; // มี bonus
@@ -339,13 +341,13 @@ public class SetBonusUI : MonoBehaviour
         {
             if (setInfo.activeBonus != null)
             {
-                // ✅ มี bonus - แสดง active bonuses (เหมือนเดิม)
+                // มี bonus - แสดง active bonuses
                 setBonusStatsText.text = GetSetBonusStatsText(setInfo.activeBonus);
                 setBonusStatsText.color = Color.green;
             }
             else
             {
-                // ✅ ยังไม่มี bonus - แสดงว่าต้องการอีกกี่ชิ้น
+                // ยังไม่มี bonus - แสดงว่าต้องการอีกกี่ชิ้น
                 int needed = 2 - setInfo.equippedPieces;
                 setBonusStatsText.text = $"No bonus";
                 setBonusStatsText.color = Color.gray;

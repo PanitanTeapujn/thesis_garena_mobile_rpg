@@ -141,13 +141,23 @@ public class EquipmentSet : ScriptableObject
         return activeBonuses;
     }
 
+    // ========== EquipmentSet.cs - แก้เฉพาะ GetSetBonusInfo() ==========
+
     public string GetSetBonusInfo(int currentPieces)
     {
+        if (setItems == null || setItems.Count == 0)
+        {
+            return $"{setName}: No items";
+        }
+
         List<string> bonusInfo = new List<string>();
+
+        // ✅ แก้ตรงนี้: ใช้ 6 แทน setItems.Count
+        int totalPieces = 6; // แสดงเป็น /6 เสมอ
 
         bonusInfo.Add($"<color=#{ColorUtility.ToHtmlStringRGB(setColor)}>{setName}</color>");
         bonusInfo.Add($"<color=grey>{setDescription}</color>");
-        bonusInfo.Add($"<color=white>Current: {currentPieces}/{setItems.Count} pieces</color>");
+        bonusInfo.Add($"<color=white>Current: {currentPieces}/{totalPieces} pieces</color>");
         bonusInfo.Add("");
 
         foreach (var requirement in setBonuses)

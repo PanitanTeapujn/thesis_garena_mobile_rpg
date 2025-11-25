@@ -25,7 +25,7 @@ MonoBehaviour:
   - itemData: {fileID: 11400000, guid: 339ab677ee17571459d55df0e6a1fa06, type: 2}
     dropChance: 70
     minQuantity: 1
-    maxQuantity: 10
+    maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
   - itemData: {fileID: 11400000, guid: 497384fcf2b1f6e4082e39e7e3bb5ca9, type: 2}
