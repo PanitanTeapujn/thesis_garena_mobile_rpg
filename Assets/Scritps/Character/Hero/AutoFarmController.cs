@@ -33,7 +33,22 @@ public class AutoFarmController : NetworkBehaviour
 
     [Tooltip("ระยะถอยหลังเมื่อไม่สามารถโจมตีได้")]
     public float retreatDistance = 3f;
+    [Header("🎯 Target Settings")]
+    [Tooltip("โจมตี Dummy")]
+    public bool targetDummies = true;
 
+    [Tooltip("โจมตี Enemy ทั่วไป")]
+    public bool targetEnemies = true;
+
+    [Tooltip("ความสำคัญ: Dummy ก่อน หรือ Enemy ก่อน")]
+    public TargetPriority targetPriority = TargetPriority.NearestFirst;
+
+    public enum TargetPriority
+    {
+        NearestFirst,      // ใกล้สุดก่อน
+        DummyFirst,        // Dummy ก่อน
+        EnemyFirst         // Enemy ก่อน
+    }
     [Header("📊 Debug")]
     public bool showDebugLogs = true;
 
@@ -83,6 +98,8 @@ public class AutoFarmController : NetworkBehaviour
             return;
         }
 
+        // ลบหรือ comment ส่วนนี้ถ้าต้องการใช้ auto farm ในทุก scene
+        /*
         string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
         isLobbyScene = sceneName.ToLower().Contains("lobby");
 
@@ -92,6 +109,10 @@ public class AutoFarmController : NetworkBehaviour
             enabled = false;
             return;
         }
+        */
+
+        // เปลี่ยนเป็น:
+        isLobbyScene = true; // หรือลบ isLobbyScene check ออกทั้งหมด
 
         lastInputTime = Time.time;
         lastAutoAttackTime = Time.time;
@@ -145,7 +166,7 @@ public class AutoFarmController : NetworkBehaviour
 
         if (currentTarget == null || currentTarget.IsDead)
         {
-            FindNearestDummy();
+            FindNearestTarget();  // ← เปลี่ยนจาก FindNearestDummy()
         }
 
         if (currentTarget == null || currentTarget.IsDead) return;
@@ -186,7 +207,7 @@ public class AutoFarmController : NetworkBehaviour
     // ========================================
     // INPUT DETECTION
     // ========================================
-
+   
     private bool HasAnyInput()
     {
         bool hasKeyboardInput = Input.anyKey;
@@ -230,31 +251,82 @@ public class AutoFarmController : NetworkBehaviour
     // TARGET SELECTION
     // ========================================
 
-    private void FindNearestDummy()
+    private void FindNearestTarget()
     {
         NetworkEnemy[] allEnemies = FindObjectsOfType<NetworkEnemy>();
 
         NetworkEnemy nearest = null;
         float nearestDistance = float.MaxValue;
 
+        // สำหรับ priority system
+        NetworkEnemy nearestDummy = null;
+        float nearestDummyDistance = float.MaxValue;
+        NetworkEnemy nearestEnemy = null;
+        float nearestEnemyDistance = float.MaxValue;
+
         foreach (NetworkEnemy enemy in allEnemies)
         {
-            if (!enemy.IsDummy || enemy.IsDead) continue;
+            if (enemy.IsDead) continue;
+
+            // ตรวจสอบว่าเป็น Dummy หรือ Enemy
+            bool isDummy = enemy.IsDummy;
+
+            // ข้ามถ้าไม่ต้องการ target ประเภทนี้
+            if (isDummy && !targetDummies) continue;
+            if (!isDummy && !targetEnemies) continue;
 
             float distance = Vector3.Distance(transform.position, enemy.transform.position);
 
-            if (distance < detectionRange && distance < nearestDistance)
+            if (distance > detectionRange) continue;
+
+            // เก็บแยกตามประเภท
+            if (isDummy)
+            {
+                if (distance < nearestDummyDistance)
+                {
+                    nearestDummy = enemy;
+                    nearestDummyDistance = distance;
+                }
+            }
+            else
+            {
+                if (distance < nearestEnemyDistance)
+                {
+                    nearestEnemy = enemy;
+                    nearestEnemyDistance = distance;
+                }
+            }
+
+            // เก็บใกล้สุดโดยรวม
+            if (distance < nearestDistance)
             {
                 nearest = enemy;
                 nearestDistance = distance;
             }
         }
 
-        currentTarget = nearest;
+        // เลือก target ตาม priority
+        switch (targetPriority)
+        {
+            case TargetPriority.DummyFirst:
+                currentTarget = nearestDummy ?? nearestEnemy;
+                break;
+
+            case TargetPriority.EnemyFirst:
+                currentTarget = nearestEnemy ?? nearestDummy;
+                break;
+
+            case TargetPriority.NearestFirst:
+            default:
+                currentTarget = nearest;
+                break;
+        }
 
         if (currentTarget != null)
         {
-            Log($"🎯 Target locked: Dummy at {nearestDistance:F1}m");
+            string targetType = currentTarget.IsDummy ? "Dummy" : "Enemy";
+            float dist = Vector3.Distance(transform.position, currentTarget.transform.position);
+            Log($"🎯 Target locked: {targetType} ({currentTarget.CharacterName}) at {dist:F1}m");
         }
     }
 
