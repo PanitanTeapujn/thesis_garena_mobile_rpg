@@ -1889,15 +1889,23 @@ MonoBehaviour:
   archerSkill3Video: {fileID: 32900000, guid: 96e7d723f1c1a6f41be941e659b6e627, type: 3}
   archerSkill4Video: {fileID: 32900000, guid: 2e4fa1859351e2745be45da8c1e0ad26, type: 3}
   assassinPassiveVideo: {fileID: 0}
-  assassinSkill1Video: {fileID: 0}
-  assassinSkill2Video: {fileID: 0}
-  assassinSkill3Video: {fileID: 0}
-  assassinSkill4Video: {fileID: 0}
+  assassinSkill1Video: {fileID: 32900000, guid: b5b7c8ab125a03f41aa0104bb8915002,
+    type: 3}
+  assassinSkill2Video: {fileID: 32900000, guid: f30603a8f3c0d354daa9051634bb4628,
+    type: 3}
+  assassinSkill3Video: {fileID: 32900000, guid: 607dbe2b69c104e4c88a9d8e200166c8,
+    type: 3}
+  assassinSkill4Video: {fileID: 32900000, guid: b2553168bbaac9b40a4d62d364d87284,
+    type: 3}
   ironJuggernautPassiveVideo: {fileID: 0}
-  ironJuggernautSkill1Video: {fileID: 0}
-  ironJuggernautSkill2Video: {fileID: 0}
-  ironJuggernautSkill3Video: {fileID: 0}
-  ironJuggernautSkill4Video: {fileID: 0}
+  ironJuggernautSkill1Video: {fileID: 32900000, guid: 90f06e87de1087f4288d0a87b00e8c50,
+    type: 3}
+  ironJuggernautSkill2Video: {fileID: 32900000, guid: e8b43c484f27e794589df89eeac0b3da,
+    type: 3}
+  ironJuggernautSkill3Video: {fileID: 32900000, guid: 655cbaf5bbe5afe45a485ba29f890752,
+    type: 3}
+  ironJuggernautSkill4Video: {fileID: 32900000, guid: af4a7417567b0944f8bd9e529f5f04ab,
+    type: 3}
   passiveSkillIcon: {fileID: 0}
   skill1Icon: {fileID: 1153602514}
   skill2Icon: {fileID: 566724077}
@@ -2346,7 +2354,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -136, y: -43}
+  m_AnchoredPosition: {x: -155, y: -43}
   m_SizeDelta: {x: 670, y: 550}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &763806393
