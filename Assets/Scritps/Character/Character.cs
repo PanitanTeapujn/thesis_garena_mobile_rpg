@@ -1697,11 +1697,14 @@ public class Character : NetworkBehaviour
 
     // ใน Character.cs - แทนที่ method เดิม
 
+    // ========== Character.cs - แก้ไข GetEffectiveAttackSpeed() ==========
+
     public virtual float GetEffectiveAttackSpeed()
     {
+        // ✅ เริ่มจาก 0 (ไม่ใช่ base value)
         float totalAttackSpeedBonus = 0f;
 
-        // Base Attack Speed (จาก upgrades)
+        // ✅ 1. เอาแค่ส่วนที่เพิ่มจาก upgrades เท่านั้น
         if (characterStats != null)
         {
             float attackSpeedFromUpgrades = this.AttackSpeed - characterStats.attackSpeed;
@@ -1711,13 +1714,13 @@ public class Character : NetworkBehaviour
             }
         }
 
-        // Equipment bonus
-        if (equipmentManager != null)
-        {
-            totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
-        }
+        // ✅ 2. Equipment bonus - ลบบรรทัดนี้ออก เพราะ this.AttackSpeed รวม equipment แล้ว
+        // ❌ if (equipmentManager != null)
+        // ❌ {
+        // ❌     totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
+        // ❌ }
 
-        // Status effect bonus (Aura)
+        // ✅ 3. Status effect bonus (Aura)
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
@@ -1725,7 +1728,7 @@ public class Character : NetworkBehaviour
             totalAttackSpeedBonus += auraBonus;
         }
 
-        // 🆕 Archer: Attack Speed Stack Bonus
+        // 🆕 4. Archer: Attack Speed Stack Bonus
         if (this is Archer archer)
         {
             float stackBonus = archer.GetAttackSpeedBonusFromStacks();
@@ -1738,10 +1741,10 @@ public class Character : NetworkBehaviour
             }
         }
 
-        // ✅ 🆕 Freeze effect - ลด Attack Speed 30%
+        // ✅ 5. Freeze effect - ลด Attack Speed 30%
         if (HasStatusEffect(StatusEffectType.Freeze))
         {
-            totalAttackSpeedBonus -= 30f; // ลด 30%
+            totalAttackSpeedBonus -= 30f;
             Debug.Log($"[Freeze Effect] {CharacterName}: Attack Speed reduced by 30%");
         }
 
@@ -1759,18 +1762,21 @@ public class Character : NetworkBehaviour
         // 300% → 300/(300+100) = 0.75 (75% reduction)
         // 900% → 900/(900+100) = 0.9 (90% reduction - ใกล้เคียง limit)
 
-        float reduction = attackSpeedPercent / (attackSpeedPercent + 100f);
+        float reduction = attackSpeedPercent / (attackSpeedPercent + 150f);
 
         // จำกัดไม่เกิน 95% (ป้องกัน cooldown เป็น 0)
         reduction = Mathf.Clamp(reduction, 0f, 0.99f);
 
         return reduction;
     }
+    // ========== Character.cs - แก้ไข GetAttackSpeedMultiplierForUI() ==========
+
     public float GetAttackSpeedMultiplierForUI()
     {
+        // ✅ เริ่มจาก 0
         float totalAttackSpeedBonus = 0f;
 
-        // Base + Equipment + Aura (เหมือนเดิม)
+        // ✅ 1. Upgrades only
         if (characterStats != null)
         {
             float attackSpeedFromUpgrades = this.AttackSpeed - characterStats.attackSpeed;
@@ -1780,11 +1786,13 @@ public class Character : NetworkBehaviour
             }
         }
 
-        if (equipmentManager != null)
-        {
-            totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
-        }
+        // ✅ 2. ลบบรรทัดนี้ออก - this.AttackSpeed รวม equipment แล้ว
+        // ❌ if (equipmentManager != null)
+        // ❌ {
+        // ❌     totalAttackSpeedBonus += equipmentManager.GetAttackSpeedBonus();
+        // ❌ }
 
+        // ✅ 3. Archer stacks
         if (this is Archer archer)
         {
             float stackBonus = archer.GetAttackSpeedBonusFromStacks();
@@ -1797,6 +1805,7 @@ public class Character : NetworkBehaviour
             }
         }
 
+        // ✅ 4. Aura
         if (statusEffectManager != null)
         {
             float auraMultiplier = statusEffectManager.GetTotalAttackSpeedMultiplier();
@@ -1804,7 +1813,7 @@ public class Character : NetworkBehaviour
             totalAttackSpeedBonus += auraBonus;
         }
 
-        // ✅ 🆕 Freeze effect - ลด Attack Speed 30%
+        // ✅ 5. Freeze
         if (HasStatusEffect(StatusEffectType.Freeze))
         {
             totalAttackSpeedBonus -= 30f;
