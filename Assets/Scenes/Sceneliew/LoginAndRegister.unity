@@ -564,6 +564,10 @@ MonoBehaviour:
   ConformX: 1
   ConformY: 1
   Logging: 0
+  excludeBackgroundChildren: 1
+  backgroundLayerName: Background
+  useTagInsteadOfLayer: 0
+  backgroundTagName: Background
 --- !u!1 &251836854
 GameObject:
   m_ObjectHideFlags: 0
@@ -1215,7 +1219,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -10, y: 251}
+  m_AnchoredPosition: {x: 108, y: 301}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &690143833
@@ -1303,7 +1307,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -109.69423, y: -23.630877, z: -219.70671, w: -27.321404}
+  m_margin: {x: -359.51254, y: -23.630877, z: -252.77428, w: 14.092291}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0

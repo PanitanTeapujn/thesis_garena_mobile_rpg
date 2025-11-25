@@ -538,82 +538,13 @@ MonoBehaviour:
   giveStarterItems: 1
   starterItemsGiven: 0
   starterItemsList:
-  - itemData: {fileID: 11400000, guid: 61452f7223c4781489213d7c850426d0, type: 2}
-    quantity: 1
+  - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
+    quantity: 20
     note: 
-  - itemData: {fileID: 11400000, guid: 5ff793260bdf9a14b85e5e01fe10225f, type: 2}
-    quantity: 1
+  - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
+    quantity: 20
     note: 
-  - itemData: {fileID: 11400000, guid: 426203944d427df4187ce39dd795f509, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 15f7c2098bdac364696ec262ebab7fb1, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 4a054a0edaba37043b047b1823fa6260, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: e41c543058c358742aa99e09fa24bd24, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: f38b958f3cf60cd4e94e684f2a32a534, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 92ba78c4c6d4a9f44a5ceb4ba8c83004, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 03fddbdbea6fd364eb8b4c1ec17f1315, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 5e2aa5fbc1084f4489ab5806765d5b5e, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: d38f73d5bd36cee49a8c98538d5b6b1f, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 5b524f021aad6f247a9b05f4625a8088, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: df79e58a87b26ed41a10efd2e95d67b3, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 379fc551e98a7aa44beba3b240c4a48e, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 1928f1edda32f2a448518bc007cf1309, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: d208666f088d82445b3e164654c92179, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 4276e847d3c59a44c9aefd4040611ae4, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 65e8340acb1c8ed4785ce7496e1304c9, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 5a6b841942e72fb49ac48d92cbe7355c, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 701a45d918cf54a4bb514f46d62a405f, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: bcee1c5e44842854e8f71224e206e805, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 6834c41d19a3bf145baac376e8f2e8c6, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: ff85ca66e7abc894c99c6546b617cebd, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 642ff0b332033f940929ec8c621bf5a4, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 8300d28ce7c308c46a0282c514dd3ce3, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 5336aee12bb60044c93a1ef139ae8a41, type: 2}
+  - itemData: {fileID: 11400000, guid: c7c12b954d83ec640a318da3adb6a8c0, type: 2}
     quantity: 1
     note: 
   useFallbackItems: 1

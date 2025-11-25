@@ -15,7 +15,7 @@ MonoBehaviour:
   setName: Little Witch
   setDescription: 
   setIcon: {fileID: 2122192887, guid: 38935e826d4a7164fb67a7d25647c5ce, type: 3}
-  setColor: {r: 0, g: 0, b: 0, a: 1}
+  setColor: {r: 1, g: 1, b: 1, a: 1}
   setItems:
   - {fileID: 11400000, guid: e23e6f1451814ca4e993a0a5ad253f4f, type: 2}
   - {fileID: 11400000, guid: a32ee3f8b0d875542bc894d010fd8b02, type: 2}
@@ -82,17 +82,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 754db1556c4d0a54692ba3863961e037, type: 2}
   - {fileID: 11400000, guid: 29c09e9dcae31694abfdfd5a9c0725a2, type: 2}
   - {fileID: 11400000, guid: 95ec9f26cbdb75a4da89cdc3dc8af2d6, type: 2}
-  - {fileID: 11400000, guid: 16ae3fe403c25b64b8d4bd3be1e0d478, type: 2}
-  - {fileID: 11400000, guid: 3e292a736a8c87f4fb47ecee34d21f1e, type: 2}
-  - {fileID: 11400000, guid: 24c623758614a7f46b2e674f7e37cf29, type: 2}
-  - {fileID: 11400000, guid: cbb897c88aa5aae4f8299a90960c9163, type: 2}
-  - {fileID: 11400000, guid: ecd3ffbb834b25f46979f69d0b00aba3, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   - {fileID: 11400000, guid: 45fbfec4c269bcf4b8b0bacf5c1f6f7a, type: 2}
-  - {fileID: 11400000, guid: 87e9be265541b6d47bb1b0e2fb68ad96, type: 2}
-  - {fileID: 11400000, guid: 3cc4e58e2e3c128498a937088078b152, type: 2}
-  - {fileID: 11400000, guid: d453b705cb4d359499ade61de6ec917c, type: 2}
-  - {fileID: 11400000, guid: 91a4043758dc4ae41897fb591385ab76, type: 2}
-  - {fileID: 11400000, guid: 67a0c252c53942449b71caee677425c9, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
   - {fileID: 11400000, guid: 339ab677ee17571459d55df0e6a1fa06, type: 2}
   - {fileID: 11400000, guid: 1da1c91974b285146ab0e58378b8a520, type: 2}
   - {fileID: 11400000, guid: e4751fb694ffafa45903263689325a34, type: 2}
@@ -145,6 +145,16 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 9ac9603120428de49a89afb6d0e4c643, type: 2}
   - {fileID: 11400000, guid: 2fcc4935dd733a34bab9c4fb979fc0e1, type: 2}
   - {fileID: 11400000, guid: ceb5c49c7b320a5449660e6b76fea6eb, type: 2}
+  - {fileID: 11400000, guid: f0eeedbb440427343b424933a00d1c9b, type: 2}
+  - {fileID: 11400000, guid: 8306a8e278646114fbba350e42e93182, type: 2}
+  - {fileID: 11400000, guid: 8f9bec813a526be40a4e2e7233a9ee85, type: 2}
+  - {fileID: 11400000, guid: 8e879c0cbcf9b16498c85d53e725de07, type: 2}
+  - {fileID: 11400000, guid: 6026b05166bdd2447b56139e1e302e2f, type: 2}
+  - {fileID: 11400000, guid: 6752e656aa0094844b100e0089c190f0, type: 2}
+  - {fileID: 11400000, guid: d233393c62314584b90eab1b7a6f1360, type: 2}
+  - {fileID: 11400000, guid: 52ac1926e97a5fb4db5f6c3871369e02, type: 2}
+  - {fileID: 11400000, guid: 875c3e8d0cf765441a47a842c934fae2, type: 2}
+  - {fileID: 11400000, guid: 60e0a964148db3b419e41c56ce858a1c, type: 2}
   setBonuses:
   - requiredPieces: 2
     bonusEffects:

@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: BlueSlime
   moveSpeed: 3
-  maxHp: 80
+  maxHp: 100
   maxMana: 0
   attackDamage: 15
   magicDamage: 0
-  arrmor: 5
+  arrmor: 15
   attackCoolDown: 1
   attackRange: 1
   criticalChance: 5
@@ -29,7 +29,7 @@ MonoBehaviour:
   reductionCoolDown: 0
   lifeSteal: 0
   ampdamage: 0
-  magicArmor: 0
+  magicArmor: 20
   manaRegen: 0
   healthRegen: 0
   attackType: 0

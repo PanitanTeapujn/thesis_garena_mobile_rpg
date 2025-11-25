@@ -237,7 +237,7 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         localInput.potion4 = potion4Pressed;
         localInput.potion5 = potion5Pressed;
     }
-    private void OnGUI()
+   /* private void OnGUI()
     {
         if (Event.current.type != EventType.Repaint) return;
 
@@ -253,7 +253,7 @@ public class SingleInputController : MonoBehaviour, INetworkRunnerCallbacks
         debugText += $"Input: ({localInput.movementInput.x:F2}, {localInput.movementInput.y:F2})";
 
         GUI.Label(new Rect(10, 100, 400, 200), debugText, style);
-    }
+    }*/
     public void SetPotion1Pressed()
     {
         potion1Pressed = true;

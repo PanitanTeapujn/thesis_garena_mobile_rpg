@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d019a76aaa3b9134797b60a2000f7937, type: 3}
   m_Name: SlimeWater
   m_EditorClassIdentifier: 
-  overallDropChance: 100
-  maxItemDrops: 5
+  overallDropChance: 50
+  maxItemDrops: 2
   dropChanceLevelBonus: 0
   itemDrops:
   - itemData: {fileID: 11400000, guid: 9c80a9e65266c224e8958f12ddd70b28, type: 2}
@@ -22,32 +22,92 @@ MonoBehaviour:
     maxQuantity: 10
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: f84562644b0e2364595a6c9212e4ad1e, type: 2}
-    dropChance: 40
+  - itemData: {fileID: 11400000, guid: 339ab677ee17571459d55df0e6a1fa06, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 10
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 497384fcf2b1f6e4082e39e7e3bb5ca9, type: 2}
+    dropChance: 70
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: d2a87d561f4a82e468216e1d7c069f40, type: 2}
-    dropChance: 40
+  - itemData: {fileID: 11400000, guid: 426203944d427df4187ce39dd795f509, type: 2}
+    dropChance: 70
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 6586a6afde59b454eb25920dfed62a40, type: 2}
-    dropChance: 40
+  - itemData: {fileID: 11400000, guid: 426203944d427df4187ce39dd795f509, type: 2}
+    dropChance: 70
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: 9cc603481eac855478dfacca6deb59d5, type: 2}
-    dropChance: 40
+  - itemData: {fileID: 11400000, guid: bd1aeccf99f1ed84db8024c19cad31b8, type: 2}
+    dropChance: 70
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
-  - itemData: {fileID: 11400000, guid: b16bfba132439ff438502250761237c0, type: 2}
-    dropChance: 40
+  - itemData: {fileID: 11400000, guid: 92ba78c4c6d4a9f44a5ceb4ba8c83004, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: afb4309fc36491847a6b4dd9f2da15e3, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 6a27372d5bdb9fc45ba9acf32c5a249f, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: df79e58a87b26ed41a10efd2e95d67b3, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 45fbfec4c269bcf4b8b0bacf5c1f6f7a, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: c367ba90b47a4304aad608476ab03abc, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 65e8340acb1c8ed4785ce7496e1304c9, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 95ec9f26cbdb75a4da89cdc3dc8af2d6, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 6b7ee32e50bbc2a4888f897819da97d5, type: 2}
+    dropChance: 70
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: ff85ca66e7abc894c99c6546b617cebd, type: 2}
+    dropChance: 70
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1

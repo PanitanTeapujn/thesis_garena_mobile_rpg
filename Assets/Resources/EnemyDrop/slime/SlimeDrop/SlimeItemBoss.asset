@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SlimeItemBoss
   m_EditorClassIdentifier: 
   overallDropChance: 100
-  maxItemDrops: 2
+  maxItemDrops: 1
   dropChanceLevelBonus: 0
   itemDrops:
   - itemData: {fileID: 11400000, guid: 1aec988b8cdc3a04188e33314724e914, type: 2}
@@ -24,6 +24,30 @@ MonoBehaviour:
     maxEnemyLevel: 50
   - itemData: {fileID: 11400000, guid: 333e9e0102becd1499120375c10df247, type: 2}
     dropChance: 25
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: dd590bc1106140a4581da00f633dc384, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 15f7c2098bdac364696ec262ebab7fb1, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 15f7c2098bdac364696ec262ebab7fb1, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 15f7c2098bdac364696ec262ebab7fb1, type: 2}
+    dropChance: 1
     minQuantity: 1
     maxQuantity: 1
     minEnemyLevel: 1

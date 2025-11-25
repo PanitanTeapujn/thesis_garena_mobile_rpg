@@ -681,86 +681,14 @@ MonoBehaviour:
   giveStarterItems: 1
   starterItemsGiven: 0
   starterItemsList:
-  - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
-    quantity: 10
-    note: 
-  - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
-    quantity: 10
-    note: 
-  - itemData: {fileID: 11400000, guid: 764ab3783648f1f45a718128f21de7bb, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: e23e6f1451814ca4e993a0a5ad253f4f, type: 2}
-    quantity: 1
-    note: 
   - itemData: {fileID: 11400000, guid: 339ab677ee17571459d55df0e6a1fa06, type: 2}
     quantity: 1
     note: 
-  - itemData: {fileID: 11400000, guid: dd590bc1106140a4581da00f633dc384, type: 2}
-    quantity: 1
+  - itemData: {fileID: 11400000, guid: c5fdce5b39f50a34bb1f3d3cb407803c, type: 2}
+    quantity: 20
     note: 
-  - itemData: {fileID: 11400000, guid: cff88994fec13f74eae34a277dbc6f4e, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: ceb5c49c7b320a5449660e6b76fea6eb, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 3f58e2afe929b944785da14d33c819cb, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: bd1aeccf99f1ed84db8024c19cad31b8, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: ce109db3bdfd6bb4d8b139f81becfbd8, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: d774f5f23a5b88c45a8956386605e248, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: f2df7dc90e76a5a44a3c25fcc957d9e3, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: e5a180e117bebca43bb6290c05b51da2, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: afb4309fc36491847a6b4dd9f2da15e3, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 44de5bf9e8d328c45baa1608d2b96c80, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 0a0731a0d8f88b848b641463bc67a11f, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 2fcc4935dd733a34bab9c4fb979fc0e1, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 7ac70c05ed3fbc746baf3e22c2f4db20, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 45fbfec4c269bcf4b8b0bacf5c1f6f7a, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: fa5b600307a02e04c9b11568c5bf5860, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 0e4822e322aaa2a41874e46c9239100e, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: a32ee3f8b0d875542bc894d010fd8b02, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 07286fd58f56d86418dc3c92c7684f7e, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: c6c0ca404d7482e4b84c51d0bf135321, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 45fbfec4c269bcf4b8b0bacf5c1f6f7a, type: 2}
-    quantity: 1
-    note: 
-  - itemData: {fileID: 11400000, guid: 95ec9f26cbdb75a4da89cdc3dc8af2d6, type: 2}
-    quantity: 1
+  - itemData: {fileID: 11400000, guid: 7a1196b8853eabe47baaf9f404612b13, type: 2}
+    quantity: 20
     note: 
   useFallbackItems: 1
   fallbackToTestItems: 1

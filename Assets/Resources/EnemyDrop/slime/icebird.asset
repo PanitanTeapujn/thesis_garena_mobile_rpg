@@ -16,7 +16,7 @@ MonoBehaviour:
   maxItemDrops: 5
   dropChanceLevelBonus: 1.5
   itemDrops:
-  - itemData: {fileID: 11400000, guid: db622234496cdd6488025fdca056b20a, type: 2}
+  - itemData: {fileID: 11400000, guid: 4a054a0edaba37043b047b1823fa6260, type: 2}
     dropChance: 20
     minQuantity: 1
     maxQuantity: 1

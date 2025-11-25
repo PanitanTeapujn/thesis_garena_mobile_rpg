@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterName: RedSlime
   moveSpeed: 3
-  maxHp: 100
+  maxHp: 150
   maxMana: 0
   attackDamage: 20
   magicDamage: 0
-  arrmor: 15
+  arrmor: 30
   attackCoolDown: 1
   attackRange: 1
   criticalChance: 5
@@ -29,7 +29,7 @@ MonoBehaviour:
   reductionCoolDown: 0
   lifeSteal: 0
   ampdamage: 0
-  magicArmor: 0
+  magicArmor: 30
   manaRegen: 0
   healthRegen: 0
   attackType: 0

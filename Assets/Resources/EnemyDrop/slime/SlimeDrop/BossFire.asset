@@ -52,5 +52,17 @@ MonoBehaviour:
     maxQuantity: 1
     minEnemyLevel: 1
     maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: fa5b600307a02e04c9b11568c5bf5860, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
+  - itemData: {fileID: 11400000, guid: 701a45d918cf54a4bb514f46d62a405f, type: 2}
+    dropChance: 50
+    minQuantity: 1
+    maxQuantity: 1
+    minEnemyLevel: 1
+    maxEnemyLevel: 50
   showDropLogs: 1
   guaranteedDropsForTesting: 0
