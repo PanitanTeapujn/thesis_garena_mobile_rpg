@@ -1875,10 +1875,14 @@ MonoBehaviour:
   skillVideoRenderTexture: {fileID: 8400000, guid: 393f95d94c685b648a8775940270208d,
     type: 2}
   bloodKnightPassiveVideo: {fileID: 0}
-  bloodKnightSkill1Video: {fileID: 0}
-  bloodKnightSkill2Video: {fileID: 0}
-  bloodKnightSkill3Video: {fileID: 0}
-  bloodKnightSkill4Video: {fileID: 0}
+  bloodKnightSkill1Video: {fileID: 32900000, guid: 3d8d99023a823644db886a26cc6b9373,
+    type: 3}
+  bloodKnightSkill2Video: {fileID: 32900000, guid: 9eb2ce323f2d95944863d8c5e8d17d1f,
+    type: 3}
+  bloodKnightSkill3Video: {fileID: 32900000, guid: 3b173eefbf67d05499a671c163363404,
+    type: 3}
+  bloodKnightSkill4Video: {fileID: 32900000, guid: 44fb604745375b34689da797afbf07cb,
+    type: 3}
   archerPassiveVideo: {fileID: 0}
   archerSkill1Video: {fileID: 32900000, guid: 82624c1a01634024dab1d417973fa175, type: 3}
   archerSkill2Video: {fileID: 32900000, guid: 558a7edd206613e4eaef540f451e9959, type: 3}
