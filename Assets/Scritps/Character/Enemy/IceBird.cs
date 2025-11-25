@@ -93,7 +93,7 @@ public class IceBird : NetworkEnemy
         // หาผู้เล่น
         if (targetTransform == null)
         {
-            FindNearestPlayer();
+            // ให้ Manager หา target ให้
             return;
         }
 
@@ -120,8 +120,13 @@ public class IceBird : NetworkEnemy
         // ✅ FIX: หา target ใหม่อีกครั้งก่อนคำนวณทิศทาง (กันกรณี target หาย)
         if (targetTransform == null)
         {
-            FindNearestPlayer();
+            // ถ้าไม่มี target ให้ยกเลิกการโจมตี
+            Debug.LogWarning("⚠️ No target found! Cancelling attack");
+            isAttacking = false;
+            ResumeMovement();
+            yield break;
         }
+
 
         // ✅ DEBUG: ดูว่า target มีไหม
         Debug.Log($"🐦 Bird Position: {transform.position}");

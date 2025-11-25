@@ -154,7 +154,7 @@ MonoBehaviour:
     spawnCooldown: 1
     currentCount: 0
     lastSpawnTime: 0
-  maxTotalEnemies: 20
+  maxTotalEnemies: 1000
   spawnInterval: 2
   randomizeSpawnInterval: 1
   spawnIntervalVariation: 2

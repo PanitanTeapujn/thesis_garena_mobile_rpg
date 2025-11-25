@@ -71,7 +71,68 @@ public enum EnemyState
     Attacking,
     Positioning
 }
+public class EnemyUpdateManager : MonoBehaviour
+{
+    private static EnemyUpdateManager instance;
+    public static EnemyUpdateManager Instance
+    {
+        get
+        {
+            if (instance == null)
+            {
+                GameObject go = new GameObject("EnemyUpdateManager");
+                instance = go.AddComponent<EnemyUpdateManager>();
+                DontDestroyOnLoad(go);
+            }
+            return instance;
+        }
+    }
 
+    private List<NetworkEnemy> activeEnemies = new List<NetworkEnemy>();
+    private float nextTargetCheckTime = 0f;
+    private const float TARGET_CHECK_INTERVAL = 0.5f; // เช็ค target ทุก 0.5 วินาที
+
+    private void Update()
+    {
+        // ทำความสะอาด list (ลบ enemy ที่ตายหรือ null)
+        activeEnemies.RemoveAll(e => e == null || e.IsDead);
+
+        // Batch update target finding
+        if (Time.time >= nextTargetCheckTime)
+        {
+            nextTargetCheckTime = Time.time + TARGET_CHECK_INTERVAL;
+            BatchFindTargets();
+        }
+    }
+
+    public void RegisterEnemy(NetworkEnemy enemy)
+    {
+        if (!activeEnemies.Contains(enemy))
+        {
+            activeEnemies.Add(enemy);
+        }
+    }
+
+    public void UnregisterEnemy(NetworkEnemy enemy)
+    {
+        activeEnemies.Remove(enemy);
+    }
+
+    private void BatchFindTargets()
+    {
+        // หาผู้เล่นทั้งหมดครั้งเดียว
+        Hero[] heroes = FindObjectsOfType<Hero>();
+
+        // อัพเดทให้ enemy ทุกตัว
+        foreach (NetworkEnemy enemy in activeEnemies)
+        {
+            if (enemy != null && !enemy.IsDead && enemy.HasStateAuthority)
+            {
+                enemy.UpdateTargetFromManager(heroes);
+            }
+        }
+    }
+}
 public class NetworkEnemy : Character
 {
     // ========== Network Properties ==========
@@ -301,7 +362,7 @@ public class NetworkEnemy : Character
             nextPickupCleanupTime = Time.time + PICKUP_CLEANUP_INTERVAL;
         }
     }
-  
+
     private void LoadDummyLevelFromFirebase()
     {
         if (persistentData?.multiCharacterData == null)
@@ -318,6 +379,37 @@ public class NetworkEnemy : Character
         DummyLevel = persistentData.multiCharacterData.trainingDummy.currentLevel;
 
         Debug.Log($"[Dummy] 📥 Loaded level {DummyLevel} from Firebase (Last reset: {persistentData.multiCharacterData.trainingDummy.lastResetDate})");
+    }
+    public void UpdateTargetFromManager(Hero[] heroes)
+    {
+        if (IsDummy) return;
+
+        float nearestDistance = float.MaxValue;
+        Hero nearestHero = null;
+
+        foreach (Hero hero in heroes)
+        {
+            if (hero == null || !hero.IsSpawned) continue;
+
+            float distance = Vector3.Distance(transform.position, hero.transform.position);
+
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestHero = hero;
+            }
+        }
+
+        if (nearestHero != null)
+        {
+            targetTransform = nearestHero.transform;
+            CurrentTarget = nearestHero.Object.InputAuthority;
+        }
+        else
+        {
+            targetTransform = null;
+            CurrentTarget = PlayerRef.None;
+        }
     }
     public void LevelUpDummy()
     {
@@ -598,6 +690,8 @@ public class NetworkEnemy : Character
 
         if (HasStateAuthority)
         {
+            EnemyUpdateManager.Instance.RegisterEnemy(this);
+
             // ✅ 1. Initialize HP FIRST
             if (IsDummy)
             {
@@ -690,7 +784,11 @@ public class NetworkEnemy : Character
                 else
                 {
                     // AI ปกติ
-                    FindNearestPlayer();
+                    if (targetTransform == null)
+                    {
+                        EnemyUpdateManager.Instance.RegisterEnemy(this);
+                    }
+
                     ImprovedMoveTowardsTarget();
                     TryAttackTarget();
                 }
@@ -855,6 +953,10 @@ public class NetworkEnemy : Character
 
             // ✅ Cleanup pickup texts
             CleanupAllPickupTexts();
+        }
+        if (EnemyUpdateManager.Instance != null)
+        {
+            EnemyUpdateManager.Instance.UnregisterEnemy(this);
         }
     }
 
@@ -1614,43 +1716,10 @@ public class NetworkEnemy : Character
     // ========== Enemy AI ==========
     protected void FindNearestPlayer()
     {
-        // ✅ ลบการเช็คเวลา - หาได้ทุกเมื่อ
-        // if (Time.time < nextTargetCheckTime) return;
-        // nextTargetCheckTime = Time.time + attackCheckInterval;
-
-        float nearestDistance = float.MaxValue;
-        Hero nearestHero = null;
-
-        Hero[] heroes = FindObjectsOfType<Hero>();
-
-        foreach (Hero hero in heroes)
+        // ใช้แค่เมื่อจำเป็นจริงๆ เท่านั้น
+        if (targetTransform == null)
         {
-            if (hero == null || !hero.IsSpawned) continue;
-
-            float distance = Vector3.Distance(transform.position, hero.transform.position);
-
-            // ✅ ลบการเช็ค detectRange - หาได้ทุกระยะ
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearestHero = hero;
-            }
-        }
-
-        if (nearestHero != null)
-        {
-            targetTransform = nearestHero.transform;
-            CurrentTarget = nearestHero.Object.InputAuthority;
-
-            if (showDebugInfo)
-            {
-                Debug.Log($"{CharacterName} found target: {nearestHero.CharacterName} at distance {nearestDistance:F1}");
-            }
-        }
-        else
-        {
-            targetTransform = null;
-            CurrentTarget = PlayerRef.None;
+            EnemyUpdateManager.Instance.RegisterEnemy(this);
         }
     }
 

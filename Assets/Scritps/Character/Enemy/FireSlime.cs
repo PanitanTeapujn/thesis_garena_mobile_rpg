@@ -74,7 +74,7 @@ public class FireSlime : NetworkEnemy
 
         if (targetTransform == null)
         {
-            FindNearestPlayer();
+            // ให้ Manager หา target ให้
             return;
         }
 

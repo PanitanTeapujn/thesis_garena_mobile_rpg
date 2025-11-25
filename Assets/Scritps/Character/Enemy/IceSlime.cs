@@ -85,7 +85,8 @@ public class IceSlime : NetworkEnemy
 
         if (targetTransform == null)
         {
-            FindNearestPlayer();
+            // 🔧 ลบ FindNearestPlayer() ออก - ให้ Manager จัดการ
+            // FindNearestPlayer(); // ❌ ลบบรรทัดนี้
             return;
         }
 

@@ -91,7 +91,6 @@ public class WaterSlime : NetworkEnemy
         // หา target
         if (targetTransform == null)
         {
-            FindNearestPlayer();
             return;
         }
 
