@@ -171,6 +171,10 @@ public class CharacterSelectionManager : MonoBehaviour
         {
             skillVideoPlayer.loopPointReached += OnVideoFinished;
             skillVideoPlayer.isLooping = true;
+
+            // ปิดเสียง video
+            skillVideoPlayer.audioOutputMode = VideoAudioOutputMode.None;
+
         }
 
         // ซ่อน video display ตอนเริ่ม
