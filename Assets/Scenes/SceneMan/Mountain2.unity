@@ -2948,6 +2948,11 @@ PrefabInstance:
       objectReference: {fileID: 509972958}
     - target: {fileID: 8754765184091848922, guid: 872881de83d7ea44ba83e8cbe3b0a38e,
         type: 3}
+      propertyPath: lobbySceneName
+      value: Lobby
+      objectReference: {fileID: 0}
+    - target: {fileID: 8754765184091848922, guid: 872881de83d7ea44ba83e8cbe3b0a38e,
+        type: 3}
       propertyPath: closesoundButton
       value: 
       objectReference: {fileID: 249088937}

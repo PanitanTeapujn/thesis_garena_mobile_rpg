@@ -66116,6 +66116,11 @@ PrefabInstance:
       objectReference: {fileID: 484074808}
     - target: {fileID: 8754765184091848922, guid: 872881de83d7ea44ba83e8cbe3b0a38e,
         type: 3}
+      propertyPath: lobbySceneName
+      value: Lobby
+      objectReference: {fileID: 0}
+    - target: {fileID: 8754765184091848922, guid: 872881de83d7ea44ba83e8cbe3b0a38e,
+        type: 3}
       propertyPath: closesoundButton
       value: 
       objectReference: {fileID: 611046799}
@@ -66124,6 +66129,11 @@ PrefabInstance:
       propertyPath: backToLobbyButton
       value: 
       objectReference: {fileID: 757310130}
+    - target: {fileID: 8754765184091848922, guid: 872881de83d7ea44ba83e8cbe3b0a38e,
+        type: 3}
+      propertyPath: startGameSceneName
+      value: StartGame
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

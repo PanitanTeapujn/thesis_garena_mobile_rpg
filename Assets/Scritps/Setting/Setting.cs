@@ -17,7 +17,7 @@ public class Setting : MonoBehaviour
     [SerializeField] private Button resumeButton;
     [SerializeField] private Button soundButton;
     [SerializeField] private Button closesoundButton;
-    [SerializeField] private Button backToLobbyButton;
+    [SerializeField] private Button backToLobbyButton; // จะเป็น Logout ในหน้า Lobby
 
     [Header("Sound Sliders")]
     [SerializeField] private Slider bgmSlider;
@@ -29,6 +29,7 @@ public class Setting : MonoBehaviour
 
     [Header("Scene Settings")]
     [SerializeField] private string lobbySceneName = "Lobby";
+    [SerializeField] private string startGameSceneName = "StartGame"; // ✅ เพิ่มชื่อ scene
 
     // ✅ เพิ่มตัวแปร pause state (ไม่ใช้ Time.timeScale)
     public static bool IsPaused { get; private set; } = false;
@@ -48,26 +49,47 @@ public class Setting : MonoBehaviour
         closesoundButton.onClick.AddListener(CloseSoundPanel);
         resumeButton.onClick.AddListener(CloseSettingPanel);
 
-        if (backToLobbyButton != null)
-        {
-            backToLobbyButton.onClick.AddListener(BackToLobbys);
-        }
+        // ✅ ไม่ต้อง AddListener ที่นี่ เพราะจะเพิ่มใน CheckLobbyButton แทน
     }
 
+    // ✅ แก้ไขฟังก์ชันนี้
     private void CheckLobbyButton()
     {
         if (backToLobbyButton != null)
         {
             string currentScene = SceneManager.GetActiveScene().name;
 
+            // ✅ ลบ listener เก่าก่อน (ป้องกันการเรียกซ้ำ)
+            backToLobbyButton.onClick.RemoveAllListeners();
+
             if (currentScene.Equals(lobbySceneName, System.StringComparison.OrdinalIgnoreCase))
             {
-                backToLobbyButton.gameObject.SetActive(false);
-                Debug.Log("🏠 In Lobby scene - Back to Lobby button hidden");
+                // ✅ ในหน้า Lobby = แสดงปุ่ม Logout
+                backToLobbyButton.gameObject.SetActive(true);
+                backToLobbyButton.onClick.AddListener(LogoutToStartGame);
+
+                // ✅ เปลี่ยนข้อความปุ่ม (ถ้ามี TextMeshProUGUI)
+                TextMeshProUGUI buttonText = backToLobbyButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                {
+                    buttonText.text = "Logout";
+                }
+
+                Debug.Log("🚪 In Lobby scene - Logout button visible");
             }
             else
             {
+                // ✅ ในหน้าอื่น = แสดงปุ่ม Back to Lobby
                 backToLobbyButton.gameObject.SetActive(true);
+                backToLobbyButton.onClick.AddListener(BackToLobbys);
+
+                // ✅ เปลี่ยนข้อความปุ่มกลับ
+                TextMeshProUGUI buttonText = backToLobbyButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (buttonText != null)
+                {
+                    buttonText.text = "Back to Lobby";
+                }
+
                 Debug.Log($"🎮 In {currentScene} - Back to Lobby button visible");
             }
         }
@@ -141,7 +163,6 @@ public class Setting : MonoBehaviour
         }
     }
 
-    // ✅ แก้ไข - ไม่ยุ่งกับ Time.timeScale
     private void OpenSettingPanel()
     {
         settingPanel.SetActive(true);
@@ -165,12 +186,22 @@ public class Setting : MonoBehaviour
         soundPanel.SetActive(false);
     }
 
+    // ✅ ฟังก์ชันกลับไป Lobby (ใช้ในหน้าเกม)
     void BackToLobbys()
     {
         ResumeGame();
         CleanupNetworkComponents();
         Debug.Log("🏠 Loading Lobby Scene...");
-        SceneManager.LoadScene("Lobby");
+        SceneManager.LoadScene(lobbySceneName);
+    }
+
+    // ✅ ฟังก์ชัน Logout ใหม่ (ใช้ในหน้า Lobby)
+    void LogoutToStartGame()
+    {
+        ResumeGame();
+        CleanupNetworkComponents();
+        Debug.Log("🚪 Logging out to Start Game...");
+        SceneManager.LoadScene(startGameSceneName);
     }
 
     // ========== ✅ Pause System (ไม่ใช้ Time.timeScale) ==========
@@ -178,24 +209,14 @@ public class Setting : MonoBehaviour
     private void PauseGame()
     {
         IsPaused = true;
-        // ❌ ลบบรรทัดนี้ออก: Time.timeScale = 0f;
-
-        // ✅ แสดง cursor
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-
         Debug.Log("⏸️ Game Paused");
     }
 
     private void ResumeGame()
     {
         IsPaused = false;
-        // ❌ ลบบรรทัดนี้ออก: Time.timeScale = 1f;
-
-        // ✅ ซ่อน cursor (optional - คุณอาจไม่ต้องการซ่อนก็ได้)
-        // Cursor.visible = false;
-        // Cursor.lockState = CursorLockMode.Locked;
-
         Debug.Log("▶️ Game Resumed");
     }
 
