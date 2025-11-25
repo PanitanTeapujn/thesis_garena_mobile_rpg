@@ -6,6 +6,7 @@ using Firebase.Auth;
 using Firebase.Database;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Video;
 
 public class CharacterSelectionManager : MonoBehaviour
 {
@@ -50,7 +51,38 @@ public class CharacterSelectionManager : MonoBehaviour
     public Button skill3Button;
     public Button skill4Button;
     public Button showCharacterInfoButton; // ปุ่มสำหรับกลับมาแสดงคำอธิบายตัวละคร (optional)
+    [Header("🎬 Skill Video Display")]
+    public UnityEngine.Video.VideoPlayer skillVideoPlayer;
+    public RawImage skillVideoDisplay; // RawImage สำหรับแสดง video
+    public RenderTexture skillVideoRenderTexture; // Render Texture สำหรับ video
 
+    [Header("🎬 Skill Videos - Blood Knight")]
+    public VideoClip bloodKnightPassiveVideo;
+    public VideoClip bloodKnightSkill1Video;
+    public VideoClip bloodKnightSkill2Video;
+    public VideoClip bloodKnightSkill3Video;
+    public VideoClip bloodKnightSkill4Video;
+
+    [Header("🎬 Skill Videos - Archer")]
+    public VideoClip archerPassiveVideo;
+    public VideoClip archerSkill1Video;
+    public VideoClip archerSkill2Video;
+    public VideoClip archerSkill3Video;
+    public VideoClip archerSkill4Video;
+
+    [Header("🎬 Skill Videos - Assassin")]
+    public VideoClip assassinPassiveVideo;
+    public VideoClip assassinSkill1Video;
+    public VideoClip assassinSkill2Video;
+    public VideoClip assassinSkill3Video;
+    public VideoClip assassinSkill4Video;
+
+    [Header("🎬 Skill Videos - Iron Juggernaut")]
+    public VideoClip ironJuggernautPassiveVideo;
+    public VideoClip ironJuggernautSkill1Video;
+    public VideoClip ironJuggernautSkill2Video;
+    public VideoClip ironJuggernautSkill3Video;
+    public VideoClip ironJuggernautSkill4Video;
     [Header("🎨 Skill Icon Images (ลากจาก Button > Image)")]
     public Image passiveSkillIcon;
     public Image skill1Icon;
@@ -135,7 +167,15 @@ public class CharacterSelectionManager : MonoBehaviour
         ironJuggernautButton.onClick.AddListener(() => SelectCharacter(PlayerSelectionData.CharacterType.IronJuggernaut));
 
         confirmButton.onClick.AddListener(() => StartCoroutine(ConfirmSelectionCoroutine()));
+        if (skillVideoPlayer != null)
+        {
+            skillVideoPlayer.loopPointReached += OnVideoFinished;
+            skillVideoPlayer.isLooping = true;
+        }
 
+        // ซ่อน video display ตอนเริ่ม
+        if (skillVideoDisplay != null)
+            skillVideoDisplay.gameObject.SetActive(false);
         // ✅ Setup skill buttons
         SetupSkillButtons();
 
@@ -240,6 +280,8 @@ public class CharacterSelectionManager : MonoBehaviour
             // แสดงคำอธิบายสกิลใน characterDescriptionText
             characterDescriptionText.text = $"<color=yellow><b>{skillName}:</b></color> \n{description}";
         }
+        PlaySkillVideo(selectedCharacter, skillIndex);
+
 
         Debug.Log($"[CharacterSelection] Showing {selectedCharacter} skill {skillIndex} description");
     }
@@ -254,6 +296,7 @@ public class CharacterSelectionManager : MonoBehaviour
         {
             characterDescriptionText.text = currentCharacterBaseDescription;
         }
+        StopSkillVideo();
 
         Debug.Log($"[CharacterSelection] Showing {selectedCharacter} character description");
     }
@@ -330,13 +373,14 @@ public class CharacterSelectionManager : MonoBehaviour
     {
         currentSelectedSkillIndex = -1;
 
-        // แสดง Story Section
         if (storySection != null)
             storySection.SetActive(true);
 
-        // ซ่อน Skill Description Section
         if (skillDescriptionSection != null)
             skillDescriptionSection.SetActive(false);
+
+        // ✅ เพิ่มส่วนนี้: หยุด video เมื่อแสดง story panel
+        StopSkillVideo();
 
         Debug.Log("[CharacterSelection] Showing story panel");
     }
@@ -910,5 +954,104 @@ public class CharacterSelectionManager : MonoBehaviour
 
         // Show character level
         ShowCharacterLevel(character.ToString());
+    }
+
+    // ========== 🆕 NEW: Play Skill Video ==========
+    private void PlaySkillVideo(PlayerSelectionData.CharacterType character, int skillIndex)
+    {
+        if (skillVideoPlayer == null) return;
+
+        VideoClip clip = GetSkillVideoForCharacter(character, skillIndex);
+
+        if (clip != null)
+        {
+            // แสดง video display
+            if (skillVideoDisplay != null)
+                skillVideoDisplay.gameObject.SetActive(true);
+
+            // ตั้งค่าและเล่น video
+            skillVideoPlayer.clip = clip;
+            skillVideoPlayer.Play();
+
+            Debug.Log($"[CharacterSelection] 🎬 Playing video for {character} skill {skillIndex}");
+        }
+        else
+        {
+            // ซ่อน video ถ้าไม่มี clip
+            StopSkillVideo();
+            Debug.Log($"[CharacterSelection] No video found for {character} skill {skillIndex}");
+        }
+    }
+
+    // ========== 🆕 NEW: Stop Skill Video ==========
+    private void StopSkillVideo()
+    {
+        if (skillVideoPlayer != null)
+        {
+            skillVideoPlayer.Stop();
+        }
+
+        if (skillVideoDisplay != null)
+            skillVideoDisplay.gameObject.SetActive(false);
+    }
+
+    // ========== 🆕 NEW: On Video Finished ==========
+    private void OnVideoFinished(VideoPlayer vp)
+    {
+        // Video จะ loop อัตโนมัติ หรือจะทำอะไรเพิ่มก็ได้
+        Debug.Log("[CharacterSelection] Video finished playing");
+    }
+
+    // ========== 🆕 NEW: Get Skill Video for Character ==========
+    private VideoClip GetSkillVideoForCharacter(PlayerSelectionData.CharacterType character, int skillIndex)
+    {
+        switch (character)
+        {
+            case PlayerSelectionData.CharacterType.BloodKnight:
+                switch (skillIndex)
+                {
+                    case 0: return bloodKnightPassiveVideo;
+                    case 1: return bloodKnightSkill1Video;
+                    case 2: return bloodKnightSkill2Video;
+                    case 3: return bloodKnightSkill3Video;
+                    case 4: return bloodKnightSkill4Video;
+                }
+                break;
+
+            case PlayerSelectionData.CharacterType.Archer:
+                switch (skillIndex)
+                {
+                    case 0: return archerPassiveVideo;
+                    case 1: return archerSkill1Video;
+                    case 2: return archerSkill2Video;
+                    case 3: return archerSkill3Video;
+                    case 4: return archerSkill4Video;
+                }
+                break;
+
+            case PlayerSelectionData.CharacterType.Assassin:
+                switch (skillIndex)
+                {
+                    case 0: return assassinPassiveVideo;
+                    case 1: return assassinSkill1Video;
+                    case 2: return assassinSkill2Video;
+                    case 3: return assassinSkill3Video;
+                    case 4: return assassinSkill4Video;
+                }
+                break;
+
+            case PlayerSelectionData.CharacterType.IronJuggernaut:
+                switch (skillIndex)
+                {
+                    case 0: return ironJuggernautPassiveVideo;
+                    case 1: return ironJuggernautSkill1Video;
+                    case 2: return ironJuggernautSkill2Video;
+                    case 3: return ironJuggernautSkill3Video;
+                    case 4: return ironJuggernautSkill4Video;
+                }
+                break;
+        }
+
+        return null;
     }
 }
