@@ -62,6 +62,69 @@ MonoBehaviour:
     isRareItem: 0
     isFeaturedItem: 1
     description: 
+  - itemData: {fileID: 11400000, guid: 78162d31b6b139d4ca860cb4d8b0e70e, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: d774f5f23a5b88c45a8956386605e248, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: 4a054a0edaba37043b047b1823fa6260, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: cff88994fec13f74eae34a277dbc6f4e, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: b7a69c06dd07df042b128949acad2c91, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: b7a69c06dd07df042b128949acad2c91, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: ec744ccc7849822449b40562567df1bc, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: 9bb3bb789cdc5604eb25ea9cbc9e3b85, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
+  - itemData: {fileID: 11400000, guid: 8300d28ce7c308c46a0282c514dd3ce3, type: 2}
+    dropRate: 5
+    minQuantity: 1
+    maxQuantity: 1
+    isRareItem: 0
+    isFeaturedItem: 1
+    description: 
   hasGuarantee: 0
   guaranteeCount: 100
   guaranteeTier: 5
