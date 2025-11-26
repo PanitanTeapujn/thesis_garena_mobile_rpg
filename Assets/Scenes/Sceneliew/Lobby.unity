@@ -55728,7 +55728,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Mountain1
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: kill15 slime
     - panel: {fileID: 959851596}
       subStageName: Mountain1-3
@@ -55738,7 +55738,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Mountain2
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: 
     - panel: {fileID: 1989910534}
       subStageName: Mountain1-4
@@ -55748,7 +55748,7 @@ MonoBehaviour:
       requiredEnemyTags: 01000000
       requiredPreviousStages:
       - Mountain3
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: 
   - panel: {fileID: 38986222}
     stageName: Snow2_1
@@ -55771,7 +55771,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Snow1
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: Snow2_2
     - panel: {fileID: 497467513}
       subStageName: Snow2_3
@@ -55781,7 +55781,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Snow2
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: Snow2_1
     - panel: {fileID: 497467513}
       subStageName: Snow2_4
@@ -55791,7 +55791,7 @@ MonoBehaviour:
       requiredEnemyTags: 01000000
       requiredPreviousStages:
       - Snow3
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: Snow2_1
   - panel: {fileID: 1369753109}
     stageName: Lava
@@ -55804,7 +55804,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Snow4
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: 
     - panel: {fileID: 1887766436}
       subStageName: Lava1-1
@@ -55814,7 +55814,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Lava1_1
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: 
     - panel: {fileID: 1887766436}
       subStageName: Lava1-1
@@ -55824,7 +55824,7 @@ MonoBehaviour:
       requiredEnemyTags: 
       requiredPreviousStages:
       - Lava1_2
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: 
     - panel: {fileID: 1887766436}
       subStageName: Lava3-4
@@ -55834,7 +55834,7 @@ MonoBehaviour:
       requiredEnemyTags: 01000000
       requiredPreviousStages:
       - Lava1_2
-      isFirstStage: 0
+      isFirstStage: 1
       stageDescription: 
   availableStages: []
 --- !u!1 &1824416337
